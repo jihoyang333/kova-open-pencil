@@ -215,7 +215,7 @@ fn show_main_window<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let mut builder = tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
             build_fig_file,
             list_system_fonts,
@@ -223,8 +223,14 @@ pub fn run() {
         ])
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_fs::init())
-        .on_menu_event(|app, event| {
+        .plugin(tauri_plugin_fs::init());
+
+    #[cfg(debug_assertions)]
+    {
+        builder = builder.plugin(tauri_plugin_mcp_bridge::init());
+    }
+
+    builder.on_menu_event(|app, event| {
             #[cfg(debug_assertions)]
             if event.id().0.as_str() == "dev-tools" {
                 if let Some(window) = app.get_webview_window("main") {

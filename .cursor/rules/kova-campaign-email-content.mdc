@@ -1,0 +1,91 @@
+---
+description: KOVA campaign guides, email design guidelines, JSX patterns, brand kit formatting
+globs: src/data/campaigns/**,src/composables/use-chat.ts
+alwaysApply: false
+---
+
+# KOVA — Campaign Guides & Email Content
+
+## Campaign Guide Files
+
+Location: src/data/campaigns/
+5 files: educational.md, community-branded.md, sales.md, social-proof.md, product-highlights.md
+
+These are Kova's core prompt engineering IP. Do NOT write thin stubs.
+Each guide must specify at ~50 lines: section sequence, typography values,
+color usage patterns, spacing values, visual hierarchy rules, and anti-patterns.
+
+### Campaign Types:
+1. **Educational** — Informative, value-driven. Tips, how-tos, guides.
+2. **Community / Branded** — Brand storytelling, welcome sequences, loyalty.
+3. **Sales** — Promotions, flash sales, discounts, urgency-driven.
+4. **Social Proof** — Reviews, testimonials, user-generated content.
+5. **Product Highlights** — New arrivals, launches, collections, showcases.
+
+### Template structure for each guide:
+```
+# [Type] Email Design Guide
+
+**Campaign intent:** [1-2 sentences]
+**Tone:** [descriptive phrase]
+
+**Recommended section sequence (N sections):**
+1. Hero — [description with size/weight/bg guidance]
+2. Content Block A — [structure + typography details]
+3. Content Block B — [variation from A]
+4. [Type-specific section] — [unique to this campaign type]
+5. CTA + Footer — [CTA style + footer standard]
+
+**Typography rules:**
+- Headline: [size]px, [weight], [font], line-height [value]
+- Subheadings: [size]px, [weight], line-height [value]
+- Body: [size]px, regular, line-height [value]
+- Caption: [size]px, muted color
+
+**Color usage:** [specific patterns for this type]
+**Spacing & layout:** [padding, gap, corner radius values]
+**Visual hierarchy rules:** [2-3 rules]
+**Anti-patterns to avoid:** [3-4 things NOT to do]
+```
+
+## Email Design Guidelines (always present in system prompt)
+
+Key rules:
+- All emails exactly 600px wide (root frame w={600}).
+- Emails = stacked sections. Each section: Frame w={600} flex="col".
+- Use auto-layout (flex) throughout. No absolute x/y for email content.
+  Exception: absolute positioning for decorative overlays/badges WITHIN a section.
+- Typography: Headline 32-48px bold, Subheadline 20-24px medium, Body 14-16px regular, Caption 11-12px.
+- Line height: 1.4-1.6 body, 1.1-1.2 headlines.
+- Section padding: 32-48px vertical, 24-40px horizontal.
+- CTA buttons: 16px rounded min, 16/32px padding, contrasting color.
+- Dark sections: always set text color explicitly to white/light. Default is BLACK.
+- After dark-background render, explicitly verify all child text nodes have light color.
+- Use `exportImage` for final visual verification.
+
+## Email JSX Patterns (few-shot examples always in system prompt)
+
+Patterns to include: Hero (dark bg), CTA Section, Two-Column Features, Footer.
+Each pattern uses the render tool's JSX syntax with Frame, Text, Rectangle,
+Ellipse tags and layout props (flex, gap, items, justify, p/px/py).
+
+## Image Handling Instructions (always in system prompt)
+
+Default: colored rectangle placeholders with descriptive name props.
+If user uploaded images before generation: check for existing image nodes
+via findNodes/getPageTree and incorporate them.
+
+## Brand Kit Injection Format
+
+```
+# Brand: [Client Name]
+Primary color: [hex] (use for CTAs, accents, headlines)
+Secondary color: [hex] (use for dark sections, footer)
+Background: [hex]
+Accent: [hex]
+Heading font: [font name]
+Body font: [font name]
+Logo: [node ID if uploaded] OR [not uploaded — use text-based brand name]
+
+Apply these brand values to all design decisions.
+```

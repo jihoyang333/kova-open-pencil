@@ -1,0 +1,64 @@
+---
+description: KOVA core project standards — stack, hard constraints, coding conventions
+alwaysApply: true
+---
+
+# KOVA — Always-Apply Cursor Rule
+# Stack: Vue 3 (Composition API) · TypeScript · Vite 7 · Tailwind CSS 4
+#        Supabase · Vercel AI SDK · Bun
+# Built on: open-pencil/open-pencil (MIT fork)
+
+You are adding Kova's SaaS layer ON TOP of OpenPencil's working engine.
+Never rebuild what already works. Before writing any code, read the relevant
+existing file in the repo. Do not reconstruct behavior from memory or docs.
+
+---
+
+## HARD CONSTRAINTS
+
+### Never modify:
+- `packages/core/` — tools, figma-api.ts, schema.ts, renderer, scene graph,
+  Yoga layout, Kiwi codec. All read-only reference.
+- ToolLoopAgent and DirectChatTransport from Vercel AI SDK.
+- The Yjs / y-indexeddb local persistence layer.
+- The editor UI: canvas, toolbar, layers panel, properties panel, AI chat layout.
+
+### Never do:
+- Rebuild canvas, renderer, or scene graph.
+- Build a custom Anthropic adapter (use @ai-sdk/anthropic).
+- Build a custom agentic loop (use ToolLoopAgent).
+- Build /api/generate for AI logic (pipeline runs in browser via DirectChatTransport).
+- Build a "compiler" for tool calls (tools execute directly against FigmaAPI).
+- Output HTML emails (Kova exports images).
+- Use React, Next.js, or PixiJS.
+- Use Zod in the tool layer — valibot only (src/ai/tools.ts and dependencies).
+- Expose ANTHROPIC_API_KEY to the browser.
+- Reference old Kova code (React/PixiJS/Next.js). It is dead.
+
+### use-chat.ts — extreme care:
+- The SYSTEM_PROMPT constant stays word-for-word unchanged.
+- buildSystemPrompt() APPENDS Kova content after SYSTEM_PROMPT. Never replaces.
+- Before modifying this file, read the actual file in the repo first.
+
+---
+
+## CODING STANDARDS
+
+**Vue 3:** Always `<script setup lang="ts">`. Composition API only.
+ref() for primitives, reactive() for objects, computed() for derived state.
+Typed defineProps<{}>() and defineEmits<{}>().
+
+**TypeScript:** No `any`. No implicit `any`. Prefer `interface` over `type` for
+object shapes. Avoid enums — use `as const` maps. Strict null checks.
+
+**Naming:** Directories lowercase-dashed. Components PascalCase.vue.
+Composables useCamelCase.ts. Booleans: isX, hasX, canX. Handlers: handleX.
+
+**Pinia:** Composition API setup stores only. One store per domain.
+Don't put OpenPencil editor state in Pinia.
+
+**Tailwind CSS 4:** Utility classes for all new UI. No custom CSS for new pages.
+No @apply unless genuinely necessary. No inline styles.
+
+**Quality:** Max ~40 lines per function. No magic strings/numbers. No console.log
+in committed code. Every async UI op needs isLoading + error state.

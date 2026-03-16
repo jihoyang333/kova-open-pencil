@@ -1,0 +1,90 @@
+---
+description: KOVA new pages, routes, components, composables, stores — dashboard, auth, clients, templates, export
+globs: src/views/**,src/components/**,src/stores/**,src/composables/**
+alwaysApply: false
+---
+
+# KOVA — New Features, Routes & Components
+
+## Project Structure
+
+```
+packages/
+  core/           @open-pencil/core — READ ONLY (engine, tools, renderer)
+  cli/            headless CLI (ignore)
+  mcp/            MCP server (not used by Kova users)
+src/
+  ai/             AI tool wiring (valibot, not Zod)
+  components/
+    chat/         AI chat UI
+    canvas/       Canvas components
+    panels/       Layers + properties panels
+  composables/    use-chat.ts and other composables
+  views/          Route views
+  stores/         Pinia stores
+  data/
+    campaigns/    Campaign guide .md files (5 types)
+desktop/          Tauri v2 — IGNORE entirely
+tests/            Playwright E2E + bun:test unit
+```
+
+## What Kova Adds
+
+New pages/views:
+- /login, /signup — Supabase auth
+- /dashboard — client list with email thumbnails
+- /clients/:id — brand profile form + email list
+- /templates — template browser, filterable by campaign type
+
+New UI enhancements (additive, not replacement):
+- Campaign type selector in AI chat panel (dropdown or chips)
+- Export panel: section slice lines + per-section PNG/JPEG + ZIP download
+- Brand profile form (colors, fonts, logo upload)
+
+New composables:
+- useBrandKit(clientId) — loads brand profile, returns formatted prompt string
+- useCampaignGuide(type) — loads campaign guide markdown
+- useEmailAutoSave(emailId) — debounced Supabase writes with conflict handling
+- useGenerationLimit() — checks plan limits before generation
+
+## Routing (Vue Router)
+
+- New routes in src/views/, registered in the router.
+- Route protection: unauthenticated -> redirect to /login.
+- defineAsyncComponent + <Suspense> for lazy-loaded views.
+- Route naming: kebab-case (client-detail, email-editor, template-browser).
+- Keep the editor route exactly as OpenPencil defines it.
+
+## VueUse
+
+Already a dependency. Use before writing your own:
+useDebounceFn (auto-save), useLocalStorage (UI prefs),
+useResizeObserver (canvas panel), useEventListener.
+
+## File Organisation
+
+Each file in order: exported component/composable, subcomponents,
+helpers, constants, types/interfaces.
+No barrel index.ts unless 3+ exports genuinely always imported together.
+
+## Files You'll Touch Most
+
+src/composables/use-chat.ts    — AI core (see AI Pipeline rule)
+src/components/chat/           — Minor: hide provider key, add campaign selector
+src/components/                — Add dashboard, brand, template, export components
+src/stores/                    — Add user/client/email/brand Pinia stores
+src/views/                     — Add dashboard, login, client, template views
+src/data/campaigns/            — Write 5 campaign guides (see Campaign rule)
+
+## Deployment
+
+Vite SPA -> Vercel (or Cloudflare Pages).
+API routes -> Vercel serverless functions.
+Code splitting: defineAsyncComponent for dashboard views to keep editor bundle lean.
+No Tauri-specific config, plugins, or imports.
+
+## Testing
+
+Unit: bun:test. Cover composables, utils, buildSystemPrompt(), brand kit formatting.
+E2E: Playwright. Cover auth flow, dashboard CRUD, editor route loads.
+Run before commits: bun run test:unit && bun run check

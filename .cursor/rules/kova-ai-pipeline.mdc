@@ -1,0 +1,83 @@
+---
+description: KOVA AI pipeline — use-chat.ts, buildSystemPrompt, render tool, ai-proxy
+globs: src/composables/use-chat.ts,src/ai/**,src/api/**
+alwaysApply: false
+---
+
+# KOVA — AI Pipeline & System Prompt
+
+## Generation Architecture
+
+The entire pipeline runs in the browser via Vercel AI SDK:
+
+  User prompt -> buildSystemPrompt() assembles instructions
+  -> ToolLoopAgent sends prompt + 92 tools to Anthropic
+  -> via DirectChatTransport -> /api/ai-proxy (injects ANTHROPIC_API_KEY)
+  -> Claude responds with tool calls (primarily `render` JSX)
+  -> Tools execute against FigmaAPI (scene graph) in browser
+  -> Canvas re-renders in real-time
+  -> ToolLoopAgent sends results back -> loop until done
+
+There is NO custom backend generation route. NO compiler. NO intermediate format.
+
+## use-chat.ts — The AI Core
+
+Contains: SYSTEM_PROMPT constant, provider config, ToolLoopAgent, DirectChatTransport.
+
+### buildSystemPrompt() pattern:
+```typescript
+function buildSystemPrompt(campaignType?: string, brandKit?: BrandKit): string {
+  let prompt = SYSTEM_PROMPT  // OpenPencil's prompt — every word unchanged
+  prompt += '\n\n' + EMAIL_DESIGN_GUIDELINES
+  if (campaignType) prompt += '\n\n' + loadCampaignGuide(campaignType)
+  if (brandKit) prompt += '\n\n' + formatBrandKit(brandKit)
+  prompt += '\n\n' + EMAIL_JSX_PATTERNS
+  prompt += '\n\n' + IMAGE_HANDLING_INSTRUCTIONS
+  return prompt
+}
+```
+
+The SYSTEM_PROMPT constant MUST remain word-for-word unchanged — every line of JSX
+reference, layout rules, forbidden patterns, verification workflow stays intact.
+buildSystemPrompt() only appends. Never replaces.
+
+## The render Tool
+
+- Primary creation method. One call creates a complete section with children/styles/layout.
+- Use `render` for generation. Use granular tools (setFill, updateNode) for editing.
+- Size limit: ~40 elements per call. Split across multiple render calls using parent_id.
+- Call `describe` on every rendered node immediately after render. Fix issues before
+  proceeding to the next section.
+- `describe` returns semantic/structural data — it does NOT visually render. It cannot
+  detect invisible text. After dark-background sections, explicitly verify all child
+  text nodes have a light color. Never assume inheritance.
+- For final verification, use `exportImage` to get a visual render.
+
+## /api/ai-proxy
+
+- Validates Supabase auth session.
+- Checks generations_used < generations_limit.
+- Injects ANTHROPIC_API_KEY from server environment.
+- Forwards to Anthropic, streams response back.
+- Increments generations_used on success.
+- CRITICAL: @ai-sdk/anthropic appends /v1/messages to baseURL. The proxy must
+  handle POST /api/ai-proxy/v1/messages — not just /api/ai-proxy.
+
+## DirectChatTransport Limitation
+
+No mid-stream reconnection. If a generation stream drops, it cannot resume.
+Build a "Generation failed — retry?" UI that re-triggers from scratch.
+Do NOT build resume or partial-recovery logic.
+
+## Provider Settings Removal
+
+When hiding/removing ProviderSettings, ProviderSelect, ProviderSetup:
+  1. grep for every import and template usage across the entire codebase.
+  2. Remove all imports and template usages first.
+  3. Only then delete or stub the component files.
+Reversing this order causes build errors.
+
+## src/ai/tools.ts
+
+Uses VALIBOT for all schema definitions, not Zod. If you must modify this file
+or packages/core/src/tools/ai-adapter.ts, use valibot exclusively.

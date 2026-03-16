@@ -16,6 +16,11 @@ dist-ssr
 public/canvaskit.wasm
 public/canvaskit-webgpu/
 
+# Cursor
+.cursor/mcp.json
+.cursor/**/__pycache__/
+.cursor/**/*.pyc
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

@@ -1,0 +1,95 @@
+---
+description: KOVA Supabase — auth, database schema, RLS, storage, auto-save, env vars
+globs: src/stores/**,src/composables/**,src/api/**,src/views/**
+alwaysApply: false
+---
+
+# KOVA — Supabase, Auth & Database
+
+## Supabase Client
+
+- Use @supabase/supabase-js client-side SDK for auth and data.
+- Auth: email/password + OAuth. Session managed client-side.
+- All DB mutations via typed Supabase queries — no raw SQL from client.
+- RLS enforced server-side. Don't rely on client-side filtering for security.
+
+## Environment Variables
+
+Browser-safe (VITE_ prefix required):
+  VITE_SUPABASE_URL
+  VITE_SUPABASE_ANON_KEY
+
+Server-only (NEVER VITE_ prefix):
+  SUPABASE_SERVICE_ROLE_KEY
+  ANTHROPIC_API_KEY
+  STRIPE_SECRET_KEY
+  STRIPE_WEBHOOK_SECRET
+  STRIPE_PRICE_ID
+
+## Storage
+
+Logos and .fig template files go to Supabase Storage buckets.
+Store the public URL in the database record, not the file data.
+
+## Auto-Save
+
+OpenPencil uses Yjs + y-indexeddb for local document persistence.
+Supabase auto-save adds server-side persistence ON TOP — it does not replace
+the Yjs layer. Do not remove or fight IndexedDB.
+
+Pattern: debounce writes (1–2s), write scene graph JSON to emails.design_data.
+
+## Database Schema
+
+```sql
+create table users (
+  id uuid references auth.users primary key,
+  email text not null,
+  plan text default 'free',
+  stripe_customer_id text,
+  generations_used integer default 0,
+  generations_limit integer default 10,
+  created_at timestamptz default now()
+);
+
+create table clients (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references users(id) on delete cascade,
+  name text not null,
+  created_at timestamptz default now()
+);
+
+create table brand_profiles (
+  id uuid primary key default gen_random_uuid(),
+  client_id uuid references clients(id) on delete cascade,
+  primary_color text,
+  secondary_color text,
+  background_color text,
+  accent_color text,
+  heading_font text default 'Inter',
+  body_font text default 'Inter',
+  logo_url text,
+  updated_at timestamptz default now()
+);
+
+create table emails (
+  id uuid primary key default gen_random_uuid(),
+  client_id uuid references clients(id) on delete cascade,
+  name text not null,
+  campaign_type text,
+  design_data jsonb,
+  thumbnail_url text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+create table templates (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  campaign_type text,
+  fig_file_url text,
+  thumbnail_url text,
+  is_public boolean default true,
+  created_at timestamptz default now()
+);
+```
