@@ -1,19 +1,21 @@
 import { createPinia } from 'pinia'
 import { createHead } from '@unhead/vue/client'
 import { createApp } from 'vue'
+import { createWebHistory } from 'vue-router'
 
 import './app.css'
 import { IS_TAURI } from '@/constants'
 import { preloadFonts } from '@/engine/fonts'
+import { createAppRouter } from '@/router'
 import { useAuthStore } from '@/stores/auth'
 
 import App from './App.vue'
-import router from './router'
 
 preloadFonts()
 
 const pinia = createPinia()
 const head = createHead()
+const router = createAppRouter(createWebHistory())
 const app = createApp(App)
 
 app.use(pinia).use(router).use(head)
