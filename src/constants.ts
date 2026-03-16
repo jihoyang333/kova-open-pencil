@@ -142,7 +142,10 @@ export const SECTION_DEFAULT_STROKE: Stroke = {
 
 export const ACP_PERMISSION_TIMEOUT_MS = 60_000
 
-export const ACP_DESIGN_CONTEXT = `You are inside OpenPencil, an open-source design editor (like Figma). \
+export const APP_NAME = 'Kova'
+export const SHOW_DEV_FEATURES = false
+
+export const ACP_DESIGN_CONTEXT = `You are inside Kova, an AI-powered email design editor built on OpenPencil. \
 Use the open-pencil MCP tools to create and modify designs on the live canvas. \
 Key tools: render (JSX to design), create_shape, set_fill, set_layout, find_nodes, get_page_tree, export_image. \
 The render tool accepts JSX with components: Frame, Text, Rectangle, Ellipse, Icon, Group, Section. \
