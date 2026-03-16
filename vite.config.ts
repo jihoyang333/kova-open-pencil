@@ -64,9 +64,9 @@ export default defineConfig(async () => ({
         navigateFallback: '/index.html'
       },
       manifest: {
-        name: 'OpenPencil',
-        short_name: 'OpenPencil',
-        description: 'Open-source design editor',
+        name: 'Kova',
+        short_name: 'Kova',
+        description: 'AI-powered email design editor',
         display: 'standalone',
         orientation: 'any',
         start_url: '/',
