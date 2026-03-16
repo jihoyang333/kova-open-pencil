@@ -11,11 +11,26 @@ interface UserProfile {
   plan: string
 }
 
+function isUserProfile(data: unknown): data is UserProfile {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    'onboarded' in data &&
+    typeof (data as Record<string, unknown>).onboarded === 'boolean' &&
+    'plan' in data &&
+    typeof (data as Record<string, unknown>).plan === 'string'
+  )
+}
+
 export const useAuthStore = defineStore('auth', () => {
+  const router = useRouter()
+
   const user = ref<User | null>(null)
   const session = ref<Session | null>(null)
   const profile = ref<UserProfile | null>(null)
   const isLoading = ref(true)
+
+  let authSubscription: { unsubscribe: () => void } | null = null
 
   const isAuthenticated = computed(() => !!user.value)
   const isOnboarded = computed(() => profile.value?.onboarded ?? false)
@@ -34,7 +49,12 @@ export const useAuthStore = defineStore('auth', () => {
       return
     }
 
-    profile.value = data as UserProfile
+    if (!isUserProfile(data)) {
+      console.error('Invalid user profile shape:', data)
+      return
+    }
+
+    profile.value = data
   }
 
   async function initialize(): Promise<void> {
@@ -54,7 +74,7 @@ export const useAuthStore = defineStore('auth', () => {
       isLoading.value = false
     }
 
-    supabase.auth.onAuthStateChange(
+    const { data } = supabase.auth.onAuthStateChange(
       (event: string, newSession: Session | null) => {
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
           session.value = newSession
@@ -69,6 +89,7 @@ export const useAuthStore = defineStore('auth', () => {
         }
       },
     )
+    authSubscription = data.subscription
   }
 
   async function signIn(
@@ -103,8 +124,11 @@ export const useAuthStore = defineStore('auth', () => {
     session.value = null
     user.value = null
     profile.value = null
-    const router = useRouter()
     void router.push('/login')
+  }
+
+  function dispose(): void {
+    authSubscription?.unsubscribe()
   }
 
   return {
@@ -120,5 +144,6 @@ export const useAuthStore = defineStore('auth', () => {
     signInWithGoogle,
     signOut,
     fetchProfile,
+    dispose,
   }
 })

@@ -71,8 +71,8 @@ export default defineConfig(async () => ({
         orientation: 'any',
         start_url: '/',
         scope: '/',
-        theme_color: '#1e1e1e',
-        background_color: '#1e1e1e',
+        theme_color: '#ffffff',
+        background_color: '#ffffff',
         categories: ['design', 'productivity'],
         icons: [
           { src: '/pwa-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },

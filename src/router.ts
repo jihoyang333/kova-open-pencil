@@ -2,7 +2,7 @@ import { createRouter } from 'vue-router'
 
 import { useAuthStore } from '@/stores/auth'
 
-import type { Router, RouterHistory } from 'vue-router'
+import type { Router, RouterHistory, RouteMeta } from 'vue-router'
 
 const LoginView = () => import('./views/LoginView.vue')
 const SignupView = () => import('./views/SignupView.vue')
@@ -15,13 +15,6 @@ interface AuthState {
   isOnboarded: boolean
 }
 
-interface RouteMeta {
-  demo?: boolean
-  requiresAuth?: boolean
-  publicOnly?: boolean
-  requiresOnboarding?: boolean
-}
-
 /** Pure guard logic — returns redirect path or true to allow navigation */
 export function resolveGuard(
   to: { meta: RouteMeta; path: string },
@@ -31,7 +24,7 @@ export function resolveGuard(
   if (to.meta.publicOnly && auth.isAuthenticated) return '/dashboard'
   if (to.meta.requiresAuth && !auth.isAuthenticated) return '/login'
   if (to.meta.requiresOnboarding && !auth.isOnboarded) return '/onboarding'
-  if (to.path === '/onboarding' && auth.isOnboarded) return '/dashboard'
+  if (to.meta.onboardingOnly && auth.isOnboarded) return '/dashboard'
   return true
 }
 
@@ -61,7 +54,7 @@ const routes = [
   {
     path: '/onboarding',
     component: OnboardingView,
-    meta: { requiresAuth: true, requiresOnboarding: false }
+    meta: { requiresAuth: true, requiresOnboarding: false, onboardingOnly: true }
   },
   {
     path: '/dashboard',

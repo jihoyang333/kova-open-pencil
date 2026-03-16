@@ -6,5 +6,6 @@ declare module 'vue-router' {
     requiresAuth?: boolean
     publicOnly?: boolean
     requiresOnboarding?: boolean
+    onboardingOnly?: boolean
   }
 }

@@ -16,6 +16,9 @@ CREATE POLICY "Users can read own row" ON public.users
 CREATE POLICY "Users can update own row" ON public.users
   FOR UPDATE USING (auth.uid() = id);
 
+CREATE POLICY "Deny direct inserts" ON public.users
+  FOR INSERT WITH CHECK (false);
+
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN

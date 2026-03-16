@@ -41,7 +41,7 @@ describe('resolveGuard', () => {
 
   test('redirects onboarded users away from /onboarding', () => {
     const result = resolveGuard(
-      { meta: { requiresAuth: true, requiresOnboarding: false }, path: '/onboarding' },
+      { meta: { requiresAuth: true, requiresOnboarding: false, onboardingOnly: true }, path: '/onboarding' },
       authed,
     )
     expect(result).toBe('/dashboard')
