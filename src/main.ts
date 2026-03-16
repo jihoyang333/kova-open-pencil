@@ -23,7 +23,7 @@ app.use(pinia).use(router).use(head)
 // Initialize auth store before mounting — prevents flash of unauthenticated content.
 // Pinia must be installed via app.use(pinia) before calling useAuthStore().
 const auth = useAuthStore()
-auth.initialize().finally(() => {
+void auth.initialize().finally(() => {
   app.mount('#app')
 })
 
