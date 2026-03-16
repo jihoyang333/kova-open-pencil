@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 
+import { SHOW_DEV_FEATURES } from '@/constants'
 import { useEditorStore } from '@/stores/editor'
 
 import VariablesDialog from './VariablesDialog.vue'
@@ -101,8 +102,8 @@ const isComponentType = computed(() => {
     class="scrollbar-thin flex-1 overflow-x-hidden overflow-y-auto pb-4"
   >
     <PageSection />
-    <VariablesSection @open-dialog="variablesOpen = true" />
+    <VariablesSection v-if="SHOW_DEV_FEATURES" @open-dialog="variablesOpen = true" />
   </div>
 
-  <VariablesDialog v-model:open="variablesOpen" />
+  <VariablesDialog v-if="SHOW_DEV_FEATURES" v-model:open="variablesOpen" />
 </template>

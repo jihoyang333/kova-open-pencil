@@ -11,6 +11,7 @@ import {
 } from 'reka-ui'
 import { selectionToJSX, renderNodesToSVG } from '@open-pencil/core'
 
+import { SHOW_DEV_FEATURES } from '@/constants'
 import { useEditorStore } from '@/stores/editor'
 import { menuContent, menuItem, menuSeparator } from '@/components/ui/menu'
 import { toast } from '@/composables/use-toast'
@@ -323,6 +324,7 @@ const separatorClass = menuSeparator({ class: 'my-1' })
               <span class="text-[11px] text-muted">⇧⌘C</span>
             </ContextMenuItem>
             <ContextMenuItem
+              v-if="SHOW_DEV_FEATURES"
               data-test-id="context-copy-as-jsx"
               :class="itemClass"
               @select="copyAsJSX"

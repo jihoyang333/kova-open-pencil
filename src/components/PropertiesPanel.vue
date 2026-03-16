@@ -2,6 +2,7 @@
 import { TabsContent, TabsList, TabsRoot, TabsTrigger } from 'reka-ui'
 
 import { useAIChat } from '@/composables/use-chat'
+import { SHOW_DEV_FEATURES } from '@/constants'
 import { useEditorStore } from '@/stores/editor'
 
 import ChatPanel from './ChatPanel.vue'
@@ -28,6 +29,7 @@ const { activeTab } = useAIChat()
           Design
         </TabsTrigger>
         <TabsTrigger
+          v-if="SHOW_DEV_FEATURES"
           value="code"
           data-test-id="properties-tab-code"
           class="flex items-center gap-1 rounded px-2.5 py-1 text-xs text-muted hover:text-surface data-[state=active]:font-semibold data-[state=active]:text-surface"
@@ -62,6 +64,7 @@ const { activeTab } = useAIChat()
       </TabsContent>
 
       <TabsContent
+        v-if="SHOW_DEV_FEATURES"
         value="code"
         class="flex min-h-0 flex-1 flex-col"
         :force-mount="true"

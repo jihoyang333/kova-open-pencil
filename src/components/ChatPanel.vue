@@ -9,6 +9,7 @@ import ACPPermissionDialog from '@/components/chat/ACPPermissionDialog.vue'
 import ChatInput from '@/components/chat/ChatInput.vue'
 import ChatMessage from '@/components/chat/ChatMessage.vue'
 import ProviderSetup from '@/components/chat/ProviderSetup.vue'
+import { SHOW_DEV_FEATURES } from '@/constants'
 import { useAIChat } from '@/composables/use-chat'
 
 import type { Chat } from '@ai-sdk/vue'
@@ -108,7 +109,7 @@ function handleClearChat() {
 
 <template>
   <div data-test-id="chat-panel" class="flex min-w-0 flex-1 flex-col overflow-hidden select-text">
-    <ProviderSetup v-if="!isConfigured" />
+    <ProviderSetup v-if="!isConfigured && SHOW_DEV_FEATURES" />
 
     <template v-else>
       <ScrollAreaRoot class="min-h-0 flex-1">
