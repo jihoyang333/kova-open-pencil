@@ -177,7 +177,7 @@ const topMenus = [
 <template>
   <div class="shrink-0 border-b border-border">
     <div class="flex items-center gap-2 px-2 py-1.5">
-      <img data-test-id="app-logo" src="/favicon-32.png" class="size-4" alt="OpenPencil" />
+      <img data-test-id="app-logo" src="/favicon-32.png" class="size-4" alt="Kova" />
       <input
         v-if="editingName"
         :ref="(el) => setNameInputRef(el as HTMLInputElement | null)"

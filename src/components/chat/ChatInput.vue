@@ -19,6 +19,7 @@ import ProviderSettings from '@/components/chat/ProviderSettings.vue'
 import { uiButton } from '@/components/ui/button'
 import { uiInput } from '@/components/ui/input'
 import { selectContent, selectItem, selectTrigger } from '@/components/ui/select'
+import { SHOW_DEV_FEATURES } from '@/constants'
 import { useAIChat } from '@/composables/use-chat'
 
 import { ACP_AGENTS } from '@open-pencil/core'
@@ -64,7 +65,7 @@ function handleSubmit(e: Event) {
   <TooltipProvider>
     <div class="shrink-0 border-t border-border px-3 py-2">
       <!-- Model selector & settings -->
-      <div class="mb-1.5 flex items-center gap-1">
+      <div v-if="SHOW_DEV_FEATURES" class="mb-1.5 flex items-center gap-1">
         <template v-if="isACPProvider">
           <div class="flex items-center gap-1 px-1.5 py-0.5 text-[10px] text-muted">
             <icon-lucide-bot class="size-3" />
@@ -134,7 +135,7 @@ function handleSubmit(e: Event) {
           v-model="input"
           type="text"
           data-test-id="chat-input"
-          placeholder="Describe a change…"
+          placeholder="Design an email with Kova AI..."
           :class="uiInput({ class: 'min-w-0 flex-1 placeholder:text-muted' })"
           :disabled="isStreaming"
           @paste.stop
