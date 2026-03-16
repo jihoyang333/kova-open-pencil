@@ -21,6 +21,8 @@ import { uiInput } from '@/components/ui/input'
 import { selectContent, selectItem, selectTrigger } from '@/components/ui/select'
 import { useAIChat } from '@/composables/use-chat'
 
+import { ACP_AGENTS } from '@open-pencil/core'
+
 const { providerID, providerDef, modelID, customModelID } = useAIChat()
 
 const { status } = defineProps<{
@@ -35,7 +37,14 @@ const emit = defineEmits<{
 const input = ref('')
 
 const isStreaming = computed(() => status === 'streaming' || status === 'submitted')
-const isCustomProvider = computed(() => providerID.value === 'openai-compatible')
+const isACPProvider = computed(() => providerID.value.startsWith('acp:'))
+const acpAgentName = computed(() => {
+  const agentId = providerID.value.replace('acp:', '')
+  return ACP_AGENTS.find((a) => a.id === agentId)?.name ?? agentId
+})
+const isCustomProvider = computed(
+  () => providerID.value === 'openai-compatible' || providerID.value === 'anthropic-compatible'
+)
 
 const selectedModelName = computed(() => {
   if (isCustomProvider.value) return customModelID.value || 'No model'
@@ -56,7 +65,13 @@ function handleSubmit(e: Event) {
     <div class="shrink-0 border-t border-border px-3 py-2">
       <!-- Model selector & settings -->
       <div class="mb-1.5 flex items-center gap-1">
-        <template v-if="isCustomProvider">
+        <template v-if="isACPProvider">
+          <div class="flex items-center gap-1 px-1.5 py-0.5 text-[10px] text-muted">
+            <icon-lucide-bot class="size-3" />
+            {{ acpAgentName }}
+          </div>
+        </template>
+        <template v-else-if="isCustomProvider">
           <div
             class="flex items-center gap-1 px-1.5 py-0.5 text-[10px] text-muted"
             data-test-id="chat-custom-model-label"
@@ -121,7 +136,7 @@ function handleSubmit(e: Event) {
           data-test-id="chat-input"
           placeholder="Describe a change…"
           :class="uiInput({ class: 'min-w-0 flex-1 placeholder:text-muted' })"
-          :disabled="status === 'submitted'"
+          :disabled="isStreaming"
           @paste.stop
           @copy.stop
           @cut.stop

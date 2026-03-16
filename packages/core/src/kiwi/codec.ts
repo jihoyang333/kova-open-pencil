@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- codec types and encode/decode logic are tightly coupled */
 /**
  * Message Encoding/Decoding for Figma Multiplayer
  *
@@ -195,6 +196,16 @@ export interface Paint {
   image?: { hash: string }
   imageScaleMode?: string
   colorVariableBinding?: VariableBinding
+  colorVar?: {
+    value?: {
+      alias?: {
+        guid?: GUID
+        assetRef?: { key: string; version: string }
+      }
+    }
+    dataType?: string
+    resolvedDataType?: string
+  }
 }
 
 export interface Effect {
@@ -276,6 +287,7 @@ export interface NodeChange {
   // Frame
   clipsContent?: boolean
   frameMaskDisabled?: boolean
+  resizeToFit?: boolean
   // Vector
   vectorData?: unknown
   fillGeometry?: Array<{ windingRule?: string; commandsBlob?: number }>
@@ -572,7 +584,7 @@ function injectVariableBinding(
 
   // Find visible=true pattern (04 01) after the marker
   const visiblePattern = '0401'
-  let patternIdx = hex.indexOf(visiblePattern, markerIdx)
+  const patternIdx = hex.indexOf(visiblePattern, markerIdx)
   if (patternIdx === -1) return hex
 
   // Move past 0401 to find where to insert

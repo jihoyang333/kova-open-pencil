@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- SkiaRenderer class; text, pen-overlay, fills, scene already extracted */
 import {
   SELECTION_COLOR,
   COMPONENT_COLOR,
@@ -26,7 +27,7 @@ import {
   RULER_TEXT_COLOR,
   DEFAULT_FONT_FAMILY
 } from '../constants'
-import { isFontLoaded, getCJKFallbackFamily } from '../fonts'
+
 import { RenderProfiler } from '../profiler'
 
 import type { SceneNode, SceneGraph, Fill, Stroke } from '../scene-graph'
@@ -42,7 +43,6 @@ import type {
   Paint,
   Font,
   FontMgr,
-  FontWeight,
   TypefaceFontProvider,
   SkPicture,
   ImageFilter,
@@ -52,6 +52,7 @@ import type {
 
 import {
   drawHoverHighlight as drawHoverHighlightFn,
+  drawEnteredContainer as drawEnteredContainerFn,
   drawSelection as drawSelectionFn,
   drawNodeSelection as drawNodeSelectionFn,
   drawSelectionLabels as drawSelectionLabelsFn,
@@ -65,14 +66,18 @@ import {
   drawFlashes as drawFlashesFn,
   drawLayoutInsertIndicator as drawLayoutInsertIndicatorFn,
   drawTextEditOverlay as drawTextEditOverlayFn,
+} from './overlays'
+import { drawAiOverlays as drawAiOverlaysFn } from './ai-overlays'
+import {
   drawPenOverlay as drawPenOverlayFn,
   drawRemoteCursors as drawRemoteCursorsFn
-} from './overlays'
+} from './pen-overlay'
 import { drawRulers as drawRulersFn } from './rulers'
 import {
   drawSectionTitles as drawSectionTitlesFn,
   drawComponentLabels as drawComponentLabelsFn
 } from './labels'
+import { LabelCache } from './label-cache'
 import {
   renderNode as renderNodeFn,
   renderSection as renderSectionFn,
@@ -114,9 +119,16 @@ import {
   getCachedMaskBlur as getCachedMaskBlurFn,
   applyClippedBlur as applyClippedBlurFn
 } from './effects'
+import {
+  measureTextNode as measureTextNodeFn,
+  isNodeFontLoaded as isNodeFontLoadedFn,
+  buildTextPicture as buildTextPictureFn,
+  buildParagraph as buildParagraphFn
+} from './text'
 
 export interface RenderOverlays {
   hoveredNodeId?: string | null
+  enteredContainerId?: string | null
   editingTextId?: string | null
   textEditor?: TextEditor | null
   marquee?: Rect | null
@@ -163,8 +175,8 @@ export class SkiaRenderer {
   auxStroke: Paint
   opacityPaint: Paint
   effectLayerPaint: Paint
-  imageFilterCache = new Map<string, ImageFilter>()
-  maskFilterCache = new Map<number, MaskFilter>()
+  imageFilterCache = new Map<string, ImageFilter | null>()
+  maskFilterCache = new Map<number, MaskFilter | null>()
   _tmpColor = new Float32Array(4)
   _tmpRect = new Float32Array(4)
   textFont: Font | null = null
@@ -182,7 +194,8 @@ export class SkiaRenderer {
   scenePicture: SkPicture | null = null
   scenePictureVersion = -1
   scenePicturePageId: string | null = null
-  nodePictureCache = new Map<string, SkPicture>()
+  nodePictureCache = new Map<string, SkPicture | null>()
+  readonly labelCache = new LabelCache()
   readonly profiler: RenderProfiler
 
   rulerBgPaint: Paint
@@ -211,6 +224,8 @@ export class SkiaRenderer {
   _culledCount = 0
   _flashes: Array<{ nodeId: string; startTime: number }> = []
   _flashPaint: Paint | null = null
+  _aiActiveNodes: Set<string> = new Set()
+  _aiDoneFlashes: Array<{ nodeId: string; startTime: number }> = []
 
   readonly DEFAULT_FONT_SIZE = DEFAULT_FONT_SIZE
   readonly COMPONENT_SET_BORDER_WIDTH = COMPONENT_SET_BORDER_WIDTH
@@ -406,6 +421,24 @@ export class SkiaRenderer {
     })
   }
 
+  /**
+   * Load document fonts and set up text measurement for layout.
+   * Call after `loadFonts()` and before rendering a document headlessly.
+   * Collects all font family+weight pairs used by `nodeIds`, loads them,
+   * wires up the text measurer for Yoga layout, and recomputes layout.
+   */
+  async prepareForExport(graph: SceneGraph, pageId: string, nodeIds: string[]): Promise<void> {
+    const { collectFontKeys, loadFont } = await import('../fonts')
+    const { setTextMeasurer, computeAllLayouts } = await import('../layout')
+
+    setTextMeasurer((node, maxWidth) => this.measureTextNode(node, maxWidth))
+
+    const fontKeys = collectFontKeys(graph, nodeIds)
+    await Promise.all(fontKeys.map(([family, style]) => loadFont(family, style)))
+
+    computeAllLayouts(graph, pageId)
+  }
+
   replaceSurface(surface: Surface): void {
     this.surface.delete()
     this.surface = surface
@@ -420,7 +453,7 @@ export class SkiaRenderer {
 
   invalidateAllPictures(): void {
     this.invalidateScenePicture()
-    for (const pic of this.nodePictureCache.values()) pic.delete()
+    for (const pic of this.nodePictureCache.values()) pic?.delete()
     this.nodePictureCache.clear()
   }
 
@@ -436,8 +469,37 @@ export class SkiaRenderer {
     this._flashes.push({ nodeId, startTime: performance.now() })
   }
 
+  aiMarkActive(nodeIds: string[]): void {
+    for (const id of nodeIds) this._aiActiveNodes.add(id)
+  }
+
+  aiMarkDone(nodeIds: string[]): void {
+    const now = performance.now()
+    for (const id of nodeIds) {
+      if (this._aiActiveNodes.delete(id)) {
+        this._aiDoneFlashes.push({ nodeId: id, startTime: now })
+      }
+    }
+  }
+
+  aiFlashDone(nodeIds: string[]): void {
+    const now = performance.now()
+    for (const id of nodeIds) {
+      this._aiDoneFlashes.push({ nodeId: id, startTime: now })
+    }
+  }
+
+  aiClearActive(): void {
+    this._aiActiveNodes.clear()
+  }
+
+  aiClearAll(): void {
+    this._aiActiveNodes.clear()
+    this._aiDoneFlashes = []
+  }
+
   get hasActiveFlashes(): boolean {
-    return this._flashes.length > 0
+    return this._flashes.length > 0 || this._aiActiveNodes.size > 0 || this._aiDoneFlashes.length > 0
   }
 
   hitTestSectionTitle(graph: SceneGraph, canvasX: number, canvasY: number): SceneNode | null {
@@ -469,7 +531,7 @@ export class SkiaRenderer {
           const pillH = SECTION_TITLE_HEIGHT / this.zoom
           const gap = SECTION_TITLE_GAP / this.zoom
 
-          let pillX = ax
+          const pillX = ax
           let pillY: number
           if (insideSection) {
             pillY = ay + gap
@@ -677,6 +739,7 @@ export class SkiaRenderer {
 
     canvas.save()
     canvas.scale(this.dpr, this.dpr)
+    this.labelCache.update(graph, this.pageId, sceneVersion)
     p.beginPhase('render:sectionTitles')
     this.drawSectionTitles(canvas, graph)
     p.endPhase('render:sectionTitles')
@@ -689,6 +752,7 @@ export class SkiaRenderer {
     canvas.scale(this.dpr, this.dpr)
 
     this.drawHoverHighlight(canvas, graph, overlays.hoveredNodeId)
+    this.drawEnteredContainer(canvas, graph, overlays.enteredContainerId)
     p.beginPhase('render:selection')
     this.drawSelection(canvas, graph, selectedIds, overlays)
     p.endPhase('render:selection')
@@ -751,184 +815,23 @@ export class SkiaRenderer {
   }
 
   measureTextNode(node: SceneNode, maxWidth?: number): { width: number; height: number } | null {
-    if (!this.fontsLoaded || !this.fontProvider || !this.isNodeFontLoaded(node)) return null
-    if (node.type !== 'TEXT' || !node.text) return null
-
-    const paragraph = this.buildParagraph(node)
-    const layoutWidth =
-      maxWidth !== undefined
-        ? maxWidth
-        : (node.textAutoResize === 'WIDTH_AND_HEIGHT'
-            ? 1e6
-            : node.width || 1e6)
-    paragraph.layout(layoutWidth)
-    const width = paragraph.getLongestLine()
-    const height = paragraph.getHeight()
-    paragraph.delete()
-    return { width: Math.ceil(width), height: Math.ceil(height) }
+    return measureTextNodeFn(this, node, maxWidth)
   }
 
   isNodeFontLoaded(node: SceneNode): boolean {
-    const families = new Set<string>()
-    families.add(node.fontFamily || DEFAULT_FONT_FAMILY)
-    for (const run of node.styleRuns) {
-      if (run.style.fontFamily) families.add(run.style.fontFamily)
-    }
-    return [...families].every((f) => isFontLoaded(f))
+    return isNodeFontLoadedFn(this, node)
   }
 
   buildTextPicture(node: SceneNode): Uint8Array | null {
-    if (!this.fontsLoaded || !this.fontProvider || !this.isNodeFontLoaded(node)) return null
-    if (node.type !== 'TEXT' || !node.text) return null
-
-    const ck = this.ck
-    const recorder = new ck.PictureRecorder()
-    const bounds = ck.LTRBRect(0, 0, node.width || 1e6, node.height || 1e6)
-    const recCanvas = recorder.beginRecording(bounds)
-
-    const paragraph = this.buildParagraph(node, undefined, { halfLeading: true })
-    recCanvas.drawParagraph(paragraph, 0, 0)
-    paragraph.delete()
-
-    const picture = recorder.finishRecordingAsPicture()
-    recorder.delete()
-
-    const bytes = picture.serialize()
-    picture.delete()
-    return bytes ?? null
+    return buildTextPictureFn(this, node)
   }
 
   buildParagraph(
     node: SceneNode,
     color?: Float32Array,
-    { halfLeading = false }: { halfLeading?: boolean } = {}
+    opts?: { halfLeading?: boolean }
   ): Paragraph {
-    const ck = this.ck
-    const baseColor = color ?? ck.BLACK
-    const baseFontSize = node.fontSize || DEFAULT_FONT_SIZE
-    const cjkFallback = getCJKFallbackFamily()
-
-    const truncateOpts = this.buildTruncateOpts(node, baseFontSize)
-
-    const fontFamilies = (primary: string) =>
-      cjkFallback ? [primary, cjkFallback] : [primary]
-
-    const paraStyle = new ck.ParagraphStyle({
-      textAlign: this.getTextAlign(node.textAlignHorizontal),
-      ...truncateOpts,
-      textStyle: {
-        color: baseColor,
-        fontFamilies: fontFamilies(node.fontFamily || DEFAULT_FONT_FAMILY),
-        fontSize: baseFontSize,
-        fontStyle: {
-          weight: { value: node.fontWeight || 400 } as FontWeight,
-          slant: node.italic ? ck.FontSlant.Italic : ck.FontSlant.Upright
-        },
-        letterSpacing: node.letterSpacing || 0,
-        decoration: this.textDecorationValue(node.textDecoration),
-        heightMultiplier: node.lineHeight ? node.lineHeight / baseFontSize : undefined,
-        halfLeading
-      }
-    })
-
-    if (!this.fontProvider) throw new Error('Font provider not initialized')
-    const builder = ck.ParagraphBuilder.MakeFromFontProvider(paraStyle, this.fontProvider)
-
-    if (node.styleRuns.length === 0) {
-      builder.addText(node.text)
-    } else {
-      this.addStyledRuns(builder, node, baseColor, baseFontSize, fontFamilies, halfLeading)
-    }
-
-    const paragraph = builder.build()
-    paragraph.layout(node.width || 1e6)
-    builder.delete()
-    return paragraph
-  }
-
-  private buildTruncateOpts(
-    node: SceneNode,
-    baseFontSize: number
-  ): { maxLines?: number; ellipsis?: string } {
-    if (node.textTruncation !== 'ENDING') return {}
-
-    const opts: { maxLines?: number; ellipsis: string } = { ellipsis: '…' }
-    if (node.maxLines != null && node.maxLines > 0) {
-      opts.maxLines = node.maxLines
-    } else if (node.height > 0) {
-      const lineH = node.lineHeight || baseFontSize * 1.2
-      opts.maxLines = Math.max(1, Math.floor(node.height / lineH))
-    }
-    return opts
-  }
-
-  private addStyledRuns(
-    builder: ReturnType<CanvasKit['ParagraphBuilder']['MakeFromFontProvider']>,
-    node: SceneNode,
-    baseColor: Float32Array,
-    baseFontSize: number,
-    fontFamilies: (primary: string) => string[],
-    halfLeading: boolean
-  ): void {
-    const ck = this.ck
-    const text = node.text
-    let pos = 0
-
-    for (const run of node.styleRuns) {
-      if (pos < run.start) {
-        builder.addText(text.slice(pos, run.start))
-      }
-      const s = run.style
-      const runLineHeight = s.lineHeight !== undefined ? s.lineHeight : node.lineHeight
-      const runFontSize = s.fontSize ?? baseFontSize
-
-      builder.pushStyle(
-        new ck.TextStyle({
-          color: baseColor,
-          fontFamilies: fontFamilies(s.fontFamily ?? (node.fontFamily || DEFAULT_FONT_FAMILY)),
-          fontSize: runFontSize,
-          fontStyle: {
-            weight: { value: (s.fontWeight ?? node.fontWeight) || 400 } as FontWeight,
-            slant: (s.italic ?? node.italic) ? ck.FontSlant.Italic : ck.FontSlant.Upright
-          },
-          letterSpacing: s.letterSpacing ?? (node.letterSpacing || 0),
-          decoration: this.textDecorationValue(s.textDecoration ?? node.textDecoration),
-          heightMultiplier: runLineHeight ? runLineHeight / runFontSize : undefined,
-          halfLeading
-        })
-      )
-      builder.addText(text.slice(run.start, run.start + run.length))
-      builder.pop()
-      pos = run.start + run.length
-    }
-
-    if (pos < text.length) {
-      builder.addText(text.slice(pos))
-    }
-  }
-
-  private textDecorationValue(decoration: string): number {
-    switch (decoration) {
-      case 'UNDERLINE':
-        return this.ck.UnderlineDecoration
-      case 'STRIKETHROUGH':
-        return this.ck.LineThroughDecoration
-      default:
-        return this.ck.NoDecoration
-    }
-  }
-
-  private getTextAlign(align: string) {
-    switch (align) {
-      case 'CENTER':
-        return this.ck.TextAlign.Center
-      case 'RIGHT':
-        return this.ck.TextAlign.Right
-      case 'JUSTIFIED':
-        return this.ck.TextAlign.Justify
-      default:
-        return this.ck.TextAlign.Left
-    }
+    return buildParagraphFn(this, node, color, opts)
   }
 
   resolveFillColor(fill: Fill, fillIndex: number, node: SceneNode, graph: SceneGraph): Color {
@@ -998,11 +901,11 @@ export class SkiaRenderer {
     this.penVertexFill.delete()
     this.penVertexStroke.delete()
     this.effectLayerPaint.delete()
-    for (const filter of this.imageFilterCache.values()) filter.delete()
+    for (const filter of this.imageFilterCache.values()) filter?.delete()
     this.imageFilterCache.clear()
-    for (const filter of this.maskFilterCache.values()) filter.delete()
+    for (const filter of this.maskFilterCache.values()) filter?.delete()
     this.maskFilterCache.clear()
-    for (const pic of this.nodePictureCache.values()) pic.delete()
+    for (const pic of this.nodePictureCache.values()) pic?.delete()
     this.nodePictureCache.clear()
     this.scenePicture?.delete()
     this._flashPaint?.delete()
@@ -1014,6 +917,10 @@ export class SkiaRenderer {
 
   private drawHoverHighlight(canvas: Canvas, graph: SceneGraph, hoveredNodeId?: string | null): void {
     drawHoverHighlightFn(this, canvas, graph, hoveredNodeId)
+  }
+
+  private drawEnteredContainer(canvas: Canvas, graph: SceneGraph, enteredContainerId?: string | null): void {
+    drawEnteredContainerFn(this, canvas, graph, enteredContainerId)
   }
 
   private drawSelection(canvas: Canvas, graph: SceneGraph, selectedIds: Set<string>, overlays: RenderOverlays): void {
@@ -1058,6 +965,7 @@ export class SkiaRenderer {
 
   private drawFlashes(canvas: Canvas, graph: SceneGraph): void {
     drawFlashesFn(this, canvas, graph)
+    drawAiOverlaysFn(this, canvas, graph)
   }
 
   private drawLayoutInsertIndicator(canvas: Canvas, indicator?: RenderOverlays['layoutInsertIndicator']): void {
@@ -1108,8 +1016,8 @@ export class SkiaRenderer {
     renderShapeUncachedFn(this, canvas, node, graph)
   }
 
-  renderEffects(canvas: Canvas, node: SceneNode, rect: Float32Array, hasRadius: boolean, pass: 'behind' | 'front'): void {
-    renderEffectsFn(this, canvas, node, rect, hasRadius, pass)
+  renderEffects(canvas: Canvas, node: SceneNode, rect: Float32Array, hasRadius: boolean, pass: 'behind' | 'front', shadowShapeChild?: SceneNode | null): void {
+    renderEffectsFn(this, canvas, node, rect, hasRadius, pass, shadowShapeChild)
   }
 
   renderText(canvas: Canvas, node: SceneNode): void {

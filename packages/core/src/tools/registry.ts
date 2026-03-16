@@ -7,7 +7,7 @@ import {
 } from './read'
 import {
   createShape, render, createComponent, createInstance,
-  createPage, createVector, createSlice
+  createPage, createVector, createSlice, fetchIconsTool, insertIcon, searchIconsTool
 } from './create'
 import {
   setFill, setStroke, setEffects, updateNode, setLayout, setConstraints,
@@ -18,7 +18,8 @@ import {
 import {
   deleteNode, cloneNode, renameNode, reparentNode, groupNodes, ungroupNode,
   flattenNodes, nodeToComponent, nodeBounds, nodeMove, nodeResize,
-  nodeAncestors, nodeChildren, nodeTree, nodeBindings, nodeReplaceWith, arrangeNodes
+  nodeAncestors, nodeChildren, nodeTree, nodeBindings, nodeReplaceWith, arrangeNodes,
+  batchUpdate
 } from './structure'
 import {
   listVariables, listCollections, getVariable, findVariables,
@@ -36,65 +37,94 @@ import {
   diffCreate, diffShow, evalCode
 } from './analyze'
 import { describe } from './describe'
+import { designToTokens, designToComponentMap } from './codegen'
+import { calc } from './calc'
+import { stockPhoto } from './stock-photo'
 
-export const ALL_TOOLS: ToolDef[] = [
+/**
+ * Core tools registered by default in AI chat (~30 tools, ~3K schema tokens).
+ * Covers 90%+ of design sessions: render, describe, modify, structure, icons.
+ */
+export const CORE_TOOLS: ToolDef[] = [
   // Read
   getSelection,
-  getPageTree,
   getNode,
   findNodes,
+  getJsx,
+  // Create
+  render,
+  // Modify
+  updateNode,
+  setLayout,
+  setLayoutChild,
+  setRadius,
+  setFill,
+  setStroke,
+  setText,
+  setTextProperties,
+  // Structure
+  deleteNode,
+  reparentNode,
+  nodeResize,
+  batchUpdate,
+  // Stock photos
+  stockPhoto,
+  // Inspect & utility
+  describe,
+  calc,
+  evalCode,
+  viewportZoomToFit,
+]
+
+/**
+ * Extended tools not in CORE_TOOLS — variables, vector ops, analysis,
+ * codegen, advanced structure, path manipulation, etc.
+ */
+export const EXTENDED_TOOLS: ToolDef[] = [
+  // Read (advanced)
+  getPageTree,
+  getCurrentPage,
+  listPages,
+  selectNodes,
   queryNodes,
   getComponents,
-  listPages,
   switchPage,
-  getCurrentPage,
   pageBounds,
-  selectNodes,
   listFonts,
-  getJsx,
   diffJsx,
-  // Create
+  // Create (advanced)
   createShape,
-  render,
+  searchIconsTool,
+  insertIcon,
+  fetchIconsTool,
   createComponent,
   createInstance,
   createPage,
   createVector,
   createSlice,
-  // Modify
-  setFill,
-  setStroke,
+  // Modify (advanced)
   setEffects,
-  updateNode,
-  setLayout,
+  setOpacity,
+  setFont,
+  setVisible,
   setConstraints,
   setRotation,
-  setOpacity,
-  setRadius,
   setMinMax,
-  setText,
-  setFont,
   setFontRange,
   setTextResize,
-  setVisible,
   setBlend,
   setLocked,
   setStrokeAlign,
-  setTextProperties,
-  setLayoutChild,
   setImageFill,
-  // Structure
-  deleteNode,
+  // Structure (advanced)
   cloneNode,
+  nodeMove,
   renameNode,
-  reparentNode,
   groupNodes,
   ungroupNode,
   flattenNodes,
   nodeToComponent,
   nodeBounds,
-  nodeMove,
-  nodeResize,
   nodeAncestors,
   nodeChildren,
   nodeTree,
@@ -125,7 +155,6 @@ export const ALL_TOOLS: ToolDef[] = [
   pathMove,
   viewportGet,
   viewportSet,
-  viewportZoomToFit,
   exportSvg,
   exportImage,
   // Analyze & diff
@@ -135,7 +164,10 @@ export const ALL_TOOLS: ToolDef[] = [
   analyzeClusters,
   diffCreate,
   diffShow,
-  describe,
-  // Eval
-  evalCode
+  // Codegen
+  designToTokens,
+  designToComponentMap,
 ]
+
+/** All tools combined — used by MCP server and CLI. */
+export const ALL_TOOLS: ToolDef[] = [...CORE_TOOLS, ...EXTENDED_TOOLS]

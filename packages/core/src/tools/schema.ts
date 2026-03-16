@@ -25,7 +25,7 @@ export interface ToolDef {
   description: string
   mutates?: boolean
   params: Record<string, ParamDef>
-  execute: (figma: FigmaAPI, args: Record<string, any>) => unknown
+  execute: (figma: FigmaAPI, args: Record<string, unknown>) => unknown
 }
 
 type ResolvedType<T extends ParamType> = T extends 'string'
@@ -56,8 +56,8 @@ export function defineTool<P extends Record<string, ParamDef>>(def: {
   return def as unknown as ToolDef
 }
 
-export function nodeToResult(node: FigmaNodeProxy): Record<string, unknown> {
-  return node.toJSON()
+export function nodeToResult(node: FigmaNodeProxy, maxDepth?: number): Record<string, unknown> {
+  return node.toJSON(maxDepth)
 }
 
 export function nodeSummary(node: FigmaNodeProxy): { id: string; name: string; type: string } {

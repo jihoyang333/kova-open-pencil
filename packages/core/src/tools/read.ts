@@ -16,30 +16,48 @@ export const getSelection = defineTool({
   }
 })
 
+interface TreeEntry {
+  id: string
+  type: string
+  name: string
+  w: number
+  h: number
+  children?: TreeEntry[]
+}
+
+function nodeToTreeEntry(node: FigmaNodeProxy): TreeEntry {
+  const entry: TreeEntry = { id: node.id, type: node.type, name: node.name, w: node.width, h: node.height }
+  if (node.children.length > 0) {
+    entry.children = node.children.map(nodeToTreeEntry)
+  }
+  return entry
+}
+
 export const getPageTree = defineTool({
   name: 'get_page_tree',
   description:
-    'Get the node tree of the current page. Returns all nodes with hierarchy, types, positions, and sizes.',
+    'Get the node tree of the current page. Returns lightweight hierarchy: id, type, name, size. Use get_node for full properties of a specific node.',
   params: {},
   execute: (figma) => {
     const page = figma.currentPage
     return {
       page: page.name,
-      children: page.children.map(nodeToResult)
+      children: page.children.map(nodeToTreeEntry)
     }
   }
 })
 
 export const getNode = defineTool({
   name: 'get_node',
-  description: 'Get detailed properties of a node by ID.',
+  description: 'Get detailed properties of a node by ID. Use depth to limit child recursion (0 = node only, 1 = direct children, etc). Default: unlimited.',
   params: {
-    id: { type: 'string', description: 'Node ID', required: true }
+    id: { type: 'string', description: 'Node ID', required: true },
+    depth: { type: 'number', description: 'Max depth of children to include (0 = no children). Default: unlimited' }
   },
-  execute: (figma, { id }) => {
+  execute: (figma, { id, depth }) => {
     const node = figma.getNodeById(id)
     if (!node) return { error: `Node "${id}" not found` }
-    return nodeToResult(node)
+    return nodeToResult(node, depth)
   }
 })
 

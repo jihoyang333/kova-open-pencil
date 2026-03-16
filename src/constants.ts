@@ -1,10 +1,10 @@
 export {
+  IS_BROWSER,
   IS_TAURI,
   SELECTION_COLOR,
   COMPONENT_COLOR,
   SNAP_COLOR,
   CANVAS_BG_COLOR,
-  ROTATION_HANDLE_OFFSET,
   SNAP_THRESHOLD,
   RULER_SIZE,
   RULER_BG_COLOR,
@@ -28,7 +28,6 @@ export {
   DEFAULT_FONT_SIZE,
   LABEL_FONT_SIZE,
   SIZE_FONT_SIZE,
-  ROTATION_HANDLE_RADIUS,
   HANDLE_HALF_SIZE,
   LABEL_OFFSET_Y,
   SIZE_PILL_PADDING_X,
@@ -113,12 +112,11 @@ export const ACTION_TOAST_DURATION = 800
 export const DRAG_DEAD_ZONE = 4
 export const PEN_CLOSE_THRESHOLD = 8
 export const ROTATION_SNAP_DEGREES = 15
-export const ROTATION_HIT_OFFSET = 24
+export const CORNER_ROTATE_ZONE = 16
 export const DEFAULT_TEXT_WIDTH = 200
 export const DEFAULT_TEXT_HEIGHT = 24
 export const AUTO_LAYOUT_BREAK_THRESHOLD = 8
 export const HANDLE_HIT_RADIUS = 6
-export const ROTATION_HIT_RADIUS = 8
 
 // Pixels of deltaY for one e-fold of zoom (Math.exp(-deltaY / ZOOM_DIVISOR))
 // Trackpad pinch sends small deltas (~2-5px), mouse wheel sends large (~100px).
@@ -141,3 +139,12 @@ export const SECTION_DEFAULT_STROKE: Stroke = {
   visible: true,
   align: 'INSIDE'
 }
+
+export const ACP_PERMISSION_TIMEOUT_MS = 60_000
+
+export const ACP_DESIGN_CONTEXT = `You are inside OpenPencil, an open-source design editor (like Figma). \
+Use the open-pencil MCP tools to create and modify designs on the live canvas. \
+Key tools: render (JSX to design), create_shape, set_fill, set_layout, find_nodes, get_page_tree, export_image. \
+The render tool accepts JSX with components: Frame, Text, Rectangle, Ellipse, Icon, Group, Section. \
+Props: w, h, bg, flex, gap, p, rounded, color, size, weight, items, justify, stroke, opacity, shadow. \
+Do NOT write HTML files or use terminal commands — draw directly on the canvas using the MCP tools.`

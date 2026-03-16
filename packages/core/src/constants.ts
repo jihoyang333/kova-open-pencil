@@ -1,6 +1,7 @@
 import type { Color } from './types'
 
-export const IS_TAURI = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
+export const IS_BROWSER = typeof window !== 'undefined'
+export const IS_TAURI = IS_BROWSER && '__TAURI_INTERNALS__' in window
 
 export const BLACK: Color = { r: 0, g: 0, b: 0, a: 1 }
 export const TRANSPARENT: Color = { r: 0, g: 0, b: 0, a: 0 }
@@ -10,7 +11,6 @@ export const COMPONENT_COLOR = { r: 0.592, g: 0.278, b: 1, a: 1 } satisfies Colo
 export const SNAP_COLOR = { r: 1.0, g: 0.0, b: 0.56, a: 1 } satisfies Color
 export const CANVAS_BG_COLOR = { r: 0.96, g: 0.96, b: 0.96, a: 1 } satisfies Color
 
-export const ROTATION_HANDLE_OFFSET = 20
 export const SNAP_THRESHOLD = 5
 
 export const RULER_SIZE = 20
@@ -37,8 +37,6 @@ export const DEFAULT_FONT_SIZE = 14
 export const DEFAULT_STROKE_MITER_LIMIT = 4
 export const LABEL_FONT_SIZE = 11
 export const SIZE_FONT_SIZE = 10
-
-export const ROTATION_HANDLE_RADIUS = 4
 
 export const HANDLE_HALF_SIZE = 3
 
@@ -83,9 +81,29 @@ export const FLASH_PADDING = 5
 export const FLASH_OVERSHOOT = 30
 export const FLASH_RADIUS = 4
 
+export const AI_ACTIVE_COLOR = { r: 0.26, g: 0.52, b: 0.96 }
+export const AI_DONE_COLOR = { r: 0.16, g: 0.73, b: 0.36 }
+export const AI_PULSE_PERIOD_MS = 1500
+export const AI_DONE_DURATION_MS = 800
+
 export const TEXT_SELECTION_COLOR = { r: 0.26, g: 0.52, b: 0.96, a: 0.3 }
 export const TEXT_CARET_COLOR = BLACK
 export const TEXT_CARET_WIDTH = 1
+
+export type ACPAgentID = 'claude-code' | 'codex' | 'gemini-cli'
+
+export interface ACPAgentDef {
+  id: ACPAgentID
+  name: string
+  command: string
+  args: string[]
+}
+
+export const ACP_AGENTS: ACPAgentDef[] = [
+  { id: 'claude-code', name: 'Claude Code', command: 'claude-agent-acp', args: [] },
+  { id: 'codex', name: 'Codex', command: 'codex-acp', args: [] },
+  { id: 'gemini-cli', name: 'Gemini CLI', command: 'gemini', args: ['--acp'] }
+]
 
 export type AIProviderID =
   | 'openrouter'
@@ -96,6 +114,7 @@ export type AIProviderID =
   | 'zai'
   | 'minimax'
   | 'anthropic-compatible'
+  | `acp:${ACPAgentID}`
 
 export interface ModelOption {
   id: string
@@ -262,3 +281,4 @@ export const CJK_FALLBACK_FAMILIES_LINUX = [
 ]
 
 export const CJK_GOOGLE_FONT = 'Noto Sans SC'
+

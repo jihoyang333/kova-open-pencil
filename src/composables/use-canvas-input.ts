@@ -3,15 +3,14 @@ import { ref, type Ref } from 'vue'
 
 import {
   AUTO_LAYOUT_BREAK_THRESHOLD,
+  CORNER_ROTATE_ZONE,
   HANDLE_HIT_RADIUS,
-  ROTATION_HIT_RADIUS,
   PEN_CLOSE_THRESHOLD,
   ROTATION_SNAP_DEGREES,
-  ROTATION_HIT_OFFSET,
   DEFAULT_TEXT_WIDTH,
   DEFAULT_TEXT_HEIGHT
 } from '@/constants'
-import { computeSelectionBounds, computeSnap } from '@open-pencil/core'
+import { computeSelectionBounds, computeSnap, degToRad } from '@open-pencil/core'
 
 import type { EditorStore, Tool } from '@/stores/editor'
 import type { NodeType, Rect, SceneNode, Vector } from '@open-pencil/core'
@@ -198,7 +197,9 @@ function hitTestHandle(
   return null
 }
 
-function hitTestRotationHandle(
+type CornerPosition = 'nw' | 'ne' | 'se' | 'sw'
+
+function hitTestCornerRotation(
   sx: number,
   sy: number,
   absX: number,
@@ -209,15 +210,61 @@ function hitTestRotationHandle(
   panX: number,
   panY: number,
   rotation = 0
-): boolean {
-  const { x1, x2, y1, y2 } = getScreenRect(absX, absY, w, h, zoom, panX, panY)
+): CornerPosition | null {
+  const { x1, y1, x2, y2 } = getScreenRect(absX, absY, w, h, zoom, panX, panY)
   const cx = (x1 + x2) / 2
   const cy = (y1 + y2) / 2
   const ur = unrotate(sx, sy, cx, cy, rotation)
 
-  const mx = (x1 + x2) / 2
-  const rotY = y1 - ROTATION_HIT_OFFSET
-  return Math.abs(ur.sx - mx) < ROTATION_HIT_RADIUS && Math.abs(ur.sy - rotY) < ROTATION_HIT_RADIUS
+  const corners: Array<{ pos: CornerPosition; x: number; y: number }> = [
+    { pos: 'nw', x: x1, y: y1 },
+    { pos: 'ne', x: x2, y: y1 },
+    { pos: 'se', x: x2, y: y2 },
+    { pos: 'sw', x: x1, y: y2 }
+  ]
+
+  for (const { pos, x, y } of corners) {
+    const dx = Math.abs(ur.sx - x)
+    const dy = Math.abs(ur.sy - y)
+    if (
+      dx <= CORNER_ROTATE_ZONE &&
+      dy <= CORNER_ROTATE_ZONE &&
+      (dx > HANDLE_HIT_RADIUS || dy > HANDLE_HIT_RADIUS)
+    ) {
+      return pos
+    }
+  }
+  return null
+}
+
+const CORNER_BASE_ANGLES: Record<CornerPosition, number> = { nw: 0, ne: 90, se: 180, sw: 270 }
+
+import rotateCursorSvg from '@/assets/rotate-cursor.svg?raw'
+
+const rotationCursorCache = new Map<number, string>()
+
+function buildRotationCursor(angleDeg: number): string {
+  const key = Math.round(angleDeg) % 360
+  let cached = rotationCursorCache.get(key)
+  if (cached) return cached
+  let svg: string
+  if (key === 0) {
+    svg = rotateCursorSvg
+  } else {
+    svg = rotateCursorSvg
+      .replace(
+        '<path',
+        `<g transform='translate(1002 2110) rotate(${key}) translate(-1002 -2110)'><path`
+      )
+      .replace('</svg>', '</g></svg>')
+  }
+  cached = `url("data:image/svg+xml,${encodeURIComponent(svg)}") 12 12, auto`
+  rotationCursorCache.set(key, cached)
+  return cached
+}
+
+function cornerRotationCursor(corner: CornerPosition, nodeRotation = 0): string {
+  return buildRotationCursor(CORNER_BASE_ANGLES[corner] + nodeRotation)
 }
 
 export function useCanvasInput(
@@ -245,6 +292,50 @@ export function useCanvasInput(
     const sy = e.clientY - rect.top
     const { x: cx, y: cy } = store.screenToCanvas(sx, sy)
     return { sx, sy, cx, cy }
+  }
+
+  function canvasToLocal(cx: number, cy: number, scopeId: string): { lx: number; ly: number } {
+    const node = store.graph.getNode(scopeId)
+    if (!node) return { lx: cx, ly: cy }
+    const abs = store.graph.getAbsolutePosition(scopeId)
+    let dx = cx - abs.x
+    let dy = cy - abs.y
+    if (node.rotation !== 0) {
+      const hw = node.width / 2
+      const hh = node.height / 2
+      const rad = degToRad(-node.rotation)
+      const cos = Math.cos(rad)
+      const sin = Math.sin(rad)
+      const rx = dx - hw
+      const ry = dy - hh
+      dx = rx * cos - ry * sin + hw
+      dy = rx * sin + ry * cos + hh
+    }
+    return { lx: dx, ly: dy }
+  }
+
+  function hitTestInScope(cx: number, cy: number, deep: boolean): SceneNode | null {
+    const scopeId = store.state.enteredContainerId
+    if (scopeId) {
+      if (!store.graph.getNode(scopeId)) {
+        store.state.enteredContainerId = null
+      } else {
+        const { lx, ly } = canvasToLocal(cx, cy, scopeId)
+        return deep
+          ? store.graph.hitTestDeep(lx, ly, scopeId)
+          : store.graph.hitTest(lx, ly, scopeId)
+      }
+    }
+    return deep
+      ? store.graph.hitTestDeep(cx, cy, store.state.currentPageId)
+      : store.graph.hitTest(cx, cy, store.state.currentPageId)
+  }
+
+  function isInsideContainerBounds(cx: number, cy: number, containerId: string): boolean {
+    const container = store.graph.getNode(containerId)
+    if (!container) return false
+    const { lx, ly } = canvasToLocal(cx, cy, containerId)
+    return lx >= 0 && lx <= container.width && ly >= 0 && ly <= container.height
   }
 
   function startPanDrag(e: MouseEvent) {
@@ -289,10 +380,10 @@ export function useCanvasInput(
     if (store.state.selectedIds.size !== 1) return false
     const id = [...store.state.selectedIds][0]
     const node = store.graph.getNode(id)
-    if (!node) return false
+    if (!node || node.locked) return false
     const abs = store.graph.getAbsolutePosition(id)
     if (
-      !hitTestRotationHandle(
+      !hitTestCornerRotation(
         sx,
         sy,
         abs.x,
@@ -324,7 +415,7 @@ export function useCanvasInput(
   function tryStartResize(sx: number, sy: number, cx: number, cy: number): boolean {
     for (const id of store.state.selectedIds) {
       const node = store.graph.getNode(id)
-      if (!node) continue
+      if (!node || node.locked) continue
       const abs = store.graph.getAbsolutePosition(id)
       const handle = hitTestHandle(
         sx,
@@ -404,6 +495,34 @@ export function useCanvasInput(
     return undefined
   }
 
+  function resolveHit(cx: number, cy: number): SceneNode | null {
+    const titleHit =
+      hitTestFrameTitle(cx, cy) ??
+      hitTestSectionTitle(cx, cy) ??
+      hitTestComponentLabel(cx, cy)
+    if (titleHit) return titleHit
+
+    const hit = hitTestInScope(cx, cy, false)
+    if (hit) return hit
+
+    const scopeId = store.state.enteredContainerId
+    if (!scopeId) return null
+
+    if (isInsideContainerBounds(cx, cy, scopeId)) {
+      store.clearSelection()
+      return null
+    }
+
+    store.exitContainer()
+    const afterExit = hitTestInScope(cx, cy, false)
+    if (afterExit) return afterExit
+
+    if (store.state.enteredContainerId) {
+      store.exitContainer()
+    }
+    return null
+  }
+
   function handleSelectDown(e: MouseEvent, sx: number, sy: number, cx: number, cy: number) {
     if (store.state.editingTextId && handleTextEditClick(cx, cy, e.shiftKey)) return
 
@@ -412,15 +531,12 @@ export function useCanvasInput(
     if (tryStartRotation(sx, sy)) return
     if (tryStartResize(sx, sy, cx, cy)) return
 
-    const hit =
-      hitTestFrameTitle(cx, cy) ??
-      hitTestSectionTitle(cx, cy) ??
-      hitTestComponentLabel(cx, cy) ??
-      store.graph.hitTest(cx, cy, store.state.currentPageId)
-
+    const hit = resolveHit(cx, cy)
     if (!hit) {
-      store.clearSelection()
-      drag.value = { type: 'marquee', startX: cx, startY: cy }
+      if (!store.state.enteredContainerId) {
+        store.clearSelection()
+        drag.value = { type: 'marquee', startX: cx, startY: cy }
+      }
       return
     }
 
@@ -429,6 +545,9 @@ export function useCanvasInput(
     } else if (e.shiftKey) {
       store.select([hit.id], true)
     }
+
+    const allLocked = [...store.state.selectedIds].every((id) => store.graph.getNode(id)?.locked)
+    if (allLocked) return
 
     const originals = new Map<string, { x: number; y: number; parentId: string }>()
     for (const id of store.state.selectedIds) {
@@ -514,36 +633,34 @@ export function useCanvasInput(
     const { sx, sy, cx, cy } = getCoords(e)
     let cursor: string | null = null
 
-    if (store.state.selectedIds.size === 1) {
+    for (const id of store.state.selectedIds) {
+      const node = store.graph.getNode(id)
+      if (!node) continue
+      const abs = store.graph.getAbsolutePosition(id)
+      const handle = hitTestHandle(
+        sx,
+        sy,
+        abs.x,
+        abs.y,
+        node.width,
+        node.height,
+        store.state.zoom,
+        store.state.panX,
+        store.state.panY,
+        node.rotation
+      )
+      if (handle) {
+        cursor = HANDLE_CURSORS[handle]
+        break
+      }
+    }
+
+    if (!cursor && store.state.selectedIds.size === 1) {
       const id = [...store.state.selectedIds][0]
       const node = store.graph.getNode(id)
       if (node) {
         const abs = store.graph.getAbsolutePosition(id)
-        if (
-          hitTestRotationHandle(
-            sx,
-            sy,
-            abs.x,
-            abs.y,
-            node.width,
-            node.height,
-            store.state.zoom,
-            store.state.panX,
-            store.state.panY,
-            node.rotation
-          )
-        ) {
-          cursor = 'grab'
-        }
-      }
-    }
-
-    if (!cursor) {
-      for (const id of store.state.selectedIds) {
-        const node = store.graph.getNode(id)
-        if (!node) continue
-        const abs = store.graph.getAbsolutePosition(id)
-        const handle = hitTestHandle(
+        const corner = hitTestCornerRotation(
           sx,
           sy,
           abs.x,
@@ -555,18 +672,18 @@ export function useCanvasInput(
           store.state.panY,
           node.rotation
         )
-        if (handle) {
-          cursor = HANDLE_CURSORS[handle]
-          break
+        if (corner) {
+          cursor = cornerRotationCursor(corner, node.rotation)
         }
       }
     }
+
     cursorOverride.value = cursor
 
     const hit =
       hitTestSectionTitle(cx, cy) ??
       hitTestComponentLabel(cx, cy) ??
-      store.graph.hitTest(cx, cy, store.state.currentPageId)
+      hitTestInScope(cx, cy, false)
     store.setHoveredNode(hit && !store.state.selectedIds.has(hit.id) ? hit.id : null)
   }
 
@@ -731,13 +848,23 @@ export function useCanvasInput(
     const maxX = Math.max(d.startX, cx)
     const maxY = Math.max(d.startY, cy)
 
+    const scopeId = store.state.enteredContainerId
+    const parentId = scopeId ?? store.state.currentPageId
+    const localMin = scopeId ? canvasToLocal(minX, minY, scopeId) : { lx: minX, ly: minY }
+    const localMax = scopeId ? canvasToLocal(maxX, maxY, scopeId) : { lx: maxX, ly: maxY }
+    const localMinX = Math.min(localMin.lx, localMax.lx)
+    const localMinY = Math.min(localMin.ly, localMax.ly)
+    const localMaxX = Math.max(localMin.lx, localMax.lx)
+    const localMaxY = Math.max(localMin.ly, localMax.ly)
+
     const hits: string[] = []
-    for (const node of store.graph.getChildren(store.state.currentPageId)) {
+    for (const node of store.graph.getChildren(parentId)) {
+      if (!node.visible || node.locked) continue
       if (
-        node.x + node.width > minX &&
-        node.x < maxX &&
-        node.y + node.height > minY &&
-        node.y < maxY
+        node.x + node.width > localMinX &&
+        node.x < localMaxX &&
+        node.y + node.height > localMinY &&
+        node.y < localMaxY
       ) {
         hits.push(node.id)
       }
@@ -970,7 +1097,7 @@ export function useCanvasInput(
     cursorOverride.value = null
   }
 
-  let wheelAccum = {
+  const wheelAccum = {
     deltaX: 0,
     deltaY: 0,
     zoomDelta: 0,
@@ -1033,10 +1160,29 @@ export function useCanvasInput(
     if (store.state.editingTextId) return
 
     const { cx, cy } = getCoords(e)
-    const hit =
-      hitTestSectionTitle(cx, cy) ??
+
+    const selectedId = store.state.selectedIds.size === 1
+      ? [...store.state.selectedIds][0]
+      : undefined
+    const selectedNode = selectedId ? store.graph.getNode(selectedId) : undefined
+    const canEnter = selectedNode && selectedId
+      && store.graph.isContainer(selectedId) && !selectedNode.locked
+
+    if (canEnter) {
+      store.enterContainer(selectedId)
+      const useDeep = selectedNode.type === 'COMPONENT' || selectedNode.type === 'INSTANCE'
+      const hit = hitTestInScope(cx, cy, useDeep)
+      if (hit) {
+        store.select([hit.id])
+      } else {
+        store.clearSelection()
+      }
+      return
+    }
+
+    const hit = hitTestSectionTitle(cx, cy) ??
       hitTestComponentLabel(cx, cy) ??
-      store.graph.hitTestDeep(cx, cy, store.state.currentPageId)
+      hitTestInScope(cx, cy, true)
     if (!hit) return
 
     if (hit.type === 'TEXT') {

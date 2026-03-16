@@ -11,7 +11,7 @@ const rendererSource = parts.join('\n')
 
 describe('Renderer effect ordering', () => {
   test('drop shadow renders before fills', () => {
-    const behindIdx = rendererSource.indexOf("renderEffects(canvas, node, rect, hasRadius, 'behind')")
+    const behindIdx = rendererSource.indexOf("renderEffects(canvas, node, rect, hasRadius, 'behind'")
     const fillsIdx = rendererSource.indexOf('drawNodeFill(canvas, node, rect, hasRadius)')
     expect(behindIdx).toBeGreaterThan(-1)
     expect(fillsIdx).toBeGreaterThan(-1)
@@ -44,8 +44,8 @@ describe('Renderer handles all effect types', () => {
     expect(rendererSource).toContain("effect.type === 'BACKGROUND_BLUR'")
   })
 
-  test('handles FOREGROUND_BLUR', () => {
-    expect(rendererSource).toContain("effect.type === 'FOREGROUND_BLUR'")
+  test('handles FOREGROUND_BLUR as layer blur', () => {
+    expect(rendererSource).toContain("e.type === 'FOREGROUND_BLUR'")
   })
 })
 
@@ -107,9 +107,8 @@ describe('Blur effects use saveLayer pattern', () => {
     expect(layerBlurSection).toContain('saveLayer')
   })
 
-  test('background and foreground blur use applyClippedBlur', () => {
+  test('background blur uses applyClippedBlur', () => {
     expect(rendererSource).toContain("effect.type === 'BACKGROUND_BLUR'")
-    expect(rendererSource).toContain("effect.type === 'FOREGROUND_BLUR'")
     expect(rendererSource).toContain('applyClippedBlur')
   })
 

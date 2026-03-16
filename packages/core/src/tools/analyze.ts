@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- analysis tools share helpers and collection logic */
 import { createTwoFilesPatch } from 'diff'
 
 import { colorDistance, colorToHex, parseColor } from '../color'
@@ -595,6 +596,7 @@ export const evalCode = defineTool({
   params: {
     code: { type: 'string', description: 'JavaScript code to execute', required: true }
   },
+  mutates: true,
   execute: async (figma, { code }) => {
     // eslint-disable-next-line no-empty-function
     const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor
@@ -602,6 +604,7 @@ export const evalCode = defineTool({
     const fn = new AsyncFunction('figma', wrapped)
     const result = await fn(figma)
     if (result && typeof result === 'object' && 'toJSON' in result) return result.toJSON()
-    return result ?? null
+    if (result !== undefined && result !== null) return result
+    return { ok: true, message: 'Code executed (no return value)' }
   }
 })

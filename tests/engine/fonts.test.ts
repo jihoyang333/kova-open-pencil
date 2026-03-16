@@ -2,8 +2,12 @@ import { describe, test, expect } from 'bun:test'
 
 import {
   collectFontKeys,
+  fetchBundledFont,
   isFontLoaded,
+  isVariableFont,
   markFontLoaded,
+  normalizeFontFamily,
+  styleToVariant,
   styleToWeight,
   weightToStyle,
   SceneGraph,
@@ -42,7 +46,7 @@ describe('weightToStyle', () => {
     expect(weightToStyle(100)).toBe('Thin')
     expect(weightToStyle(200)).toBe('ExtraLight')
     expect(weightToStyle(300)).toBe('Light')
-    expect(weightToStyle(400)).toBe('Medium')
+    expect(weightToStyle(400)).toBe('Regular')
     expect(weightToStyle(500)).toBe('Medium')
     expect(weightToStyle(600)).toBe('SemiBold')
     expect(weightToStyle(700)).toBe('Bold')
@@ -51,7 +55,7 @@ describe('weightToStyle', () => {
   })
 
   test('appends Italic suffix', () => {
-    expect(weightToStyle(400, true)).toBe('Medium Italic')
+    expect(weightToStyle(400, true)).toBe('Regular Italic')
     expect(weightToStyle(700, true)).toBe('Bold Italic')
   })
 })
@@ -85,7 +89,7 @@ describe('collectFontKeys', () => {
     expect(collectFontKeys(graph, [id])).toEqual([])
   })
 
-  test('returns empty for text nodes using default font (Inter)', () => {
+  test('includes default font (Inter) in collected keys', () => {
     const graph = new SceneGraph()
     const id = graph.createNode('TEXT', pageId(graph), {
       name: 'Label',
@@ -97,7 +101,7 @@ describe('collectFontKeys', () => {
       fontFamily: 'Inter',
       fontWeight: 400,
     }).id
-    expect(collectFontKeys(graph, [id])).toEqual([])
+    expect(collectFontKeys(graph, [id])).toEqual([['Inter', 'Regular']])
   })
 
   test('collects non-default font family', () => {
@@ -113,7 +117,7 @@ describe('collectFontKeys', () => {
       fontWeight: 400,
     }).id
     const keys = collectFontKeys(graph, [id])
-    expect(keys).toEqual([['Roboto', 'Medium']])
+    expect(keys).toEqual([['Roboto', 'Regular']])
   })
 
   test('collects bold weight', () => {
@@ -146,7 +150,7 @@ describe('collectFontKeys', () => {
       italic: true,
     }).id
     const keys = collectFontKeys(graph, [id])
-    expect(keys).toEqual([['Roboto', 'Medium Italic']])
+    expect(keys).toEqual([['Roboto', 'Regular Italic']])
   })
 
   test('deduplicates same family+style', () => {
@@ -174,7 +178,7 @@ describe('collectFontKeys', () => {
     })
     const ids = graph.getChildren(page).map((n) => n.id)
     const keys = collectFontKeys(graph, ids)
-    expect(keys).toEqual([['Roboto', 'Medium']])
+    expect(keys).toEqual([['Roboto', 'Regular']])
   })
 
   test('collects multiple families', () => {
@@ -203,7 +207,7 @@ describe('collectFontKeys', () => {
     const ids = graph.getChildren(page).map((n) => n.id)
     const keys = collectFontKeys(graph, ids)
     expect(keys).toHaveLength(2)
-    expect(keys).toContainEqual(['Roboto', 'Medium'])
+    expect(keys).toContainEqual(['Roboto', 'Regular'])
     expect(keys).toContainEqual(['Open Sans', 'Bold'])
   })
 
@@ -257,7 +261,7 @@ describe('collectFontKeys', () => {
     }).id
     const keys = collectFontKeys(graph, [id])
     expect(keys).toHaveLength(2)
-    expect(keys).toContainEqual(['Roboto', 'Medium'])
+    expect(keys).toContainEqual(['Roboto', 'Regular'])
     expect(keys).toContainEqual(['Montserrat', 'Bold'])
   })
 
@@ -287,5 +291,124 @@ describe('collectFontKeys', () => {
   test('skips invalid node IDs', () => {
     const graph = new SceneGraph()
     expect(collectFontKeys(graph, ['nonexistent'])).toEqual([])
+  })
+})
+
+describe('normalizeFontFamily', () => {
+  test('strips " Variable" suffix', () => {
+    expect(normalizeFontFamily('Inter Variable')).toBe('Inter')
+    expect(normalizeFontFamily('Roboto Flex Variable')).toBe('Roboto Flex')
+  })
+
+  test('case insensitive', () => {
+    expect(normalizeFontFamily('Inter VARIABLE')).toBe('Inter')
+    expect(normalizeFontFamily('Inter variable')).toBe('Inter')
+  })
+
+  test('handles extra whitespace before Variable', () => {
+    expect(normalizeFontFamily('Inter  Variable')).toBe('Inter')
+  })
+
+  test('returns unchanged when no Variable suffix', () => {
+    expect(normalizeFontFamily('Inter')).toBe('Inter')
+    expect(normalizeFontFamily('Roboto')).toBe('Roboto')
+    expect(normalizeFontFamily('')).toBe('')
+  })
+
+  test('does not strip Variable in the middle', () => {
+    expect(normalizeFontFamily('Variable Sans')).toBe('Variable Sans')
+  })
+})
+
+describe('styleToVariant', () => {
+  test('regular → "regular"', () => {
+    expect(styleToVariant('Regular')).toBe('regular')
+  })
+
+  test('italic at 400 → "italic"', () => {
+    expect(styleToVariant('Regular Italic')).toBe('italic')
+  })
+
+  test('bold → "700"', () => {
+    expect(styleToVariant('Bold')).toBe('700')
+  })
+
+  test('bold italic → "700italic"', () => {
+    expect(styleToVariant('Bold Italic')).toBe('700italic')
+  })
+
+  test('light → "300"', () => {
+    expect(styleToVariant('Light')).toBe('300')
+  })
+
+  test('thin italic → "100italic"', () => {
+    expect(styleToVariant('Thin Italic')).toBe('100italic')
+  })
+
+  test('semibold → "600"', () => {
+    expect(styleToVariant('SemiBold')).toBe('600')
+  })
+
+  test('black → "900"', () => {
+    expect(styleToVariant('Black')).toBe('900')
+  })
+})
+
+describe('isVariableFont', () => {
+  function makeFontBuffer(tables: string[]): ArrayBuffer {
+    const numTables = tables.length
+    const headerSize = 12
+    const tableRecordSize = 16
+    const totalSize = headerSize + numTables * tableRecordSize
+    const buf = new ArrayBuffer(totalSize)
+    const view = new DataView(buf)
+    view.setUint32(0, 0x00010000)
+    view.setUint16(4, numTables)
+    for (let i = 0; i < numTables; i++) {
+      const offset = headerSize + i * tableRecordSize
+      for (let c = 0; c < 4; c++) {
+        view.setUint8(offset + c, tables[i].charCodeAt(c))
+      }
+    }
+    return buf
+  }
+
+  test('detects fvar table', () => {
+    expect(isVariableFont(makeFontBuffer(['head', 'fvar', 'glyf']))).toBe(true)
+  })
+
+  test('returns false without fvar', () => {
+    expect(isVariableFont(makeFontBuffer(['head', 'glyf', 'cmap']))).toBe(false)
+  })
+
+  test('returns false for empty buffer', () => {
+    expect(isVariableFont(new ArrayBuffer(0))).toBe(false)
+  })
+
+  test('returns false for too-small buffer', () => {
+    expect(isVariableFont(new ArrayBuffer(8))).toBe(false)
+  })
+
+  test('fvar as only table', () => {
+    expect(isVariableFont(makeFontBuffer(['fvar']))).toBe(true)
+  })
+})
+
+describe('fetchBundledFont', () => {
+  test('loads Inter-Regular.ttf from assets in headless', async () => {
+    const buffer = await fetchBundledFont('/Inter-Regular.ttf')
+    expect(buffer).toBeInstanceOf(ArrayBuffer)
+    expect(buffer!.byteLength).toBeGreaterThan(100_000)
+  })
+
+  test('returns valid TTF data', async () => {
+    const buffer = await fetchBundledFont('/Inter-Regular.ttf')
+    const view = new DataView(buffer!)
+    // TrueType magic: 0x00010000
+    expect(view.getUint32(0)).toBe(0x00010000)
+  })
+
+  test('throws for nonexistent font', async () => {
+    expect(fetchBundledFont('/Nonexistent-Font.ttf')).rejects.toThrow()
   })
 })

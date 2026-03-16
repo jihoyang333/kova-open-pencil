@@ -95,11 +95,13 @@ function renderChildren(
     node.type === 'FRAME' || node.type === 'COMPONENT' || node.type === 'INSTANCE'
   if (isClippableContainer && node.clipsContent && node.childIds.length > 0) {
     canvas.save()
-    canvas.clipRect(
-      r.ck.LTRBRect(0, 0, node.width, node.height),
-      r.ck.ClipOp.Intersect,
-      true
-    )
+    const hasRadius = node.cornerRadius > 0 || (node.independentCorners &&
+      (node.topLeftRadius > 0 || node.topRightRadius > 0 || node.bottomRightRadius > 0 || node.bottomLeftRadius > 0))
+    if (hasRadius) {
+      canvas.clipRRect(r.makeRRect(node), r.ck.ClipOp.Intersect, true)
+    } else {
+      canvas.clipRect(r.ck.LTRBRect(0, 0, node.width, node.height), r.ck.ClipOp.Intersect, true)
+    }
     for (const childId of node.childIds) {
       r.renderNode(canvas, graph, childId, overlays, absX, absY)
     }
@@ -141,7 +143,9 @@ export function renderNode(
     canvas.saveLayer(r.opacityPaint)
   }
 
-  const layerBlur = node.effects.find((e) => e.visible && e.type === 'LAYER_BLUR')
+  const layerBlur = node.effects.find(
+    (e) => e.visible && (e.type === 'LAYER_BLUR' || e.type === 'FOREGROUND_BLUR')
+  )
   if (layerBlur) {
     r.effectLayerPaint.setImageFilter(r.getCachedBlur(layerBlur.radius / 2))
     canvas.saveLayer(r.effectLayerPaint)
@@ -264,6 +268,19 @@ function nodeHasRadius(node: SceneNode): boolean {
   )
 }
 
+/**
+ * When a container has no visible fills, Figma renders drop shadows
+ * using the shape of its children rather than its own rectangle.
+ * Returns the child to use for shadow shape, or null to use the node itself.
+ */
+function getShadowShapeChild(node: SceneNode, graph: SceneGraph): SceneNode | null {
+  if (node.fills.some((f) => f.visible)) return null
+  if (node.childIds.length === 0) return null
+  const child = graph.getNode(node.childIds[0])
+  if (!child?.visible) return null
+  return child
+}
+
 function getCapEntity(r: SkiaRenderer, cap: string | undefined): EmbindEnumEntity {
   switch (cap) {
     case 'ROUND': return r.ck.StrokeCap.Round
@@ -359,7 +376,8 @@ export function renderShapeUncached(
   const rect = r.ck.LTRBRect(0, 0, node.width, node.height)
   const hasRadius = nodeHasRadius(node)
 
-  r.renderEffects(canvas, node, rect, hasRadius, 'behind')
+  const shadowChild = getShadowShapeChild(node, graph)
+  r.renderEffects(canvas, node, rect, hasRadius, 'behind', shadowChild)
 
   for (let fi = 0; fi < node.fills.length; fi++) {
     const fill = node.fills[fi]
@@ -397,7 +415,8 @@ export function renderEffects(
   node: SceneNode,
   rect: Float32Array,
   hasRadius: boolean,
-  pass: 'behind' | 'front'
+  pass: 'behind' | 'front',
+  shadowShapeChild?: SceneNode | null
 ): void {
   for (const effect of node.effects) {
     if (!effect.visible) continue
@@ -424,6 +443,12 @@ export function renderEffects(
         r.renderText(canvas, node)
         canvas.restore()
       } else {
+        // When a container has no visible fills, Figma renders the drop
+        // shadow using the first child's shape (e.g. a rounded child
+        // inside a rectangular wrapper).
+        const shapeNode = shadowShapeChild ?? node
+        const shapeHasRadius = shadowShapeChild ? nodeHasRadius(shadowShapeChild) : hasRadius
+
         r.auxFill.setColor(
           r.color4f(effect.color.r, effect.color.g, effect.color.b, effect.color.a)
         )
@@ -431,22 +456,19 @@ export function renderEffects(
         r.auxFill.setImageFilter(null)
         canvas.save()
         canvas.translate(effect.offset.x, effect.offset.y)
-        if (node.type === 'ELLIPSE') {
-          canvas.drawOval(r.ltrb(-sp, -sp, node.width + sp, node.height + sp), r.auxFill)
-        } else if (hasRadius) {
-          canvas.drawRRect(r.makeRRectWithSpread(node, sp), r.auxFill)
+        if (shapeNode.type === 'ELLIPSE') {
+          canvas.drawOval(r.ltrb(-sp, -sp, shapeNode.width + sp, shapeNode.height + sp), r.auxFill)
+        } else if (shapeHasRadius) {
+          canvas.drawRRect(r.makeRRectWithSpread(shapeNode, sp), r.auxFill)
         } else {
-          canvas.drawRect(r.ltrb(-sp, -sp, node.width + sp, node.height + sp), r.auxFill)
+          canvas.drawRect(r.ltrb(-sp, -sp, shapeNode.width + sp, shapeNode.height + sp), r.auxFill)
         }
         canvas.restore()
         r.auxFill.setMaskFilter(null)
       }
     }
 
-    if (
-      (pass === 'behind' && effect.type === 'BACKGROUND_BLUR') ||
-      (pass === 'front' && effect.type === 'FOREGROUND_BLUR')
-    ) {
+    if (pass === 'behind' && effect.type === 'BACKGROUND_BLUR') {
       r.applyClippedBlur(canvas, node, rect, hasRadius, effect.radius / 2)
     }
 
@@ -536,19 +558,22 @@ export function renderText(r: SkiaRenderer, canvas: Canvas, node: SceneNode): vo
   const text = node.text
   if (!text) return
 
-  if (r.fontsLoaded && r.fontProvider) {
-    if (node.textPicture && !r.isNodeFontLoaded(node)) {
-      const pic = r.ck.MakePicture(node.textPicture)
-      if (pic) {
-        canvas.drawPicture(pic)
-        pic.delete()
-      }
-    } else {
-      const paragraph = r.buildParagraph(node, r.fillPaint.getColor(), { halfLeading: true })
-      canvas.drawParagraph(paragraph, 0, 0)
-      paragraph.delete()
+  if (node.textPicture) {
+    const pic = r.ck.MakePicture(node.textPicture)
+    if (pic) {
+      canvas.drawPicture(pic)
+      pic.delete()
+      return
     }
+  }
+  if (r.fontsLoaded && r.fontProvider) {
+    const paragraph = r.buildParagraph(node, r.fillPaint.getColor(), { halfLeading: true })
+    canvas.drawParagraph(paragraph, 0, 0)
+    paragraph.delete()
   } else if (r.textFont) {
+    canvas.save()
+    canvas.clipRect(r.ck.LTRBRect(0, 0, node.width, node.height), r.ck.ClipOp.Intersect, false)
     canvas.drawText(text, 0, node.fontSize || r.DEFAULT_FONT_SIZE, r.fillPaint, r.textFont)
+    canvas.restore()
   }
 }

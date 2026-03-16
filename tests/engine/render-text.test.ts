@@ -4,13 +4,16 @@ import type { SceneNode } from '../../packages/core/src/scene-graph'
 import type { SkiaRenderer } from '../../packages/core/src/renderer/renderer'
 import { initCanvasKit } from '../../packages/cli/src/headless'
 import { SceneGraph, SkiaRenderer as SkiaRendererClass } from '@open-pencil/core'
-import { initFontService, setCJKFallbackFamily } from '../../packages/core/src/fonts'
+import { initFontService, setCJKFallbackFamily, markFontLoaded } from '../../packages/core/src/fonts'
 
 function createMockCanvas() {
   return {
     drawParagraph: mock(() => {}),
     drawPicture: mock(() => {}),
-    drawText: mock(() => {})
+    drawText: mock(() => {}),
+    save: mock(() => {}),
+    restore: mock(() => {}),
+    clipRect: mock(() => {})
   }
 }
 
@@ -29,7 +32,11 @@ function createMockRenderer(overrides: Partial<Record<string, unknown>> = {}) {
     fontProvider: {},
     textFont: {},
     fillPaint: { getColor: () => new Float32Array([0, 0, 0, 1]) },
-    ck: { MakePicture: mock(() => createMockPicture()) },
+    ck: {
+      MakePicture: mock(() => createMockPicture()),
+      LTRBRect: mock((...args: number[]) => args),
+      ClipOp: { Intersect: 0 }
+    },
     DEFAULT_FONT_SIZE: 14,
     isNodeFontLoaded: mock(() => true),
     buildParagraph: mock(() => paragraph),
@@ -60,7 +67,7 @@ describe('renderText', () => {
     expect(r._paragraph.delete).toHaveBeenCalledTimes(1)
   })
 
-  test('uses buildParagraph when fonts loaded but node font NOT available', () => {
+  test('uses paragraph even when node font is NOT available (fallback to default)', () => {
     const r = createMockRenderer({ isNodeFontLoaded: mock(() => false) })
     const canvas = createMockCanvas()
 
@@ -71,8 +78,8 @@ describe('renderText', () => {
     expect(canvas.drawText).not.toHaveBeenCalled()
   })
 
-  test('prefers textPicture when node font is NOT available and textPicture exists', () => {
-    const r = createMockRenderer({ isNodeFontLoaded: mock(() => false) })
+  test('prefers textPicture over paragraph', () => {
+    const r = createMockRenderer()
     const canvas = createMockCanvas()
     const node = textNode({ textPicture: new Uint8Array([1, 2, 3]) })
 
@@ -80,28 +87,6 @@ describe('renderText', () => {
 
     expect(canvas.drawPicture).toHaveBeenCalledTimes(1)
     expect(r.buildParagraph).not.toHaveBeenCalled()
-    expect(canvas.drawText).not.toHaveBeenCalled()
-  })
-
-  test('uses buildParagraph even with textPicture when node font IS loaded', () => {
-    const r = createMockRenderer({ isNodeFontLoaded: mock(() => true) })
-    const canvas = createMockCanvas()
-    const node = textNode({ textPicture: new Uint8Array([1, 2, 3]) })
-
-    renderText(r, canvas as never, node)
-
-    expect(r.buildParagraph).toHaveBeenCalledTimes(1)
-    expect(canvas.drawParagraph).toHaveBeenCalledTimes(1)
-    expect(canvas.drawPicture).not.toHaveBeenCalled()
-  })
-
-  test('never uses drawText when fonts are loaded (CJK safety)', () => {
-    const r = createMockRenderer({ isNodeFontLoaded: mock(() => false) })
-    const canvas = createMockCanvas()
-
-    renderText(r, canvas as never, textNode())
-
-    expect(canvas.drawText).not.toHaveBeenCalled()
   })
 
   test('falls back to drawText only when fonts are NOT loaded', () => {
@@ -127,13 +112,14 @@ describe('renderText', () => {
 })
 
 describe('renderText headless visual', () => {
-  test('renders CJK text via fallback font when node font is unavailable', async () => {
+  test('renders CJK text via fallback font through paragraph shaper', async () => {
     const ck = await initCanvasKit()
     const fontProvider = ck.TypefaceFontProvider.Make()
     initFontService(ck, fontProvider)
 
     const interData = await Bun.file('public/Inter-Regular.ttf').arrayBuffer()
     fontProvider.registerFont(interData, 'Inter')
+    markFontLoaded('Inter', 'Regular', interData)
 
     const notoPath = new URL('../../tests/fixtures/fonts/NotoSansSC-Regular.ttf', import.meta.url).pathname
     const notoData = await Bun.file(notoPath).arrayBuffer()
@@ -144,7 +130,7 @@ describe('renderText headless visual', () => {
     const page = graph.getPages()[0]
     const node = graph.createNode('TEXT', page.id, {
       text: '你好世界',
-      fontFamily: 'UnavailableFont',
+      fontFamily: 'Inter',
       fontSize: 32,
       fontWeight: 400,
       width: 200,

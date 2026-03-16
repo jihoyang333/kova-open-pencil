@@ -1,5 +1,7 @@
 import { inflateSync, deflateSync } from 'fflate'
 
+import { randomInt } from './random'
+
 import {
   sceneNodeToKiwi,
   buildFigKiwi,
@@ -313,7 +315,7 @@ export function buildFigmaClipboardHTML(nodes: SceneNode[], graph: SceneGraph): 
     type: 'NODE_CHANGES',
     sessionID: 0,
     ackID: 0,
-    pasteID: crypto.getRandomValues(new Int32Array(1))[0],
+    pasteID: randomInt(),
     pasteFileKey: 'openpencil',
     nodeChanges
   }
@@ -354,7 +356,14 @@ export function parseOpenPencilClipboard(
   if (!match) return null
 
   try {
-    const decoded = JSON.parse(new TextDecoder().decode(Uint8Array.fromBase64(match[1])))
+    const raw = Uint8Array.fromBase64(match[1])
+    let bytes: Uint8Array
+    try {
+      bytes = inflateSync(raw)
+    } catch {
+      bytes = raw
+    }
+    const decoded = JSON.parse(new TextDecoder().decode(bytes))
     if (decoded.format === 'openpencil/v1' && Array.isArray(decoded.nodes)) {
       restoreTextPictures(decoded.nodes)
       const images = new Map<string, Uint8Array>()
@@ -367,8 +376,8 @@ export function parseOpenPencilClipboard(
       }
       return { nodes: decoded.nodes, images }
     }
-  } catch {
-    // Not our format
+  } catch (e) {
+    console.warn('Failed to parse OpenPencil clipboard data:', e)
   }
   return null
 }
@@ -417,7 +426,8 @@ export function buildOpenPencilClipboardHTML(
     nodes: nodeTree,
     images
   }
-  return `<!--(openpencil)${new TextEncoder().encode(JSON.stringify(data)).toBase64()}(/openpencil)-->`
+  const compressed = deflateSync(new TextEncoder().encode(JSON.stringify(data)))
+  return `<!--(openpencil)${compressed.toBase64()}(/openpencil)-->`
 }
 
 function collectNodeTree(

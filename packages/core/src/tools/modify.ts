@@ -1,21 +1,53 @@
+/* eslint-disable max-lines -- property setters share common patterns, splitting would scatter related tools */
 import { parseColor } from '../color'
 import { DEFAULT_SHADOW_COLOR } from '../constants'
+import type { CharacterStyleOverride, Effect, StyleRun } from '../scene-graph'
+import type { Matrix } from '../types'
 
 import { defineTool } from './schema'
 
 export const setFill = defineTool({
   name: 'set_fill',
   mutates: true,
-  description: 'Set the fill color of a node. Accepts hex (#ff0000) or named color.',
+  description: 'Set fill on a node. Solid: color="#ff0000". Linear gradient: gradient="top-bottom" or "left-right" with color (start) and color_end (end).',
   params: {
     id: { type: 'string', description: 'Node ID', required: true },
-    color: { type: 'color', description: 'Color value (hex like #ff0000)', required: true }
+    color: { type: 'color', description: 'Color (hex). For gradient: start color.', required: true },
+    color_end: { type: 'color', description: 'End color for gradient (if omitted, solid fill)' },
+    gradient: {
+      type: 'string',
+      description: 'Gradient direction',
+      enum: ['top-bottom', 'bottom-top', 'left-right', 'right-left']
+    }
   },
-  execute: (figma, { id, color }) => {
+  execute: (figma, { id, color, color_end, gradient }) => {
     const node = figma.getNodeById(id)
     if (!node) return { error: `Node "${id}" not found` }
 
     const c = parseColor(color)
+
+    if (gradient && color_end) {
+      const cEnd = parseColor(color_end)
+      const transforms: Record<string, Matrix> = {
+        'top-bottom': { m00: 0, m01: 1, m02: 0, m10: -1, m11: 0, m12: 1 },
+        'bottom-top': { m00: 0, m01: -1, m02: 1, m10: 1, m11: 0, m12: 0 },
+        'left-right': { m00: 1, m01: 0, m02: 0, m10: 0, m11: 1, m12: 0 },
+        'right-left': { m00: -1, m01: 0, m02: 1, m10: 0, m11: -1, m12: 1 }
+      }
+      node.fills = [{
+        type: 'GRADIENT_LINEAR',
+        color: c,
+        opacity: 1,
+        visible: true,
+        gradientStops: [
+          { position: 0, color: c },
+          { position: 1, color: cEnd }
+        ],
+        gradientTransform: transforms[gradient] ?? transforms['top-bottom']
+      }]
+      return { id, gradient, start: c, end: cEnd }
+    }
+
     node.fills = [{ type: 'SOLID', color: c, opacity: 1, visible: true }]
     return { id, color: c }
   }
@@ -78,19 +110,19 @@ export const setEffects = defineTool({
     if (!node) return { error: `Node "${args.id}" not found` }
 
     const isBlur = args.type === 'FOREGROUND_BLUR' || args.type === 'BACKGROUND_BLUR'
-    const effect: Record<string, unknown> = {
-      type: args.type,
+    const color = isBlur
+      ? { r: 0, g: 0, b: 0, a: 0 }
+      : (args.color ? parseColor(args.color) : { ...DEFAULT_SHADOW_COLOR })
+    const effect: Effect = {
+      type: args.type as Effect['type'],
       visible: true,
-      radius: args.radius ?? 4
+      radius: args.radius ?? 4,
+      color,
+      offset: { x: isBlur ? 0 : (args.offset_x ?? 0), y: isBlur ? 0 : (args.offset_y ?? 4) },
+      spread: isBlur ? 0 : (args.spread ?? 0)
     }
 
-    if (!isBlur) {
-      effect.color = args.color ? parseColor(args.color) : { ...DEFAULT_SHADOW_COLOR }
-      effect.offset = { x: args.offset_x ?? 0, y: args.offset_y ?? 4 }
-      effect.spread = args.spread ?? 0
-    }
-
-    node.effects = [...node.effects, effect as any]
+    node.effects = [...node.effects, effect]
     return { id: args.id, effects: node.effects.length }
   }
 })
@@ -170,24 +202,21 @@ export const setLayout = defineTool({
     id: { type: 'string', description: 'Frame node ID', required: true },
     direction: {
       type: 'string',
-      description: 'Layout direction',
-      required: true,
+      description: 'Layout direction (keeps current if omitted)',
       enum: ['HORIZONTAL', 'VERTICAL']
     },
-    spacing: { type: 'number', description: 'Gap between items', default: 0, min: 0 },
-    padding: { type: 'number', description: 'Equal padding on all sides', min: 0 },
+    spacing: { type: 'number', description: 'Gap between items (only changes if provided)', min: 0 },
+    padding: { type: 'number', description: 'Equal padding on all sides (only changes if provided)', min: 0 },
     padding_horizontal: { type: 'number', description: 'Horizontal padding', min: 0 },
     padding_vertical: { type: 'number', description: 'Vertical padding', min: 0 },
     align: {
       type: 'string',
-      description: 'Primary axis alignment',
-      default: 'MIN',
+      description: 'Primary axis alignment (only changes if provided)',
       enum: ['MIN', 'CENTER', 'MAX', 'SPACE_BETWEEN']
     },
     counter_align: {
       type: 'string',
-      description: 'Cross axis alignment',
-      default: 'MIN',
+      description: 'Cross axis alignment (only changes if provided)',
       enum: ['MIN', 'CENTER', 'MAX', 'STRETCH']
     }
   },
@@ -195,19 +224,37 @@ export const setLayout = defineTool({
     const node = figma.getNodeById(args.id)
     if (!node) return { error: `Node "${args.id}" not found` }
 
-    node.layoutMode = args.direction as 'HORIZONTAL' | 'VERTICAL'
-    node.itemSpacing = args.spacing ?? 0
-    node.primaryAxisAlignItems = (args.align ?? 'MIN') as any
-    node.counterAxisAlignItems = (args.counter_align ?? 'MIN') as any
+    const raw = figma.graph.getNode(args.id)
+    if (!args.direction && raw?.layoutMode === 'NONE') {
+      return { error: 'Frame has no auto-layout. Pass direction ("HORIZONTAL" or "VERTICAL") to enable it.' }
+    }
 
-    const ph = args.padding_horizontal ?? args.padding ?? 0
-    const pv = args.padding_vertical ?? args.padding ?? 0
-    node.paddingLeft = ph
-    node.paddingRight = ph
-    node.paddingTop = pv
-    node.paddingBottom = pv
+    const wasNone = raw?.layoutMode === 'NONE'
+    if (args.direction) node.layoutMode = args.direction as 'HORIZONTAL' | 'VERTICAL'
+    if (wasNone) {
+      node.primaryAxisSizingMode = 'AUTO'
+      node.counterAxisSizingMode = 'AUTO'
+    }
+    if (args.spacing !== undefined) node.itemSpacing = args.spacing
+    if (args.align !== undefined) node.primaryAxisAlignItems = args.align
+    if (args.counter_align !== undefined) node.counterAxisAlignItems = args.counter_align
 
-    return { id: args.id, direction: args.direction, spacing: args.spacing ?? 0 }
+    if (args.padding !== undefined) {
+      node.paddingTop = args.padding
+      node.paddingRight = args.padding
+      node.paddingBottom = args.padding
+      node.paddingLeft = args.padding
+    }
+    if (args.padding_horizontal !== undefined) {
+      node.paddingLeft = args.padding_horizontal
+      node.paddingRight = args.padding_horizontal
+    }
+    if (args.padding_vertical !== undefined) {
+      node.paddingTop = args.padding_vertical
+      node.paddingBottom = args.padding_vertical
+    }
+
+    return { id: args.id, spacing: node.itemSpacing }
   }
 })
 
@@ -295,7 +342,17 @@ export const setRadius = defineTool({
     if (args.top_right !== undefined) node.topRightRadius = args.top_right
     if (args.bottom_right !== undefined) node.bottomRightRadius = args.bottom_right
     if (args.bottom_left !== undefined) node.bottomLeftRadius = args.bottom_left
-    return { id: args.id, cornerRadius: node.cornerRadius }
+    const cr = node.cornerRadius
+    if (typeof cr === 'number') {
+      return { id: args.id, cornerRadius: cr }
+    }
+    return {
+      id: args.id,
+      topLeftRadius: node.topLeftRadius,
+      topRightRadius: node.topRightRadius,
+      bottomRightRadius: node.bottomRightRadius,
+      bottomLeftRadius: node.bottomLeftRadius
+    }
   }
 })
 
@@ -384,13 +441,17 @@ export const setFontRange = defineTool({
   execute: (figma, args) => {
     const node = figma.getNodeById(args.id)
     if (!node) return { error: `Node "${args.id}" not found` }
-    const run: Record<string, unknown> = { start: args.start, end: args.end }
-    if (args.family) run.fontFamily = args.family
-    if (args.size) run.fontSize = args.size
-    if (args.style) run.fontStyle = args.style
-    if (args.color) run.color = parseColor(args.color)
+    const style: CharacterStyleOverride = {}
+    if (args.family) style.fontFamily = args.family
+    if (args.size) style.fontSize = args.size
+    if (args.style === 'italic' || args.style === 'Italic') style.italic = true
+    const run: StyleRun = {
+      start: args.start,
+      length: args.end - args.start,
+      style
+    }
     figma.graph.updateNode(node.id, {
-      styleRuns: [...(figma.graph.getNode(node.id)?.styleRuns ?? []), run as any]
+      styleRuns: [...(figma.graph.getNode(node.id)?.styleRuns ?? []), run]
     })
     return { id: args.id, range: { start: args.start, end: args.end } }
   }

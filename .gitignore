@@ -43,3 +43,7 @@ packages/collab/.wrangler/
 packages/core/vendor/canvaskit-webgpu/
 patches/skia-webgpu/
 .wrangler/
+
+Caddyfile.dev
+components.d.ts
+vue-stream-markdown/

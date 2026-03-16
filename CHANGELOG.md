@@ -4,13 +4,71 @@
 
 ### Features
 
-- Grid layout in AI chat — JSX renderer supports `grid`, `columns`, `rows`, `gap` props with child positioning (`colStart`, `rowStart`, `colSpan`, `rowSpan`) and auto-height grids
+- Lock and visibility toggle buttons in layers panel (hover to reveal, always shown when active)
+- Figma-style selection scope — double-click to enter groups/frames/components, Escape to exit
+- Nested container navigation — each double-click goes one level deeper
+- Dashed border around entered container for visual feedback
+- Layer panel click syncs canvas scope automatically
+
+### Fixes
+
+- Fix `set_layout` tool not defaulting to HUG sizing when enabling auto-layout — frames now shrink/grow to fit children instead of keeping fixed dimensions
+- Fix save crash when COLOR variable is missing alpha channel
+- Fix console error spam on deployed web app from automation WebSocket reconnect loop
+- Fix headless CLI font fallback — bundled Inter font now ships with `@open-pencil/core` and loads without a web server
+- Locked nodes now block move, resize, rotate, and delete on canvas
+- Locked containers block double-click enter
+- Marquee selection skips locked and hidden nodes
+- COMPONENT/INSTANCE containers are now enterable via double-click
+
+## 0.10.0 — 2026-03-15
+
+### Performance
+
+- Offload .fig parsing (unzip + Kiwi decode) to a Web Worker — main thread stays responsive during file open
+- Offload .fig compression to a Web Worker during save (was blocking 450ms+)
+- Add instance index (`componentId → Set<nodeId>`) — `getInstances()` is O(1) instead of scanning all nodes
+- Defer graph event subscription until after layout computation during file open — eliminates redundant `syncInstances` calls
+- Cache label collection (sections/components) per scene mutation instead of walking the full tree every frame
+- Blocking font loading — fonts load before first render to ensure correct glyphs
+
+### Features
+
+- ACP agent support — use Claude Code, Codex, or Gemini CLI as AI assistants in the desktop chat panel
+- Permission confirmation dialog — ACP agents request user approval for file/shell operations, MCP design tools auto-approved
+- Unified MCP server — single HTTP + WebSocket proxy replaces Vite SSR bridge
+- Stock photo integration — `stock_photo` tool fetches images from Pexels or Unsplash and applies to design nodes. Provider adapter supports custom providers.
+- Skeleton-first AI workflow — 4-phase design process (plan → skeleton → content fill via `replace_id` → polish) for more reliable AI-generated layouts
+- Batched AI tools — `calc` accepts arrays of expressions, `stock_photo` fetches all images in parallel, `batch_update` applies multiple property changes in one call, `describe` accepts `ids` array for multi-node inspection
+- AI visual feedback — blue pulsing border on nodes being modified, green flash on completion
+- Auto-depth `describe` — adapts inspection depth to subtree size (small block → deeper, large page → shallower)
+- `set_fill` gradient support — linear gradients with `color_end` and `gradient` direction params
+- `render` tool `replace_id` — atomically swap skeleton placeholders with real content
+- MCP `export_image_file` tool for headless PNG rendering
+- Grid layout in AI chat — JSX renderer supports `grid`, `columns`, `rows`, `gap` props
 - Configurable max output tokens in AI provider settings (default 16384)
 - Z.ai AI provider with GLM-5, GLM-4.7, GLM-4.6, GLM-4.5 model families
 - MiniMax AI provider with M2.5, M2.1, M2 models
 
+### Improved .fig import fidelity
+
+- Resolve variable-bound fill colors through alias chains
+- Fix SCALE constraint resizing for auto-layout instances
+- Propagate SCALE constraints through instance clone chains
+- Skip self-referencing symbolOverrides on nodes with explicit kiwi properties
+- Fix DSD resolution for swapped instance children
+- Fix instance swap override propagation through clone chains
+- Fix component property override resolution through clone chains
+- Fix text/property overrides clobbered by second transitive sync
+
 ### Fixes
 
+- Fix text rendering with wrong fonts on file open — all font weights (including default family) are now loaded before the first render
+- Fix `weightToStyle` mapping: weight 400 now correctly maps to "Regular" instead of "Medium"
+- Fix detached ArrayBuffer crash when switching pages after saving — export worker now copies image buffers before transferring
+- Show warning toast when fonts fail to load, error toast when file open fails
+- Fix FillPicker crash when selecting image fills (missing `ref` import from #92)
+- Fix Google Fonts TLS/network errors not cached — failed families no longer retry on every render
 - Fix CJK text garbled when font is unavailable — fallback now renders through paragraph shaper instead of raw `drawText`, preserving CJK characters via the fallback font chain
 - Fix auto-layout overflow in AI-generated designs — text wrapping, min/max constraints, absolute positioning, and FILL sizing now work correctly
 - Fix `layoutAlignSelf` limited to STRETCH — full range supported (CENTER, MAX, MIN, BASELINE)
@@ -19,7 +77,19 @@
 - Fix paste/copy/cut intercepted by canvas in AI chat input
 - Strip TypeScript casts from AI-generated JSX (`as any`, `as const`)
 - Fix parsing complex .fig files crashing on missing GUIDs in component overrides
-- Fix headless text layout using 100×100 default size instead of estimated dimensions
+- Fix headless text layout using 100×100 default size instead of estimated dimensions — multi-line wrapping now estimated correctly
+- Fix clipboard roundtrip losing properties — clipsContent, constraints, arcData, strokeCap/Join, layoutAlignSelf, textAutoResize, autoRename now preserved in Figma Kiwi serialization
+- Fix MCP headless export crashing on `window.queryLocalFonts` in non-browser runtimes (Bun/Node)
+- Fix MCP `export_image` rendering blank text — fonts now loaded before rasterization
+- Fix text always using paragraph rendering with Inter fallback chain (no more missing-font garbling)
+- Clip children to rounded corners when `clipsContent` is true
+- Use child shape for drop shadows on transparent containers
+- Treat `FOREGROUND_BLUR` as layer blur wrapping children
+- Fix radial, angular, and diamond gradient rendering
+- Fix .fig export roundtrip: variable GUIDs colliding with document
+- Fix file open dialog not working on first click in Safari
+- Skip variable fonts from local font access, use Google Fonts instead
+- Disable autosave by default
 
 ## 0.9.0 — 2026-03-09
 

@@ -1,5 +1,6 @@
 export type { GUID, Color, Vector, Matrix, Rect } from './types'
 export { degToRad, radToDeg, rotatePoint, rotatedCorners, rotatedBBox } from './geometry'
+export { randomHex, randomInt, randomIndex } from './random'
 
 export * from './constants'
 
@@ -52,8 +53,8 @@ export {
 } from './scene-graph'
 
 export { FigmaAPI, FigmaNodeProxy, computeImageHash, type FigmaFontName } from './figma-api'
-export { ALL_TOOLS, defineTool, toolsToAI } from './tools'
-export type { ToolDef, ParamDef, ParamType } from './tools'
+export { ALL_TOOLS, CORE_TOOLS, EXTENDED_TOOLS, defineTool, toolsToAI, buildDebugLog } from './tools'
+export type { ToolDef, ParamDef, ParamType, ToolLogEntry, ToolDebugLog, AIAdapterOptions, StepBudget } from './tools'
 export { executeRpcCommand, ALL_RPC_COMMANDS } from './rpc'
 export { queryByXPath, matchByXPath } from './xpath'
 export type { XPathQueryOptions } from './xpath'
@@ -67,6 +68,7 @@ export type {
   AnalyzeClustersArgs, AnalyzeClustersResult, TypographyStyle
 } from './rpc'
 export { SkiaRenderer, type RenderOverlays } from './renderer/index'
+export { LabelCache, type CachedSection, type CachedComponent } from './renderer/label-cache'
 export {
   RenderProfiler,
   FrameStats,
@@ -94,7 +96,11 @@ export {
   getCJKFallbackFamily,
   setCJKFallbackFamily,
   styleToWeight,
-  weightToStyle
+  weightToStyle,
+  normalizeFontFamily,
+  isVariableFont,
+  styleToVariant,
+  fetchBundledFont
 } from './fonts'
 export {
   parseColor,
@@ -131,6 +137,7 @@ export {
   adjustRunsForDelete
 } from './style-runs'
 export { renderNodesToImage, renderThumbnail, computeContentBounds, type ExportFormat } from './render-image'
+export { initCanvasKit, headlessRenderNodes, headlessRenderThumbnail } from './headless-render'
 export {
   renderNodesToSVG,
   geometryBlobToSVGPath,
@@ -138,7 +145,9 @@ export {
   type SVGExportOptions
 } from './svg-export'
 export { svg, renderSVGNode, type SVGNode } from './svg-node'
-export { exportFigFile } from './fig-export'
+export { parseSVGPath } from './svg-path-parse'
+export { fetchIcon, fetchIcons, searchIcons, searchIconsBatch, clearIconCache, type IconData, type IconPath, type IconSearchResult } from './iconify'
+export { exportFigFile, compressFigData, compressFigDataSync } from './fig-export'
 export {
   FIG_KIWI_VERSION,
   buildFigKiwi,
@@ -196,9 +205,10 @@ export {
   type OpenPencilClipboardData
 } from './clipboard'
 
-export { readFigFile, parseFigFile } from './kiwi/fig-file'
-export { importNodeChanges } from './kiwi/fig-import'
 export {
+  readFigFile,
+  parseFigFile,
+  importNodeChanges,
   initCodec,
   encodeMessage,
   decodeMessage,
@@ -206,6 +216,8 @@ export {
   decompress,
   getCompiledSchema,
   getSchemaBytes,
+  isCodecReady,
+  peekMessageType,
   createNodeChangesMessage,
   createNodeChange,
   parseVariableId,
@@ -218,10 +230,7 @@ export {
   type Effect as KiwiEffect,
   type VariableBinding,
   type ParentIndex,
-  type FigmaMessage
-} from './kiwi/codec'
-
-export {
+  type FigmaMessage,
   MESSAGE_TYPES,
   NODE_TYPES,
   NODE_PHASES,
@@ -239,4 +248,14 @@ export {
   getKiwiMessageType,
   parseVarint,
   FIG_WIRE_MAGIC
-} from './kiwi/protocol'
+} from './kiwi'
+
+export { CODEGEN_PROMPT } from './tools/prompts/codegen-prompt'
+export {
+  setPexelsApiKey,
+  setUnsplashAccessKey,
+  registerStockPhotoProvider,
+  setActiveStockPhotoProvider,
+  getStockPhotoProviders
+} from './tools/stock-photo'
+export type { StockPhotoProvider, StockPhotoResult } from './tools/stock-photo'

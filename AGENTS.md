@@ -15,6 +15,28 @@ Bun workspace with three packages:
 
 The root app (`src/`) is the Tauri/Vite desktop editor. Its `src/engine/` files are thin re-export shims from `@open-pencil/core`.
 
+### Core subpath exports
+
+`@open-pencil/core` exposes domain-specific subpath exports for targeted imports. The main `"."` entry re-exports everything for backward compatibility.
+
+| Subpath | What | Heavy dep isolated |
+|---|---|---|
+| `@open-pencil/core` | everything (barrel) | all |
+| `@open-pencil/core/scene-graph` | SceneGraph, node types, events | — |
+| `@open-pencil/core/kiwi` | .fig parse/serialize, codec, protocol | fflate, fzstd |
+| `@open-pencil/core/tools` | ToolDef, ALL_TOOLS, AI adapter | diff |
+| `@open-pencil/core/renderer` | SkiaRenderer | — |
+| `@open-pencil/core/render` | JSX-to-design renderer | sucrase |
+| `@open-pencil/core/rpc` | RPC commands for CLI | — |
+| `@open-pencil/core/figma-api` | FigmaAPI, FigmaNodeProxy | — |
+| `@open-pencil/core/canvaskit` | getCanvasKit loader | canvaskit-wasm |
+| `@open-pencil/core/layout` | computeLayout | yoga-layout |
+| `@open-pencil/core/color` | parseColor, colorToHex, etc. | — |
+| `@open-pencil/core/render-image` | renderNodesToImage | — |
+| `@open-pencil/core/profiler` | render profiling | — |
+
+Runtime `canvaskit-wasm` import exists only in `canvaskit.ts` — all other files use `import type`. CanvasKit instance is passed as a parameter everywhere.
+
 ## Commands
 
 - `bun run check` — type-aware lint + typecheck via oxlint + tsgo (run before committing)
@@ -103,9 +125,21 @@ When adding features, update `CHANGELOG.md` (Unreleased section) and `README.md`
 - AI adapter (`packages/core/src/tools/ai-adapter.ts`): `toolsToAI()` converts ToolDefs → valibot schemas + Vercel AI `tool()` wrappers
 - `src/ai/tools.ts` is just a thin wire: creates FigmaAPI from editor store, calls `toolsToAI()`
 - CLI commands (`packages/cli/src/commands/`) are **not** generated from ToolDefs — they have custom agentfmt formatting, tree walking, pagination. The `eval` command is the CLI's access to all ToolDef operations via FigmaAPI.
-- MCP adapter (`packages/mcp/src/server.ts`): `createServer()` converts ToolDefs → zod schemas + MCP `registerTool()`. Adds `open_file`, `save_file`, `new_document` for headless file ops. Two entry points: `index.ts` (stdio), `http.ts` (Hono + Streamable HTTP with sessions).
+- MCP adapter (`packages/mcp/src/server.ts`): `startServer()` creates unified HTTP + WebSocket server. Registers all ToolDefs as MCP tools (zod schemas). Single entry point: `index.ts` (Hono + Streamable HTTP with sessions). Browser connects via WebSocket, tool calls proxied through.
 - To add a new tool: add a `defineTool()` in the appropriate domain file, add to `ALL_TOOLS` in `registry.ts` — it's instantly available in AI chat, MCP, and via `eval` in CLI
 - `FigmaAPI` (`packages/core/src/figma-api.ts`) is the execution target for all tools — Figma Plugin API compatible, uses Symbols for hidden internals
+
+## ACP (Agent Client Protocol)
+
+- ACP transport (`src/ai/acp-transport.ts`) spawns agents via dynamic import of `@tauri-apps/plugin-shell`
+- Pure mapping logic in `src/ai/acp-map-update.ts` — converts `SessionUpdate` → `UIMessageChunk`
+- System prompt (`ACP_DESIGN_CONTEXT`) in `src/constants.ts`
+- Agent definitions (`ACP_AGENTS`) in `packages/core/src/constants.ts`
+- MCP server: Vite plugin in dev, `openpencil-mcp` via shell plugin in production Tauri (requires `npm i -g @open-pencil/mcp`; follow-up: bundle as Tauri sidecar)
+- Architecture: browser ↔ WebSocket :7601 ↔ MCP server :7600 ↔ HTTP ↔ agent subprocess
+- Shell permissions scoped per-command in `desktop/capabilities/default.json` (`args: true` — agents need dynamic SDK flags)
+- ACP providers visible only in Tauri desktop when MCP server is reachable
+- Permission requests shown in AlertDialog — user must approve/reject each request (60s auto-reject timeout)
 
 ## Collaboration
 

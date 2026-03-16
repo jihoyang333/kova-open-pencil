@@ -12,16 +12,17 @@ import type { SceneGraph } from '../scene-graph'
  */
 export function buildComponent(jsxString: string): () => unknown {
   const code = `
-    const h = React.createElement
+    const __h = React.createElement
     const Frame = 'frame', Text = 'text', Rectangle = 'rectangle', Ellipse = 'ellipse'
     const Line = 'line', Star = 'star', Polygon = 'polygon', Vector = 'vector'
     const Group = 'group', Section = 'section', View = 'frame', Rect = 'rectangle'
+    const Icon = 'icon'
     return function Component() { return ${jsxString.trim()} }
   `
 
   const result = transform(code, {
     transforms: ['typescript', 'jsx'],
-    jsxPragma: 'h',
+    jsxPragma: '__h',
     production: true
   })
 
@@ -38,11 +39,11 @@ interface RenderJSXOptions {
  * Render a JSX string into the scene graph.
  * Works in both Node/Bun and the browser.
  */
-export function renderJSX(
+export async function renderJSX(
   graph: SceneGraph,
   jsxString: string,
   options?: RenderJSXOptions
-): RenderResult {
+): Promise<RenderResult> {
   const Component = buildComponent(jsxString)
   const element = React.createElement(Component, null)
   const tree = resolveToTree(element)
@@ -57,10 +58,10 @@ export function renderJSX(
 /**
  * Render a pre-built TreeNode into the scene graph.
  */
-export function renderTreeNode(
+export async function renderTreeNode(
   graph: SceneGraph,
   tree: TreeNode,
   options?: RenderJSXOptions
-): RenderResult {
+): Promise<RenderResult> {
   return renderTree(graph, tree, options)
 }

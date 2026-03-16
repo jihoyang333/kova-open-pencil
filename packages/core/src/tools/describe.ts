@@ -1,11 +1,16 @@
-import { colorDistance, colorToHex } from '../color'
+import { colorToHex } from '../color'
+import { looksLikeButton } from './describe-shared'
 
+import { detectIssues } from './describe-issues'
+
+import type { DescribeIssue } from './describe-issues'
 import { defineTool } from './schema'
 
-import type { Color } from '../types'
 import type { SceneGraph, SceneNode } from '../scene-graph'
 
 const NAME_ROLE_PATTERNS: { pattern: RegExp; role: string }[] = [
+  { pattern: /^icon$/i, role: 'icon' },
+  { pattern: /^icon[-_]/i, role: 'icon' },
   { pattern: /^button$/i, role: 'button' },
   { pattern: /^btn[-_\s]/i, role: 'button' },
   { pattern: /[-_\s]btn$/i, role: 'button' },
@@ -49,7 +54,7 @@ const NAME_ROLE_PATTERNS: { pattern: RegExp; role: string }[] = [
 function detectRoleFromName(name: string): string | null {
   const base = (name.split(/[/,=]/)[0] ?? name).trim()
   for (const { pattern, role } of NAME_ROLE_PATTERNS) {
-    if (pattern.test(base)) return role
+    if (pattern.test(base) || pattern.test(name)) return role
   }
   return null
 }
@@ -69,18 +74,7 @@ function looksLikeSeparator(node: SceneNode): boolean {
   return ratio > 10 && Math.min(node.width, node.height) <= 4
 }
 
-const BUTTON_MAX_WIDTH = 200
-const BUTTON_MAX_HEIGHT = 50
-const BUTTON_MIN_HEIGHT = 28
-const BUTTON_MIN_RADIUS = 2
 
-function looksLikeButton(node: SceneNode): boolean {
-  if (node.type !== 'FRAME' && node.type !== 'COMPONENT' && node.type !== 'INSTANCE') return false
-  if (node.width > BUTTON_MAX_WIDTH || node.height > BUTTON_MAX_HEIGHT || node.height < BUTTON_MIN_HEIGHT) return false
-  if (node.fills.length === 0 && node.strokes.length === 0) return false
-  if (node.cornerRadius < BUTTON_MIN_RADIUS) return false
-  return node.childIds.length > 0
-}
 
 function describeVisual(node: SceneNode): string {
   const parts: string[] = []
@@ -99,95 +93,30 @@ function describeVisual(node: SceneNode): string {
   return parts.join(', ') || 'no visual styles'
 }
 
+const JUSTIFY_LABELS: Record<string, string> = {
+  MIN: 'start', CENTER: 'center', MAX: 'end', SPACE_BETWEEN: 'between'
+}
+
+const ITEMS_LABELS: Record<string, string> = {
+  MIN: 'start', CENTER: 'center', MAX: 'end', STRETCH: 'stretch', BASELINE: 'baseline'
+}
+
 function describeLayout(node: SceneNode): string | null {
   if (node.layoutMode === 'NONE') return null
   const dir = node.layoutMode === 'HORIZONTAL' ? 'horizontal' : 'vertical'
   const parts = [dir]
+  if (node.primaryAxisAlign !== 'MIN') parts.push(`justify=${JUSTIFY_LABELS[node.primaryAxisAlign] ?? node.primaryAxisAlign}`)
+  if (node.counterAxisAlign !== 'MIN') parts.push(`items=${ITEMS_LABELS[node.counterAxisAlign] ?? node.counterAxisAlign}`)
   if (node.itemSpacing > 0) parts.push(`${node.itemSpacing}px gap`)
   const pad = [node.paddingTop, node.paddingRight, node.paddingBottom, node.paddingLeft]
   const allSame = pad.every((p) => p === pad[0])
   const first = pad[0]
   if (allSame && first > 0) parts.push(`${first}px padding`)
   else if (pad.some((p) => p > 0)) parts.push(`padding ${pad.join('/')}`)
+  if (node.primaryAxisSizing !== 'FIXED') parts.push(`${node.primaryAxisSizing.toLowerCase()} main`)
+  if (node.counterAxisSizing !== 'FIXED') parts.push(`${node.counterAxisSizing.toLowerCase()} cross`)
   if (node.layoutWrap === 'WRAP') parts.push('wrap')
   return parts.join(', ')
-}
-
-const MIN_FILL_OPACITY = 0.15
-const MIN_STROKE_OPACITY = 0.20
-const LOW_CONTRAST_THRESHOLD = 15
-
-interface DescribeIssue {
-  message: string
-  suggestion?: string
-}
-
-function findAncestorBackground(node: SceneNode, graph: SceneGraph): Color | null {
-  let current = node.parentId ? graph.getNode(node.parentId) : null
-  while (current) {
-    const solidFill = current.fills.find((f) => f.visible && f.type === 'SOLID' && f.opacity > 0.5)
-    if (solidFill) return solidFill.color
-    current = current.parentId ? graph.getNode(current.parentId) : null
-  }
-  return null
-}
-
-function detectStructuralIssues(node: SceneNode, gridSize: number, issues: DescribeIssue[]): void {
-  if (node.x % 1 !== 0 || node.y % 1 !== 0) {
-    issues.push({
-      message: `Subpixel position (${node.x}, ${node.y})`,
-      suggestion: `(${Math.round(node.x)}, ${Math.round(node.y)})`
-    })
-  }
-  const isContainer = node.type === 'FRAME' || node.type === 'COMPONENT' || node.type === 'INSTANCE'
-  if (isContainer && node.fills.length === 0 && node.childIds.length === 0) {
-    issues.push({ message: 'Empty frame with no fill' })
-  }
-  if (looksLikeButton(node) && node.width < 44) {
-    issues.push({ message: `Touch target too small (${node.width}×${node.height})`, suggestion: 'Min 44×44' })
-  }
-  if (node.itemSpacing > 0 && node.itemSpacing % gridSize !== 0) {
-    const nearest = Math.round(node.itemSpacing / gridSize) * gridSize
-    issues.push({ message: `Gap ${node.itemSpacing} not on ${gridSize}px grid`, suggestion: `${nearest}` })
-  }
-}
-
-function detectVisibilityIssues(node: SceneNode, graph: SceneGraph, issues: DescribeIssue[]): void {
-  for (const fill of node.fills) {
-    if (!fill.visible || fill.type !== 'SOLID') continue
-    if (fill.opacity < MIN_FILL_OPACITY) {
-      issues.push({
-        message: `Near-invisible fill ${colorToHex(fill.color)} at ${Math.round(fill.opacity * 100)}% opacity`,
-        suggestion: `Increase to at least ${Math.round(MIN_FILL_OPACITY * 100)}%`
-      })
-    }
-  }
-  for (const stroke of node.strokes) {
-    if (!stroke.visible || stroke.opacity >= MIN_STROKE_OPACITY) continue
-    issues.push({
-      message: `Near-invisible stroke at ${Math.round(stroke.opacity * 100)}% opacity`,
-      suggestion: `Increase to at least ${Math.round(MIN_STROKE_OPACITY * 100)}%`
-    })
-  }
-  if (node.type !== 'TEXT' || !node.parentId) return
-  const textFill = node.fills.find((f) => f.visible && f.type === 'SOLID')
-  if (!textFill) return
-  const parentBg = findAncestorBackground(node, graph)
-  if (!parentBg) return
-  const dist = colorDistance(textFill.color, parentBg)
-  if (dist < LOW_CONTRAST_THRESHOLD) {
-    issues.push({
-      message: `Low contrast: text ${colorToHex(textFill.color)} on ${colorToHex(parentBg)} (distance ${Math.round(dist)})`,
-      suggestion: 'Increase color difference between text and background'
-    })
-  }
-}
-
-function detectIssues(node: SceneNode, gridSize: number, graph: SceneGraph): DescribeIssue[] {
-  const issues: DescribeIssue[] = []
-  detectStructuralIssues(node, gridSize, issues)
-  detectVisibilityIssues(node, graph, issues)
-  return issues
 }
 
 function detectRole(node: SceneNode): string {
@@ -202,62 +131,135 @@ function detectRole(node: SceneNode): string {
   return 'generic'
 }
 
-function describeChild(node: SceneNode): { role: string; name: string; summary: string; id: string } {
+interface ChildDescription {
+  role: string
+  name: string
+  summary: string
+  id: string
+  issues?: DescribeIssue[]
+  children?: ChildDescription[]
+}
+
+function summarizeContainer(node: SceneNode): string {
+  const parts = [`${node.width}×${node.height}`]
+  const fill = node.fills.find((f) => f.type === 'SOLID' && f.visible)
+  if (fill) parts.push(colorToHex(fill.color))
+  if (node.cornerRadius > 0) parts.push('rounded')
+  const layout = describeLayout(node)
+  if (layout) parts.push(layout)
+  return parts.join(', ')
+}
+
+function summarizeText(node: SceneNode): string {
+  const text = node.text.slice(0, 60)
+  let summary = `"${text}" ${node.fontSize}px ${node.fontFamily}`
+  if (node.fontWeight >= 700) summary += ' bold'
+  else if (node.fontWeight >= 500) summary += ' medium'
+  const textColor = node.fills.find((f) => f.type === 'SOLID' && f.visible)
+  if (textColor) summary += `, ${colorToHex(textColor.color)}`
+  if (node.textAutoResize === 'HEIGHT') summary += ', wraps'
+  else if (node.textAutoResize === 'NONE') summary += ', fixed-size'
+  if (node.maxLines !== null && node.maxLines > 0) summary += `, max ${node.maxLines} lines`
+  return summary
+}
+
+function describeChild(node: SceneNode, graph: SceneGraph, depth: number, gridSize: number): ChildDescription {
   const role = detectRole(node)
-  let summary = ''
-  if (node.type === 'TEXT') {
-    const text = node.text.slice(0, 60)
-    summary = `"${text}" ${node.fontSize}px ${node.fontFamily}`
-    if (node.fontWeight >= 700) summary += ' bold'
-    else if (node.fontWeight >= 500) summary += ' medium'
-    const textColor = node.fills.find((f) => f.type === 'SOLID' && f.visible)
-    if (textColor) summary += `, ${colorToHex(textColor.color)}`
-  } else {
-    summary = `${node.width}×${node.height}`
-    const fill = node.fills.find((f) => f.type === 'SOLID' && f.visible)
-    if (fill) summary += `, ${colorToHex(fill.color)}`
-    if (node.cornerRadius > 0) summary += ', rounded'
+  const summary = node.type === 'TEXT' ? summarizeText(node) : summarizeContainer(node)
+  const result: ChildDescription = { role, name: node.name, summary, id: node.id }
+
+  const issues = detectIssues(node, gridSize, graph)
+  if (issues.length > 0) result.issues = issues
+
+  if (depth > 0 && node.childIds.length > 0) {
+    const kids: ChildDescription[] = []
+    for (const childId of node.childIds) {
+      const child = graph.getNode(childId)
+      if (!child || !child.visible) continue
+      kids.push(describeChild(child, graph, depth - 1, gridSize))
+    }
+    if (kids.length > 0) result.children = kids
   }
-  return { role, name: node.name, summary, id: node.id }
+  return result
+}
+
+function describeOneNode(
+  figma: { graph: SceneGraph },
+  nodeId: string,
+  depth: number,
+  gridSize: number
+): Record<string, unknown> {
+  const raw = figma.graph.getNode(nodeId)
+  if (!raw) return { id: nodeId, error: `Node "${nodeId}" not found` }
+
+  const role = detectRole(raw)
+  const visual = describeVisual(raw)
+  const layout = describeLayout(raw)
+  const issues = detectIssues(raw, gridSize, figma.graph)
+
+  const children: ChildDescription[] = []
+  for (const childId of raw.childIds) {
+    const child = figma.graph.getNode(childId)
+    if (!child || !child.visible) continue
+    children.push(describeChild(child, figma.graph, depth - 1, gridSize))
+  }
+
+  const result: Record<string, unknown> = {
+    id: raw.id,
+    name: raw.name,
+    type: raw.type,
+    role,
+    size: `${raw.width}×${raw.height}`,
+    visual,
+  }
+  if (layout) result.layout = layout
+  if (children.length > 0) result.children = children
+  if (issues.length > 0) result.issues = issues
+  return result
+}
+
+function countDescendants(graph: SceneGraph, nodeId: string): number {
+  const node = graph.getNode(nodeId)
+  if (!node) return 0
+  let count = 0
+  for (const childId of node.childIds) {
+    count += 1 + countDescendants(graph, childId)
+  }
+  return count
+}
+
+function autoDepth(graph: SceneGraph, nodeId: string): number {
+  const size = countDescendants(graph, nodeId)
+  if (size <= 15) return 4
+  if (size <= 40) return 3
+  if (size <= 100) return 2
+  return 1
 }
 
 export const describe = defineTool({
   name: 'describe',
   description:
-    'Semantic description of a node: role, visual style, layout, children summary, and design issues.',
+    'Semantic description of one or more nodes. Pass `id` for a single node, or `ids` for multiple nodes in one call. Omit depth for auto — adapts to subtree size (small block → deeper, large page → shallower).',
   params: {
-    id: { type: 'string', description: 'Node ID', required: true },
+    id: { type: 'string', description: 'Node ID (single node)' },
+    ids: { type: 'string[]', description: 'Node IDs (multiple nodes in one call)' },
+    depth: { type: 'number', description: 'Override depth (auto if omitted, max: 5)' },
     grid: { type: 'number', description: 'Grid size for alignment checks (default: 8)' }
   },
   execute: (figma, args) => {
     const gridSize = args.grid ?? 8
-    const raw = figma.graph.getNode(args.id)
-    if (!raw) return { error: `Node "${args.id}" not found` }
 
-    const role = detectRole(raw)
-    const visual = describeVisual(raw)
-    const layout = describeLayout(raw)
-    const issues = detectIssues(raw, gridSize, figma.graph)
-
-    const children: { role: string; name: string; summary: string; id: string }[] = []
-    for (const childId of raw.childIds) {
-      const child = figma.graph.getNode(childId)
-      if (!child || !child.visible) continue
-      children.push(describeChild(child))
+    if (args.ids && Array.isArray(args.ids)) {
+      return {
+        nodes: args.ids.map((nodeId) => {
+          const depth = Math.min(args.depth ?? autoDepth(figma.graph, nodeId), 5)
+          return describeOneNode(figma, nodeId, depth, gridSize)
+        })
+      }
     }
 
-    const result: Record<string, unknown> = {
-      id: raw.id,
-      name: raw.name,
-      type: raw.type,
-      role,
-      size: `${raw.width}×${raw.height}`,
-      visual,
-    }
-    if (layout) result.layout = layout
-    if (children.length > 0) result.children = children
-    if (issues.length > 0) result.issues = issues
-
-    return result
+    if (!args.id) return { error: 'Provide id (string) or ids (string[])' }
+    const depth = Math.min(args.depth ?? autoDepth(figma.graph, args.id), 5)
+    return describeOneNode(figma, args.id, depth, gridSize)
   }
 })
