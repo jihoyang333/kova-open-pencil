@@ -10,7 +10,7 @@ import { useMenu } from '@/composables/use-menu'
 import { useCollab, COLLAB_KEY } from '@/composables/use-collab'
 import { connectAutomation } from '@/automation/server'
 import { spawnMCPIfNeeded } from '@/automation/spawn-mcp'
-import { IS_TAURI } from '@/constants'
+import { APP_NAME, IS_TAURI } from '@/constants'
 import { createDemoShapes } from '@/demo'
 import { useEditorStore } from '@/stores/editor'
 import { createTab, activeTab, getActiveStore } from '@/stores/tabs'
@@ -141,7 +141,7 @@ onUnmounted(() => {
           v-if="!isMobile"
           class="absolute top-7 left-7 z-10 flex items-center gap-2 rounded-lg border border-border bg-panel px-2 py-1 shadow-sm"
         >
-          <img src="/favicon-32.png" class="size-4" alt="Kova" />
+          <img src="/favicon-32.png" class="size-4" :alt="APP_NAME" />
           <span data-test-id="editor-document-name" class="text-xs text-surface">{{
             store.state.documentName
           }}</span>

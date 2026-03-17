@@ -73,13 +73,22 @@ const routes = [
   }
 ]
 
-export function createAppRouter(history: RouterHistory): Router {
-  const router = createRouter({ history, routes })
+let _router: Router | null = null
 
-  router.beforeEach((to) => {
+/** Returns the app router instance. Must be called after createAppRouter(). */
+export function getRouter(): Router {
+  if (!_router) throw new Error('Router not created yet — call createAppRouter() first.')
+  return _router
+}
+
+export function createAppRouter(history: RouterHistory): Router {
+  _router = createRouter({ history, routes })
+
+  _router.beforeEach((to) => {
     const auth = useAuthStore()
+    if (auth.isLoading) return false
     return resolveGuard(to, auth)
   })
 
-  return router
+  return _router
 }

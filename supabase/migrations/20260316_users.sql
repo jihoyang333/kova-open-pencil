@@ -1,4 +1,4 @@
-CREATE TABLE public.users (
+CREATE TABLE IF NOT EXISTS public.users (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   onboarded BOOLEAN DEFAULT false,
   generations_used INTEGER DEFAULT 0,

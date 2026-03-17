@@ -20,6 +20,7 @@ onMounted(() => {
   <!-- Loading state: centered logo with pulse -->
   <div
     v-if="auth.isLoading"
+    data-test-id="app-loading-overlay"
     class="flex min-h-screen items-center justify-center bg-white"
   >
     <img
