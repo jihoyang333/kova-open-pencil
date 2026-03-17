@@ -1,12 +1,13 @@
 import { describe, test, expect, beforeEach, mock } from 'bun:test'
 import { setActivePinia, createPinia } from 'pinia'
 
-// Mock vue-router before importing auth store
+// Mock only getRouter — re-export real functions so other tests aren't affected
 const mockPush = mock(() => Promise.resolve())
-mock.module('vue-router', () => ({
-  useRouter: () => ({ push: mockPush }),
-  createRouter: () => ({}),
-  createMemoryHistory: () => ({}),
+
+const realRouter = await import('@/router')
+mock.module('@/router', () => ({
+  ...realRouter,
+  getRouter: () => ({ push: mockPush }),
 }))
 
 // Mock Supabase client

@@ -1,8 +1,8 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import { useRouter } from 'vue-router'
 
 import { supabase } from '@/lib/supabase'
+import { getRouter } from '@/router'
 
 import type { Session, User, AuthError } from '@supabase/supabase-js'
 
@@ -23,8 +23,6 @@ function isUserProfile(data: unknown): data is UserProfile {
 }
 
 export const useAuthStore = defineStore('auth', () => {
-  const router = useRouter()
-
   const user = ref<User | null>(null)
   const session = ref<Session | null>(null)
   const profile = ref<UserProfile | null>(null)
@@ -124,7 +122,7 @@ export const useAuthStore = defineStore('auth', () => {
     session.value = null
     user.value = null
     profile.value = null
-    void router.push('/login')
+    void getRouter().push('/login')
   }
 
   function dispose(): void {
