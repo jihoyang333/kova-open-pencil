@@ -29,8 +29,12 @@ watch(
 )
 
 async function handleNewCanvas(): Promise<void> {
-  const canvas = await canvasesStore.createCanvas(brandId())
-  void router.push(`/editor/${canvas.id}`)
+  try {
+    const canvas = await canvasesStore.createCanvas(brandId())
+    void router.push(`/editor/${canvas.id}`)
+  } catch (error) {
+    console.error('Failed to create canvas:', error)
+  }
 }
 
 function handleOpenCanvas(canvas: Canvas): void {
@@ -56,11 +60,7 @@ async function handleDuplicate(id: string): Promise<void> {
       @action="handleNewCanvas"
     />
 
-    <div
-      v-else
-      class="grid gap-4"
-      style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr))"
-    >
+    <div v-else class="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4">
       <!-- New Canvas card -->
       <button
         data-test-id="canvas-new-card"

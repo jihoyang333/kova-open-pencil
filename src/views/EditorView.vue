@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, provide, ref, watch } from 'vue'
-import { useBreakpoints, useEventListener, useUrlSearchParams } from '@vueuse/core'
+import { useBreakpoints, useEventListener, useUrlSearchParams, watchDebounced } from '@vueuse/core'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { useHead } from '@unhead/vue'
 import { SplitterGroup, SplitterPanel, SplitterResizeHandle } from 'reka-ui'
@@ -78,8 +78,8 @@ if (canvasId) {
     }
   })
 
-  // Sync name changes back to canvas record, skipping the initial load assignment
-  watch(
+  // Sync name changes back to canvas record, debounced to avoid rapid-fire Supabase writes
+  watchDebounced(
     () => store.state.documentName,
     (newName) => {
       if (newName && canvasId && newName !== loadedName) {
@@ -89,7 +89,8 @@ if (canvasId) {
       if (newName !== loadedName) {
         loadedName = ''
       }
-    }
+    },
+    { debounce: 500 }
   )
 
   // Capture thumbnail on leave (non-blocking)

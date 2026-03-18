@@ -38,10 +38,15 @@ async function submitNewBrand(): Promise<void> {
     isCreating.value = false
     return
   }
-  const brand = await brandsStore.createBrand(name)
-  isCreating.value = false
-  newBrandName.value = ''
-  navigateToBrand(brand.id)
+  try {
+    const brand = await brandsStore.createBrand(name)
+    navigateToBrand(brand.id)
+  } catch (error) {
+    console.error('Failed to create brand:', error)
+  } finally {
+    isCreating.value = false
+    newBrandName.value = ''
+  }
 }
 
 function cancelCreating(): void {

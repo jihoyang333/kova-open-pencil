@@ -15,6 +15,12 @@ import {
   DropdownMenuTrigger
 } from 'reka-ui'
 
+import {
+  MENU_ITEM_CLASS,
+  DELETE_ITEM_CLASS,
+  MENU_CONTENT_CLASS
+} from '@/components/dashboard/menu-styles'
+
 import type { Canvas } from '@/types/kova/database'
 
 const props = defineProps<{ canvas: Canvas }>()
@@ -26,11 +32,9 @@ const emit = defineEmits<{
 
 const trashedAgo = useTimeAgo(() => new Date(props.canvas.trashed_at ?? props.canvas.updated_at))
 
-const menuItemClass =
-  'flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm text-gray-700 outline-none select-none data-[highlighted]:bg-gray-100'
-const deleteItemClass =
-  'flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm text-red-600 outline-none select-none data-[highlighted]:bg-red-50'
-const menuContentClass = 'z-50 min-w-36 rounded-lg border border-gray-200 bg-white p-1 shadow-lg'
+const menuItemClass = MENU_ITEM_CLASS
+const deleteItemClass = DELETE_ITEM_CLASS
+const menuContentClass = MENU_CONTENT_CLASS
 </script>
 
 <template>

@@ -28,11 +28,7 @@ async function handlePermanentlyDelete(id: string): Promise<void> {
       description="Files you move to trash will appear here."
     />
 
-    <div
-      v-else
-      class="grid gap-4"
-      style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr))"
-    >
+    <div v-else class="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4">
       <TrashCard
         v-for="canvas in canvasesStore.sortedTrashed"
         :key="canvas.id"
