@@ -10,6 +10,7 @@ export const useCanvasesStore = defineStore('canvases', () => {
   const canvases = ref<Canvas[]>([])
   const trashedCanvases = ref<Canvas[]>([])
   const isLoading = ref(false)
+  const canvasToTrash = ref<Canvas | null>(null)
 
   const sortedCanvases = computed(() =>
     [...canvases.value].sort(
@@ -122,6 +123,20 @@ export const useCanvasesStore = defineStore('canvases', () => {
     trashedCanvases.value = trashedCanvases.value.filter((c) => c.id !== id)
   }
 
+  function confirmMoveToTrash(canvas: Canvas): void {
+    canvasToTrash.value = canvas
+  }
+
+  function cancelMoveToTrash(): void {
+    canvasToTrash.value = null
+  }
+
+  async function executeMoveToTrash(): Promise<void> {
+    if (!canvasToTrash.value) return
+    await moveToTrash(canvasToTrash.value.id)
+    canvasToTrash.value = null
+  }
+
   async function fetchTrashed(): Promise<void> {
     isLoading.value = true
     try {
@@ -141,6 +156,7 @@ export const useCanvasesStore = defineStore('canvases', () => {
     canvases,
     trashedCanvases,
     isLoading,
+    canvasToTrash,
     sortedCanvases,
     sortedTrashed,
     fetchCanvases,
@@ -151,5 +167,8 @@ export const useCanvasesStore = defineStore('canvases', () => {
     restoreCanvas,
     permanentlyDelete,
     fetchTrashed,
+    confirmMoveToTrash,
+    cancelMoveToTrash,
+    executeMoveToTrash,
   }
 })
