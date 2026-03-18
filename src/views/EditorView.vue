@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, provide, ref } from 'vue'
+import { onMounted, onUnmounted, provide, ref, watch } from 'vue'
 import { useBreakpoints, useEventListener, useUrlSearchParams } from '@vueuse/core'
-import { useRoute } from 'vue-router'
+import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { useHead } from '@unhead/vue'
 import { SplitterGroup, SplitterPanel, SplitterResizeHandle } from 'reka-ui'
 
@@ -12,7 +12,10 @@ import { connectAutomation } from '@/automation/server'
 import { spawnMCPIfNeeded } from '@/automation/spawn-mcp'
 import { APP_NAME, IS_TAURI } from '@/constants'
 import { createDemoShapes } from '@/demo'
+import { useBrandsStore } from '@/stores/brands'
+import { useCanvasesStore } from '@/stores/canvases'
 import { useEditorStore } from '@/stores/editor'
+import { captureThumbnail } from '@/utils/capture-thumbnail'
 import { createTab, activeTab, getActiveStore } from '@/stores/tabs'
 
 import CollabPanel from '@/components/CollabPanel.vue'
@@ -41,6 +44,59 @@ if (route.meta.demo && !('test' in params)) {
 useHead({ title: route.meta.demo ? 'Demo' : undefined })
 useKeyboard()
 useMenu()
+
+// Canvas integration (only for non-demo routes with canvasId)
+const router = useRouter()
+const canvasId = route.params.canvasId as string | undefined
+
+if (canvasId) {
+  const canvasesStore = useCanvasesStore()
+  const brandsStore = useBrandsStore()
+
+  // Track the initially loaded name to prevent redundant sync on mount
+  let loadedName = ''
+
+  onMounted(async () => {
+    // Fetch canvas record directly (search active + trashed)
+    const { data } = await import('@/lib/supabase').then((m) =>
+      m.supabase.from('canvases').select('*').eq('id', canvasId).single()
+    )
+
+    if (!data || data.trashed_at) {
+      void router.replace('/dashboard')
+      return
+    }
+
+    // Set document name from canvas record
+    loadedName = data.name
+    store.state.documentName = data.name
+
+    // Load the associated brand
+    await brandsStore.fetchBrands()
+    if (data.brand_id) {
+      brandsStore.selectBrand(data.brand_id)
+    }
+  })
+
+  // Sync name changes back to canvas record, skipping the initial load assignment
+  watch(
+    () => store.state.documentName,
+    (newName) => {
+      if (newName && canvasId && newName !== loadedName) {
+        void canvasesStore.renameCanvas(canvasId, newName)
+      }
+      // After first real user edit, clear the guard so subsequent renames work normally
+      if (newName !== loadedName) {
+        loadedName = ''
+      }
+    },
+  )
+
+  // Capture thumbnail on leave (non-blocking)
+  onBeforeRouteLeave(() => {
+    void captureThumbnail(canvasId)
+  })
+}
 
 const collab = useCollab(firstTab.store)
 provide(COLLAB_KEY, collab)
