@@ -22,6 +22,7 @@ import { useInlineRename } from '@/composables/use-inline-rename'
 import { menuContent, menuItem, menuSeparator } from '@/components/ui/menu'
 import { IS_TAURI } from '@/constants'
 import { openFileDialog } from '@/composables/use-menu'
+import { getRouter } from '@/router'
 import { useEditorStore } from '@/stores/editor'
 
 const store = useEditorStore()
@@ -59,6 +60,11 @@ interface MenuItem {
 }
 
 const fileMenu: MenuItem[] = [
+  {
+    label: 'Back to Dashboard',
+    action: () => void getRouter().push('/dashboard'),
+  },
+  { separator: true },
   {
     label: 'New',
     shortcut: `${mod}N`,
