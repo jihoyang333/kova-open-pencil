@@ -1,4 +1,5 @@
 import { createRouter } from 'vue-router'
+import { watch } from 'vue'
 
 import { useAuthStore } from '@/stores/auth'
 
@@ -9,6 +10,9 @@ const SignupView = () => import('./views/SignupView.vue')
 const DashboardView = () => import('./views/DashboardView.vue')
 const OnboardingView = () => import('./views/OnboardingView.vue')
 const EditorView = () => import('./views/EditorView.vue')
+const CanvasGrid = () => import('./views/dashboard/CanvasGrid.vue')
+const TrashView = () => import('./views/dashboard/TrashView.vue')
+const BrandAssetsView = () => import('./views/dashboard/BrandAssetsView.vue')
 
 interface AuthState {
   isAuthenticated: boolean
@@ -59,7 +63,24 @@ const routes = [
   {
     path: '/dashboard',
     component: DashboardView,
-    meta: { requiresAuth: true, requiresOnboarding: true }
+    meta: { requiresAuth: true, requiresOnboarding: true },
+    children: [
+      {
+        path: 'trash',
+        component: TrashView,
+        meta: { requiresAuth: true, requiresOnboarding: true },
+      },
+      {
+        path: ':brandId',
+        component: CanvasGrid,
+        meta: { requiresAuth: true, requiresOnboarding: true },
+      },
+      {
+        path: ':brandId/assets',
+        component: BrandAssetsView,
+        meta: { requiresAuth: true, requiresOnboarding: true },
+      },
+    ],
   },
   {
     path: '/editor/:canvasId',
@@ -84,9 +105,17 @@ export function getRouter(): Router {
 export function createAppRouter(history: RouterHistory): Router {
   _router = createRouter({ history, routes })
 
-  _router.beforeEach((to) => {
+  _router.beforeEach(async (to) => {
     const auth = useAuthStore()
-    if (auth.isLoading) return false
+    if (auth.isLoading) {
+      await new Promise<void>((resolve) => {
+        const stop = watch(
+          () => auth.isLoading,
+          (loading) => { if (!loading) { stop(); resolve() } },
+          { immediate: true },
+        )
+      })
+    }
     return resolveGuard(to, auth)
   })
 
