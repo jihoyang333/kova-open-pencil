@@ -1,5 +1,5 @@
-import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
+import { computed, ref } from 'vue'
 
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/auth'
@@ -14,14 +14,13 @@ export const useCanvasesStore = defineStore('canvases', () => {
 
   const sortedCanvases = computed(() =>
     [...canvases.value].sort(
-      (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime(),
+      (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
     )
   )
 
   const sortedTrashed = computed(() =>
     [...trashedCanvases.value].sort(
-      (a, b) =>
-        new Date(b.trashed_at ?? 0).getTime() - new Date(a.trashed_at ?? 0).getTime(),
+      (a, b) => new Date(b.trashed_at ?? 0).getTime() - new Date(a.trashed_at ?? 0).getTime()
     )
   )
 
@@ -45,11 +44,7 @@ export const useCanvasesStore = defineStore('canvases', () => {
     const row: { brand_id: string; name?: string } = { brand_id: brandId }
     if (name) row.name = name
 
-    const { data, error } = await supabase
-      .from('canvases')
-      .insert(row)
-      .select()
-      .single()
+    const { data, error } = await supabase.from('canvases').insert(row).select().single()
 
     if (error) throw error
     canvases.value = [...canvases.value, data]
@@ -169,6 +164,6 @@ export const useCanvasesStore = defineStore('canvases', () => {
     fetchTrashed,
     confirmMoveToTrash,
     cancelMoveToTrash,
-    executeMoveToTrash,
+    executeMoveToTrash
   }
 })

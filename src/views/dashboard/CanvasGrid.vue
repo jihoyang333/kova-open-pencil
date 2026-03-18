@@ -19,11 +19,14 @@ onMounted(() => {
   void canvasesStore.fetchCanvases(brandId())
 })
 
-watch(() => route.params.brandId, (newBrandId) => {
-  if (typeof newBrandId === 'string') {
-    void canvasesStore.fetchCanvases(newBrandId)
+watch(
+  () => route.params.brandId,
+  (newBrandId) => {
+    if (typeof newBrandId === 'string') {
+      void canvasesStore.fetchCanvases(newBrandId)
+    }
   }
-})
+)
 
 async function handleNewCanvas(): Promise<void> {
   const canvas = await canvasesStore.createCanvas(brandId())

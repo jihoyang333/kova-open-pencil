@@ -1,6 +1,6 @@
-import type { SupabaseClient } from '@supabase/supabase-js'
-
 import { createSupabaseClient } from '@/lib/supabase-factory'
+
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 export { createSupabaseClient, type SupabaseConfig } from '@/lib/supabase-factory'
 
@@ -20,5 +20,5 @@ export function getSupabase(): SupabaseClient {
 export const supabase: SupabaseClient = new Proxy({} as SupabaseClient, {
   get(_target, prop, receiver) {
     return Reflect.get(getSupabase(), prop, receiver)
-  },
+  }
 })

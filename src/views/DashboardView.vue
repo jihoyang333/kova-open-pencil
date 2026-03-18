@@ -22,11 +22,15 @@ onMounted(async () => {
   redirectToFirstBrandIfNeeded()
 })
 
-watch(() => route.params.brandId, (brandId) => {
-  if (typeof brandId === 'string') {
-    brandsStore.selectBrand(brandId)
-  }
-}, { immediate: true })
+watch(
+  () => route.params.brandId,
+  (brandId) => {
+    if (typeof brandId === 'string') {
+      brandsStore.selectBrand(brandId)
+    }
+  },
+  { immediate: true }
+)
 
 function redirectToFirstBrandIfNeeded(): void {
   const atDashboardRoot = route.path === '/dashboard' || route.path === '/dashboard/'
@@ -57,11 +61,10 @@ function redirectToFirstBrandIfNeeded(): void {
 
       <!-- Content -->
       <main class="flex-1 overflow-auto p-6">
-        <div
-          v-if="brandsStore.isLoading"
-          class="flex h-full items-center justify-center"
-        >
-          <div class="size-6 animate-spin rounded-full border-2 border-gray-300 border-t-blue-500" />
+        <div v-if="brandsStore.isLoading" class="flex h-full items-center justify-center">
+          <div
+            class="size-6 animate-spin rounded-full border-2 border-gray-300 border-t-blue-500"
+          />
         </div>
         <router-view v-else />
       </main>

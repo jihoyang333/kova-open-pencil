@@ -48,7 +48,7 @@ export async function captureThumbnail(canvasId: string): Promise<void> {
     if (!userId) return
 
     const canvasEl = document.querySelector<HTMLCanvasElement>(
-      '[data-test-id="editor-canvas"] canvas, canvas.skia',
+      '[data-test-id="editor-canvas"] canvas, canvas.skia'
     )
     if (!canvasEl) return
 
@@ -70,10 +70,7 @@ export async function captureThumbnail(canvasId: string): Promise<void> {
 
     const { data: urlData } = supabase.storage.from('thumbnails').getPublicUrl(path)
 
-    await supabase
-      .from('canvases')
-      .update({ thumbnail_url: urlData.publicUrl })
-      .eq('id', canvasId)
+    await supabase.from('canvases').update({ thumbnail_url: urlData.publicUrl }).eq('id', canvasId)
   } catch (err) {
     console.warn('Thumbnail capture failed:', err)
   }

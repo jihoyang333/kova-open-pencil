@@ -1,5 +1,5 @@
-import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
+import { computed, ref } from 'vue'
 
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/auth'
@@ -15,8 +15,8 @@ export const useBrandsStore = defineStore('brands', () => {
     [...brands.value].sort((a, b) => a.name.localeCompare(b.name))
   )
 
-  const selectedBrand = computed(() =>
-    brands.value.find((b) => b.id === selectedBrandId.value) ?? null
+  const selectedBrand = computed(
+    () => brands.value.find((b) => b.id === selectedBrandId.value) ?? null
   )
 
   function selectBrand(id: string): void {
@@ -52,7 +52,7 @@ export const useBrandsStore = defineStore('brands', () => {
 
   async function updateBrand(
     id: string,
-    updates: Partial<Omit<Brand, 'id' | 'user_id' | 'created_at' | 'updated_at'>>,
+    updates: Partial<Omit<Brand, 'id' | 'user_id' | 'created_at' | 'updated_at'>>
   ): Promise<void> {
     const { data, error } = await supabase
       .from('brands')
@@ -71,10 +71,7 @@ export const useBrandsStore = defineStore('brands', () => {
     if (!userId) throw new Error('Not authenticated')
 
     // Delete thumbnails for all canvases under this brand
-    const { data: canvasRows } = await supabase
-      .from('canvases')
-      .select('id')
-      .eq('brand_id', id)
+    const { data: canvasRows } = await supabase.from('canvases').select('id').eq('brand_id', id)
 
     if (canvasRows && canvasRows.length > 0) {
       const paths = canvasRows.map((c) => `${userId}/${c.id}.png`)
@@ -101,6 +98,6 @@ export const useBrandsStore = defineStore('brands', () => {
     fetchBrands,
     createBrand,
     updateBrand,
-    deleteBrand,
+    deleteBrand
   }
 })

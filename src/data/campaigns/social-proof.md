@@ -66,6 +66,7 @@ Footer
 ## Template Shortlist
 
 <!-- Populated after Phase 3 template curation -->
+
 Hero: [TBD]
 Testimonial: [TBD]
 Product: [TBD]

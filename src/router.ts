@@ -1,5 +1,5 @@
-import { createRouter } from 'vue-router'
 import { watch } from 'vue'
+import { createRouter } from 'vue-router'
 
 import { useAuthStore } from '@/stores/auth'
 
@@ -22,7 +22,7 @@ interface AuthState {
 /** Pure guard logic — returns redirect path or true to allow navigation */
 export function resolveGuard(
   to: { meta: RouteMeta; path: string },
-  auth: AuthState,
+  auth: AuthState
 ): string | true {
   if (to.meta.demo) return true
   if (to.meta.publicOnly && auth.isAuthenticated) return '/dashboard'
@@ -68,19 +68,19 @@ const routes = [
       {
         path: 'trash',
         component: TrashView,
-        meta: { requiresAuth: true, requiresOnboarding: true },
+        meta: { requiresAuth: true, requiresOnboarding: true }
       },
       {
         path: ':brandId',
         component: CanvasGrid,
-        meta: { requiresAuth: true, requiresOnboarding: true },
+        meta: { requiresAuth: true, requiresOnboarding: true }
       },
       {
         path: ':brandId/assets',
         component: BrandAssetsView,
-        meta: { requiresAuth: true, requiresOnboarding: true },
-      },
-    ],
+        meta: { requiresAuth: true, requiresOnboarding: true }
+      }
+    ]
   },
   {
     path: '/editor/:canvasId',
@@ -111,8 +111,13 @@ export function createAppRouter(history: RouterHistory): Router {
       await new Promise<void>((resolve) => {
         const stop = watch(
           () => auth.isLoading,
-          (loading) => { if (!loading) { stop(); resolve() } },
-          { immediate: true },
+          (loading) => {
+            if (!loading) {
+              stop()
+              resolve()
+            }
+          },
+          { immediate: true }
         )
       })
     }

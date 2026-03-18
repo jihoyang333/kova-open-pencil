@@ -11,9 +11,7 @@ export interface SupabaseConfig {
  * Creates a Supabase client with explicit config or env vars.
  * Validates that required config values are present.
  */
-export function createSupabaseClient(
-  config?: SupabaseConfig,
-): SupabaseClient {
+export function createSupabaseClient(config?: SupabaseConfig): SupabaseClient {
   const url = config?.url ?? import.meta.env.VITE_SUPABASE_URL
   const key = config?.key ?? import.meta.env.VITE_SUPABASE_ANON_KEY
 

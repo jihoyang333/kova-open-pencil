@@ -57,9 +57,11 @@ function cancelCreating(): void {
         <button
           :data-test-id="`brand-item-${brand.id}`"
           class="flex w-full items-center rounded-md px-2 py-1.5 text-left text-sm transition-colors"
-          :class="isSelected(brand.id)
-            ? 'bg-gray-100 font-medium text-gray-900'
-            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'"
+          :class="
+            isSelected(brand.id)
+              ? 'bg-gray-100 font-medium text-gray-900'
+              : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+          "
           @click="navigateToBrand(brand.id)"
         >
           <span class="truncate">{{ brand.name }}</span>
@@ -103,9 +105,11 @@ function cancelCreating(): void {
       <button
         data-test-id="trash-link"
         class="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-sm transition-colors"
-        :class="route.path.endsWith('/trash')
-          ? 'bg-gray-100 font-medium text-gray-900'
-          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'"
+        :class="
+          route.path.endsWith('/trash')
+            ? 'bg-gray-100 font-medium text-gray-900'
+            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+        "
         @click="navigateToTrash"
       >
         <icon-lucide-trash-2 class="size-4" />

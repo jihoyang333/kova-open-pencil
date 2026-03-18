@@ -6,7 +6,7 @@ import {
   DialogOverlay,
   DialogPortal,
   DialogRoot,
-  DialogTitle,
+  DialogTitle
 } from 'reka-ui'
 
 import { useCanvasesStore } from '@/stores/canvases'

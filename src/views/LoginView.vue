@@ -102,7 +102,7 @@ async function handleGoogleSignIn() {
             v-model="email"
             type="email"
             data-test-id="login-email-input"
-            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none transition-colors placeholder:text-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 transition-colors outline-none placeholder:text-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
             placeholder="you@company.com"
           />
         </div>
@@ -115,16 +115,12 @@ async function handleGoogleSignIn() {
             v-model="password"
             type="password"
             data-test-id="login-password-input"
-            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none transition-colors placeholder:text-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 transition-colors outline-none placeholder:text-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
             placeholder="••••••••"
           />
         </div>
 
-        <p
-          v-if="error"
-          data-test-id="login-error"
-          class="text-xs text-red-600"
-        >
+        <p v-if="error" data-test-id="login-error" class="text-xs text-red-600">
           {{ error }}
         </p>
 

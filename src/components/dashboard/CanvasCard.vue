@@ -13,7 +13,7 @@ import {
   DropdownMenuPortal,
   DropdownMenuRoot,
   DropdownMenuSeparator,
-  DropdownMenuTrigger,
+  DropdownMenuTrigger
 } from 'reka-ui'
 
 import { useCanvasesStore } from '@/stores/canvases'
@@ -59,8 +59,10 @@ function handleMoveToTrash(): void {
   canvasesStore.confirmMoveToTrash(props.canvas)
 }
 
-const menuItemClass = 'flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm text-gray-700 outline-none select-none data-[highlighted]:bg-gray-100'
-const deleteItemClass = 'flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm text-red-600 outline-none select-none data-[highlighted]:bg-red-50'
+const menuItemClass =
+  'flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm text-gray-700 outline-none select-none data-[highlighted]:bg-gray-100'
+const deleteItemClass =
+  'flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm text-red-600 outline-none select-none data-[highlighted]:bg-red-50'
 const menuContentClass = 'z-50 min-w-36 rounded-lg border border-gray-200 bg-white p-1 shadow-lg'
 </script>
 
@@ -80,10 +82,7 @@ const menuContentClass = 'z-50 min-w-36 rounded-lg border border-gray-200 bg-whi
             :alt="canvas.name"
             class="size-full object-cover"
           />
-          <div
-            v-else
-            class="flex size-full items-center justify-center text-sm text-gray-400"
-          >
+          <div v-else class="flex size-full items-center justify-center text-sm text-gray-400">
             <icon-lucide-file class="size-8" />
           </div>
 
@@ -129,15 +128,10 @@ const menuContentClass = 'z-50 min-w-36 rounded-lg border border-gray-200 bg-whi
             @blur="commitRename"
             @click.stop
           />
-          <p
-            v-else
-            class="truncate text-sm font-medium text-gray-900"
-          >
+          <p v-else class="truncate text-sm font-medium text-gray-900">
             {{ canvas.name }}
           </p>
-          <p class="mt-0.5 text-xs text-gray-500">
-            Edited {{ timeAgo }}
-          </p>
+          <p class="mt-0.5 text-xs text-gray-500">Edited {{ timeAgo }}</p>
         </div>
       </div>
     </ContextMenuTrigger>

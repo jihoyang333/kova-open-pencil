@@ -19,6 +19,7 @@ Footer
 ```
 
 ### Variant: Single Product Spotlight
+
 ```
 Hero (dramatic product reveal)
   ↓
@@ -32,6 +33,7 @@ Footer
 ```
 
 ### Variant: Collection / Lookbook
+
 ```
 Hero (lifestyle image with collection name)
   ↓
@@ -90,6 +92,7 @@ Footer
 ## Template Shortlist
 
 <!-- Populated after Phase 3 template curation -->
+
 Hero: [TBD]
 Bridge: [TBD]
 Product Grid: [TBD]

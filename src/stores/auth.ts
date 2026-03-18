@@ -1,5 +1,5 @@
-import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
+import { computed, ref } from 'vue'
 
 import { supabase } from '@/lib/supabase'
 import { getRouter } from '@/router'
@@ -85,26 +85,20 @@ export const useAuthStore = defineStore('auth', () => {
           user.value = null
           profile.value = null
         }
-      },
+      }
     )
     authSubscription = data.subscription
   }
 
-  async function signIn(
-    email: string,
-    password: string,
-  ): Promise<{ error: AuthError | null }> {
+  async function signIn(email: string, password: string): Promise<{ error: AuthError | null }> {
     const { error } = await supabase.auth.signInWithPassword({
       email,
-      password,
+      password
     })
     return { error }
   }
 
-  async function signUp(
-    email: string,
-    password: string,
-  ): Promise<{ error: AuthError | null }> {
+  async function signUp(email: string, password: string): Promise<{ error: AuthError | null }> {
     const { error } = await supabase.auth.signUp({ email, password })
     return { error }
   }
@@ -112,7 +106,7 @@ export const useAuthStore = defineStore('auth', () => {
   async function signInWithGoogle(): Promise<{ error: AuthError | null }> {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: window.location.origin },
+      options: { redirectTo: window.location.origin }
     })
     return { error }
   }
@@ -142,6 +136,6 @@ export const useAuthStore = defineStore('auth', () => {
     signInWithGoogle,
     signOut,
     fetchProfile,
-    dispose,
+    dispose
   }
 })

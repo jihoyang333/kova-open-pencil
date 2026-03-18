@@ -12,7 +12,10 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <div data-test-id="empty-state" class="flex flex-col items-center justify-center py-20 text-center">
+  <div
+    data-test-id="empty-state"
+    class="flex flex-col items-center justify-center py-20 text-center"
+  >
     <div class="mb-4 flex size-12 items-center justify-center rounded-full bg-gray-100">
       <icon-lucide-file-plus class="size-6 text-gray-400" />
     </div>

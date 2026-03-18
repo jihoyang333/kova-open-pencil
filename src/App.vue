@@ -23,11 +23,7 @@ onMounted(() => {
     data-test-id="app-loading-overlay"
     class="flex min-h-screen items-center justify-center bg-white"
   >
-    <img
-      src="/favicon-128.png"
-      :alt="APP_NAME"
-      class="size-12 animate-pulse rounded-xl"
-    />
+    <img src="/favicon-128.png" :alt="APP_NAME" class="size-12 animate-pulse rounded-xl" />
   </div>
 
   <!-- App ready -->

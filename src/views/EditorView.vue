@@ -89,7 +89,7 @@ if (canvasId) {
       if (newName !== loadedName) {
         loadedName = ''
       }
-    },
+    }
   )
 
   // Capture thumbnail on leave (non-blocking)

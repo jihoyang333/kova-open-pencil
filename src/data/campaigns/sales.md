@@ -19,6 +19,7 @@ Footer
 ```
 
 ### Variant: Flash Sale
+
 ```
 Hero (bold discount + "Ends Tonight" / time-limited message)
   ↓
@@ -30,6 +31,7 @@ Footer
 ```
 
 ### Variant: Teaser → Launch
+
 ```
 Teaser Email: "Something big is coming..." (founder text style, minimal design)
   ↓
@@ -85,6 +87,7 @@ Launch Email: Clean hero with offer + product grid + deadline
 ## Template Shortlist
 
 <!-- Populated after Phase 3 template curation -->
+
 Hero: [TBD]
 Product Grid: [TBD]
 Urgency Section: [TBD]

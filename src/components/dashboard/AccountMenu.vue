@@ -4,7 +4,7 @@ import {
   DropdownMenuItem,
   DropdownMenuPortal,
   DropdownMenuRoot,
-  DropdownMenuTrigger,
+  DropdownMenuTrigger
 } from 'reka-ui'
 
 import { useAuthStore } from '@/stores/auth'

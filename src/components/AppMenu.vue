@@ -62,7 +62,7 @@ interface MenuItem {
 const fileMenu: MenuItem[] = [
   {
     label: 'Back to Dashboard',
-    action: () => void getRouter().push('/dashboard'),
+    action: () => void getRouter().push('/dashboard')
   },
   { separator: true },
   {
