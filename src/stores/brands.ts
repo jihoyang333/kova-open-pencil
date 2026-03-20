@@ -104,18 +104,14 @@ export const useBrandsStore = defineStore('brands', () => {
 
     const insertData: Record<string, unknown> = {
       user_id: userId,
-      name: input.name,
+      name: input.name
     }
     if (input.colors) insertData.colors = input.colors
     if (input.fonts) insertData.fonts = input.fonts
     if (input.voice) insertData.voice = input.voice
     if (input.logoUrl && !input.logoFile) insertData.logo_url = input.logoUrl
 
-    const { data, error } = await supabase
-      .from('brands')
-      .insert(insertData)
-      .select()
-      .single()
+    const { data, error } = await supabase.from('brands').insert(insertData).select().single()
 
     if (error) throw error
 
@@ -131,9 +127,7 @@ export const useBrandsStore = defineStore('brands', () => {
         .upload(path, input.logoFile, { upsert: true })
 
       if (!uploadError) {
-        const { data: urlData } = supabase.storage
-          .from('brand-logos')
-          .getPublicUrl(path)
+        const { data: urlData } = supabase.storage.from('brand-logos').getPublicUrl(path)
 
         const { data: updated, error: updateError } = await supabase
           .from('brands')
@@ -163,6 +157,6 @@ export const useBrandsStore = defineStore('brands', () => {
     createBrand,
     updateBrand,
     deleteBrand,
-    createBrandFull,
+    createBrandFull
   }
 })

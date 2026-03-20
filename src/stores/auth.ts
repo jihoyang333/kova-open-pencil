@@ -127,10 +127,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function updateName(newName: string): Promise<void> {
     if (!user.value) return
-    const { error } = await supabase
-      .from('users')
-      .update({ name: newName })
-      .eq('id', user.value.id)
+    const { error } = await supabase.from('users').update({ name: newName }).eq('id', user.value.id)
     if (error) throw error
     if (profile.value) {
       profile.value = { ...profile.value, name: newName }

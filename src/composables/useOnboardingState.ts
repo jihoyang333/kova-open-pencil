@@ -19,13 +19,20 @@ export function useOnboardingState() {
 
   const canProceed = computed(() => {
     switch (currentStep.value) {
-      case 1: return true
-      case 2: return name.value.trim().length > 0
-      case 3: return brandName.value.trim().length > 0
-      case 4: return isValidUrl(brandUrl.value)
-      case 5: return true
-      case 6: return true
-      default: return false
+      case 1:
+        return true
+      case 2:
+        return name.value.trim().length > 0
+      case 3:
+        return brandName.value.trim().length > 0
+      case 4:
+        return isValidUrl(brandUrl.value)
+      case 5:
+        return true
+      case 6:
+        return true
+      default:
+        return false
     }
   })
 
@@ -67,6 +74,6 @@ export function useOnboardingState() {
     next,
     back,
     goTo,
-    skipToReview,
+    skipToReview
   }
 }
