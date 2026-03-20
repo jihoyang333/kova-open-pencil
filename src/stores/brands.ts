@@ -4,7 +4,7 @@ import { computed, ref } from 'vue'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/auth'
 
-import type { Brand } from '@/types/kova/database'
+import type { Brand, BrandColors, BrandFonts } from '@/types/kova/database'
 
 export const useBrandsStore = defineStore('brands', () => {
   const brands = ref<Brand[]>([])
@@ -88,6 +88,70 @@ export const useBrandsStore = defineStore('brands', () => {
     }
   }
 
+  interface CreateBrandFullInput {
+    name: string
+    colors?: BrandColors | null
+    fonts?: BrandFonts | null
+    logoFile?: File | null
+    logoUrl?: string | null
+    voice?: string | null
+  }
+
+  async function createBrandFull(input: CreateBrandFullInput): Promise<Brand> {
+    const authStore = useAuthStore()
+    const userId = authStore.user?.id
+    if (!userId) throw new Error('Not authenticated')
+
+    const insertData: Record<string, unknown> = {
+      user_id: userId,
+      name: input.name,
+    }
+    if (input.colors) insertData.colors = input.colors
+    if (input.fonts) insertData.fonts = input.fonts
+    if (input.voice) insertData.voice = input.voice
+    if (input.logoUrl && !input.logoFile) insertData.logo_url = input.logoUrl
+
+    const { data, error } = await supabase
+      .from('brands')
+      .insert(insertData)
+      .select()
+      .single()
+
+    if (error) throw error
+
+    let finalBrand = data
+
+    // Upload logo file if provided
+    if (input.logoFile) {
+      const ext = input.logoFile.name.split('.').pop() ?? 'png'
+      const path = `${userId}/${data.id}.${ext}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('brand-logos')
+        .upload(path, input.logoFile, { upsert: true })
+
+      if (!uploadError) {
+        const { data: urlData } = supabase.storage
+          .from('brand-logos')
+          .getPublicUrl(path)
+
+        const { data: updated, error: updateError } = await supabase
+          .from('brands')
+          .update({ logo_url: urlData.publicUrl })
+          .eq('id', data.id)
+          .select()
+          .single()
+
+        if (!updateError && updated) {
+          finalBrand = updated
+        }
+      }
+    }
+
+    brands.value = [...brands.value, finalBrand]
+    return finalBrand
+  }
+
   return {
     brands,
     isLoading,
@@ -98,6 +162,7 @@ export const useBrandsStore = defineStore('brands', () => {
     fetchBrands,
     createBrand,
     updateBrand,
-    deleteBrand
+    deleteBrand,
+    createBrandFull,
   }
 })
