@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, provide } from 'vue'
+import { computed, provide, ref } from 'vue'
 
+import { completeOnboarding } from '@/composables/useOnboardingComplete'
 import { useOnboardingState } from '@/composables/useOnboardingState'
 
 import BrandCard from '@/components/onboarding/BrandCard.vue'
@@ -15,14 +16,21 @@ import WelcomeStep from '@/components/onboarding/WelcomeStep.vue'
 const state = useOnboardingState()
 provide('onboardingState', state)
 
+const isFinishing = ref(false)
+const finishError = ref<string | null>(null)
+
 const showBackButton = computed(() => state.currentStep.value > 1 && state.currentStep.value <= 6)
 const showContinueButton = computed(() => {
   // Welcome has "Get Started" inside the step; Extraction auto-advances; Screen 7 is not visible
   return state.currentStep.value >= 2 && state.currentStep.value <= 4
 })
 const showFinishButton = computed(() => state.currentStep.value === 6)
-const showRightEmailWireframe = computed(() => state.currentStep.value >= 1 && state.currentStep.value <= 4)
-const showRightBrandCard = computed(() => state.currentStep.value >= 5 && state.currentStep.value <= 6)
+const showRightEmailWireframe = computed(
+  () => state.currentStep.value >= 1 && state.currentStep.value <= 4
+)
+const showRightBrandCard = computed(
+  () => state.currentStep.value >= 5 && state.currentStep.value <= 6
+)
 
 const filledSegments = computed(() => {
   return Math.min(state.currentStep.value, 6)
@@ -39,14 +47,31 @@ function handleKeydown(e: KeyboardEvent): void {
     handleContinue()
   }
 }
+
+async function handleFinish(): Promise<void> {
+  isFinishing.value = true
+  finishError.value = null
+
+  try {
+    await completeOnboarding({
+      name: state.name.value,
+      brandName: state.brandName.value,
+      colors: state.colors.value,
+      fonts: state.fonts.value,
+      voice: state.voice.value,
+      logoFile: state.logoFile.value,
+      logoUrl: state.logoUrl.value
+    })
+  } catch (err) {
+    finishError.value = err instanceof Error ? err.message : 'Something went wrong'
+  } finally {
+    isFinishing.value = false
+  }
+}
 </script>
 
 <template>
-  <div
-    data-test-id="onboarding-view"
-    class="flex h-screen"
-    @keydown="handleKeydown"
-  >
+  <div data-test-id="onboarding-view" class="flex h-screen" @keydown="handleKeydown">
     <!-- Left panel (38%) — white -->
     <div class="relative flex w-[38%] flex-col bg-white px-12 py-8">
       <!-- Back arrow -->
@@ -92,6 +117,19 @@ function handleKeydown(e: KeyboardEvent): void {
         >
           Continue
         </button>
+
+        <!-- Finish Setup button -->
+        <div v-if="showFinishButton" class="flex flex-col items-end">
+          <button
+            data-test-id="onboarding-finish"
+            class="rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-medium text-white transition-opacity disabled:opacity-40"
+            :disabled="isFinishing"
+            @click="handleFinish"
+          >
+            {{ isFinishing ? 'Setting up...' : 'Finish Setup' }}
+          </button>
+          <p v-if="finishError" class="mt-2 text-sm text-red-500">{{ finishError }}</p>
+        </div>
       </div>
     </div>
 
