@@ -15,6 +15,7 @@ const confirmPassword = ref('')
 const error = ref('')
 const googleError = ref('')
 const isSubmitting = ref(false)
+const emailSent = ref(false)
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -40,7 +41,15 @@ async function handleSubmit() {
       error.value = authError.message
       return
     }
-    void router.push('/onboarding')
+
+    // If session exists (email confirmation disabled), navigate directly
+    if (auth.isAuthenticated) {
+      void router.push('/onboarding')
+      return
+    }
+
+    // Email confirmation required — show confirmation screen
+    emailSent.value = true
   } finally {
     isSubmitting.value = false
   }
@@ -60,13 +69,38 @@ async function handleGoogleSignIn() {
     data-test-id="signup-view"
     class="flex min-h-screen items-center justify-center bg-white px-4"
   >
-    <div class="w-full max-w-sm">
+    <!-- Email confirmation screen -->
+    <div v-if="emailSent" class="w-full max-w-sm text-center">
+      <div class="mb-6 flex flex-col items-center gap-3">
+        <div class="flex size-14 items-center justify-center rounded-full bg-blue-50">
+          <icon-lucide-mail class="size-7 text-blue-600" />
+        </div>
+        <h1 class="text-2xl font-semibold tracking-tight text-gray-900">Check your email</h1>
+      </div>
+
+      <p class="mb-2 text-sm text-gray-600">We sent a confirmation link to</p>
+      <p class="mb-6 text-sm font-medium text-gray-900">
+        {{ email }}
+      </p>
+      <p class="mb-8 text-sm text-gray-500">
+        Click the link in the email to verify your account, then come back here to log in.
+      </p>
+
+      <RouterLink
+        to="/login"
+        data-test-id="signup-back-to-login"
+        class="inline-block w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+      >
+        Back to log in
+      </RouterLink>
+    </div>
+
+    <!-- Signup form -->
+    <div v-else class="w-full max-w-sm">
       <!-- Logo + wordmark -->
       <div class="mb-8 flex flex-col items-center gap-3">
         <img src="/favicon-128.png" class="size-12 rounded-xl" :alt="APP_NAME" />
-        <h1 class="text-2xl font-semibold tracking-tight text-gray-900">
-          Create your account
-        </h1>
+        <h1 class="text-2xl font-semibold tracking-tight text-gray-900">Create your account</h1>
       </div>
 
       <!-- Google OAuth -->
@@ -104,7 +138,7 @@ async function handleGoogleSignIn() {
             v-model="email"
             type="email"
             data-test-id="signup-email-input"
-            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none transition-colors placeholder:text-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 transition-colors outline-none placeholder:text-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
             placeholder="you@company.com"
           />
         </div>
@@ -117,7 +151,7 @@ async function handleGoogleSignIn() {
             v-model="password"
             type="password"
             data-test-id="signup-password-input"
-            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none transition-colors placeholder:text-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 transition-colors outline-none placeholder:text-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
             placeholder="••••••••"
           />
         </div>
@@ -130,16 +164,12 @@ async function handleGoogleSignIn() {
             v-model="confirmPassword"
             type="password"
             data-test-id="signup-confirm-input"
-            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none transition-colors placeholder:text-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 transition-colors outline-none placeholder:text-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
             placeholder="••••••••"
           />
         </div>
 
-        <p
-          v-if="error"
-          data-test-id="signup-error"
-          class="text-xs text-red-600"
-        >
+        <p v-if="error" data-test-id="signup-error" class="text-xs text-red-600">
           {{ error }}
         </p>
 

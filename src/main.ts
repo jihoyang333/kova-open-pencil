@@ -1,5 +1,5 @@
-import { createPinia } from 'pinia'
 import { createHead } from '@unhead/vue/client'
+import { createPinia } from 'pinia'
 import { createApp } from 'vue'
 import { createWebHistory } from 'vue-router'
 
@@ -25,6 +25,13 @@ app.use(pinia).use(router).use(head)
 const auth = useAuthStore()
 void auth.initialize().finally(() => {
   app.mount('#app')
+
+  // Remove the static HTML loader from index.html
+  const loader = document.getElementById('loader')
+  if (loader) {
+    loader.classList.add('fade-out')
+    loader.addEventListener('transitionend', () => loader.remove())
+  }
 })
 
 if (!IS_TAURI) {

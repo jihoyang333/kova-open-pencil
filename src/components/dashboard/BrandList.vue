@@ -27,6 +27,10 @@ function navigateToTrash(): void {
   void router.push('/dashboard/trash')
 }
 
+function navigateToSettings(): void {
+  void router.push('/dashboard/settings')
+}
+
 function startCreating(): void {
   isCreating.value = true
   newBrandName.value = ''
@@ -119,6 +123,19 @@ function cancelCreating(): void {
       >
         <icon-lucide-trash-2 class="size-4" />
         Trash
+      </button>
+      <button
+        data-test-id="settings-link"
+        class="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-sm transition-colors"
+        :class="
+          route.path.endsWith('/settings')
+            ? 'bg-gray-100 font-medium text-gray-900'
+            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+        "
+        @click="navigateToSettings"
+      >
+        <icon-lucide-settings class="size-4" />
+        Settings
       </button>
     </div>
   </nav>

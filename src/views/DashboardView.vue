@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 
 import AccountMenu from '@/components/dashboard/AccountMenu.vue'
 import BrandList from '@/components/dashboard/BrandList.vue'
+import EmptyState from '@/components/dashboard/EmptyState.vue'
 import { useBrandsStore } from '@/stores/brands'
 
 const route = useRoute()
@@ -31,6 +32,15 @@ watch(
   },
   { immediate: true }
 )
+
+async function handleNewBrand(): Promise<void> {
+  try {
+    const brand = await brandsStore.createBrand('My Brand')
+    void router.push(`/dashboard/${brand.id}`)
+  } catch (error) {
+    console.error('Failed to create brand:', error)
+  }
+}
 
 function redirectToFirstBrandIfNeeded(): void {
   const atDashboardRoot = route.path === '/dashboard' || route.path === '/dashboard/'
@@ -66,6 +76,13 @@ function redirectToFirstBrandIfNeeded(): void {
             class="size-6 animate-spin rounded-full border-2 border-gray-300 border-t-blue-500"
           />
         </div>
+        <EmptyState
+          v-else-if="brandsStore.sortedBrands.length === 0"
+          title="Create your first brand"
+          description="Organize your email designs by brand. Start by creating a new brand."
+          action-label="New Brand"
+          @action="handleNewBrand"
+        />
         <router-view v-else />
       </main>
     </div>

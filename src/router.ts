@@ -13,6 +13,7 @@ const EditorView = () => import('./views/EditorView.vue')
 const CanvasGrid = () => import('./views/dashboard/CanvasGrid.vue')
 const TrashView = () => import('./views/dashboard/TrashView.vue')
 const BrandAssetsView = () => import('./views/dashboard/BrandAssetsView.vue')
+const SettingsView = () => import('./views/dashboard/SettingsView.vue')
 
 interface AuthState {
   isAuthenticated: boolean
@@ -71,6 +72,11 @@ const routes = [
         meta: { requiresAuth: true, requiresOnboarding: true }
       },
       {
+        path: 'settings',
+        component: SettingsView,
+        meta: { requiresAuth: true, requiresOnboarding: true }
+      },
+      {
         path: ':brandId',
         component: CanvasGrid,
         meta: { requiresAuth: true, requiresOnboarding: true }
@@ -81,6 +87,10 @@ const routes = [
         meta: { requiresAuth: true, requiresOnboarding: true }
       }
     ]
+  },
+  {
+    path: '/editor',
+    redirect: '/dashboard'
   },
   {
     path: '/editor/:canvasId',
