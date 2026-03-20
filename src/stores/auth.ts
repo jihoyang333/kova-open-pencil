@@ -7,6 +7,7 @@ import { getRouter } from '@/router'
 import type { Session, User, AuthError } from '@supabase/supabase-js'
 
 interface UserProfile {
+  name: string | null
   onboarded: boolean
   plan: string
 }
@@ -38,7 +39,7 @@ export const useAuthStore = defineStore('auth', () => {
 
     const { data, error } = await supabase
       .from('users')
-      .select('onboarded, plan')
+      .select('name, onboarded, plan')
       .eq('id', user.value.id)
       .single()
 
@@ -91,10 +92,15 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function signIn(email: string, password: string): Promise<{ error: AuthError | null }> {
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password
     })
+    if (!error && data.session) {
+      session.value = data.session
+      user.value = data.session.user
+      await fetchProfile()
+    }
     return { error }
   }
 
@@ -119,6 +125,18 @@ export const useAuthStore = defineStore('auth', () => {
     void getRouter().push('/login')
   }
 
+  async function updateName(newName: string): Promise<void> {
+    if (!user.value) return
+    const { error } = await supabase
+      .from('users')
+      .update({ name: newName })
+      .eq('id', user.value.id)
+    if (error) throw error
+    if (profile.value) {
+      profile.value = { ...profile.value, name: newName }
+    }
+  }
+
   function dispose(): void {
     authSubscription?.unsubscribe()
   }
@@ -136,6 +154,7 @@ export const useAuthStore = defineStore('auth', () => {
     signInWithGoogle,
     signOut,
     fetchProfile,
+    updateName,
     dispose
   }
 })
