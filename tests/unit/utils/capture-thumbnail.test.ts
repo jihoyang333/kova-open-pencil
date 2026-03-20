@@ -25,15 +25,15 @@ mock.module('@/lib/supabase', () => ({
   supabase: {
     from: mockFrom,
     storage: { from: mockStorageFrom },
+    auth: {
+      getSession: mock(() => Promise.resolve({ data: { session: null }, error: null })),
+      onAuthStateChange: mock(() => ({ data: { subscription: { unsubscribe: () => {} } } })),
+    },
   },
 }))
 
-const mockAuthStore = { user: { id: 'user-1' } }
-mock.module('@/stores/auth', () => ({
-  useAuthStore: () => mockAuthStore,
-}))
-
 const { captureThumbnail } = await import('@/utils/capture-thumbnail')
+const { useAuthStore } = await import('@/stores/auth')
 
 describe('captureThumbnail', () => {
   beforeEach(() => {
@@ -43,6 +43,8 @@ describe('captureThumbnail', () => {
     mockStorageFrom.mockClear()
     mockFrom.mockClear()
     mockUpdate.mockClear()
+    const authStore = useAuthStore()
+    authStore.user = { id: 'user-1' } as any
   })
 
   test('does nothing if no canvas element found', async () => {
@@ -52,15 +54,14 @@ describe('captureThumbnail', () => {
   })
 
   test('does nothing if user is not authenticated', async () => {
-    mockAuthStore.user = null as any
+    const authStore = useAuthStore()
+    authStore.user = null
     await captureThumbnail('c1')
     expect(mockUpload).not.toHaveBeenCalled()
-    mockAuthStore.user = { id: 'user-1' } as any
   })
 
   test('catches errors silently when canvas returns null blob', async () => {
     const consoleSpy = spyOn(console, 'warn').mockImplementation(() => {})
-    mockAuthStore.user = { id: 'user-1' } as any
 
     // Provide a minimal document mock with a fake canvas element
     const fakeCanvas = {

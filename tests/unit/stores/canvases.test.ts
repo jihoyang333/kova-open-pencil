@@ -10,15 +10,15 @@ mock.module('@/lib/supabase', () => ({
   supabase: {
     from: mockFrom,
     storage: { from: mockStorageFrom },
+    auth: {
+      getSession: mock(() => Promise.resolve({ data: { session: null }, error: null })),
+      onAuthStateChange: mock(() => ({ data: { subscription: { unsubscribe: () => {} } } })),
+    },
   },
 }))
 
-const mockAuthStore = { user: { id: 'user-1' } }
-mock.module('@/stores/auth', () => ({
-  useAuthStore: () => mockAuthStore,
-}))
-
 const { useCanvasesStore } = await import('@/stores/canvases')
+const { useAuthStore } = await import('@/stores/auth')
 
 const makeCanvas = (overrides: Record<string, unknown> = {}) => ({
   id: 'c1',
@@ -36,6 +36,8 @@ describe('canvases store', () => {
     setActivePinia(createPinia())
     mockFrom.mockClear()
     mockStorageFrom.mockClear()
+    const authStore = useAuthStore()
+    authStore.user = { id: 'user-1' } as any
   })
 
   test('starts with empty canvases', () => {

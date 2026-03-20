@@ -12,22 +12,16 @@ mock.module('@/lib/supabase', () => ({
   supabase: {
     from: mockFrom,
     storage: { from: mockStorageFrom },
+    auth: {
+      getSession: mock(() => Promise.resolve({ data: { session: null }, error: null })),
+      onAuthStateChange: mock(() => ({ data: { subscription: { unsubscribe: () => {} } } })),
+    },
   },
 }))
 
 const mockPush = mock(() => {})
 mock.module('@/router', () => ({
   getRouter: () => ({ push: mockPush }),
-}))
-
-const mockAuthStore = {
-  user: { id: 'user-1' },
-  profile: { name: null, onboarded: false, plan: 'free' },
-  fetchProfile: mock(() => Promise.resolve()),
-  updateName: mock(() => Promise.resolve()),
-}
-mock.module('@/stores/auth', () => ({
-  useAuthStore: () => mockAuthStore,
 }))
 
 const mockBrandsStore = {
@@ -45,16 +39,28 @@ mock.module('@/stores/canvases', () => ({
 }))
 
 const { completeOnboarding } = await import('@/composables/useOnboardingComplete')
+const { useAuthStore } = await import('@/stores/auth')
+
+// Mock functions to replace on the real auth store
+const mockUpdateName = mock(() => Promise.resolve())
+const mockFetchProfile = mock(() => Promise.resolve())
 
 describe('completeOnboarding', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     mockFrom.mockClear()
     mockPush.mockClear()
-    mockAuthStore.updateName.mockClear()
+    mockUpdateName.mockClear()
+    mockFetchProfile.mockClear()
     mockBrandsStore.createBrandFull.mockClear()
     mockCanvasesStore.createCanvas.mockClear()
-    mockAuthStore.fetchProfile.mockClear()
+
+    // Set up the real auth store with a test user and mocked methods
+    const authStore = useAuthStore()
+    authStore.user = { id: 'user-1' } as any
+    authStore.profile = { name: null, onboarded: false, plan: 'free' }
+    authStore.updateName = mockUpdateName as any
+    authStore.fetchProfile = mockFetchProfile as any
   })
 
   test('saves name, creates brand, creates canvas, sets onboarded, redirects to editor', async () => {
@@ -75,7 +81,7 @@ describe('completeOnboarding', () => {
       logoUrl: null,
     })
 
-    expect(mockAuthStore.updateName).toHaveBeenCalledWith('Jiho')
+    expect(mockUpdateName).toHaveBeenCalledWith('Jiho')
     expect(mockBrandsStore.createBrandFull).toHaveBeenCalledWith({
       name: 'Kova',
       colors: { primary: '#000', secondary: '#fff', accent: '#f00', background: '#eee' },
@@ -90,7 +96,7 @@ describe('completeOnboarding', () => {
   })
 
   test('throws on error and does not redirect', async () => {
-    mockAuthStore.updateName.mockImplementationOnce(() => Promise.reject(new Error('Failed')))
+    mockUpdateName.mockImplementationOnce(() => Promise.reject(new Error('Failed')))
 
     await expect(
       completeOnboarding({
@@ -108,8 +114,8 @@ describe('completeOnboarding', () => {
   })
 
   test('throws when user is not authenticated', async () => {
-    const originalUser = mockAuthStore.user
-    mockAuthStore.user = null as never
+    const authStore = useAuthStore()
+    authStore.user = null
 
     await expect(
       completeOnboarding({
@@ -124,6 +130,5 @@ describe('completeOnboarding', () => {
     ).rejects.toThrow('Not authenticated')
 
     expect(mockPush).not.toHaveBeenCalled()
-    mockAuthStore.user = originalUser
   })
 })

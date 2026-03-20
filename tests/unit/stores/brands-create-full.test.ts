@@ -12,21 +12,23 @@ mock.module('@/lib/supabase', () => ({
   supabase: {
     from: mockFrom,
     storage: { from: mockStorageFrom },
+    auth: {
+      getSession: mock(() => Promise.resolve({ data: { session: null }, error: null })),
+      onAuthStateChange: mock(() => ({ data: { subscription: { unsubscribe: () => {} } } })),
+    },
   },
 }))
 
-const mockAuthStore = { user: { id: 'user-1', email: 'test@test.com' } }
-mock.module('@/stores/auth', () => ({
-  useAuthStore: () => mockAuthStore,
-}))
-
 const { useBrandsStore } = await import('@/stores/brands')
+const { useAuthStore } = await import('@/stores/auth')
 
 describe('brands store - createBrandFull', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     mockFrom.mockClear()
     mockStorageFrom.mockClear()
+    const authStore = useAuthStore()
+    authStore.user = { id: 'user-1', email: 'test@test.com' } as any
   })
 
   test('creates brand with all fields', async () => {

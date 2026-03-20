@@ -1,7 +1,7 @@
 import { describe, test, expect, beforeEach, mock } from 'bun:test'
 import { setActivePinia, createPinia } from 'pinia'
 
-// Mock supabase
+// Mock supabase (including auth methods needed by real auth store)
 const mockFrom = mock(() => ({}))
 const mockStorageFrom = mock(() => ({
   remove: mock(() => Promise.resolve({ error: null })),
@@ -11,22 +11,23 @@ mock.module('@/lib/supabase', () => ({
   supabase: {
     from: mockFrom,
     storage: { from: mockStorageFrom },
+    auth: {
+      getSession: mock(() => Promise.resolve({ data: { session: null }, error: null })),
+      onAuthStateChange: mock(() => ({ data: { subscription: { unsubscribe: () => {} } } })),
+    },
   },
 }))
 
-// Mock auth store — provide a test user
-const mockAuthStore = { user: { id: 'user-1', email: 'test@test.com' } }
-mock.module('@/stores/auth', () => ({
-  useAuthStore: () => mockAuthStore,
-}))
-
 const { useBrandsStore } = await import('@/stores/brands')
+const { useAuthStore } = await import('@/stores/auth')
 
 describe('brands store', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     mockFrom.mockClear()
     mockStorageFrom.mockClear()
+    const authStore = useAuthStore()
+    authStore.user = { id: 'user-1', email: 'test@test.com' } as any
   })
 
   test('starts with empty brands and isLoading false', () => {
@@ -178,12 +179,10 @@ describe('brands store', () => {
   })
 
   test('createBrand throws when not authenticated', async () => {
-    const originalUser = mockAuthStore.user
-    mockAuthStore.user = null as any
+    const authStore = useAuthStore()
+    authStore.user = null
 
     const store = useBrandsStore()
     await expect(store.createBrand('Test')).rejects.toThrow('Not authenticated')
-
-    mockAuthStore.user = originalUser
   })
 })
