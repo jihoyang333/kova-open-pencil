@@ -3,6 +3,7 @@ import { inject, onMounted, ref } from 'vue'
 
 import type { useOnboardingState } from '@/composables/useOnboardingState'
 import type { BrandColors, BrandFonts } from '@/types/kova/database'
+import { normalizeUrl } from '@/utils/onboarding-validators'
 
 const state = inject('onboardingState') as ReturnType<typeof useOnboardingState>
 const emit = defineEmits<{ complete: [] }>()
@@ -14,7 +15,15 @@ interface ExtractionItem {
   result?: string
 }
 
-// Reviewer fix #3: Use ref() with immutable updates instead of reactive() with mutations
+interface ExtractBrandResponse {
+  logo_url: string | null
+  colors: { primary: string; secondary: string; accent: string; background: string }
+  fonts: { heading: string | null; body: string | null }
+}
+
+// Use mock data when Supabase isn't configured (local dev without APIs)
+const USE_MOCK = !import.meta.env.VITE_SUPABASE_URL
+
 const items = ref<ExtractionItem[]>([
   { id: 'logo', label: 'Finding your logo...', status: 'pending' },
   { id: 'colors', label: 'Extracting brand colors...', status: 'pending' },
@@ -25,7 +34,6 @@ const items = ref<ExtractionItem[]>([
 const allDone = ref(false)
 const showContinue = ref(false)
 
-// Mock extraction data — will be replaced with real API calls in Task 16
 const MOCK_RESULTS = {
   logoUrl: 'https://placehold.co/100x100/2563eb/white?text=Logo',
   colors: {
@@ -42,20 +50,21 @@ function updateItem(id: string, updates: Partial<ExtractionItem>): void {
   items.value = items.value.map((item) => (item.id === id ? { ...item, ...updates } : item))
 }
 
-async function runExtraction(): Promise<void> {
-  // Item 1: Logo
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+async function runMockExtraction(): Promise<void> {
   updateItem('logo', { status: 'loading' })
   await delay(800)
   state.logoUrl.value = MOCK_RESULTS.logoUrl
   updateItem('logo', { status: 'done', result: 'Logo found' })
 
-  // Item 2: Colors
   updateItem('colors', { status: 'loading' })
   await delay(1000)
   state.colors.value = MOCK_RESULTS.colors
   updateItem('colors', { status: 'done' })
 
-  // Item 3: Fonts
   updateItem('fonts', { status: 'loading' })
   await delay(700)
   state.fonts.value = MOCK_RESULTS.fonts
@@ -64,27 +73,113 @@ async function runExtraction(): Promise<void> {
     result: `${MOCK_RESULTS.fonts.heading}, ${MOCK_RESULTS.fonts.body}`
   })
 
-  // Item 4: Voice
   updateItem('voice', { status: 'loading' })
   await delay(900)
   state.voice.value = MOCK_RESULTS.voice
   updateItem('voice', { status: 'done', result: MOCK_RESULTS.voice })
 
   allDone.value = true
-
-  // Auto-advance after 1.5s
   await delay(1500)
   if (allDone.value) {
     emit('complete')
   }
 }
 
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
+let cachedBrandData: ExtractBrandResponse | null = null
+
+async function fetchBrandData(url: string): Promise<ExtractBrandResponse> {
+  if (cachedBrandData) return cachedBrandData
+  const res = await fetch('/api/extract-brand', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url }),
+  })
+  if (!res.ok) throw new Error('Extraction failed')
+  const data = (await res.json()) as ExtractBrandResponse
+  cachedBrandData = data
+  return data
+}
+
+async function fetchWritingStyle(url: string): Promise<{ writing_style: string | null }> {
+  const res = await fetch('/api/analyze-writing-style', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url }),
+  })
+  if (!res.ok) throw new Error('Analysis failed')
+  return res.json() as Promise<{ writing_style: string | null }>
+}
+
+async function runRealExtraction(): Promise<void> {
+  const url = normalizeUrl(state.brandUrl.value)
+
+  // Start both API calls in parallel
+  const brandPromise = fetchBrandData(url)
+  const voicePromise = fetchWritingStyle(url)
+
+  // Logo
+  updateItem('logo', { status: 'loading' })
+  try {
+    const brandData = await brandPromise
+    state.logoUrl.value = brandData.logo_url
+    updateItem('logo', {
+      status: 'done',
+      result: brandData.logo_url ? 'Logo found' : 'No logo found'
+    })
+  } catch {
+    updateItem('logo', { status: 'error' })
+  }
+
+  // Colors (from same cached brand response)
+  updateItem('colors', { status: 'loading' })
+  try {
+    const brandData = await brandPromise
+    state.colors.value = brandData.colors as BrandColors
+    updateItem('colors', { status: 'done' })
+  } catch {
+    updateItem('colors', { status: 'error' })
+  }
+
+  // Fonts (from same cached brand response)
+  updateItem('fonts', { status: 'loading' })
+  try {
+    const brandData = await brandPromise
+    state.fonts.value = brandData.fonts as BrandFonts
+    const fontResult = [brandData.fonts.heading, brandData.fonts.body].filter(Boolean).join(', ')
+    updateItem('fonts', {
+      status: 'done',
+      result: fontResult || undefined
+    })
+  } catch {
+    updateItem('fonts', { status: 'error' })
+  }
+
+  // Voice (from separate API call)
+  updateItem('voice', { status: 'loading' })
+  try {
+    const voiceData = await voicePromise
+    state.voice.value = voiceData.writing_style
+    updateItem('voice', {
+      status: voiceData.writing_style ? 'done' : 'error',
+      result: voiceData.writing_style ?? undefined
+    })
+  } catch {
+    updateItem('voice', { status: 'error' })
+  }
+
+  allDone.value = true
+  await delay(1500)
+  if (allDone.value) {
+    emit('complete')
+  }
 }
 
 onMounted(() => {
-  void runExtraction()
+  if (USE_MOCK) {
+    void runMockExtraction()
+  } else {
+    void runRealExtraction()
+  }
 
   // Show manual continue button after timeout as fallback
   setTimeout(() => {
