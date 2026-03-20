@@ -70,6 +70,38 @@ describe('resolveGuard', () => {
     )
     expect(result).toBe(true)
   })
+
+  test('non-onboarded user redirected from /editor to /onboarding', () => {
+    const result = resolveGuard(
+      { meta: { requiresAuth: true, requiresOnboarding: true }, path: '/editor/some-id' },
+      authedNotOnboarded,
+    )
+    expect(result).toBe('/onboarding')
+  })
+
+  test('onboarded user can access /editor', () => {
+    const result = resolveGuard(
+      { meta: { requiresAuth: true, requiresOnboarding: true }, path: '/editor/some-id' },
+      authed,
+    )
+    expect(result).toBe(true)
+  })
+
+  test('non-onboarded user can access /onboarding', () => {
+    const result = resolveGuard(
+      { meta: { requiresAuth: true, requiresOnboarding: false, onboardingOnly: true }, path: '/onboarding' },
+      authedNotOnboarded,
+    )
+    expect(result).toBe(true)
+  })
+
+  test('unauthenticated user redirected from /onboarding to /login', () => {
+    const result = resolveGuard(
+      { meta: { requiresAuth: true, requiresOnboarding: false, onboardingOnly: true }, path: '/onboarding' },
+      unauthed,
+    )
+    expect(result).toBe('/login')
+  })
 })
 
 describe('resolveRootRedirect', () => {

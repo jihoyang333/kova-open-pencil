@@ -62,10 +62,7 @@ function handleKeydown(e: KeyboardEvent): void {
         :value="modelValue"
         class="mb-2 size-full cursor-pointer"
         style="width: 120px; height: 80px"
-        @input="
-          hexInput = ($event.target as HTMLInputElement).value
-          emit('update:modelValue', hexInput)
-        "
+        @input="(e: Event) => { hexInput = (e.target as HTMLInputElement).value; emit('update:modelValue', hexInput) }"
       />
 
       <!-- Hex text input -->
