@@ -123,6 +123,17 @@ describe('auth store', () => {
       data: { user: mockUser, session: { user: mockUser } },
       error: null,
     })
+    mockFrom.mockReturnValueOnce({
+      select: () => ({
+        eq: () => ({
+          single: () =>
+            Promise.resolve({
+              data: { onboarded: true, plan: 'free' },
+              error: null,
+            }),
+        }),
+      }),
+    })
 
     const store = useAuthStore()
     const result = await store.signIn('test@test.com', 'password123')
@@ -132,6 +143,33 @@ describe('auth store', () => {
       email: 'test@test.com',
       password: 'password123',
     })
+  })
+
+  test('signIn populates profile before resolving', async () => {
+    const mockUser = { id: 'user-1', email: 'test@test.com' }
+    const mockSession = { user: mockUser, access_token: 'token' }
+    mockSignInWithPassword.mockResolvedValueOnce({
+      data: { user: mockUser, session: mockSession },
+      error: null,
+    })
+    mockFrom.mockReturnValueOnce({
+      select: () => ({
+        eq: () => ({
+          single: () =>
+            Promise.resolve({
+              data: { onboarded: true, plan: 'free' },
+              error: null,
+            }),
+        }),
+      }),
+    })
+
+    const store = useAuthStore()
+    await store.signIn('test@test.com', 'password123')
+
+    expect(store.isAuthenticated).toBe(true)
+    expect(store.isOnboarded).toBe(true)
+    expect(store.profile).toEqual({ onboarded: true, plan: 'free' })
   })
 
   test('returns error for invalid credentials', async () => {
