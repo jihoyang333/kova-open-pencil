@@ -10,7 +10,7 @@ import { useMenu } from '@/composables/use-menu'
 import { useCollab, COLLAB_KEY } from '@/composables/use-collab'
 import { connectAutomation } from '@/automation/server'
 import { spawnMCPIfNeeded } from '@/automation/spawn-mcp'
-import { APP_NAME, IS_TAURI } from '@/constants'
+import { APP_NAME, IS_TAURI, TOGGLE_MEDIA_PANEL_KEY } from '@/constants'
 import { createDemoShapes } from '@/demo'
 import { useBrandsStore } from '@/stores/brands'
 import { useCanvasesStore } from '@/stores/canvases'
@@ -104,7 +104,7 @@ const collab = useCollab(firstTab.store)
 provide(COLLAB_KEY, collab)
 
 const showMediaPanel = ref(false)
-provide('toggleMediaPanel', () => { showMediaPanel.value = !showMediaPanel.value })
+provide(TOGGLE_MEDIA_PANEL_KEY, () => { showMediaPanel.value = !showMediaPanel.value })
 
 useEventListener(
   document,

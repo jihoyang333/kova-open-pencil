@@ -25,7 +25,7 @@ import IconUngroup from '~icons/lucide/ungroup'
 import IconLock from '~icons/lucide/lock'
 
 import { menuContent, menuItem } from '@/components/ui/menu'
-import { ACTION_TOAST_DURATION } from '@/constants'
+import { ACTION_TOAST_DURATION, TOGGLE_MEDIA_PANEL_KEY } from '@/constants'
 import { TOOLS, useEditorStore } from '@/stores/editor'
 import { toolIcons } from '@/utils/tools'
 
@@ -35,7 +35,7 @@ import type { Tool, ToolDef } from '@/stores/editor'
 const store = useEditorStore()
 const breakpoints = useBreakpoints({ mobile: 768 })
 const isMobile = breakpoints.smaller('mobile')
-const toggleMediaPanel = inject<() => void>('toggleMediaPanel')
+const toggleMediaPanel = inject(TOGGLE_MEDIA_PANEL_KEY, undefined)
 
 const toolLabels: Record<Tool, string> = {
   SELECT: 'Move',
@@ -217,7 +217,7 @@ function goNext() {
       </template>
 
       <!-- Media library button -->
-      <div class="mx-0.5 h-5 w-px bg-border" />
+      <div role="separator" aria-orientation="vertical" class="mx-0.5 h-5 w-px bg-border" />
       <button
         data-test-id="toolbar-media-library"
         class="flex size-8 cursor-pointer items-center justify-center rounded-lg border-none bg-transparent text-muted transition-colors hover:bg-hover hover:text-surface"

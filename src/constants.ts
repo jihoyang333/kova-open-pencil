@@ -58,6 +58,9 @@ export {
 } from '@open-pencil/core'
 
 import type { Color, Fill, Stroke } from '@open-pencil/core'
+import type { InjectionKey } from 'vue'
+
+export const TOGGLE_MEDIA_PANEL_KEY: InjectionKey<() => void> = Symbol('toggleMediaPanel')
 
 export const TRYSTERO_APP_ID = 'openpencil'
 export const ROOM_ID_LENGTH = 8
