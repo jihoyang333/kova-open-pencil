@@ -19,6 +19,7 @@ export interface Brand {
   logo_url: string | null
   voice: string | null
   industry: string | null
+  url: string | null
   created_at: string
   updated_at: string
 }
