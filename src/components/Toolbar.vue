@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { inject, ref, computed } from 'vue'
 import {
   DropdownMenuRoot,
   DropdownMenuTrigger,
@@ -35,6 +35,7 @@ import type { Tool, ToolDef } from '@/stores/editor'
 const store = useEditorStore()
 const breakpoints = useBreakpoints({ mobile: 768 })
 const isMobile = breakpoints.smaller('mobile')
+const toggleMediaPanel = inject<() => void>('toggleMediaPanel')
 
 const toolLabels: Record<Tool, string> = {
   SELECT: 'Move',
@@ -214,6 +215,17 @@ function goNext() {
           <component :is="toolIcons[tool.key]" class="size-4" />
         </button>
       </template>
+
+      <!-- Media library button -->
+      <div class="mx-0.5 h-5 w-px bg-border" />
+      <button
+        data-test-id="toolbar-media-library"
+        class="flex size-8 cursor-pointer items-center justify-center rounded-lg border-none bg-transparent text-muted transition-colors hover:bg-hover hover:text-surface"
+        title="Media Library"
+        @click="toggleMediaPanel?.()"
+      >
+        <icon-lucide-image class="size-4" />
+      </button>
     </div>
   </div>
 
