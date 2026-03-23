@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
+import { ref, watch, computed, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { watchDebounced } from '@vueuse/core'
 import { useBrandsStore } from '@/stores/brands'
@@ -94,12 +94,26 @@ watchDebounced(
 // --- Re-extract ---
 const showReExtractDialog = ref(false)
 const isExtracting = ref(false)
+const extractionDone = ref(false)
+
+const hasExtractedBefore = computed(
+  () => extractionDone.value || !!(brand.value?.colors || brand.value?.fonts)
+)
+
+const extractDomain = computed(() => {
+  if (!url.value) return 'website'
+  try {
+    return new URL(url.value.startsWith('http') ? url.value : `https://${url.value}`).hostname
+  } catch {
+    return 'website'
+  }
+})
 
 function isValidHex(v: unknown): v is string {
   return typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v)
 }
 
-async function confirmReExtract(): Promise<void> {
+async function runExtraction(): Promise<void> {
   if (!brand.value?.url) return
   isExtracting.value = true
   showReExtractDialog.value = false
@@ -126,17 +140,22 @@ async function confirmReExtract(): Promise<void> {
     if (typeof data.writing_style === 'string') {
       voice.value = data.writing_style
     }
-    // Map logo_url if present
-    if (typeof data.logo_url === 'string' && data.logo_url) {
+    // Map logo_url if present (don't clear existing logo on null)
+    if (typeof data.logo_url === 'string' && data.logo_url && brand.value) {
       logoPreviewUrl.value = data.logo_url
-      await brandsStore.updateBrand(brand.value!.id, { logo_url: data.logo_url })
+      await brandsStore.updateBrand(brand.value.id, { logo_url: data.logo_url })
     }
-    toast.show('Brand data re-extracted')
+    extractionDone.value = true
+    toast.show('Brand data extracted')
   } catch {
     toast.show('Extraction failed', 'error')
   } finally {
     isExtracting.value = false
   }
+}
+
+function confirmReExtract(): void {
+  showReExtractDialog.value = true
 }
 
 // --- Logo upload ---
@@ -182,6 +201,16 @@ async function handleLogoUpload(e: Event): Promise<void> {
 function goBack(): void {
   void router.push(`/dashboard/${brandId.value}`)
 }
+
+const nameInputRef = ref<HTMLInputElement | null>(null)
+
+watch(brand, async (b) => {
+  if (b?.name === 'Untitled Brand') {
+    await nextTick()
+    nameInputRef.value?.focus()
+    nameInputRef.value?.select()
+  }
+}, { immediate: true })
 </script>
 
 <template>
@@ -206,6 +235,7 @@ function goBack(): void {
       <div class="grid grid-cols-[160px_1fr] items-start gap-4">
         <label class="pt-2 text-sm font-medium text-gray-700">Name</label>
         <input
+          ref="nameInputRef"
           v-model="name"
           data-test-id="brand-settings-name"
           type="text"
@@ -213,25 +243,63 @@ function goBack(): void {
         />
 
         <label class="pt-2 text-sm font-medium text-gray-700">Website URL</label>
-        <div class="flex gap-2">
-          <input
-            v-model="url"
-            data-test-id="brand-settings-url"
-            type="url"
-            placeholder="https://example.com"
-            class="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
-          <button
-            v-if="url"
-            data-test-id="brand-settings-reextract"
-            class="shrink-0 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-            :disabled="isExtracting"
-            @click="showReExtractDialog = true"
-          >
-            {{ isExtracting ? 'Extracting…' : 'Re-extract' }}
-          </button>
-        </div>
+        <input
+          v-model="url"
+          data-test-id="brand-settings-url"
+          type="url"
+          placeholder="https://example.com"
+          class="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+        />
       </div>
+    </section>
+
+    <!-- Extract slot -->
+    <section class="space-y-4">
+      <!-- State: Extracting — progress banner -->
+      <div
+        v-if="isExtracting"
+        data-test-id="brand-settings-extract-banner"
+        role="status"
+        aria-live="polite"
+        class="flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700"
+      >
+        <icon-lucide-loader-2 class="size-4 shrink-0 animate-spin" />
+        Analyzing {{ extractDomain }} — extracting colors, fonts, logo, and voice...
+      </div>
+
+      <!-- State: Done — re-extract button -->
+      <button
+        v-else-if="hasExtractedBefore"
+        data-test-id="brand-settings-reextract"
+        class="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+        @click="confirmReExtract"
+      >
+        <icon-lucide-sparkles class="mr-1.5 inline-block size-4" />
+        Re-extract
+      </button>
+
+      <!-- State: Has URL — enabled extract button -->
+      <button
+        v-else-if="url"
+        data-test-id="brand-settings-extract-button"
+        class="rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600"
+        @click="runExtraction"
+      >
+        <icon-lucide-sparkles class="mr-1.5 inline-block size-4" />
+        Extract from website
+      </button>
+
+      <!-- State: No URL — disabled extract button -->
+      <button
+        v-else
+        data-test-id="brand-settings-extract-button"
+        disabled
+        aria-disabled="true"
+        class="cursor-not-allowed rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white opacity-50"
+      >
+        <icon-lucide-sparkles class="mr-1.5 inline-block size-4" />
+        Extract from website
+      </button>
     </section>
 
     <!-- Section 2: Logo -->
@@ -347,7 +415,7 @@ function goBack(): void {
             <button
               data-test-id="brand-settings-reextract-confirm"
               class="rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600"
-              @click="confirmReExtract"
+              @click="runExtraction"
             >
               Re-extract
             </button>
