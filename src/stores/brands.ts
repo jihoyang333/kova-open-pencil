@@ -70,6 +70,18 @@ export const useBrandsStore = defineStore('brands', () => {
     const userId = authStore.user?.id
     if (!userId) throw new Error('Not authenticated')
 
+    // Delete media storage files for this brand
+    const { data: mediaRows } = await supabase
+      .from('media')
+      .select('storage_path')
+      .eq('brand_id', id)
+
+    if (mediaRows?.length) {
+      const mediaPaths = mediaRows.map((r) => r.storage_path)
+      await supabase.storage.from('media-assets').remove(mediaPaths)
+    }
+    // DB rows cascade-delete via FK, but storage files need manual cleanup
+
     // Delete thumbnails for all canvases under this brand
     const { data: canvasRows } = await supabase.from('canvases').select('id').eq('brand_id', id)
 
@@ -95,6 +107,7 @@ export const useBrandsStore = defineStore('brands', () => {
     logoFile?: File | null
     logoUrl?: string | null
     voice?: string | null
+    url?: string | null
   }
 
   async function createBrandFull(input: CreateBrandFullInput): Promise<Brand> {
@@ -109,6 +122,7 @@ export const useBrandsStore = defineStore('brands', () => {
     if (input.colors) insertData.colors = input.colors
     if (input.fonts) insertData.fonts = input.fonts
     if (input.voice) insertData.voice = input.voice
+    if (input.url) insertData.url = input.url
     if (input.logoUrl && !input.logoFile) insertData.logo_url = input.logoUrl
 
     const { data, error } = await supabase.from('brands').insert(insertData).select().single()

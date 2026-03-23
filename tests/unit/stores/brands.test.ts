@@ -126,6 +126,13 @@ describe('brands store', () => {
     const store = useBrandsStore()
     await store.fetchBrands()
 
+    // Mock media lookup for storage cleanup
+    mockFrom.mockReturnValueOnce({
+      select: () => ({
+        eq: () => Promise.resolve({ data: [], error: null }),
+      }),
+    })
+
     // Mock canvas lookup for thumbnail cleanup
     mockFrom.mockReturnValueOnce({
       select: () => ({
