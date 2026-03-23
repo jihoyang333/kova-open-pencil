@@ -1,0 +1,6 @@
+[test]
+preload = ["./tests/setup-dom.ts", "./tests/vue-plugin.ts"]
+
+[test.env]
+# Use happy-dom for DOM APIs in tests
+HAPPY_DOM = "true"
