@@ -26,6 +26,7 @@ import MobileHud from '@/components/MobileHud.vue'
 import PropertiesPanel from '@/components/PropertiesPanel.vue'
 import SafariBanner from '@/components/SafariBanner.vue'
 import TabBar from '@/components/TabBar.vue'
+import MediaLibraryPanel from '@/components/media/MediaLibraryPanel.vue'
 import Toolbar from '@/components/Toolbar.vue'
 
 const route = useRoute()
@@ -102,6 +103,9 @@ if (canvasId) {
 const collab = useCollab(firstTab.store)
 provide(COLLAB_KEY, collab)
 
+const showMediaPanel = ref(false)
+provide('toggleMediaPanel', () => { showMediaPanel.value = !showMediaPanel.value })
+
 useEventListener(
   document,
   'wheel',
@@ -157,6 +161,7 @@ onUnmounted(() => {
         <div class="relative flex min-w-0 flex-1">
           <EditorCanvas />
           <Toolbar />
+          <MediaLibraryPanel v-if="showMediaPanel" @close="showMediaPanel = false" />
         </div>
       </SplitterPanel>
       <SplitterResizeHandle class="group relative z-10 -mx-1 w-2 cursor-col-resize">
