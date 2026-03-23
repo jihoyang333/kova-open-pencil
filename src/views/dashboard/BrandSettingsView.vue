@@ -6,6 +6,7 @@ import { useBrandsStore } from '@/stores/brands'
 import { useAuthStore } from '@/stores/auth'
 import { supabase } from '@/lib/supabase'
 import { toast } from '@/composables/use-toast'
+import { getAuthHeaders } from '@/utils/api-headers'
 import BrandColorPicker from '@/components/brand/BrandColorPicker.vue'
 import {
   DialogRoot,
@@ -105,7 +106,7 @@ async function confirmReExtract(): Promise<void> {
   try {
     const res = await fetch('/api/extract-brand', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify({ url: brand.value.url }),
     })
     if (!res.ok) throw new Error('Extraction failed')
@@ -124,6 +125,11 @@ async function confirmReExtract(): Promise<void> {
     }
     if (typeof data.writing_style === 'string') {
       voice.value = data.writing_style
+    }
+    // Map logo_url if present
+    if (typeof data.logo_url === 'string' && data.logo_url) {
+      logoPreviewUrl.value = data.logo_url
+      await brandsStore.updateBrand(brand.value!.id, { logo_url: data.logo_url })
     }
     toast.show('Brand data re-extracted')
   } catch {
