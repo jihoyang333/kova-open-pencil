@@ -14,6 +14,8 @@ const brandsStore = useBrandsStore()
 const heading = computed(() => {
   if (route.path.endsWith('/trash')) return 'Trash'
   const brand = brandsStore.selectedBrand
+  if (route.path.endsWith('/settings') && route.params.brandId)
+    return brand ? `${brand.name} › Settings` : 'Brand Settings'
   if (route.path.endsWith('/assets')) return brand ? `${brand.name} › Assets` : 'Brand Assets'
   return brand?.name ?? 'Dashboard'
 })
