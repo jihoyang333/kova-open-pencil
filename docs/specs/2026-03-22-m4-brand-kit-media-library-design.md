@@ -32,7 +32,7 @@ This milestone delivers:
 
 ## 3. Architecture Overview
 
-**7 tasks across 2 phases. 12 new files (~1,710 lines). 8 modified files.**
+**7 tasks across 2 phases. 14 new files (11 source + 3 test, ~1,850 lines). 8 modified files.**
 
 ### Phase 4.1 — Brand Kit System
 
@@ -82,14 +82,14 @@ This milestone delivers:
 
 - Auto-save on blur/change with `watchDebounced(500ms)` (same pattern as `EditorView.vue:82`)
 - Toast on save success/error
-- Re-extract: confirmation dialog &rarr; `POST /api/extract-brand` with stored `brand.url` &rarr; updates fields
+- Re-extract: confirmation dialog &rarr; `POST /api/extract-brand` with stored `brand.url` &rarr; maps response fields (`writing_style` &rarr; `voice`) &rarr; updates brand
 
 **Modified files:**
 
 | File | Change |
 |------|--------|
-| `src/router.ts` | Add `BrandSettingsView` as dashboard child route |
-| `src/views/DashboardView.vue` | Update heading computed for `/settings` path |
+| `src/router.ts` | Add `BrandSettingsView` as dashboard child route **before** the `/:brandId` catch-all to prevent route shadowing |
+| `src/views/DashboardView.vue` | Update heading computed for `/settings` path (display `"${brand.name} > Settings"`, matching existing `"${brand.name} > Assets"` pattern) |
 
 ### 4.1.2 Brand Kit Formatting Utility
 
@@ -134,6 +134,8 @@ Returns a structured text block for system prompt injection:
 - Loading state on Create button during submission
 - Error toast on failure
 
+**Dependency:** Requires `createBrandFull` to accept `url` param (added in task 4.2.1's `brands.ts` modification). Execution wave ordering handles this: Wave 1 (migration adds `url` column) &rarr; Wave 2 (brands store updated) &rarr; Wave 3 (this dialog).
+
 **Modified file:**
 
 | File | Change |
@@ -148,7 +150,7 @@ Returns a structured text block for system prompt injection:
 -- media table
 CREATE TABLE media (
   id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id     uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_id     uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   brand_id    uuid NOT NULL REFERENCES brands(id) ON DELETE CASCADE,
   file_name   text NOT NULL,
   file_type   text NOT NULL,
@@ -157,14 +159,27 @@ CREATE TABLE media (
   created_at  timestamptz NOT NULL DEFAULT now()
 );
 
--- RLS: user can only access own media
+-- RLS: per-operation policies (matches existing brands/canvases pattern)
 ALTER TABLE media ENABLE ROW LEVEL SECURITY;
-CREATE POLICY media_owner ON media
+CREATE POLICY media_select ON media FOR SELECT
+  USING (user_id = auth.uid());
+CREATE POLICY media_insert ON media FOR INSERT
+  WITH CHECK (user_id = auth.uid());
+CREATE POLICY media_update ON media FOR UPDATE
+  USING (user_id = auth.uid());
+CREATE POLICY media_delete ON media FOR DELETE
   USING (user_id = auth.uid());
 
--- Storage bucket
+-- Storage bucket + object policies
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('media-assets', 'media-assets', true);
+
+CREATE POLICY media_assets_insert ON storage.objects FOR INSERT
+  WITH CHECK (bucket_id = 'media-assets' AND (storage.foldername(name))[1] = auth.uid()::text);
+CREATE POLICY media_assets_update ON storage.objects FOR UPDATE
+  USING (bucket_id = 'media-assets' AND (storage.foldername(name))[1] = auth.uid()::text);
+CREATE POLICY media_assets_delete ON storage.objects FOR DELETE
+  USING (bucket_id = 'media-assets' AND (storage.foldername(name))[1] = auth.uid()::text);
 
 -- Add url column to brands
 ALTER TABLE brands ADD COLUMN url TEXT;
@@ -203,6 +218,8 @@ const MEDIA_MAX_SIZE_BYTES = 5 * 1024 * 1024
 | `getPublicUrl(storagePath)` | Supabase public URL |
 
 Storage path format: `{userId}/{brandId}/{Date.now()}-{sanitizedFilename}`
+
+**Note:** Media records are insert/delete only (no updates). No `updated_at` column or trigger needed.
 
 **Modified file:**
 
@@ -260,7 +277,7 @@ Upload opens `UploadDialog`.
 
 | File | Change |
 |------|--------|
-| `src/components/Toolbar.vue` | Add media library toggle button with `icon-lucide-image`, emits event to toggle `showMediaPanel` in `EditorView` |
+| `src/components/Toolbar.vue` | Add media library toggle button with `icon-lucide-image`, emits event to toggle `showMediaPanel` in `EditorView`. Desktop only — placed outside the mobile category system to avoid `CATEGORY_COUNT` changes. |
 
 ## 5. Shared Components
 
@@ -348,7 +365,7 @@ Reka UI Popover with color swatch button trigger, hex text input, and native col
 
 ## 9. File Inventory
 
-### New Files (12)
+### New Files (14)
 
 | File | Est. Lines |
 |------|-----------|
@@ -364,6 +381,8 @@ Reka UI Popover with color swatch button trigger, hex text input, and native col
 | `src/components/media/UploadDialog.vue` | ~200 |
 | `src/components/media/MediaLibraryPanel.vue` | ~200 |
 | `tests/unit/utils/format-brand-prompt.test.ts` | ~80 |
+| `tests/unit/stores/media.test.ts` | ~80 |
+| `tests/unit/components/new-client-dialog.test.ts` | ~60 |
 
 ### Modified Files (8)
 
