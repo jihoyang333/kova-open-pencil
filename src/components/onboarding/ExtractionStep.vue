@@ -2,12 +2,11 @@
 import { inject, onMounted, onUnmounted, ref, shallowRef } from 'vue'
 
 import type { useOnboardingState } from '@/composables/useOnboardingState'
-import { useAuthStore } from '@/stores/auth'
 import type { ExtractBrandResponse } from '@/types/kova/extraction'
+import { getAuthHeaders } from '@/utils/api-headers'
 import { normalizeUrl } from '@/utils/onboarding-validators'
 
 const state = inject('onboardingState') as ReturnType<typeof useOnboardingState>
-const authStore = useAuthStore()
 const emit = defineEmits<{ complete: [] }>()
 
 interface ExtractionItem {
@@ -89,14 +88,6 @@ async function runMockExtraction(): Promise<void> {
   }
 }
 
-function getAuthHeaders(): Record<string, string> {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-  const token = authStore.session?.access_token
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`
-  }
-  return headers
-}
 
 async function fetchBrandData(url: string): Promise<ExtractBrandResponse> {
   if (cachedBrandData.value) return cachedBrandData.value
