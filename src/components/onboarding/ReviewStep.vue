@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { inject, ref } from 'vue'
+import { inject, onUnmounted, ref } from 'vue'
 
 import ClickToEdit from '@/components/onboarding/ClickToEdit.vue'
 import ColorPicker from '@/components/onboarding/ColorPicker.vue'
@@ -13,15 +13,23 @@ const fileInputRef = ref<HTMLInputElement | null>(null)
 function handleLogoUpload(e: Event): void {
   const input = e.target as HTMLInputElement
   const file = input.files?.[0]
-  if (file) {
-    state.logoFile.value = file
-    state.logoUrl.value = URL.createObjectURL(file)
+  if (!file) return
+  if (state.logoUrl.value?.startsWith('blob:')) {
+    URL.revokeObjectURL(state.logoUrl.value)
   }
+  state.logoFile.value = file
+  state.logoUrl.value = URL.createObjectURL(file)
 }
 
 function openFileDialog(): void {
   fileInputRef.value?.click()
 }
+
+onUnmounted(() => {
+  if (state.logoUrl.value?.startsWith('blob:')) {
+    URL.revokeObjectURL(state.logoUrl.value)
+  }
+})
 
 function updateColor(key: 'primary' | 'secondary' | 'accent' | 'background', value: string): void {
   const current = state.colors.value ?? {
@@ -41,16 +49,17 @@ function updateFont(key: 'heading' | 'body', value: string): void {
 
 <template>
   <div data-test-id="onboarding-review-step" class="space-y-4 overflow-y-auto pr-2">
-    <h1 class="text-2xl font-semibold text-gray-900">Review your brand</h1>
-    <p class="text-sm text-gray-500">Tap any field to edit.</p>
+    <h1 class="text-3xl font-bold text-white">Review your brand profile</h1>
+    <p class="mt-3 text-base text-[#999]">Everything look right? You can edit any field.</p>
 
     <!-- Identity section -->
-    <div class="rounded-xl bg-gray-50 p-4">
+    <div class="rounded-xl bg-[#383838] p-4">
       <div class="flex items-center gap-4">
         <!-- Logo -->
         <button
           data-test-id="review-logo-upload"
-          class="group relative flex size-14 items-center justify-center overflow-hidden rounded-lg border border-gray-200 bg-white"
+          aria-label="Upload brand logo"
+          class="group relative flex size-14 items-center justify-center overflow-hidden rounded-lg border border-[#555] bg-panel"
           @click="openFileDialog"
         >
           <img
@@ -59,7 +68,7 @@ function updateFont(key: 'heading' | 'body', value: string): void {
             class="size-14 object-contain"
             alt="Brand logo"
           />
-          <icon-lucide-image v-else class="size-5 text-gray-300" />
+          <icon-lucide-image v-else class="size-5 text-[#666]" />
           <div
             class="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100"
           >
@@ -70,6 +79,7 @@ function updateFont(key: 'heading' | 'body', value: string): void {
           ref="fileInputRef"
           type="file"
           accept="image/*"
+          aria-label="Upload brand logo image"
           class="hidden"
           @change="handleLogoUpload"
         />
@@ -87,8 +97,8 @@ function updateFont(key: 'heading' | 'body', value: string): void {
     </div>
 
     <!-- Colors section -->
-    <div class="rounded-xl bg-gray-50 p-4">
-      <div class="mb-3 text-[10px] font-medium tracking-wider text-gray-400 uppercase">Colors</div>
+    <div class="rounded-xl bg-[#383838] p-4">
+      <div class="mb-3 text-[10px] font-medium tracking-wider text-[#aaa] uppercase">Colors</div>
       <div class="flex gap-4">
         <ColorPicker
           :model-value="state.colors.value?.primary ?? '#000000'"
@@ -114,13 +124,13 @@ function updateFont(key: 'heading' | 'body', value: string): void {
     </div>
 
     <!-- Fonts + Voice section -->
-    <div class="rounded-xl bg-gray-50 p-4">
-      <div class="mb-3 text-[10px] font-medium tracking-wider text-gray-400 uppercase">
+    <div class="rounded-xl bg-[#383838] p-4">
+      <div class="mb-3 text-[10px] font-medium tracking-wider text-[#aaa] uppercase">
         Fonts & Voice
       </div>
       <div class="mb-3 flex gap-4">
         <div class="flex-1">
-          <div class="mb-1 text-[10px] text-gray-500">Heading font</div>
+          <div class="mb-1 text-[10px] text-[#aaa]">Heading font</div>
           <ClickToEdit
             :model-value="state.fonts.value?.heading ?? ''"
             placeholder="Heading font"
@@ -128,7 +138,7 @@ function updateFont(key: 'heading' | 'body', value: string): void {
           />
         </div>
         <div class="flex-1">
-          <div class="mb-1 text-[10px] text-gray-500">Body font</div>
+          <div class="mb-1 text-[10px] text-[#aaa]">Body font</div>
           <ClickToEdit
             :model-value="state.fonts.value?.body ?? ''"
             placeholder="Body font"
@@ -137,7 +147,7 @@ function updateFont(key: 'heading' | 'body', value: string): void {
         </div>
       </div>
 
-      <div class="mb-1 text-[10px] text-gray-500">Writing style</div>
+      <div class="mb-1 text-[10px] text-[#aaa]">Writing style</div>
       <ClickToEdit
         :model-value="state.voice.value ?? ''"
         tag="textarea"

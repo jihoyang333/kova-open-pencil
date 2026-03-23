@@ -17,24 +17,25 @@ onMounted(() => {
 
 <template>
   <div data-test-id="onboarding-brand-url-step">
-    <h1 class="text-2xl font-semibold text-gray-900">What's your brand's website?</h1>
-    <p class="mt-2 text-sm text-gray-500">
-      We'll use this to automatically extract your brand colors, fonts, and logo.
+    <h1 class="text-3xl font-bold text-white">What's your brand's website?</h1>
+    <p class="mt-3 text-base text-[#999]">
+      We'll use this to extract your colors, fonts, and logo automatically.
     </p>
     <input
       ref="inputRef"
       v-model="state.brandUrl.value"
       data-test-id="onboarding-brand-url-input"
       type="text"
-      placeholder="example.com"
-      class="mt-6 w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 placeholder-gray-400 transition-colors outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+      placeholder="e.g. lumiere-skincare.com"
+      aria-label="Brand website URL"
+      class="mt-8 w-full rounded-lg border border-[#555] bg-[#383838] px-4 py-3 text-white placeholder-[#aaa] transition-colors outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
     />
     <button
       data-test-id="onboarding-skip-extraction"
-      class="mt-4 text-sm text-gray-400 transition-colors hover:text-gray-600"
+      class="mt-4 text-sm text-[#999] transition-colors hover:text-white"
       @click="emit('skip')"
     >
-      I don't have a website — enter manually
+      I don't have a website
     </button>
   </div>
 </template>

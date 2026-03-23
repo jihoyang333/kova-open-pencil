@@ -9,6 +9,7 @@ import Components from 'unplugin-vue-components/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import { copyFileSync, existsSync, mkdirSync } from 'fs'
 
+import { apiPlugin } from './src/dev/api-plugin'
 import { automationPlugin } from './src/automation/vite-plugin'
 
 // @ts-expect-error process is a nodejs global
@@ -53,6 +54,7 @@ export default defineConfig(async () => ({
     tailwindcss(),
     Icons({ compiler: 'vue3' }),
     Components({ resolvers: [IconsResolver({ prefix: 'icon' })] }),
+    apiPlugin(),
     automationPlugin(),
     vue(),
     VitePWA({

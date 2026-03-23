@@ -51,8 +51,13 @@ export async function completeOnboarding(input: CompleteOnboardingInput): Promis
   // 4. Create first canvas
   const canvas = await canvasesStore.createCanvas(brand.id, `${input.brandName} - Canvas 1`)
 
-  // 5. Refresh profile (to pick up onboarded=true)
+  // 5. Refresh profile — fetch from DB, then guarantee onboarded flag
+  // fetchProfile can fail silently (catches errors internally), so we
+  // also set the flag optimistically to ensure the router guard passes.
   await authStore.fetchProfile()
+  if (authStore.profile) {
+    authStore.profile = { ...authStore.profile, onboarded: true }
+  }
 
   // 6. Redirect to editor
   await router.push(`/editor/${canvas.id}`)

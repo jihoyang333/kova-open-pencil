@@ -7,7 +7,8 @@ CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
   INSERT INTO public.users (id, name)
-  VALUES (NEW.id, NEW.raw_user_meta_data->>'full_name');
+  VALUES (NEW.id, NEW.raw_user_meta_data->>'full_name')
+  ON CONFLICT (id) DO UPDATE SET name = COALESCE(EXCLUDED.name, public.users.name);
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

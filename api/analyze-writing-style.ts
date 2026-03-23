@@ -1,8 +1,9 @@
+// NOTE: The onboarding ExtractionStep now calls /api/extract-brand (which merges writing
+// style analysis). This endpoint is kept for standalone/future use.
 import Anthropic from '@anthropic-ai/sdk'
 
-interface AnalyzeRequest {
-  url: string
-}
+import { authenticateRequest } from './_shared/auth'
+import { validateUrl } from './_shared/url-validation'
 
 interface AnalyzeResponse {
   writing_style: string | null
@@ -16,11 +17,17 @@ export default async function handler(req: Request): Promise<Response> {
     })
   }
 
-  try {
-    const body = (await req.json()) as AnalyzeRequest
+  // Authenticate the request
+  const authResult = await authenticateRequest(req)
+  if (authResult instanceof Response) return authResult
 
-    if (!body.url || typeof body.url !== 'string') {
-      return new Response(JSON.stringify({ error: 'URL is required' }), {
+  try {
+    const body = (await req.json()) as { url: string }
+
+    // Validate and sanitize URL
+    const urlResult = validateUrl(body.url)
+    if ('error' in urlResult) {
+      return new Response(JSON.stringify({ error: urlResult.error }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
       })
@@ -36,10 +43,10 @@ export default async function handler(req: Request): Promise<Response> {
       })
     }
 
-    const normalizedUrl = body.url.startsWith('http') ? body.url : `https://${body.url}`
+    const normalizedUrl = urlResult.url
 
     // Scrape text content
-    const scrapeResponse = await fetch('https://api.firecrawl.dev/v1/scrape', {
+    const scrapeResponse = await fetch('https://api.firecrawl.dev/v2/scrape', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -52,6 +59,7 @@ export default async function handler(req: Request): Promise<Response> {
     })
 
     if (!scrapeResponse.ok) {
+      console.error('Firecrawl scrape failed:', await scrapeResponse.text())
       return new Response(
         JSON.stringify({ writing_style: null } as AnalyzeResponse),
         { status: 200, headers: { 'Content-Type': 'application/json' } },
@@ -96,8 +104,9 @@ Return ONLY the writing style description, no quotes or preamble.`,
       JSON.stringify({ writing_style: writingStyle } as AnalyzeResponse),
       { status: 200, headers: { 'Content-Type': 'application/json' } },
     )
-  } catch {
+  } catch (err) {
     // Graceful fallback — return null on any error (don't block onboarding)
+    console.error('Writing style analysis error:', err)
     return new Response(
       JSON.stringify({ writing_style: null } as AnalyzeResponse),
       { status: 200, headers: { 'Content-Type': 'application/json' } },

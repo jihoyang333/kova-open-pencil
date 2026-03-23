@@ -23,15 +23,16 @@ onMounted(() => {
 
 <template>
   <div data-test-id="onboarding-name-step">
-    <h1 class="text-2xl font-semibold text-gray-900">What's your name?</h1>
-    <p class="mt-2 text-sm text-gray-500">This is how you'll appear in Kova.</p>
+    <h1 class="text-3xl font-bold text-white">What's your name?</h1>
+    <p class="mt-3 text-base text-[#999]">This is how you'll appear in Kova.</p>
     <input
       ref="inputRef"
       v-model="state.name.value"
       data-test-id="onboarding-name-input"
       type="text"
-      placeholder="Your name"
-      class="mt-6 w-full rounded-lg border border-gray-300 px-4 py-3 text-gray-900 placeholder-gray-400 transition-colors outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+      placeholder="e.g. Jiho Yang"
+      aria-label="Your name"
+      class="mt-8 w-full rounded-lg border border-[#555] bg-[#383838] px-4 py-3 text-white placeholder-[#aaa] transition-colors outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
     />
   </div>
 </template>

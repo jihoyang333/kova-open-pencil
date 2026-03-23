@@ -24,6 +24,8 @@ const inputRef = ref<HTMLInputElement | HTMLTextAreaElement | null>(null)
 
 const displayText = computed(() => props.modelValue || props.placeholder)
 const isEmpty = computed(() => !props.modelValue)
+const editInputClass =
+  'w-full rounded-md border border-accent bg-[#383838] px-3 py-2 text-sm text-white ring-1 ring-accent outline-none'
 
 async function startEditing(): Promise<void> {
   editing.value = true
@@ -42,6 +44,12 @@ function handleInput(e: Event): void {
   const target = e.target as HTMLInputElement | HTMLTextAreaElement
   emit('update:modelValue', target.value)
 }
+
+function handleEditKeydown(e: KeyboardEvent): void {
+  if (e.code === 'Escape') {
+    stopEditing()
+  }
+}
 </script>
 
 <template>
@@ -52,30 +60,38 @@ function handleInput(e: Event): void {
         v-if="tag === 'textarea'"
         ref="inputRef"
         :value="modelValue"
-        class="w-full rounded-md border border-blue-300 bg-white px-3 py-2 text-sm text-gray-900 ring-1 ring-blue-300 outline-none"
+        :aria-label="placeholder"
+        :class="editInputClass"
         rows="3"
         @input="handleInput"
         @blur="stopEditing"
         @keydown.enter.exact="stopEditing"
+        @keydown="handleEditKeydown"
       />
       <input
         v-else
         ref="inputRef"
         :value="modelValue"
         type="text"
-        class="w-full rounded-md border border-blue-300 bg-white px-3 py-2 text-sm text-gray-900 ring-1 ring-blue-300 outline-none"
+        :aria-label="placeholder"
+        :class="editInputClass"
         @input="handleInput"
         @blur="stopEditing"
         @keydown.enter="stopEditing"
+        @keydown="handleEditKeydown"
       />
     </template>
 
     <!-- Display mode -->
     <div
       v-else
-      class="cursor-pointer rounded-md px-3 py-2 text-sm transition-colors hover:bg-gray-100"
-      :class="[displayClass, isEmpty ? 'text-gray-400 italic' : 'text-gray-900']"
+      role="button"
+      tabindex="0"
+      class="cursor-pointer rounded-md px-3 py-2 text-sm transition-colors hover:bg-[#444] focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
+      :class="[displayClass, isEmpty ? 'text-[#888] italic' : 'text-white']"
       @click="startEditing"
+      @keydown.enter="startEditing"
+      @keydown.space.prevent="startEditing"
     >
       {{ displayText }}
     </div>

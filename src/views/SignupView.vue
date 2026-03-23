@@ -36,9 +36,15 @@ async function handleSubmit() {
 
   isSubmitting.value = true
   try {
-    const { error: authError } = await auth.signUp(email.value, password.value)
+    const { data, error: authError } = await auth.signUp(email.value, password.value)
     if (authError) {
       error.value = authError.message
+      return
+    }
+
+    // Repeated signup — user already exists (e.g., via Google OAuth)
+    if (data?.user && (!data.user.identities || data.user.identities.length === 0)) {
+      error.value = 'An account with this email already exists. Try logging in instead.'
       return
     }
 
@@ -139,7 +145,7 @@ async function handleGoogleSignIn() {
             type="email"
             data-test-id="signup-email-input"
             class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 transition-colors outline-none placeholder:text-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            placeholder="you@company.com"
+            placeholder="you@example.com"
           />
         </div>
         <div>

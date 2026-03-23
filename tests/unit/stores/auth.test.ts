@@ -198,6 +198,22 @@ describe('auth store', () => {
     expect(result.error?.message).toBe('User already registered')
   })
 
+  test('signUp returns data with empty identities for repeated signup', async () => {
+    mockSignUp.mockResolvedValueOnce({
+      data: {
+        user: { id: 'user-1', identities: [] },
+        session: null,
+      },
+      error: null,
+    })
+
+    const store = useAuthStore()
+    const result = await store.signUp('existing@test.com', 'password123')
+
+    expect(result.error).toBeNull()
+    expect(result.data?.user?.identities).toEqual([])
+  })
+
   test('fetches profile and exposes isOnboarded', async () => {
     const mockUser = { id: 'user-1', email: 'test@test.com' }
     const mockSession = { user: mockUser, access_token: 'token' }

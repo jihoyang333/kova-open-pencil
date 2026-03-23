@@ -4,7 +4,7 @@ import { computed, ref } from 'vue'
 import { supabase } from '@/lib/supabase'
 import { getRouter } from '@/router'
 
-import type { Session, User, AuthError } from '@supabase/supabase-js'
+import type { AuthError, AuthResponse, Session, User } from '@supabase/supabase-js'
 
 interface UserProfile {
   name: string | null
@@ -104,9 +104,9 @@ export const useAuthStore = defineStore('auth', () => {
     return { error }
   }
 
-  async function signUp(email: string, password: string): Promise<{ error: AuthError | null }> {
-    const { error } = await supabase.auth.signUp({ email, password })
-    return { error }
+  async function signUp(email: string, password: string): Promise<AuthResponse> {
+    const { data, error } = await supabase.auth.signUp({ email, password })
+    return { data, error }
   }
 
   async function signInWithGoogle(): Promise<{ error: AuthError | null }> {

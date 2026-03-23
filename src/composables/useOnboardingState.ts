@@ -4,7 +4,7 @@ import { isValidUrl } from '@/utils/onboarding-validators'
 
 import type { BrandColors, BrandFonts } from '@/types/kova/database'
 
-const TOTAL_STEPS = 7
+const TOTAL_STEPS = 6
 
 export function useOnboardingState() {
   const currentStep = ref(1)
