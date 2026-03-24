@@ -1,5 +1,4 @@
 import { describe, test, expect, beforeEach, mock } from 'bun:test'
-import { setActivePinia, createPinia } from 'pinia'
 
 const mockFrom = mock(() => ({}))
 const mockStorageFrom = mock(() => ({
@@ -38,16 +37,23 @@ mock.module('@/stores/canvases', () => ({
   useCanvasesStore: () => mockCanvasesStore,
 }))
 
-const { completeOnboarding } = await import('@/composables/useOnboardingComplete')
-const { useAuthStore } = await import('@/stores/auth')
-
-// Mock functions to replace on the real auth store
 const mockUpdateName = mock(() => Promise.resolve())
 const mockFetchProfile = mock(() => Promise.resolve())
 
+const mockAuthStore = {
+  user: { id: 'user-1' } as { id: string } | null,
+  profile: { name: null, onboarded: false, plan: 'free' } as { name: string | null; onboarded: boolean; plan: string } | null,
+  updateName: mockUpdateName,
+  fetchProfile: mockFetchProfile,
+}
+mock.module('@/stores/auth', () => ({
+  useAuthStore: () => mockAuthStore,
+}))
+
+const { completeOnboarding } = await import('@/composables/useOnboardingComplete')
+
 describe('completeOnboarding', () => {
   beforeEach(() => {
-    setActivePinia(createPinia())
     mockFrom.mockClear()
     mockPush.mockClear()
     mockUpdateName.mockClear()
@@ -55,12 +61,8 @@ describe('completeOnboarding', () => {
     mockBrandsStore.createBrandFull.mockClear()
     mockCanvasesStore.createCanvas.mockClear()
 
-    // Set up the real auth store with a test user and mocked methods
-    const authStore = useAuthStore()
-    authStore.user = { id: 'user-1' } as any
-    authStore.profile = { name: null, onboarded: false, plan: 'free' }
-    authStore.updateName = mockUpdateName as any
-    authStore.fetchProfile = mockFetchProfile as any
+    mockAuthStore.user = { id: 'user-1' }
+    mockAuthStore.profile = { name: null, onboarded: false, plan: 'free' }
   })
 
   test('saves name, creates brand, creates canvas, sets onboarded, redirects to editor', async () => {
@@ -114,8 +116,7 @@ describe('completeOnboarding', () => {
   })
 
   test('throws when user is not authenticated', async () => {
-    const authStore = useAuthStore()
-    authStore.user = null
+    mockAuthStore.user = null
 
     await expect(
       completeOnboarding({

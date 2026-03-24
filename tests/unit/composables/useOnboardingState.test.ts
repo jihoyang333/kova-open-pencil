@@ -36,10 +36,10 @@ describe('useOnboardingState', () => {
     expect(state.currentStep.value).toBe(1)
   })
 
-  test('next() does not go above 7', () => {
-    state.currentStep.value = 7
+  test('next() does not go above 6', () => {
+    state.currentStep.value = 6
     state.next()
-    expect(state.currentStep.value).toBe(7)
+    expect(state.currentStep.value).toBe(6)
   })
 
   test('goTo() sets specific step', () => {
@@ -49,7 +49,7 @@ describe('useOnboardingState', () => {
 
   test('goTo() clamps to valid range', () => {
     state.goTo(10)
-    expect(state.currentStep.value).toBe(7)
+    expect(state.currentStep.value).toBe(6)
     state.goTo(0)
     expect(state.currentStep.value).toBe(1)
   })
@@ -111,12 +111,12 @@ describe('useOnboardingState', () => {
     expect(state.currentStep.value).toBe(6)
   })
 
-  test('totalSteps is 7', () => {
-    expect(state.totalSteps).toBe(7)
+  test('totalSteps is 6', () => {
+    expect(state.totalSteps).toBe(6)
   })
 
   test('progress returns fraction of filled steps', () => {
     state.currentStep.value = 3
-    expect(state.progress.value).toBeCloseTo(3 / 7)
+    expect(state.progress.value).toBeCloseTo(3 / 6)
   })
 })

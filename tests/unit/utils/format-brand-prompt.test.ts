@@ -75,4 +75,38 @@ describe('formatBrandKitPrompt', () => {
 
     expect(result).toBe('## Brand Kit: TestBrand')
   })
+
+  test('omits colors section when all color values are empty strings', () => {
+    const result = formatBrandKitPrompt(
+      makeBrand({ colors: { primary: '', secondary: '', accent: '', background: '' } })
+    )
+
+    expect(result).not.toContain('**Colors:**')
+  })
+
+  test('includes only non-empty color values', () => {
+    const result = formatBrandKitPrompt(
+      makeBrand({ colors: { primary: '#FF0000', secondary: '', accent: '', background: '' } })
+    )
+
+    expect(result).toContain('**Colors:** primary: #FF0000')
+    expect(result).not.toContain('secondary')
+  })
+
+  test('omits fonts section when all font values are empty strings', () => {
+    const result = formatBrandKitPrompt(
+      makeBrand({ fonts: { heading: '', body: '' } })
+    )
+
+    expect(result).not.toContain('**Fonts:**')
+  })
+
+  test('includes only non-empty font values', () => {
+    const result = formatBrandKitPrompt(
+      makeBrand({ fonts: { heading: 'Montserrat', body: '' } })
+    )
+
+    expect(result).toContain('**Fonts:** heading: Montserrat')
+    expect(result).not.toContain('body')
+  })
 })

@@ -22,8 +22,8 @@ export const useMediaStore = defineStore('media', () => {
       if (error) throw error
       images.value = data ?? []
     } catch (e) {
-      toast.show('Failed to load media', 'error')
-      throw e
+      const msg = e instanceof Error ? e.message : 'Failed to load media'
+      toast.show(msg, 'error')
     } finally {
       isLoading.value = false
     }
@@ -71,26 +71,59 @@ export const useMediaStore = defineStore('media', () => {
     return data as MediaAsset
   }
 
+  const EXTENSION_TO_MIME: Record<string, string> = {
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    png: 'image/png',
+    gif: 'image/gif',
+    webp: 'image/webp',
+    svg: 'image/svg+xml',
+  }
+
+  function inferMimeFromUrl(url: string): string | undefined {
+    const pathname = new URL(url).pathname
+    const ext = pathname.split('.').pop()?.toLowerCase()
+    return ext ? EXTENSION_TO_MIME[ext] : undefined
+  }
+
   async function uploadImageFromUrl(brandId: string, url: string): Promise<MediaAsset> {
     if (!url.startsWith('https://') && !url.startsWith('http://')) {
       throw new Error('Invalid URL: must start with http:// or https://')
     }
 
-    const response = await fetch(url)
+    let response: Response
+    try {
+      response = await fetch(url)
+    } catch {
+      throw new Error('Cannot fetch image — the server may block cross-origin requests')
+    }
     if (!response.ok) throw new Error(`Failed to fetch image: ${response.status}`)
 
     const blob = await response.blob()
-    const filename = url.split('/').pop() ?? 'image'
-    const file = new File([blob], filename, { type: blob.type })
+    const mimeType = blob.type || inferMimeFromUrl(url) || 'image/jpeg'
+    const pathname = new URL(url).pathname
+    const rawName = pathname.split('/').pop() ?? 'image'
+    const filename = rawName.replace(/\?.*$/, '')
+    const file = new File([blob], filename, { type: mimeType })
     return uploadImage(brandId, file)
   }
 
-  async function deleteImage(asset: MediaAsset): Promise<void> {
-    const { error: storageError } = await supabase.storage
-      .from('media-assets')
-      .remove([asset.storage_path])
-    if (storageError) throw storageError
+  async function renameImage(asset: MediaAsset, newName: string): Promise<void> {
+    const trimmed = newName.trim()
+    if (!trimmed) throw new Error('Name cannot be empty')
 
+    const { error } = await supabase
+      .from('media')
+      .update({ file_name: trimmed })
+      .eq('id', asset.id)
+    if (error) throw error
+
+    images.value = images.value.map((img) =>
+      img.id === asset.id ? { ...img, file_name: trimmed } : img
+    )
+  }
+
+  async function deleteImage(asset: MediaAsset): Promise<void> {
     const { error: dbError } = await supabase
       .from('media')
       .delete()
@@ -98,6 +131,13 @@ export const useMediaStore = defineStore('media', () => {
     if (dbError) throw dbError
 
     images.value = images.value.filter((img) => img.id !== asset.id)
+
+    const { error: storageError } = await supabase.storage
+      .from('media-assets')
+      .remove([asset.storage_path])
+    if (storageError) {
+      console.warn('Storage cleanup failed (orphaned file):', asset.storage_path)
+    }
   }
 
   function getPublicUrl(storagePath: string): string {
@@ -111,6 +151,7 @@ export const useMediaStore = defineStore('media', () => {
     fetchImages,
     uploadImage,
     uploadImageFromUrl,
+    renameImage,
     deleteImage,
     getPublicUrl,
   }

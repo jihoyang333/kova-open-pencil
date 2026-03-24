@@ -22,6 +22,7 @@ import type { MediaAcceptedType } from '@/types/kova/media'
 const props = defineProps<{
   open: boolean
   brandId: string
+  initialTab?: 'upload' | 'url'
 }>()
 
 const emit = defineEmits<{
@@ -120,7 +121,9 @@ function previewUrl(): void {
 
 function handleOpenChange(open: boolean): void {
   emit('update:open', open)
-  if (!open) {
+  if (open) {
+    activeTab.value = props.initialTab ?? 'upload'
+  } else {
     urlInput.value = ''
     urlPreview.value = null
     activeTab.value = 'upload'

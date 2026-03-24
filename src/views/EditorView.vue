@@ -5,6 +5,7 @@ import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { useHead } from '@unhead/vue'
 import { SplitterGroup, SplitterPanel, SplitterResizeHandle } from 'reka-ui'
 
+import { useImportImages } from '@/composables/use-import-images'
 import { useKeyboard } from '@/composables/use-keyboard'
 import { useMenu } from '@/composables/use-menu'
 import { useCollab, COLLAB_KEY } from '@/composables/use-collab'
@@ -98,6 +99,9 @@ if (canvasId) {
   onBeforeRouteLeave(() => {
     void captureThumbnail(canvasId)
   })
+
+  // Consume images queued by "Import to canvas" from brand assets
+  useImportImages(store)
 }
 
 const collab = useCollab(firstTab.store)

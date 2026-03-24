@@ -59,6 +59,15 @@ async function handleSelect(image: MediaAsset): Promise<void> {
   }
 }
 
+async function handleRename(image: MediaAsset, newName: string): Promise<void> {
+  try {
+    await mediaStore.renameImage(image, newName)
+    toast.show('Image renamed')
+  } catch {
+    toast.show('Failed to rename image', 'error')
+  }
+}
+
 async function handleDelete(image: MediaAsset): Promise<void> {
   try {
     await mediaStore.deleteImage(image)
@@ -108,6 +117,8 @@ async function handleDelete(image: MediaAsset): Promise<void> {
         :search-query="searchQuery"
         :placing-id="placingId"
         @select="handleSelect"
+        @preview="handleSelect"
+        @rename="handleRename"
         @delete="handleDelete"
       />
     </div>

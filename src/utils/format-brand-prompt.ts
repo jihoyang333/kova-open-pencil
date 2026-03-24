@@ -12,13 +12,25 @@ export function formatBrandKitPrompt(brand: Brand): string {
 
   if (brand.colors) {
     const { primary, secondary, accent, background } = brand.colors
-    sections.push(
-      `**Colors:** primary: ${primary}, secondary: ${secondary}, accent: ${accent}, background: ${background}`
-    )
+    const colorEntries = [
+      primary && `primary: ${primary}`,
+      secondary && `secondary: ${secondary}`,
+      accent && `accent: ${accent}`,
+      background && `background: ${background}`,
+    ].filter(Boolean)
+    if (colorEntries.length > 0) {
+      sections.push(`**Colors:** ${colorEntries.join(', ')}`)
+    }
   }
 
   if (brand.fonts) {
-    sections.push(`**Fonts:** heading: ${brand.fonts.heading}, body: ${brand.fonts.body}`)
+    const fontEntries = [
+      brand.fonts.heading && `heading: ${brand.fonts.heading}`,
+      brand.fonts.body && `body: ${brand.fonts.body}`,
+    ].filter(Boolean)
+    if (fontEntries.length > 0) {
+      sections.push(`**Fonts:** ${fontEntries.join(', ')}`)
+    }
   }
 
   if (brand.voice) {
