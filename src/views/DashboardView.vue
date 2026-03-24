@@ -37,8 +37,8 @@ watch(
 
 async function handleNewBrand(): Promise<void> {
   try {
-    const brand = await brandsStore.createBrand('My Brand')
-    void router.push(`/dashboard/${brand.id}`)
+    const brand = await brandsStore.createBrand('Untitled Brand')
+    void router.push(`/dashboard/${brand.id}/settings`)
   } catch (error) {
     console.error('Failed to create brand:', error)
   }
