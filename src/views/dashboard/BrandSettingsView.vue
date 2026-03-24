@@ -114,14 +114,15 @@ function isValidHex(v: unknown): v is string {
 }
 
 async function runExtraction(): Promise<void> {
-  if (!brand.value?.url) return
+  const targetUrl = url.value
+  if (!targetUrl) return
   isExtracting.value = true
   showReExtractDialog.value = false
   try {
     const res = await fetch('/api/extract-brand', {
       method: 'POST',
       headers: getAuthHeaders(),
-      body: JSON.stringify({ url: brand.value.url }),
+      body: JSON.stringify({ url: targetUrl }),
     })
     if (!res.ok) throw new Error('Extraction failed')
     const data = await res.json()
@@ -254,7 +255,7 @@ watch(brand, async (b) => {
     </section>
 
     <!-- Extract slot -->
-    <section class="space-y-4">
+    <section class="space-y-4" :aria-busy="isExtracting">
       <!-- State: Extracting — progress banner -->
       <div
         v-if="isExtracting"

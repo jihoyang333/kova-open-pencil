@@ -88,7 +88,6 @@ async function runMockExtraction(): Promise<void> {
   }
 }
 
-
 async function fetchBrandData(url: string): Promise<ExtractBrandResponse> {
   if (cachedBrandData.value) return cachedBrandData.value
   const res = await fetch('/api/extract-brand', {

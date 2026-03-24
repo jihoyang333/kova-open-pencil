@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import AccountMenu from '@/components/dashboard/AccountMenu.vue'
 import BrandList from '@/components/dashboard/BrandList.vue'
 import EmptyState from '@/components/dashboard/EmptyState.vue'
+import { toast } from '@/composables/use-toast'
 import { useBrandsStore } from '@/stores/brands'
 
 const route = useRoute()
@@ -35,12 +36,18 @@ watch(
   { immediate: true }
 )
 
+const isCreating = ref(false)
+
 async function handleNewBrand(): Promise<void> {
+  if (isCreating.value) return
+  isCreating.value = true
   try {
     const brand = await brandsStore.createBrand('Untitled Brand')
     void router.push(`/dashboard/${brand.id}/settings`)
-  } catch (error) {
-    console.error('Failed to create brand:', error)
+  } catch {
+    toast.show('Failed to create brand', 'error')
+  } finally {
+    isCreating.value = false
   }
 }
 
