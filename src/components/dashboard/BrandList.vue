@@ -3,13 +3,13 @@ import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { useBrandsStore } from '@/stores/brands'
-import NewClientDialog from './NewClientDialog.vue'
+import { toast } from '@/composables/use-toast'
 
 const route = useRoute()
 const router = useRouter()
 const brandsStore = useBrandsStore()
 
-const showNewClientDialog = ref(false)
+const isCreating = ref(false)
 
 function isSelected(brandId: string): boolean {
   return route.params.brandId === brandId
@@ -29,6 +29,19 @@ function navigateToTrash(): void {
 
 function navigateToSettings(): void {
   void router.push('/dashboard/settings')
+}
+
+async function handleAddBrand(): Promise<void> {
+  if (isCreating.value) return
+  isCreating.value = true
+  try {
+    const brand = await brandsStore.createBrand('Untitled Brand')
+    void router.push(`/dashboard/${brand.id}/settings`)
+  } catch {
+    toast.show('Failed to create brand', 'error')
+  } finally {
+    isCreating.value = false
+  }
 }
 </script>
 
@@ -72,11 +85,12 @@ function navigateToSettings(): void {
     <div class="space-y-0.5 border-t border-gray-200 px-2 py-2">
       <button
         data-test-id="brand-new-button"
-        class="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-sm text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-900"
-        @click="showNewClientDialog = true"
+        class="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-sm text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-900 disabled:opacity-50"
+        :disabled="isCreating"
+        @click="handleAddBrand"
       >
         <icon-lucide-plus class="size-4" />
-        Add Client
+        {{ isCreating ? 'Creating…' : 'Add Brand' }}
       </button>
       <button
         data-test-id="trash-link"
@@ -105,7 +119,5 @@ function navigateToSettings(): void {
         Settings
       </button>
     </div>
-
-    <NewClientDialog v-model:open="showNewClientDialog" />
   </nav>
 </template>
