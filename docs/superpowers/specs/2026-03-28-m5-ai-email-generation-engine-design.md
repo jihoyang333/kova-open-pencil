@@ -113,7 +113,7 @@ The founder has Monkey Flow templates (full email designs, visually useful but s
 |------|-------------|
 | 5.4.1 | Pass Available Images to System Prompt — structured list with URLs, 20-image limit |
 
-### M4 Prerequisites (from PRD v5 — not M5 tasks, but M5 depends on them)
+### M4 Prerequisites (from PRD v4 — not M5 tasks, but M5 depends on them)
 
 | Task | Description |
 |------|-------------|
@@ -137,7 +137,7 @@ A serverless function that:
 5. Forwards request body to Anthropic API (`/v1/messages`)
 6. Streams the response back (SSE)
 7. On completion, increments `generations_used`
-8. **Request body size validation** (from PRD v5): If body exceeds 4MB (leaving 0.5MB headroom for Vercel's 4.5MB limit), return 413 with `"Message too large. Try attaching fewer images."`
+8. **Request body size validation** (from PRD v4): If body exceeds 4MB (leaving 0.5MB headroom for Vercel's 4.5MB limit), return 413 with `"Message too large. Try attaching fewer images."`
 9. **Image passthrough:** Base64 vision images (pre-compressed to ≤1MB JPEG) are included inline in messages. The proxy forwards them as-is — no storage, caching, or processing.
 
 Error handling: invalid session → 401, limit hit → 429 (user-friendly), body too large → 413, API error → 502.
@@ -191,7 +191,7 @@ Clicking a chip populates the input and auto-submits, passing the mapped `campai
 
 **Files:** `src/components/chat/ChatPopup.vue`, `src/components/chat/ChatInput.vue`, `src/composables/use-chat-images.ts` (new)
 
-**Source:** PRD v5 (replaces PRD v4 version)
+**Source:** PRD v4 (replaces PRD v4 version)
 
 An image icon button in the bottom-left of the chat input. Two attachment paths, both producing the same result:
 
@@ -229,7 +229,7 @@ Replace existing chat sidebar/panel with ChatPopup. Auto-open (expanded) on new 
 
 **Files:** `src/ai/kova-tools.ts` (new), `src/ai/tools.ts` (modify to register)
 
-**Source:** PRD v5 (new task)
+**Source:** PRD v4 (new task)
 
 A Kova-layer AI tool that Claude calls to place images onto canvas nodes. Needed because core `setImageFill` (in `packages/core/`, read-only) only accepts base64 — not URLs.
 
@@ -360,7 +360,7 @@ Plus **header** (brand logo, centered) and **footer** (brand info, links, unsubs
 
 **Files:** `src/data/image-handling.md` (new), referenced by `buildSystemPrompt()`
 
-**Source:** PRD v5 (replaces PRD v4 version)
+**Source:** PRD v4 (replaces PRD v4 version)
 
 Instructions appended to the system prompt covering three scenarios:
 
@@ -388,7 +388,7 @@ Two coexisting paths:
 
 **Path 2 — Inferred (user typed freely):** No `campaignType` provided. `buildSystemPrompt()` appends a fallback inference instruction (defined in 5.3.1, layer 6b). Claude reads the user's message and applies relevant principles.
 
-Five campaign guide files: `educational.md`, `community.md`, `sales.md`, `social-proof.md`, `product-highlights.md`. Used as internal AI guidelines, not user-facing options.
+Five campaign guide files: `educational.md`, `community-branded.md`, `sales.md`, `social-proof.md`, `product-highlights.md`. Used as internal AI guidelines, not user-facing options.
 
 **Note:** The `campaignType` passing mechanism from chips to `buildSystemPrompt()` is wired in Task 5.2.2. This task handles `buildSystemPrompt()` receiving and loading the guide. Existing campaign guide content quality is unknown — flag as user QA task.
 
@@ -480,7 +480,7 @@ Adjustable during M5.5 quality testing. Starting conservative — 20 pairs is ge
 
 **Files:** `src/composables/use-chat.ts`, `src/stores/media.ts`
 
-**Source:** PRD v5 (replaces PRD v4 version)
+**Source:** PRD v4 (replaces PRD v4 version)
 
 When building the system prompt, fetch the current brand's media library images. Format each as:
 ```
@@ -554,7 +554,7 @@ One row per remembered fact. Flat list per brand.
 
 No deduplication for MVP. Post-MVP: text similarity at save time or periodic cleanup.
 
-### `chat_attachments` (from PRD v5 — Task 4.2.5)
+### `chat_attachments` (from PRD v4 — Task 4.2.5)
 
 One row per chat-pasted image. Separate from `media` table.
 
@@ -578,7 +578,7 @@ One row per chat-pasted image. Separate from `media` table.
 
 **Cleanup (post-MVP):** Scheduled function deleting records + files older than 30 days. Chat images are ephemeral — once `placeMediaImage` loads into canvas scene graph (embedded blob), the file is no longer needed.
 
-### Existing Table Enhancements (from PRD v5 — Task 4.2.2)
+### Existing Table Enhancements (from PRD v4 — Task 4.2.2)
 
 **`media` table** — add columns:
 ```sql
@@ -588,7 +588,7 @@ ALTER TABLE public.media ADD COLUMN height INTEGER;
 
 ## 6. Image Transport Architecture
 
-Consolidated from PRD v5. This section provides the unified view of how images flow through the system.
+Consolidated from PRD v4. This section provides the unified view of how images flow through the system.
 
 ### Core Insight
 
@@ -730,7 +730,7 @@ From CLAUDE.md and project conventions:
 
 ## 9. M4 Prerequisites
 
-These tasks from PRD v5 enhance existing M4 infrastructure that M5 depends on. They are NOT M5 tasks but must be completed before certain M5 tasks.
+These tasks from PRD v4 enhance existing M4 infrastructure that M5 depends on. They are NOT M5 tasks but must be completed before certain M5 tasks.
 
 ### 4.2.1 Enhancement — Image Processing Pipeline
 
