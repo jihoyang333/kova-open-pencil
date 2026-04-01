@@ -99,7 +99,7 @@ The founder has Monkey Flow templates (full email designs, visually useful but s
 
 | Task | Description |
 |------|-------------|
-| 5.3.1 | Create `buildSystemPrompt` Function — 9-layer assembly |
+| 5.3.1 | Create `buildSystemPrompt` Function — 8-layer assembly (layers 6a/6b mutually exclusive) |
 | 5.3.2 | Email Design Principles & Brand Kit Application Rules — structural rules + bridge layer |
 | 5.3.3 | Email Section Definitions — vocabulary document for 6 section types |
 | 5.3.4 | Image Handling Instructions — placeholder, attached, and media library scenarios |
@@ -283,21 +283,23 @@ Active conversation's messages in reactive state. When switching tabs, fetch and
 
 **Files:** `src/composables/use-chat.ts`
 
-Add `buildSystemPrompt(brandProfile, availableImages, brandMemories, campaignType?)` that assembles the AI's full instruction set. The 9-layer assembly order:
+Add `buildSystemPrompt(brandProfile, availableImages, brandMemories, campaignType?)` that assembles the AI's full instruction set. The assembly order (8 layers per invocation — layers 6a/6b are mutually exclusive):
 
 1. **Existing `SYSTEM_PROMPT`** constant — word-for-word, unmodified
 2. **Email design principles & brand kit application rules** (Task 5.3.2)
 3. **Email section definitions** (Task 5.3.3)
 4. **Active brand kit** (from Task 4.1.2 — colors, fonts, logo, writing style)
 5. **Image handling instructions** (Task 5.3.4)
-6. **Campaign guide** — if `campaignType` provided: load corresponding `.md` file; if not: append fallback inference instruction
-7. **Fallback inference** (when no `campaignType`): "Analyze the user's request and infer which campaign type it most closely matches..."
-8. **Brand memories** (Task 5.3.6 — persistent per-brand facts from previous chats)
-9. **Available media library images** (Task 5.4.1 — structured list with URLs and dimensions)
+6a. **Campaign guide** (if `campaignType` provided): import and append the corresponding `.md` file
+6b. **Fallback inference** (if no `campaignType`): "Analyze the user's request and infer which campaign type it most closely matches..." — only one of 6a/6b is included per invocation
+7. **Brand memories** (Task 5.3.6 — persistent per-brand facts from previous chats)
+8. **Available media library images** (Task 5.4.1 — structured list with URLs and dimensions)
+
+**Error handling:** If `fetchMemories()` or `mediaStore.fetchImages()` fails (e.g., Supabase down), gracefully degrade by omitting the failed layer and proceeding. Log the error server-side. The AI can still function without memories or the image list — those layers are additive context, not critical.
 
 Modify `createTransport()` to call `buildSystemPrompt()` instead of using the raw `SYSTEM_PROMPT` constant.
 
-**Parallel:** no
+**Parallel:** 5.3.1 has no hard prerequisites — it can be coded in parallel with the content files (5.3.2, 5.3.3, 5.3.4) since it just imports them. However, it is the assembly hub that all other 5.3.x tasks either feed into or depend on, so it's listed separately from the parallel entry points.
 
 #### 5.3.2 Email Design Principles & Brand Kit Application Rules
 
@@ -384,7 +386,7 @@ Two coexisting paths:
 
 **Path 1 — Guided (prompt chip clicked):** Each chip maps to a campaign type. `buildSystemPrompt()` receives `campaignType` and imports the corresponding markdown file (e.g., `src/data/campaigns/sales.md`).
 
-**Path 2 — Inferred (user typed freely):** No `campaignType` provided. `buildSystemPrompt()` appends a fallback inference instruction (defined in 5.3.1, layer 7). Claude reads the user's message and applies relevant principles.
+**Path 2 — Inferred (user typed freely):** No `campaignType` provided. `buildSystemPrompt()` appends a fallback inference instruction (defined in 5.3.1, layer 6b). Claude reads the user's message and applies relevant principles.
 
 Five campaign guide files: `educational.md`, `community.md`, `sales.md`, `social-proof.md`, `product-highlights.md`. Used as internal AI guidelines, not user-facing options.
 
@@ -424,7 +426,7 @@ Instructions for when and how to use `saveBrandMemory`:
 - **Conflict handling:** If new memory contradicts an existing one, flag the conflict and ask user which to keep.
 
 **Component 5 — Injection into `buildSystemPrompt()`:**
-Layer 8 in the assembly order. Formats memories as:
+Layer 7 in the assembly order. Formats memories as:
 ```
 ## Brand Memories
 The following are things you've learned about this brand from previous conversations.
@@ -458,6 +460,7 @@ Tool call results (JSON from `placeMediaImage`, `setImageFill`, `render`, etc.) 
 - Keep full tool results for the most recent turn
 - For older turns, replace with compact summary: `"[Tool: placeMediaImage — success]"` or `"[Tool: render — created 3 frames]"`
 - Never strip the tool call invocation — only the verbose result
+- Summary format is generic: `"[Tool: <name> — <status>]"` where status is `success` or the error message. No per-tool summarizers needed for MVP.
 
 **Configuration constants (developer-only, not user-facing):**
 - `CHAT_HISTORY_WINDOW_SIZE = 20` (message pairs in sliding window)
@@ -560,6 +563,7 @@ One row per chat-pasted image. Separate from `media` table.
 | `id` | UUID PK | `gen_random_uuid()` |
 | `user_id` | UUID FK → `auth.users` | ON DELETE CASCADE |
 | `brand_id` | UUID FK → `brands` | ON DELETE CASCADE |
+| `conversation_id` | UUID FK → `chat_conversations` | ON DELETE CASCADE. Nullable — set when attachment is used in a conversation. |
 | `file_name` | TEXT NOT NULL | |
 | `file_type` | TEXT NOT NULL | MIME type |
 | `file_size` | INTEGER NOT NULL | Bytes |
@@ -697,7 +701,7 @@ CROSS-PHASE:
 ### Parallelization Opportunities
 
 **Can run in parallel (no dependencies between them):**
-- 5.1.1 + 5.2.1 + 5.2.5 + 5.3.2 + 5.3.3 + 5.3.4 (6 independent entry points)
+- 5.1.1 + 5.2.1 + 5.2.5 + 5.3.1 + 5.3.2 + 5.3.3 + 5.3.4 (7 independent entry points — 5.3.1 can be coded alongside content files since it imports them, though it's the assembly hub other 5.3.x tasks depend on)
 
 **Sequential chains:**
 - 5.1.1 → 5.1.2
