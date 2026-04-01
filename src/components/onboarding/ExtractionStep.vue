@@ -46,7 +46,8 @@ const MOCK_RESULTS = {
     background: '#ffffff'
   },
   fonts: { heading: 'Inter', body: 'Georgia' },
-  voice: 'Professional yet approachable, with a focus on clarity and action-oriented language.'
+  voice: 'Professional yet approachable, with a focus on clarity and action-oriented language.',
+  industry: 'Technology'
 }
 
 function updateItem(id: string, updates: Partial<ExtractionItem>): void {
@@ -80,6 +81,8 @@ async function runMockExtraction(): Promise<void> {
   await delay(900)
   state.voice.value = MOCK_RESULTS.voice
   updateItem('voice', { status: 'done', result: MOCK_RESULTS.voice })
+
+  state.industry.value = MOCK_RESULTS.industry
 
   allDone.value = true
   await delay(1500)
@@ -174,6 +177,8 @@ async function runRealExtraction(): Promise<void> {
       status: brandData.writing_style ? 'done' : 'error',
       result: brandData.writing_style ?? 'Could not analyze writing style'
     })
+
+    state.industry.value = brandData.industry
   } else {
     const errMsg = fetchError?.message ?? 'Extraction failed'
     updateItem('logo', { status: 'error', result: errMsg })

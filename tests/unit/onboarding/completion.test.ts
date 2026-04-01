@@ -79,6 +79,7 @@ describe('completeOnboarding', () => {
       colors: { primary: '#000', secondary: '#fff', accent: '#f00', background: '#eee' },
       fonts: { heading: 'Inter', body: 'Georgia' },
       voice: 'Professional',
+      industry: 'Technology',
       logoFile: null,
       logoUrl: null,
     })
@@ -89,6 +90,7 @@ describe('completeOnboarding', () => {
       colors: { primary: '#000', secondary: '#fff', accent: '#f00', background: '#eee' },
       fonts: { heading: 'Inter', body: 'Georgia' },
       voice: 'Professional',
+      industry: 'Technology',
       logoUrl: null,
       logoFile: null,
     })
@@ -107,6 +109,7 @@ describe('completeOnboarding', () => {
         colors: null,
         fonts: null,
         voice: null,
+        industry: null,
         logoFile: null,
         logoUrl: null,
       }),
@@ -125,6 +128,7 @@ describe('completeOnboarding', () => {
         colors: null,
         fonts: null,
         voice: null,
+        industry: null,
         logoFile: null,
         logoUrl: null,
       }),

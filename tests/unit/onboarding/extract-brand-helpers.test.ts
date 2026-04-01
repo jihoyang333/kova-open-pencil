@@ -71,6 +71,67 @@ describe('extractColorsFromBranding', () => {
   test('returns null for undefined branding', () => {
     expect(extractColorsFromBranding(undefined)).toBeNull()
   })
+
+  // ── Neutral-primary improvement: prefer accent/link over black/white ──
+
+  test('uses accent as primary when primary is #000000 and accent is distinctive', () => {
+    // AllSaints-like brand: Firecrawl reports primary as text color (#000000)
+    // but the brand has a distinctive red accent
+    const result = extractColorsFromBranding({
+      colors: {
+        primary: '#000000',
+        accent: '#A90808',
+        background: '#FBFBFA',
+        textPrimary: '#000000',
+        link: '#A90808',
+      },
+    })
+    expect(result?.primary).toBe('#A90808')
+  })
+
+  test('uses link as primary when primary is #ffffff and only link is distinctive', () => {
+    const result = extractColorsFromBranding({
+      colors: {
+        primary: '#ffffff',
+        link: '#533AFD',
+        background: '#000000',
+      },
+    })
+    expect(result?.primary).toBe('#533AFD')
+  })
+
+  test('keeps #000000 primary when no accent or link exists', () => {
+    const result = extractColorsFromBranding({
+      colors: {
+        primary: '#000000',
+        background: '#ffffff',
+      },
+    })
+    expect(result?.primary).toBe('#000000')
+  })
+
+  test('keeps neutral primary when accent is also neutral', () => {
+    const result = extractColorsFromBranding({
+      colors: {
+        primary: '#000000',
+        accent: '#000000',
+        background: '#ffffff',
+      },
+    })
+    expect(result?.primary).toBe('#000000')
+  })
+
+  test('prefers accent over link when both are distinctive and primary is neutral', () => {
+    const result = extractColorsFromBranding({
+      colors: {
+        primary: '#000000',
+        accent: '#FF5733',
+        link: '#3357FF',
+        background: '#ffffff',
+      },
+    })
+    expect(result?.primary).toBe('#FF5733')
+  })
 })
 
 // ── extractFontsFromBranding ──────────────────────────────────────────
@@ -216,25 +277,29 @@ describe('extractLogoFromHtml', () => {
 // ── ExtractBrandResponse type check ─────────────────────────────────
 
 describe('ExtractBrandResponse', () => {
-  test('includes writing_style field', () => {
+  test('includes writing_style and industry fields', () => {
     const response: ExtractBrandResponse = {
       logo_url: null,
       colors: null,
       fonts: { heading: null, body: null },
       writing_style: 'Professional and concise tone.',
+      industry: 'Technology',
     }
 
     expect(response.writing_style).toBe('Professional and concise tone.')
+    expect(response.industry).toBe('Technology')
   })
 
-  test('writing_style can be null', () => {
+  test('writing_style and industry can be null', () => {
     const response: ExtractBrandResponse = {
       logo_url: null,
       colors: null,
       fonts: { heading: null, body: null },
       writing_style: null,
+      industry: null,
     }
 
     expect(response.writing_style).toBeNull()
+    expect(response.industry).toBeNull()
   })
 })

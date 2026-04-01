@@ -109,6 +109,7 @@ const successResponse = {
   colors: { primary: '#ff0000', secondary: '#00ff00', accent: '#0000ff', background: '#ffffff' },
   fonts: { heading: 'Inter', body: 'Georgia' },
   writing_style: 'Professional tone',
+  industry: 'Technology',
   logo_url: 'https://example.com/logo.png',
 }
 
@@ -264,6 +265,73 @@ describe('BrandSettingsView extract slot', () => {
     await flushPromises()
 
     expect(mockUpdateBrand).toHaveBeenCalledWith('b1', { logo_url: 'https://example.com/logo.png' })
+  })
+
+  test('industry from extraction response is mapped to input field', async () => {
+    const wrapper = mountWithBrand({ url: 'https://example.com', colors: null, fonts: null })
+    await wrapper.find('[data-test-id="brand-settings-extract-button"]').trigger('click')
+    await flushPromises()
+
+    const industryInput = wrapper.find('[data-test-id="brand-settings-industry"]')
+    expect((industryInput.element as HTMLInputElement).value).toBe('Technology')
+  })
+
+  test('extraction saves colors, fonts, voice, and industry immediately via updateBrand', async () => {
+    const wrapper = mountWithBrand({ url: 'https://example.com', colors: null, fonts: null })
+    await wrapper.find('[data-test-id="brand-settings-extract-button"]').trigger('click')
+    await flushPromises()
+
+    // updateBrand should be called with extracted data (beyond just logo_url)
+    const extractionSaveCalls = mockUpdateBrand.mock.calls.filter(
+      (call) => {
+        const payload = call[1] as Record<string, unknown>
+        return payload.colors !== undefined || payload.voice !== undefined
+      }
+    )
+    expect(extractionSaveCalls).toHaveLength(1)
+
+    const [id, payload] = extractionSaveCalls[0] as [string, Record<string, unknown>]
+    expect(id).toBe('b1')
+    expect(payload.colors).toEqual({
+      primary: '#ff0000',
+      secondary: '#00ff00',
+      accent: '#0000ff',
+      background: '#ffffff',
+    })
+    expect(payload.fonts).toEqual({ heading: 'Inter', body: 'Georgia' })
+    expect(payload.voice).toBe('Professional tone')
+    expect(payload.industry).toBe('Technology')
+  })
+
+  test('watch(brand) does not overwrite extraction results when store updates during extraction', async () => {
+    // Make updateBrand simulate real behavior: logo save triggers a store update
+    // where the brand comes back from DB with logo_url set but other fields still null
+    mockUpdateBrand.mockImplementation(async (_id: string, updates: Record<string, unknown>) => {
+      if (updates.logo_url) {
+        // Simulate supabase returning the updated brand — logo set, but
+        // colors/fonts/voice/industry still null (not yet saved to DB)
+        mockSelectedBrand.value = {
+          ...mockSelectedBrand.value!,
+          logo_url: updates.logo_url,
+          colors: null,
+          fonts: null,
+          voice: null,
+          industry: null,
+        }
+      }
+    })
+
+    const wrapper = mountWithBrand({ url: 'https://example.com', colors: null, fonts: null })
+    await wrapper.find('[data-test-id="brand-settings-extract-button"]').trigger('click')
+    await flushPromises()
+
+    // After extraction, the logo save triggered a store update → watch(brand) fired.
+    // Without the guard, watch(brand) would overwrite voice/industry with null.
+    const voiceTextarea = wrapper.find('[data-test-id="brand-settings-voice"]')
+    expect((voiceTextarea.element as HTMLTextAreaElement).value).toBe('Professional tone')
+
+    const industryInput = wrapper.find('[data-test-id="brand-settings-industry"]')
+    expect((industryInput.element as HTMLInputElement).value).toBe('Technology')
   })
 
   test('null logo_url from extraction does not clear existing logo', async () => {

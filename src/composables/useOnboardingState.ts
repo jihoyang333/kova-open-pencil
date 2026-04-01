@@ -16,6 +16,7 @@ export function useOnboardingState() {
   const colors = ref<BrandColors | null>(null)
   const fonts = ref<BrandFonts | null>(null)
   const voice = ref<string | null>(null)
+  const industry = ref<string | null>(null)
 
   const canProceed = computed(() => {
     switch (currentStep.value) {
@@ -68,6 +69,7 @@ export function useOnboardingState() {
     colors,
     fonts,
     voice,
+    industry,
     canProceed,
     progress,
     totalSteps: TOTAL_STEPS,

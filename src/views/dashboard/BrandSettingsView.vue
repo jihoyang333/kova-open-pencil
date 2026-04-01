@@ -25,6 +25,11 @@ const brandsStore = useBrandsStore()
 const brandId = computed(() => route.params.brandId as string)
 const brand = computed(() => brandsStore.selectedBrand)
 
+// Whether the brand already had extracted data when the page loaded.
+// "Re-extract" label only shows when returning to an existing brand.
+const hadDataOnLoad = ref(false)
+const loadedBrandId = ref('')
+
 // --- Local form state (initialized from brand, auto-saved on change) ---
 const name = ref('')
 const url = ref('')
@@ -37,9 +42,20 @@ const backgroundColor = ref('#FFFFFF')
 const headingFont = ref('')
 const bodyFont = ref('')
 
+// Declared early so watch(brand) can reference it during extraction guard
+const isExtracting = ref(false)
+
 // Sync local state when brand changes (e.g. navigation or extraction)
 watch(brand, (b) => {
   if (!b) return
+  // Don't overwrite local refs while extraction is in progress — the store
+  // may update (e.g. from logo save) with stale null values for fields that
+  // extraction just populated locally but hasn't persisted yet.
+  if (isExtracting.value) return
+  if (b.id !== loadedBrandId.value) {
+    loadedBrandId.value = b.id
+    hadDataOnLoad.value = !!(b.colors || b.fonts)
+  }
   name.value = b.name
   url.value = b.url ?? ''
   voice.value = b.voice ?? ''
@@ -83,7 +99,6 @@ watchDebounced(
     try {
       await brandsStore.updateBrand(brand.value.id, snapshot)
       initialSnapshot.value = JSON.stringify(snapshot)
-      toast.show('Saved')
     } catch {
       toast.show('Failed to save', 'error')
     }
@@ -91,14 +106,15 @@ watchDebounced(
   { debounce: 500, deep: true }
 )
 
-// --- Re-extract ---
+// --- Extract / Re-extract ---
 const showReExtractDialog = ref(false)
-const isExtracting = ref(false)
 const extractionDone = ref(false)
 
 const hasExtractedBefore = computed(
   () => extractionDone.value || !!(brand.value?.colors || brand.value?.fonts)
 )
+
+const extractLabel = computed(() => hadDataOnLoad.value ? 'Re-extract' : 'Extract')
 
 const extractDomain = computed(() => {
   if (!url.value) return 'website'
@@ -141,11 +157,42 @@ async function runExtraction(): Promise<void> {
     if (typeof data.writing_style === 'string') {
       voice.value = data.writing_style
     }
+    if (typeof data.industry === 'string') {
+      industry.value = data.industry
+    }
     // Map logo_url if present (don't clear existing logo on null)
     if (typeof data.logo_url === 'string' && data.logo_url && brand.value) {
       logoPreviewUrl.value = data.logo_url
       await brandsStore.updateBrand(brand.value.id, { logo_url: data.logo_url })
     }
+
+    // Save extracted data immediately to DB — don't rely on debounced auto-save
+    // which can be defeated by watch(brand) re-syncing stale null values from the store.
+    if (brand.value) {
+      const extractedData: Record<string, unknown> = {}
+      if (data.colors) {
+        extractedData.colors = {
+          primary: primaryColor.value,
+          secondary: secondaryColor.value,
+          accent: accentColor.value,
+          background: backgroundColor.value,
+        }
+      }
+      if (data.fonts) {
+        extractedData.fonts = {
+          heading: headingFont.value || '',
+          body: bodyFont.value || '',
+        }
+      }
+      if (typeof data.writing_style === 'string') extractedData.voice = data.writing_style
+      if (typeof data.industry === 'string') extractedData.industry = data.industry
+
+      if (Object.keys(extractedData).length > 0) {
+        await brandsStore.updateBrand(brand.value.id, extractedData)
+        initialSnapshot.value = JSON.stringify(formSnapshot.value)
+      }
+    }
+
     extractionDone.value = true
     toast.show('Brand data extracted')
   } catch {
@@ -276,7 +323,7 @@ watch(brand, async (b) => {
         @click="confirmReExtract"
       >
         <icon-lucide-sparkles class="mr-1.5 inline-block size-4" />
-        Re-extract
+        {{ extractLabel }}
       </button>
 
       <!-- State: Has URL — enabled extract button -->
@@ -399,10 +446,10 @@ watch(brand, async (b) => {
           class="fixed left-1/2 top-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white p-6 shadow-xl"
         >
           <DialogTitle class="text-base font-semibold text-gray-900">
-            Re-extract brand data?
+            {{ extractLabel }} brand data?
           </DialogTitle>
           <DialogDescription class="mt-2 text-sm text-gray-600">
-            This will overwrite your current colors, fonts, and voice with fresh data from {{ url }}.
+            This will overwrite your current colors, fonts, voice, and industry with fresh data from {{ url }}.
           </DialogDescription>
           <div class="mt-6 flex justify-end gap-3">
             <DialogClose as-child>
@@ -418,7 +465,7 @@ watch(brand, async (b) => {
               class="rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600"
               @click="runExtraction"
             >
-              Re-extract
+              {{ extractLabel }}
             </button>
           </div>
         </DialogContent>

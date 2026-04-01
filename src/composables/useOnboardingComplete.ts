@@ -12,6 +12,7 @@ interface CompleteOnboardingInput {
   colors: BrandColors | null
   fonts: BrandFonts | null
   voice: string | null
+  industry: string | null
   logoFile: File | null
   logoUrl: string | null
 }
@@ -36,6 +37,7 @@ export async function completeOnboarding(input: CompleteOnboardingInput): Promis
     colors: input.colors,
     fonts: input.fonts,
     voice: input.voice,
+    industry: input.industry,
     logoFile: input.logoFile,
     logoUrl: input.logoUrl
   })

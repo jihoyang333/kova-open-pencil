@@ -77,6 +77,7 @@ async function handleFinish(): Promise<void> {
       colors: state.colors.value,
       fonts: state.fonts.value,
       voice: state.voice.value,
+      industry: state.industry.value,
       logoFile: state.logoFile.value,
       logoUrl: state.logoUrl.value
     })

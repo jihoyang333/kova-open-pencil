@@ -20,4 +20,5 @@ export interface ExtractBrandResponse {
   colors: ExtractBrandColors | null
   fonts: ExtractBrandFonts
   writing_style: string | null
+  industry: string | null
 }

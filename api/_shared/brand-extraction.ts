@@ -15,16 +15,29 @@ import type { ExtractBrandColors, ExtractBrandFonts } from '../../src/types/kova
 
 // ── Pure helpers ──────────────────────────────────────────────────────
 
+const isNeutral = (hex: string): boolean => /^#(0{3,6}|f{3,6})$/i.test(hex)
+
 export function extractColorsFromBranding(
   branding: FirecrawlBranding | undefined,
 ): ExtractBrandColors | null {
   const colors = branding?.colors
   if (!colors?.primary) return null
 
+  // When Firecrawl reports a neutral primary (black/white), it's usually the
+  // text color — not the brand identity color. Prefer accent or link if they
+  // are more distinctive.
+  let primary = colors.primary
+  if (isNeutral(primary)) {
+    const candidates = [colors.accent, colors.link].filter(
+      (c): c is string => typeof c === 'string' && !isNeutral(c),
+    )
+    if (candidates.length > 0) primary = candidates[0]
+  }
+
   return {
-    primary: colors.primary,
-    secondary: colors.textPrimary ?? colors.secondary ?? colors.primary,
-    accent: colors.accent ?? colors.link ?? colors.primary,
+    primary,
+    secondary: colors.textPrimary ?? colors.secondary ?? primary,
+    accent: colors.accent ?? colors.link ?? primary,
     background: colors.background ?? '#ffffff',
   }
 }

@@ -107,6 +107,7 @@ export const useBrandsStore = defineStore('brands', () => {
     logoFile?: File | null
     logoUrl?: string | null
     voice?: string | null
+    industry?: string | null
     url?: string | null
   }
 
@@ -122,6 +123,7 @@ export const useBrandsStore = defineStore('brands', () => {
     if (input.colors) insertData.colors = input.colors
     if (input.fonts) insertData.fonts = input.fonts
     if (input.voice) insertData.voice = input.voice
+    if (input.industry) insertData.industry = input.industry
     if (input.url) insertData.url = input.url
     if (input.logoUrl && !input.logoFile) insertData.logo_url = input.logoUrl
 

@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
+import { differenceCie76, parse as parseColor } from 'culori'
 
 import { authenticateRequest } from './_shared/auth'
 import {
@@ -8,47 +9,94 @@ import {
   extractLogoFromHtml,
 } from './_shared/brand-extraction'
 import type { ExtractBrandColors, ExtractBrandResponse } from './_shared/brand-extraction'
-import type { FirecrawlScrapeData } from './_shared/firecrawl-types'
+import type { FirecrawlBrandingColors, FirecrawlScrapeData } from './_shared/firecrawl-types'
 import { validateUrl } from './_shared/url-validation'
 
 export type { ExtractBrandColors, ExtractBrandResponse }
 
-// ── Vision fallback for colors only ────────────────────────────────────
+// ── Color helpers ─────────────────────────────────────────────────────
+
+const SNAP_THRESHOLD = 5
+
+/** Snap a hex color to the nearest palette color if deltaE < threshold. */
+export function snapToPalette(hex: string, palette: string[], threshold = SNAP_THRESHOLD): string {
+  const color = parseColor(hex)
+  if (!color) return hex
+
+  const diff = differenceCie76()
+  let bestMatch = hex
+  let bestDelta = threshold
+
+  for (const candidate of palette) {
+    const parsed = parseColor(candidate)
+    if (!parsed) continue
+    const delta = diff(color, parsed)
+    if (delta < bestDelta) {
+      bestDelta = delta
+      bestMatch = candidate
+    }
+  }
+
+  return bestMatch
+}
+
+/** Flatten FirecrawlBrandingColors into a deduplicated list of hex strings.
+ *  Excludes textPrimary and textSecondary — these are structural text colors
+ *  (always dark neutrals) and are never brand identity colors. Including them
+ *  primes the vision model toward returning dark results for all brands. */
+export function flattenPalette(cssColors: FirecrawlBrandingColors | null | undefined): string[] {
+  if (!cssColors) return []
+  const { textPrimary: _tp, textSecondary: _ts, ...brandColors } = cssColors
+  return [...new Set(Object.values(brandColors).filter((v): v is string => typeof v === 'string'))]
+}
+
+// ── Vision-based color extraction (primary path) ─────────────────────
 
 async function extractColorsViaVision(
   screenshotUrl: string,
   apiKey: string,
+  cssColors?: FirecrawlBrandingColors | null,
 ): Promise<ExtractBrandColors | null> {
+  const paletteHexes = flattenPalette(cssColors)
+  const hasPalette = paletteHexes.length > 0
+
   const client = new Anthropic({ apiKey })
 
-  const response = await client.messages.create({
-    model: 'claude-sonnet-4-6',
-    max_tokens: 300,
-    messages: [
-      {
-        role: 'user',
-        content: [
-          { type: 'image', source: { type: 'url', url: screenshotUrl } },
-          {
-            type: 'text',
-            text: `Identify the 4 dominant brand colors in this website screenshot.
+  const response = await client.messages.create(
+    {
+      model: 'claude-sonnet-4-6',
+      max_tokens: 300,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'url', url: screenshotUrl } },
+            {
+              type: 'text',
+              text: `Analyze this website screenshot and identify the brand's 4 core visual identity colors.
+
+${hasPalette ? `The following hex colors were found on the site: ${paletteHexes.join(', ')}\nWhen a listed color closely matches what you see visually, use the exact hex from this list.` : ''}
 
 Return ONLY a JSON object:
 {"primary":"#hex","secondary":"#hex","accent":"#hex","background":"#hex"}
 
 Rules:
-- primary = main brand color (buttons, links, headers)
-- secondary = supporting color (text, dark elements)
-- accent = highlight/CTA color
-- background = main page background
-- All colors as 6-digit hex with # prefix
+- primary = the brand's most distinctive, recognizable color. Look at the logo, brand mark, and nav bar. Brand colors often appear in logos and CTAs — NOT in large background areas. If the logo or brand mark has a strong color (e.g. green, purple, orange), that IS the primary.
+- Avoid returning pure black (#000000) or pure white (#ffffff) as primary unless the brand's logo is literally black or white (e.g. a black Nike swoosh, white Apple logo). Text color is never the brand primary.
+- secondary = second most prominent brand color (can be a darker/lighter brand shade, or a complementary color used in headings or section backgrounds)
+- accent = a highlight or contrast color used sparingly (CTAs, badges, links) — this is where a single CTA accent color belongs if it differs from primary
+- background = main page background color
+- For truly monochrome brands where the logo, nav, and hero are all black/white/grey with zero distinctive color anywhere, return those exact neutrals
+- ${hasPalette ? 'Prefer exact hex values from the list above when they match what you see' : 'All colors as 6-digit hex with # prefix'}
 
 Return ONLY the JSON, no markdown or explanation.`,
-          },
-        ],
-      },
-    ],
-  })
+            },
+          ],
+        },
+      ],
+    },
+    { timeout: 25_000 },
+  )
 
   const text = response.content[0].type === 'text' ? response.content[0].text : ''
   console.log('[extract-brand] Vision raw response:', text)
@@ -61,15 +109,86 @@ Return ONLY the JSON, no markdown or explanation.`,
 
     if (typeof parsed.primary !== 'string') return null
 
-    return {
+    const result: ExtractBrandColors = {
       primary: parsed.primary as string,
       secondary: (parsed.secondary as string) ?? parsed.primary,
       accent: (parsed.accent as string) ?? parsed.primary,
       background: (parsed.background as string) ?? '#ffffff',
     }
+
+    // Snap to exact CSS palette values when close enough
+    if (hasPalette) {
+      return {
+        primary: snapToPalette(result.primary, paletteHexes),
+        secondary: snapToPalette(result.secondary, paletteHexes),
+        accent: snapToPalette(result.accent, paletteHexes),
+        background: snapToPalette(result.background, paletteHexes),
+      }
+    }
+
+    return result
   } catch {
     console.error('[extract-brand] Vision response not parseable as JSON')
     return null
+  }
+}
+
+// ── Writing style + industry extraction ───────────────────────────────
+
+/** Extract brand writing style and industry from scraped markdown.
+ *  Returns { writingStyle: null, industry: null } when markdown is empty
+ *  or when the Claude call fails — never throws. */
+export async function extractWritingStyleAndIndustry(
+  markdown: string,
+  apiKey: string,
+): Promise<{ writingStyle: string | null; industry: string | null }> {
+  if (!markdown.trim()) return { writingStyle: null, industry: null }
+
+  try {
+    const truncatedText = markdown.slice(0, 5000)
+    const client = new Anthropic({ apiKey })
+    const analysisResponse = await client.messages.create(
+      {
+        model: 'claude-sonnet-4-6',
+        max_tokens: 300,
+        messages: [
+          {
+            role: 'user',
+            content: `Analyze this brand's website and return a JSON object with two fields:
+
+1. "writing_style": Describe their writing style in 1-2 sentences. Focus on tone, formality, personality, and voice. Be specific and actionable — a copywriter should be able to use your description to write in this brand's voice.
+
+2. "industry": The brand's industry in 2-3 words max (e.g. "Technology", "Fashion", "Food & Beverage", "Health & Wellness", "Financial Services", "Education", "Real Estate", "Travel & Hospitality").
+
+Website copy:
+${truncatedText}
+
+Return ONLY a JSON object like {"writing_style": "...", "industry": "..."}, no markdown or explanation.`,
+          },
+        ],
+      },
+      { timeout: 25_000 },
+    )
+    const rawText =
+      analysisResponse.content[0].type === 'text'
+        ? analysisResponse.content[0].text.trim()
+        : ''
+    try {
+      const parsed = JSON.parse(rawText.replace(/```json\n?|\n?```/g, '').trim()) as Record<
+        string,
+        unknown
+      >
+      return {
+        writingStyle: typeof parsed.writing_style === 'string' ? parsed.writing_style : null,
+        industry: typeof parsed.industry === 'string' ? parsed.industry : null,
+      }
+    } catch {
+      // Claude returned non-JSON — use raw text as writing style fallback
+      return { writingStyle: rawText || null, industry: null }
+    }
+  } catch (err) {
+    console.error('[extract-brand] Writing style + industry analysis failed:', err)
+    return { writingStyle: null, industry: null }
   }
 }
 
@@ -141,23 +260,34 @@ export default async function handler(req: Request): Promise<Response> {
     const branding = scrapeData?.branding
 
     console.log(
-      '[extract-brand] Firecrawl branding data:',
+      '[extract-brand] Firecrawl data:',
       JSON.stringify({
         hasColors: !!branding?.colors,
         hasTypography: !!branding?.typography,
         hasFonts: !!branding?.fonts,
         hasImages: !!branding?.images,
+        hasScreenshot: !!scrapeData?.screenshot,
+        markdownLength: scrapeData?.markdown?.length ?? 0,
       }),
     )
 
-    // ── Colors: branding → Vision fallback → null ────────────────────
-    let colors = extractColorsFromBranding(branding)
-    let colorsSource = colors ? 'branding' : 'none'
+    // ── Colors + Writing style: run Vision and writing style in PARALLEL ──
+    // Both depend only on Firecrawl data already in hand. Sequential execution
+    // added 5–13 s of unnecessary latency and pushed the endpoint toward Vercel's
+    // 30 s timeout. Running them concurrently halves the post-Firecrawl latency.
+    const [visionColors, { writingStyle, industry }] = await Promise.all([
+      scrapeData?.screenshot
+        ? extractColorsViaVision(scrapeData.screenshot, apiKey, branding?.colors).catch((err) => {
+            console.error('[extract-brand] Vision extraction error (falling back to branding):', err)
+            return null
+          })
+        : Promise.resolve(null),
+      extractWritingStyleAndIndustry(scrapeData?.markdown ?? '', apiKey),
+    ])
 
-    if (!colors && scrapeData?.screenshot) {
-      colors = await extractColorsViaVision(scrapeData.screenshot, apiKey)
-      colorsSource = colors ? 'vision' : 'none'
-    }
+    // Vision result → Firecrawl branding fallback → null
+    const colors = visionColors ?? extractColorsFromBranding(branding)
+    const colorsSource = visionColors ? 'vision' : (colors ? 'branding' : 'none')
 
     // ── Fonts: branding only (Vision can't reliably detect fonts) ────
     const fonts = extractFontsFromBranding(branding)
@@ -172,45 +302,15 @@ export default async function handler(req: Request): Promise<Response> {
       logoSource = logoUrl ? 'html-regex' : 'none'
     }
 
-    // ── Writing style: from markdown content via Claude ────────────
-    let writingStyle: string | null = null
-    const markdown = scrapeData?.markdown
-    if (markdown && markdown.trim().length > 0) {
-      try {
-        const truncatedText = markdown.slice(0, 5000)
-        const client = new Anthropic({ apiKey })
-        const styleResponse = await client.messages.create({
-          model: 'claude-sonnet-4-6',
-          max_tokens: 200,
-          messages: [
-            {
-              role: 'user',
-              content: `Analyze this brand's website copy and describe their writing style in 1-2 sentences. Focus on tone, formality, personality, and voice. Be specific and actionable — a copywriter should be able to use your description to write in this brand's voice.
-
-Website copy:
-${truncatedText}
-
-Return ONLY the writing style description, no quotes or preamble.`,
-            },
-          ],
-        })
-        writingStyle =
-          styleResponse.content[0].type === 'text'
-            ? styleResponse.content[0].text.trim()
-            : null
-      } catch (styleErr) {
-        console.error('[extract-brand] Writing style analysis failed:', styleErr)
-      }
-    }
-
     console.log('[extract-brand] Extraction results:', JSON.stringify({
       colors: colors ? colorsSource : 'none',
       fonts: fonts.heading || fonts.body ? 'branding' : 'none',
       logo: logoUrl ? logoSource : 'none',
       writingStyle: writingStyle ? 'extracted' : 'none',
+      industry: industry ? 'extracted' : 'none',
     }))
 
-    const result: ExtractBrandResponse = { logo_url: logoUrl, colors, fonts, writing_style: writingStyle }
+    const result: ExtractBrandResponse = { logo_url: logoUrl, colors, fonts, writing_style: writingStyle, industry }
 
     return new Response(JSON.stringify(result), {
       status: 200,
