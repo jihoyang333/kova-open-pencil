@@ -5,6 +5,8 @@ export interface MediaAsset {
   readonly file_name: string
   readonly file_type: string
   readonly file_size: number
+  readonly width: number | null
+  readonly height: number | null
   readonly storage_path: string
   readonly created_at: string
 }

@@ -37,3 +37,74 @@ for (const key of globals) {
     ;(globalThis as Record<string, unknown>)[key] = (window as Record<string, unknown>)[key]
   }
 }
+
+// --- Canvas & Image API mocks (not supported by happy-dom) ---
+// These are needed by src/utils/image-processing.ts and any tests that use it.
+// Tests can control mock behavior via globalThis._canvasMock.
+
+interface CanvasMockConfig {
+  imageWidth: number
+  imageHeight: number
+  imageShouldError: boolean
+  convertToBlobLargeSize: boolean
+  convertToBlobCallCount: number
+}
+
+const canvasMock: CanvasMockConfig = {
+  imageWidth: 800,
+  imageHeight: 600,
+  imageShouldError: false,
+  convertToBlobLargeSize: false,
+  convertToBlobCallCount: 0,
+}
+
+;(globalThis as Record<string, unknown>)._canvasMock = canvasMock
+
+if (!globalThis.URL.createObjectURL) {
+  globalThis.URL.createObjectURL = () => 'blob:mock'
+  globalThis.URL.revokeObjectURL = () => {}
+}
+
+class MockImage {
+  onload: (() => void) | null = null
+  onerror: (() => void) | null = null
+  naturalWidth = canvasMock.imageWidth
+  naturalHeight = canvasMock.imageHeight
+  set src(_url: string) {
+    setTimeout(() => {
+      this.naturalWidth = canvasMock.imageWidth
+      this.naturalHeight = canvasMock.imageHeight
+      if (canvasMock.imageShouldError) {
+        this.onerror?.()
+      } else {
+        this.onload?.()
+      }
+    }, 0)
+  }
+}
+
+;(globalThis as Record<string, unknown>).Image = MockImage
+
+class MockOffscreenCanvas {
+  width: number
+  height: number
+  constructor(width: number, height: number) {
+    this.width = width
+    this.height = height
+  }
+  getContext(_type: string) {
+    return { drawImage: () => {} }
+  }
+  convertToBlob({ type }: { type: string; quality?: number }): Promise<Blob> {
+    if (canvasMock.convertToBlobLargeSize) {
+      canvasMock.convertToBlobCallCount++
+      if (canvasMock.convertToBlobCallCount === 1) {
+        return Promise.resolve(new Blob([new Uint8Array(1.5 * 1024 * 1024)], { type }))
+      }
+      return Promise.resolve(new Blob([new Uint8Array(500 * 1024)], { type }))
+    }
+    return Promise.resolve(new Blob([new Uint8Array(1000)], { type }))
+  }
+}
+
+;(globalThis as Record<string, unknown>).OffscreenCanvas = MockOffscreenCanvas

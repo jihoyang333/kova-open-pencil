@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/auth'
 import { toast } from '@/composables/use-toast'
 import { MEDIA_ACCEPTED_TYPES, MEDIA_MAX_SIZE_BYTES } from '@/types/kova/media'
 import type { MediaAsset, MediaAcceptedType } from '@/types/kova/media'
+import { processImage } from '@/utils/image-processing'
 
 export const useMediaStore = defineStore('media', () => {
   const images = ref<MediaAsset[]>([])
@@ -47,9 +48,11 @@ export const useMediaStore = defineStore('media', () => {
 
     const storagePath = `${userId}/${brandId}/${Date.now()}-${sanitizeFilename(file.name)}`
 
+    const processed = await processImage(file)
+
     const { error: uploadError } = await supabase.storage
       .from('media-assets')
-      .upload(storagePath, file)
+      .upload(storagePath, processed.blob)
     if (uploadError) throw uploadError
 
     const { data, error: insertError } = await supabase
@@ -58,8 +61,10 @@ export const useMediaStore = defineStore('media', () => {
         user_id: userId,
         brand_id: brandId,
         file_name: file.name,
-        file_type: file.type,
-        file_size: file.size,
+        file_type: processed.mimeType,
+        file_size: processed.fileSize,
+        width: processed.width,
+        height: processed.height,
         storage_path: storagePath,
       })
       .select()

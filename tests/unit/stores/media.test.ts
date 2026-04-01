@@ -1,6 +1,9 @@
 import { describe, test, expect, beforeEach, mock } from 'bun:test'
 import { setActivePinia, createPinia } from 'pinia'
 
+// Canvas/Image mocks are provided by tests/setup-dom.ts preload.
+// processImage() runs with those mocks — no mock.module needed here.
+
 // --- Supabase mocks ---
 const mockFrom = mock(() => ({}))
 const mockStorageFrom = mock(() => ({
@@ -42,6 +45,8 @@ describe('media store', () => {
     file_name: 'hero.png',
     file_type: 'image/png',
     file_size: 102400,
+    width: 800,
+    height: 600,
     storage_path: 'user-1/b1/1711100000000-hero.png',
     created_at: '2026-03-22T00:00:00Z',
   }
