@@ -11,6 +11,7 @@ const SUPABASE_STORAGE_PATTERN = /^https:\/\/[a-z0-9-]+\.supabase\.co\/storage\/
 
 const FETCH_TIMEOUT_MS = 10_000
 
+/** Throws if `url` is not a valid Supabase Storage HTTPS URL. */
 export function validateImageUrl(url: string): void {
   let parsed: URL
   try {
@@ -60,7 +61,11 @@ export function createKovaTools(store: EditorStore) {
         return { error: e instanceof Error ? e.message : 'Invalid URL' }
       }
 
-      const beforeSnapshot = store.snapshotPage()
+      const figma = makeFigmaFromStore(store)
+      const node = figma.getNodeById(node_id)
+      if (!node) {
+        return { error: `Node ${node_id} not found` }
+      }
 
       let imageBytes: Uint8Array
       try {
@@ -82,14 +87,9 @@ export function createKovaTools(store: EditorStore) {
         }
       }
 
-      const figma = makeFigmaFromStore(store)
-      const node = figma.getNodeById(node_id)
-      if (!node) {
-        return { error: `Node ${node_id} not found` }
-      }
+      const beforeSnapshot = store.snapshotPage()
 
       const image = figma.createImage(imageBytes)
-      const mode = (scale_mode ?? 'FILL') as 'FILL' | 'FIT' | 'CROP' | 'TILE'
       node.fills = [
         {
           type: 'IMAGE',
@@ -97,7 +97,7 @@ export function createKovaTools(store: EditorStore) {
           opacity: 1,
           visible: true,
           imageHash: image.hash,
-          imageScaleMode: mode,
+          imageScaleMode: scale_mode,
         },
       ]
 
@@ -115,9 +115,9 @@ export function createKovaTools(store: EditorStore) {
       store.renderer?.aiClearActive()
       store.aiFlashDone([node_id])
 
-      return { success: true, node_id, scale_mode: mode }
+      return { success: true, node_id, scale_mode }
     },
   })
 
-  return { placeMediaImage }
+  return { placeMediaImage } as const
 }
