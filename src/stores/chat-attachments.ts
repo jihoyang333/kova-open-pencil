@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/auth'
+import { sanitizeFilename } from '@/utils/sanitize-filename'
 
 import type { ChatAttachment } from '@/types/kova/chat-attachment'
 
@@ -21,7 +22,7 @@ export const useChatAttachmentsStore = defineStore('chat-attachments', () => {
     if (!userId) throw new Error('Not authenticated')
 
     const timestamp = Date.now()
-    const storagePath = `${userId}/${brandId}/${timestamp}-${file.name}`
+    const storagePath = `${userId}/${brandId}/${timestamp}-${sanitizeFilename(file.name)}`
 
     const { error: uploadError } = await supabase.storage.from(BUCKET).upload(storagePath, file)
 
@@ -61,7 +62,7 @@ export const useChatAttachmentsStore = defineStore('chat-attachments', () => {
     const { error: storageError } = await supabase.storage.from(BUCKET).remove([storagePath])
 
     if (storageError) {
-      console.warn(`[chat-attachments] Storage delete warning: ${storageError.message}`)
+      throw new Error(`Storage delete failed: ${storageError.message}`)
     }
 
     const { error } = await supabase.from('chat_attachments').delete().eq('id', id)

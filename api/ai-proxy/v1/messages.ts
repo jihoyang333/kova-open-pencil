@@ -1,8 +1,8 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { authenticateRequest } from '../../_shared/auth'
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' } as const
-const MAX_BODY_SIZE = 4 * 1024 * 1024 // 4MB
+const MAX_BODY_BYTES = 4 * 1024 * 1024 // 4MB
 const DAILY_GENERATION_LIMIT = 200
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages'
 
@@ -14,9 +14,18 @@ function secondsUntilMidnightUTC(): number {
   return Math.ceil((midnight.getTime() - now.getTime()) / 1000)
 }
 
-interface UserData {
-  generations_used: number | null
-  generations_reset_at: string | null
+// Module-scope lazy singleton — reused across warm Vercel invocations
+let _supabase: SupabaseClient | null = null
+
+function getSupabase(): SupabaseClient {
+  if (_supabase) return _supabase
+
+  const url = process.env.VITE_SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!url || !key) throw new Error('Missing Supabase environment variables')
+
+  _supabase = createClient(url, key)
+  return _supabase
 }
 
 export default async function handler(req: Request): Promise<Response> {
@@ -27,34 +36,34 @@ export default async function handler(req: Request): Promise<Response> {
     )
   }
 
-  // 1. Authenticate
+  // 1. Authenticate (validates Supabase env vars internally)
   const authResult = await authenticateRequest(req)
   if (authResult instanceof Response) return authResult
   const { userId } = authResult
 
-  // 2. Body size validation via content-length header (fast path)
+  // 2. Body size validation — content-length fast path, then actual byte length
   const contentLength = req.headers.get('content-length')
-  if (contentLength && parseInt(contentLength, 10) > MAX_BODY_SIZE) {
+  if (contentLength && parseInt(contentLength, 10) > MAX_BODY_BYTES) {
     return new Response(
       JSON.stringify({ error: 'Message too large. Try attaching fewer images.' }),
       { status: 413, headers: JSON_HEADERS }
     )
   }
 
-  // Read body once and check actual size
   const bodyText = await req.text()
-  if (bodyText.length > MAX_BODY_SIZE) {
+  const bodyByteLength = new TextEncoder().encode(bodyText).byteLength
+  if (bodyByteLength > MAX_BODY_BYTES) {
     return new Response(
       JSON.stringify({ error: 'Message too large. Try attaching fewer images.' }),
       { status: 413, headers: JSON_HEADERS }
     )
   }
 
-  // 3. Rate limiting
-  const supabaseUrl = process.env.VITE_SUPABASE_URL
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-
-  if (!supabaseUrl || !serviceRoleKey) {
+  // 3. Atomic rate limiting — reserves a slot or rejects
+  let supabase: SupabaseClient
+  try {
+    supabase = getSupabase()
+  } catch {
     console.error('[ai-proxy] Missing Supabase environment variables')
     return new Response(
       JSON.stringify({ error: 'Server configuration error' }),
@@ -62,38 +71,21 @@ export default async function handler(req: Request): Promise<Response> {
     )
   }
 
-  const supabase = createClient(supabaseUrl, serviceRoleKey)
+  const { data: rateResult, error: rateError } = await supabase.rpc(
+    'try_increment_generation',
+    { p_user_id: userId, p_daily_limit: DAILY_GENERATION_LIMIT }
+  )
 
-  const { data: userData, error: userError } = await supabase
-    .from('users')
-    .select('generations_used, generations_reset_at')
-    .eq('id', userId)
-    .single()
-
-  if (userError || !userData) {
+  if (rateError) {
+    console.error('[ai-proxy] Rate limit RPC error:', rateError.message)
     return new Response(
-      JSON.stringify({ error: 'User not found' }),
-      { status: 404, headers: JSON_HEADERS }
+      JSON.stringify({ error: 'Server error' }),
+      { status: 500, headers: JSON_HEADERS }
     )
   }
 
-  const typedUserData = userData as UserData
-  const today = new Date().toISOString().slice(0, 10)
-  const resetDate = typedUserData.generations_reset_at
-    ? new Date(typedUserData.generations_reset_at).toISOString().slice(0, 10)
-    : null
-
-  let generationsUsed = typedUserData.generations_used ?? 0
-
-  if (resetDate && resetDate < today) {
-    generationsUsed = 0
-    await supabase
-      .from('users')
-      .update({ generations_used: 0, generations_reset_at: new Date().toISOString() })
-      .eq('id', userId)
-  }
-
-  if (generationsUsed >= DAILY_GENERATION_LIMIT) {
+  const row = Array.isArray(rateResult) ? rateResult[0] : rateResult
+  if (!row?.allowed) {
     return new Response(
       JSON.stringify({
         error: 'Daily limit reached. Your limit resets at midnight UTC.',
@@ -133,16 +125,7 @@ export default async function handler(req: Request): Promise<Response> {
       )
     }
 
-    // 5. Increment usage (non-blocking — fire and forget)
-    void supabase
-      .from('users')
-      .update({
-        generations_used: generationsUsed + 1,
-        generations_reset_at: new Date().toISOString(),
-      })
-      .eq('id', userId)
-
-    // 6. Stream SSE response back to client
+    // 5. Stream SSE response back to client
     return new Response(anthropicResponse.body, {
       status: 200,
       headers: {

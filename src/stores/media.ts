@@ -6,6 +6,7 @@ import { toast } from '@/composables/use-toast'
 import { MEDIA_ACCEPTED_TYPES, MEDIA_MAX_SIZE_BYTES } from '@/types/kova/media'
 import type { MediaAsset, MediaAcceptedType } from '@/types/kova/media'
 import { processImage } from '@/utils/image-processing'
+import { sanitizeFilename } from '@/utils/sanitize-filename'
 
 export const useMediaStore = defineStore('media', () => {
   const images = ref<MediaAsset[]>([])
@@ -28,10 +29,6 @@ export const useMediaStore = defineStore('media', () => {
     } finally {
       isLoading.value = false
     }
-  }
-
-  function sanitizeFilename(name: string): string {
-    return name.replace(/[^a-zA-Z0-9._-]/g, '_')
   }
 
   async function uploadImage(brandId: string, file: File): Promise<MediaAsset> {

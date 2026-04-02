@@ -1,5 +1,6 @@
 import { describe, test, expect, beforeEach, mock } from 'bun:test'
 import { setActivePinia, createPinia } from 'pinia'
+import { createMockUser } from '../../helpers/mock-user'
 
 // Canvas/Image mocks are provided by tests/setup-dom.ts preload.
 // processImage() runs with those mocks — no mock.module needed here.
@@ -35,7 +36,7 @@ describe('media store', () => {
     mockFrom.mockClear()
     mockStorageFrom.mockClear()
     const authStore = useAuthStore()
-    authStore.user = { id: 'user-1', email: 'test@test.com' } as any
+    authStore.user = createMockUser()
   })
 
   const sampleMedia = {
