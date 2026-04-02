@@ -3,6 +3,7 @@ import { tool } from 'ai'
 import * as v from 'valibot'
 
 import { makeFigmaFromStore } from '@/automation/figma-factory'
+import { createKovaTools } from '@/ai/kova-tools'
 import {
   CORE_TOOLS,
   collectFontKeys,
@@ -78,7 +79,7 @@ export function clearToolLogEntries(): void {
 export function createAITools(store: EditorStore) {
   let beforeSnapshot: Map<string, SceneNode> | null = null
 
-  return toolsToAI(
+  const coreToolsResult = toolsToAI(
     CORE_TOOLS,
     {
       getFigma: () => makeFigmaFromStore(store),
@@ -135,6 +136,9 @@ export function createAITools(store: EditorStore) {
     },
     { v, valibotSchema, tool }
   )
+
+  const kovaTools = createKovaTools(store)
+  return { ...coreToolsResult, ...kovaTools }
 }
 
 export type AITools = ReturnType<typeof createAITools>
