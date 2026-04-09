@@ -73,6 +73,8 @@ function createTransport() {
   acpTransportInstance = null
 
   const tools = createAITools(useEditorStore())
+  // TODO(M5): Replace SYSTEM_PROMPT with buildSystemPrompt() once brand profile,
+  // memories, and media stores are available. See buildSystemPrompt() for 8-layer assembly.
   const agent = new ToolLoopAgent({
     model: createModel(),
     instructions: SYSTEM_PROMPT,
