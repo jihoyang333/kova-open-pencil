@@ -8,7 +8,6 @@ import { clearToolLogEntries, didHitStepLimit } from '@/ai/tools'
 import ACPPermissionDialog from '@/components/chat/ACPPermissionDialog.vue'
 import ChatInput from '@/components/chat/ChatInput.vue'
 import ChatMessage from '@/components/chat/ChatMessage.vue'
-import ProviderSetup from '@/components/chat/ProviderSetup.vue'
 import { useAIChat } from '@/composables/use-chat'
 
 import type { Chat } from '@ai-sdk/vue'
@@ -108,7 +107,10 @@ function handleClearChat() {
 
 <template>
   <div data-test-id="chat-panel" class="flex min-w-0 flex-1 flex-col overflow-hidden select-text">
-    <ProviderSetup v-if="!isConfigured" />
+    <div v-if="!isConfigured" class="flex flex-1 flex-col items-center justify-center px-6">
+      <icon-lucide-sparkles class="mb-3 size-7 text-muted" />
+      <p class="text-center text-xs text-muted">Sign in to start using AI chat.</p>
+    </div>
 
     <template v-else>
       <ScrollAreaRoot class="min-h-0 flex-1">

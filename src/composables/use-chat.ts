@@ -42,8 +42,7 @@ function createModel(): LanguageModel {
   return anthropic(modelID.value)
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- test-only mock transports don't implement full generics
-let overrideTransport: (() => any) | null = null
+let overrideTransport: (() => unknown) | null = null
 
 let chat: Chat<UIMessage> | null = null
 
@@ -79,12 +78,14 @@ function createTransport() {
     model: createModel(),
     instructions: SYSTEM_PROMPT,
     tools,
+    maxOutputTokens: 16384,
     stopWhen: stepCountIs(MAX_AGENT_STEPS),
     providerOptions: ANTHROPIC_CACHE_CONTROL,
     prepareCall: (options) => {
       resetRunSteps()
       return {
         ...options,
+        maxOutputTokens: 16384,
         providerOptions: ANTHROPIC_CACHE_CONTROL
       }
     },
