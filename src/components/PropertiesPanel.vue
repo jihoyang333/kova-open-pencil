@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { TabsContent, TabsList, TabsRoot, TabsTrigger } from 'reka-ui'
 
+import { useRoute } from 'vue-router'
+
 import { useAIChat } from '@/composables/use-chat'
 import { SHOW_DEV_FEATURES } from '@/constants'
 import { useEditorStore } from '@/stores/editor'
@@ -11,6 +13,8 @@ import DesignPanel from './DesignPanel.vue'
 
 const store = useEditorStore()
 const { activeTab } = useAIChat()
+const route = useRoute()
+const hasCanvasChat = !!route.params.canvasId
 </script>
 
 <template>
@@ -38,6 +42,7 @@ const { activeTab } = useAIChat()
           Code
         </TabsTrigger>
         <TabsTrigger
+          v-if="!hasCanvasChat"
           value="ai"
           data-test-id="properties-tab-ai"
           class="flex items-center gap-1 rounded px-2.5 py-1 text-xs text-muted hover:text-surface data-[state=active]:font-semibold data-[state=active]:text-surface"
@@ -74,6 +79,7 @@ const { activeTab } = useAIChat()
       </TabsContent>
 
       <TabsContent
+        v-if="!hasCanvasChat"
         value="ai"
         class="flex min-h-0 flex-1 flex-col"
         :force-mount="true"

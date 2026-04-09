@@ -98,9 +98,13 @@ async function handleSubmit(text: string, campaignType?: string) {
     return
   }
 
-  // Persist user message
+  // Persist user message (non-blocking — don't prevent AI send on persistence failure)
   if (chatStore.activeConversationId) {
-    await chatStore.addMessage(chatStore.activeConversationId, 'user', text)
+    try {
+      await chatStore.addMessage(chatStore.activeConversationId, 'user', text)
+    } catch (e) {
+      console.error('Failed to persist message:', e)
+    }
   }
   // TODO(M5.5): Persist assistant response on stream complete.
 
