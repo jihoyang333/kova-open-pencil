@@ -10,6 +10,8 @@ import CodePanel from './CodePanel.vue'
 import DesignPanel from './DesignPanel.vue'
 import LayerTree from './LayerTree.vue'
 import PagesPanel from './PagesPanel.vue'
+import { useRoute } from 'vue-router'
+
 import {
   DRAWER_SPRING_DAMPING,
   DRAWER_SPRING_STIFFNESS,
@@ -24,6 +26,8 @@ type Snap = 'closed' | 'half' | 'full'
 type DrawerTab = 'layers' | 'design' | 'code' | 'ai'
 
 const store = useEditorStore()
+const route = useRoute()
+const hasCanvasChat = !!route.params.canvasId
 
 const headerRef = ref<HTMLElement | null>(null)
 
@@ -154,6 +158,7 @@ const drawerTransition = {
           </TabsTrigger>
 
           <TabsTrigger
+            v-if="!hasCanvasChat"
             data-test-id="mobile-ribbon-ai"
             value="ai"
             class="flex h-full cursor-pointer items-center justify-center px-3 transition-colors outline-none select-none data-[state=active]:text-accent"
@@ -188,7 +193,7 @@ const drawerTransition = {
           </div>
         </TabsContent>
 
-        <TabsContent value="ai" class="mt-0 h-full data-[state=inactive]:hidden">
+        <TabsContent v-if="!hasCanvasChat" value="ai" class="mt-0 h-full data-[state=inactive]:hidden">
           <div data-test-id="mobile-drawer-ai" class="flex h-full flex-col">
             <ChatPanel />
           </div>

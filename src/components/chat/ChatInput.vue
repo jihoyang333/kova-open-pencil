@@ -69,10 +69,10 @@ function handleSubmit(e: Event) {
               data-test-id="chat-stop-button"
               :class="
                 uiButton({
-                  tone: 'ghost',
+                  tone: 'accent',
                   shape: 'rounded',
                   size: 'sm',
-                  class: 'shrink-0 border border-border px-2 py-1.5'
+                  class: 'shrink-0 px-2.5 py-1.5 font-medium'
                 })
               "
               @click="emit('stop')"
