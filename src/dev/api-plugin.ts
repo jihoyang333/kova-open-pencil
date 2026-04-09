@@ -6,7 +6,8 @@ import type { Plugin, ResolvedConfig, ViteDevServer } from 'vite'
 
 const API_ROUTES: Record<string, string> = {
   '/api/extract-brand': 'extract-brand.ts',
-  '/api/analyze-writing-style': 'analyze-writing-style.ts'
+  '/api/analyze-writing-style': 'analyze-writing-style.ts',
+  '/api/ai-proxy/v1/messages': 'ai-proxy/v1/messages.ts'
 }
 
 async function bufferBody(req: IncomingMessage): Promise<Buffer> {
@@ -79,8 +80,21 @@ export function apiPlugin(): Plugin {
               res.setHeader(key, value)
             })
 
-            const responseBody = await response.text()
-            res.end(responseBody)
+            if (response.body) {
+              const reader = response.body.getReader()
+              const pump = async (): Promise<void> => {
+                const { done, value } = await reader.read()
+                if (done) {
+                  res.end()
+                  return
+                }
+                res.write(value)
+                return pump()
+              }
+              await pump()
+            } else {
+              res.end()
+            }
           } catch (err) {
             console.error(`[api-plugin] Error handling ${pathname}:`, err)
             res.statusCode = 500
