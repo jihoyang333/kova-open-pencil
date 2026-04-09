@@ -29,6 +29,7 @@ import SafariBanner from '@/components/SafariBanner.vue'
 import TabBar from '@/components/TabBar.vue'
 import MediaLibraryPanel from '@/components/media/MediaLibraryPanel.vue'
 import Toolbar from '@/components/Toolbar.vue'
+import ChatPopup from '@/components/chat/ChatPopup.vue'
 
 const route = useRoute()
 const params = useUrlSearchParams('history')
@@ -229,5 +230,8 @@ onUnmounted(() => {
         <EditorCanvas />
       </div>
     </div>
+
+    <!-- Chat popup overlay (always rendered, manages its own visibility) -->
+    <ChatPopup v-if="canvasId" :canvas-id="canvasId" />
   </div>
 </template>
