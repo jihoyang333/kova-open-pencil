@@ -51,10 +51,10 @@ useMenu()
 // Canvas integration (only for non-demo routes with canvasId)
 const router = useRouter()
 const canvasId = route.params.canvasId as string | undefined
+const brandsStore = useBrandsStore()
 
 if (canvasId) {
   const canvasesStore = useCanvasesStore()
-  const brandsStore = useBrandsStore()
 
   // Track the initially loaded name to prevent redundant sync on mount
   let loadedName = ''
@@ -232,6 +232,10 @@ onUnmounted(() => {
     </div>
 
     <!-- Chat popup overlay (always rendered, manages its own visibility) -->
-    <ChatPopup v-if="canvasId" :canvas-id="canvasId" />
+    <ChatPopup
+      v-if="canvasId && brandsStore.selectedBrandId"
+      :canvas-id="canvasId"
+      :brand-id="brandsStore.selectedBrandId"
+    />
   </div>
 </template>

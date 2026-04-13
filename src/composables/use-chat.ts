@@ -1,17 +1,18 @@
 import { createAnthropic } from '@ai-sdk/anthropic'
 import { Chat } from '@ai-sdk/vue'
-import { DirectChatTransport, stepCountIs, ToolLoopAgent } from 'ai'
+import { DirectChatTransport, stepCountIs, ToolLoopAgent, wrapLanguageModel } from 'ai'
 import { computed, ref } from 'vue'
 
 import SYSTEM_PROMPT from '@/ai/system-prompt.md?raw'
 import { MAX_AGENT_STEPS, createAITools, recordStepUsage, resetRunSteps } from '@/ai/tools'
+import { stripPreviousTurnImages } from '@/composables/use-chat-images'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/auth'
 import { useEditorStore } from '@/stores/editor'
 import { ACP_AGENTS, IS_BROWSER, IS_TAURI } from '@open-pencil/core'
 
 import type { ACPAgentID, AIProviderID } from '@open-pencil/core'
-import type { LanguageModel, UIMessage } from 'ai'
+import type { ChatTransport, UIMessage } from 'ai'
 
 const providerID = ref<AIProviderID>('anthropic')
 const modelID = ref(import.meta.env.VITE_AI_MODEL ?? 'claude-sonnet-4-6')
@@ -24,7 +25,7 @@ const isConfigured = computed(() => {
   return !!useAuthStore().user
 })
 
-function createModel(): LanguageModel {
+function createModel() {
   const anthropic = createAnthropic({
     baseURL: '/api/ai-proxy',
     fetch: async (url, init) => {
@@ -42,7 +43,7 @@ function createModel(): LanguageModel {
   return anthropic(modelID.value)
 }
 
-let overrideTransport: (() => unknown) | null = null
+let overrideTransport: (() => ChatTransport<UIMessage>) | null = null
 
 let chat: Chat<UIMessage> | null = null
 
@@ -65,17 +66,27 @@ async function createACPTransport() {
   return transport
 }
 
-function createTransport() {
+function createTransport(): ChatTransport<UIMessage> {
   if (overrideTransport) return overrideTransport()
 
   void acpTransportInstance?.destroy()
   acpTransportInstance = null
 
   const tools = createAITools(useEditorStore())
+  const wrappedModel = wrapLanguageModel({
+    model: createModel(),
+    middleware: {
+      specificationVersion: 'v3',
+      transformParams: async ({ params }) => ({
+        ...params,
+        prompt: stripPreviousTurnImages(params.prompt),
+      }),
+    },
+  })
   // TODO(M5): Replace SYSTEM_PROMPT with buildSystemPrompt() once brand profile,
   // memories, and media stores are available. See buildSystemPrompt() for 8-layer assembly.
   const agent = new ToolLoopAgent({
-    model: createModel(),
+    model: wrappedModel,
     instructions: SYSTEM_PROMPT,
     tools,
     maxOutputTokens: 16384,
@@ -100,7 +111,9 @@ function createTransport() {
     }
   })
 
-  return new DirectChatTransport({ agent })
+  // Cast narrows the tool-set generic widened by InferUITools; DirectChatTransport
+  // implements ChatTransport so the cast is structurally sound.
+  return new DirectChatTransport({ agent }) as unknown as ChatTransport<UIMessage>
 }
 
 async function ensureChat(): Promise<Chat<UIMessage> | null> {

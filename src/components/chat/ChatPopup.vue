@@ -12,19 +12,21 @@ import ChatInput from '@/components/chat/ChatInput.vue'
 import ChatMessage from '@/components/chat/ChatMessage.vue'
 import PromptChips from '@/components/chat/PromptChips.vue'
 import { useAIChat } from '@/composables/use-chat'
-import { useBrandsStore } from '@/stores/brands'
+import { useChatImages } from '@/composables/use-chat-images'
 import { useChatStore } from '@/stores/chat'
 
 import type { Chat } from '@ai-sdk/vue'
 import type { UIMessage } from 'ai'
 
-const props = defineProps<{
+const { canvasId, brandId } = defineProps<{
   canvasId: string
+  brandId: string
 }>()
 
 const { ensureChat, resetChat } = useAIChat()
-const brandsStore = useBrandsStore()
 const chatStore = useChatStore()
+const chatImages = useChatImages(brandId)
+const fileInput = ref<HTMLInputElement | null>(null)
 
 const isExpanded = ref(false)
 const chat = ref<Chat<UIMessage> | null>(null)
@@ -60,12 +62,11 @@ const activeCampaignType = ref<string | undefined>(undefined)
 
 // Initialize: load conversations for this canvas.
 watch(
-  () => brandsStore.selectedBrandId,
-  async (brandId) => {
-    if (!brandId) return
-    await chatStore.fetchConversations(brandId, props.canvasId)
+  () => brandId,
+  async (bid) => {
+    await chatStore.fetchConversations(bid, canvasId)
     if (chatStore.conversations.length === 0) {
-      const conv = await chatStore.createConversation(brandId, props.canvasId)
+      const conv = await chatStore.createConversation(bid, canvasId)
       chatStore.activeConversationId = conv.id
     } else {
       chatStore.activeConversationId = chatStore.conversations[0].id
@@ -108,23 +109,59 @@ async function handleSubmit(text: string, campaignType?: string) {
   }
   // TODO(M5.5): Persist assistant response on stream complete.
 
-  chat.value?.sendMessage({ text }).catch((e: unknown) => {
-    console.error('Chat error:', e)
-  })
+  chat.value
+    ?.sendMessage({ text })
+    .catch((e: unknown) => {
+      console.error('Chat error:', e)
+    })
+    .finally(() => {
+      chatImages.clearAttachments()
+    })
 }
 
 function handleStop() {
   chat.value?.stop()
 }
 
+function handleAttachImage() {
+  fileInput.value?.click()
+}
+
+async function handleFileSelected(e: Event) {
+  const target = e.target as HTMLInputElement
+  const files = target.files
+  if (!files) return
+  for (const file of files) {
+    if (file.type.startsWith('image/')) {
+      try {
+        await chatImages.attachFromClipboard(file)
+      } catch (err) {
+        console.error('Failed to attach image:', err)
+      }
+    }
+  }
+  target.value = ''
+}
+
+async function handleAttachClipboard(file: File) {
+  try {
+    await chatImages.attachFromClipboard(file)
+  } catch (err) {
+    console.error('Failed to attach pasted image:', err)
+  }
+}
+
+function handleRemoveAttachment(id: string) {
+  chatImages.removeAttachment(id)
+}
+
 async function handleNewTab() {
-  const brandId = brandsStore.selectedBrandId
-  if (!brandId) return
-  const conv = await chatStore.createConversation(brandId, props.canvasId)
+  const conv = await chatStore.createConversation(brandId, canvasId)
   chatStore.activeConversationId = conv.id
   chat.value = null
   resetChat()
   clearToolLogEntries()
+  chatImages.clearAttachments()
 }
 
 async function handleSwitchTab(conversationId: string) {
@@ -251,6 +288,26 @@ async function handleSwitchTab(conversationId: string) {
     </div>
 
     <!-- Input -->
-    <ChatInput :status="status" @submit="handleSubmit" @stop="handleStop" />
+    <ChatInput
+      :status="status"
+      :attachments="chatImages.attachments.value"
+      @submit="handleSubmit"
+      @stop="handleStop"
+      @attach-image="handleAttachImage"
+      @attach-clipboard="handleAttachClipboard"
+      @remove-attachment="handleRemoveAttachment"
+    />
+
+    <!-- Hidden file input for image selection -->
+    <!-- TODO(M5.5): Replace with media library picker dialog -->
+    <input
+      ref="fileInput"
+      type="file"
+      accept="image/*"
+      multiple
+      class="hidden"
+      data-test-id="chat-file-input"
+      @change="handleFileSelected"
+    />
   </div>
 </template>
