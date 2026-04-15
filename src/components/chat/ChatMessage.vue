@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { isTextUIPart, isToolUIPart, getToolName } from 'ai'
+import { isFileUIPart, isTextUIPart, isToolUIPart, getToolName } from 'ai'
 import { CollapsibleContent, CollapsibleRoot, CollapsibleTrigger } from 'reka-ui'
 import { Markdown } from 'vue-stream-markdown'
 import 'vue-stream-markdown/index.css'
 
-import type { UIMessage, UIMessagePart } from 'ai'
+import type { FileUIPart, UIMessage, UIMessagePart } from 'ai'
 
 const { message } = defineProps<{ message: UIMessage }>()
 
@@ -35,6 +35,17 @@ function toolState(part: ToolPart): 'pending' | 'done' | 'error' {
 function partKey(part: UIMessagePart, index: number): string {
   if ('toolCallId' in part) return part.toolCallId
   return `part-${index}`
+}
+
+function userImageParts(parts: readonly UIMessagePart[]): FileUIPart[] {
+  return parts.filter(isFileUIPart).filter((p) => p.mediaType.startsWith('image/'))
+}
+
+function userText(parts: readonly UIMessagePart[]): string {
+  return parts
+    .filter(isTextUIPart)
+    .map((p) => p.text)
+    .join('')
 }
 </script>
 
@@ -111,18 +122,27 @@ function partKey(part: UIMessagePart, index: number): string {
       </template>
 
       <!-- User message -->
-      <div
-        v-else-if="message.role === 'user'"
-        data-test-id="chat-text-bubble"
-        class="rounded-xl rounded-br-md bg-accent px-3 py-2 text-xs leading-relaxed whitespace-pre-wrap text-white"
-      >
-        {{
-          message.parts
-            .filter(isTextUIPart)
-            .map((p) => p.text)
-            .join('')
-        }}
-      </div>
+      <template v-else-if="message.role === 'user'">
+        <div
+          v-if="userImageParts(message.parts).length > 0"
+          class="flex flex-wrap justify-end gap-2"
+        >
+          <img
+            v-for="(file, i) in userImageParts(message.parts)"
+            :key="`file-${i}`"
+            :src="file.url"
+            :alt="file.filename ?? 'attached image'"
+            class="max-h-40 max-w-[200px] rounded-lg object-cover"
+          />
+        </div>
+        <div
+          v-if="userText(message.parts)"
+          data-test-id="chat-text-bubble"
+          class="rounded-xl rounded-br-md bg-accent px-3 py-2 text-xs leading-relaxed whitespace-pre-wrap break-words text-white"
+        >
+          {{ userText(message.parts) }}
+        </div>
+      </template>
     </div>
   </div>
 </template>

@@ -35,7 +35,7 @@ export function createKovaTools(store: EditorStore) {
       'Place an image from Supabase Storage onto a canvas node. ' +
       'Fetches the image and sets it as an image fill on the target node. ' +
       'Only accepts Supabase Storage URLs.',
-    parameters: valibotSchema(
+    inputSchema: valibotSchema(
       v.object({
         node_id: v.pipe(
           v.string(),

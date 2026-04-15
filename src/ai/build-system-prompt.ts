@@ -21,12 +21,20 @@ export interface BrandMemory {
   readonly source: 'auto' | 'user'
 }
 
+export interface ChatAttachmentForAI {
+  readonly fileName: string
+  readonly width: number | null
+  readonly height: number | null
+  readonly publicUrl: string
+}
+
 export type CampaignType = 'educational' | 'community' | 'sales' | 'social-proof' | 'product-highlights'
 
 export interface BuildSystemPromptInput {
   readonly brandProfile: Brand | null
   readonly availableImages: readonly AvailableImage[]
   readonly brandMemories: readonly BrandMemory[]
+  readonly chatAttachments?: readonly ChatAttachmentForAI[]
   readonly campaignType?: CampaignType
 }
 
@@ -82,6 +90,10 @@ export async function buildSystemPrompt(input: BuildSystemPromptInput): Promise<
     ...(input.brandMemories.length > 0 ? [formatBrandMemories(input.brandMemories)] : []),
     // Layer 8: Available media library images (conditional)
     ...(input.availableImages.length > 0 ? [formatAvailableImages(input.availableImages)] : []),
+    // Layer 8b: Images attached in the current user turn (ephemeral, conditional)
+    ...(input.chatAttachments && input.chatAttachments.length > 0
+      ? [formatChatAttachments(input.chatAttachments)]
+      : []),
   ]
 
   return layers.join('\n\n---\n\n')
@@ -95,6 +107,22 @@ The following are things you've learned about this brand from previous conversat
 Apply these in all your design decisions for this brand.
 
 ${memoryLines}`
+}
+
+function formatChatAttachments(attachments: readonly ChatAttachmentForAI[]): string {
+  const lines = attachments
+    .map(
+      (a, i) =>
+        `${i + 1}. "${a.fileName}" (${a.width ?? '?'}x${a.height ?? '?'}px) — url: ${a.publicUrl}`,
+    )
+    .join('\n')
+
+  return `## Images Attached This Turn (Ephemeral)
+The user attached the following images in their current message. Use them as visual reference when analyzing the request.
+
+**Only call \`placeMediaImage\` on these URLs when the user explicitly asks to place an image on the canvas.** Otherwise treat them as references only (competitor inspiration, mood boards, sketches) and do not auto-insert them into the design.
+
+${lines}`
 }
 
 function formatAvailableImages(images: readonly AvailableImage[]): string {

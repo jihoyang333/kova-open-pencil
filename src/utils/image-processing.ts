@@ -48,10 +48,10 @@ function canvasToBlob(
   quality?: number
 ): Promise<Blob> {
   if ('convertToBlob' in canvas) {
-    return (canvas as OffscreenCanvas).convertToBlob({ type: mimeType, quality })
+    return canvas.convertToBlob({ type: mimeType, quality })
   }
   return new Promise((resolve, reject) => {
-    ;(canvas as HTMLCanvasElement).toBlob(
+    canvas.toBlob(
       (blob) => (blob ? resolve(blob) : reject(new Error('Canvas toBlob failed'))),
       mimeType,
       quality
@@ -66,7 +66,7 @@ function drawToCanvas(
 ): OffscreenCanvas | HTMLCanvasElement {
   if (typeof OffscreenCanvas !== 'undefined') {
     const canvas = new OffscreenCanvas(targetWidth, targetHeight)
-    const ctx = canvas.getContext('2d') as OffscreenCanvasRenderingContext2D | null
+    const ctx = canvas.getContext('2d')
     if (!ctx) throw new Error('Failed to get 2D context from OffscreenCanvas')
     ctx.drawImage(img, 0, 0, targetWidth, targetHeight)
     return canvas
@@ -109,6 +109,22 @@ export async function processImage(file: File): Promise<ProcessedImage> {
     height,
     fileSize: blob.size,
   }
+}
+
+export function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const result = reader.result
+      if (typeof result !== 'string') {
+        reject(new Error('FileReader produced non-string result'))
+        return
+      }
+      resolve(result)
+    }
+    reader.onerror = () => reject(reader.error ?? new Error('Failed to read blob as data URL'))
+    reader.readAsDataURL(blob)
+  })
 }
 
 export async function createVisionCopy(file: File): Promise<ProcessedImage> {

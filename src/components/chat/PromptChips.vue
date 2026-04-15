@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import type { CampaignType } from '@/ai/build-system-prompt'
+
 const emit = defineEmits<{
-  select: [text: string, campaignType?: string]
+  select: [text: string, campaignType?: CampaignType]
 }>()
 
-const chips = [
+const chips: ReadonlyArray<{ label: string; campaignType: CampaignType }> = [
   {
     label: 'A tips-and-tricks email that teaches something useful',
     campaignType: 'educational',

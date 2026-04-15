@@ -3,20 +3,44 @@ import { Chat } from '@ai-sdk/vue'
 import { DirectChatTransport, stepCountIs, ToolLoopAgent, wrapLanguageModel } from 'ai'
 import { computed, ref } from 'vue'
 
+import { buildSystemPrompt } from '@/ai/build-system-prompt'
 import SYSTEM_PROMPT from '@/ai/system-prompt.md?raw'
 import { MAX_AGENT_STEPS, createAITools, recordStepUsage, resetRunSteps } from '@/ai/tools'
 import { stripPreviousTurnImages } from '@/composables/use-chat-images'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/auth'
+import { useBrandsStore } from '@/stores/brands'
 import { useEditorStore } from '@/stores/editor'
+import { useMediaStore } from '@/stores/media'
 import { ACP_AGENTS, IS_BROWSER, IS_TAURI } from '@open-pencil/core'
 
+import type { AvailableImage, CampaignType, ChatAttachmentForAI } from '@/ai/build-system-prompt'
 import type { ACPAgentID, AIProviderID } from '@open-pencil/core'
 import type { ChatTransport, UIMessage } from 'ai'
 
 const providerID = ref<AIProviderID>('anthropic')
 const modelID = ref(import.meta.env.VITE_AI_MODEL ?? 'claude-sonnet-4-6')
 const activeTab = ref<'design' | 'ai'>('design')
+
+// Set by ChatPopup before each sendMessage call so prepareCall can layer
+// the matching campaign guide into the system prompt. M5.5 will replace
+// this with a richer per-message context object.
+const activeCampaignType = ref<CampaignType | undefined>(undefined)
+
+function setActiveCampaignType(type: CampaignType | undefined): void {
+  activeCampaignType.value = type
+}
+
+// Set by ChatPopup before each sendMessage call so prepareCall can surface the
+// user's current-turn chat attachments to the model (distinct from the media
+// library list). Reset to [] after each send to keep the ephemeral framing.
+const activeChatAttachmentsForAI = ref<readonly ChatAttachmentForAI[]>([])
+
+function setActiveChatAttachmentsForAI(
+  attachments: readonly ChatAttachmentForAI[],
+): void {
+  activeChatAttachmentsForAI.value = attachments
+}
 
 const isACPProvider = computed(() => providerID.value.startsWith('acp:'))
 
@@ -25,9 +49,24 @@ const isConfigured = computed(() => {
   return !!useAuthStore().user
 })
 
+// `@ai-sdk/anthropic` requires `apiKey` (or env `ANTHROPIC_API_KEY`) at provider
+// construction even when a custom `fetch` is supplied — it builds the `x-api-key`
+// header eagerly via `loadApiKey()`. The browser has neither, so we pass a
+// placeholder; our proxy overwrites `x-api-key` with the real server-side key
+// before forwarding to Anthropic. Removing this constant will resurface
+// AI_LoadAPIKeyError at request time and break chat silently.
+export const ANTHROPIC_PROXY_PLACEHOLDER_API_KEY = 'kova-proxy-placeholder'
+
+// The SDK appends `/messages` to baseURL, mirroring Anthropic's `/v1/messages`.
+// Our proxy route is registered at `/api/ai-proxy/v1/messages` (see api/ai-proxy/v1/messages.ts
+// and src/dev/api-plugin.ts), so the baseURL must include the `/v1` segment to
+// resolve correctly. Dropping `/v1` returns 404 from the dev API plugin.
+export const ANTHROPIC_PROXY_BASE_URL = '/api/ai-proxy/v1'
+
 function createModel() {
   const anthropic = createAnthropic({
-    baseURL: '/api/ai-proxy',
+    apiKey: ANTHROPIC_PROXY_PLACEHOLDER_API_KEY,
+    baseURL: ANTHROPIC_PROXY_BASE_URL,
     fetch: async (url, init) => {
       const { data } = await supabase.auth.getSession()
       const token = data.session?.access_token
@@ -73,6 +112,9 @@ function createTransport(): ChatTransport<UIMessage> {
   acpTransportInstance = null
 
   const tools = createAITools(useEditorStore())
+  const brandsStore = useBrandsStore()
+  const mediaStore = useMediaStore()
+
   const wrappedModel = wrapLanguageModel({
     model: createModel(),
     middleware: {
@@ -83,8 +125,9 @@ function createTransport(): ChatTransport<UIMessage> {
       }),
     },
   })
-  // TODO(M5): Replace SYSTEM_PROMPT with buildSystemPrompt() once brand profile,
-  // memories, and media stores are available. See buildSystemPrompt() for 8-layer assembly.
+  // The agent's static `instructions` is a fallback only — `prepareCall` rebuilds
+  // the full layered system prompt per LLM call so brand profile, media library,
+  // and campaign type stay fresh as the user navigates and uploads.
   const agent = new ToolLoopAgent({
     model: wrappedModel,
     instructions: SYSTEM_PROMPT,
@@ -92,12 +135,30 @@ function createTransport(): ChatTransport<UIMessage> {
     maxOutputTokens: 16384,
     stopWhen: stepCountIs(MAX_AGENT_STEPS),
     providerOptions: ANTHROPIC_CACHE_CONTROL,
-    prepareCall: (options) => {
+    prepareCall: async (options) => {
       resetRunSteps()
+      const brandProfile = brandsStore.selectedBrand
+      const availableImages: AvailableImage[] = mediaStore.images.map((img) => ({
+        fileName: img.file_name,
+        fileType: img.file_type,
+        width: img.width,
+        height: img.height,
+        publicUrl: mediaStore.getPublicUrl(img.storage_path),
+        mediaId: img.id,
+      }))
+      // TODO(M5.5): Source brandMemories from a brand-memory store when it exists.
+      const instructions = await buildSystemPrompt({
+        brandProfile,
+        availableImages,
+        brandMemories: [],
+        chatAttachments: activeChatAttachmentsForAI.value,
+        campaignType: activeCampaignType.value,
+      })
       return {
         ...options,
+        instructions,
         maxOutputTokens: 16384,
-        providerOptions: ANTHROPIC_CACHE_CONTROL
+        providerOptions: ANTHROPIC_CACHE_CONTROL,
       }
     },
     onStepFinish: ({ usage }) => {
@@ -142,6 +203,8 @@ export function useAIChat() {
     activeTab,
     isConfigured,
     ensureChat,
-    resetChat
+    resetChat,
+    setActiveCampaignType,
+    setActiveChatAttachmentsForAI,
   }
 }

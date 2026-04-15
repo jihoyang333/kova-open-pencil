@@ -1,11 +1,20 @@
 import { ref } from 'vue'
 
-import { createVisionCopy, processImage } from '@/utils/image-processing'
+import { blobToDataUrl, createVisionCopy, processImage } from '@/utils/image-processing'
 import { useChatAttachmentsStore } from '@/stores/chat-attachments'
 import { useMediaStore } from '@/stores/media'
 
+import type { FileUIPart } from 'ai'
+
+/**
+ * `localPreviewUrl` invariant: for `source === 'clipboard'` it is a `URL.createObjectURL(...)`
+ * blob URL that MUST be revoked via `URL.revokeObjectURL`. For `source === 'media'` it is a
+ * Supabase public URL that must NOT be revoked. Keep this contract in mind if you add a new
+ * source that produces blob URLs — extend the `shouldRevoke` helper below.
+ */
 export interface PendingAttachment {
   readonly id: string
+  readonly recordId?: string
   readonly fileName: string
   readonly localPreviewUrl: string
   readonly source: 'media' | 'clipboard'
@@ -19,12 +28,37 @@ export interface PendingAttachment {
 
 const PREVIOUS_IMAGE_PLACEHOLDER = '[Previously attached image]'
 
+function shouldRevoke(attachment: Pick<PendingAttachment, 'source'>): boolean {
+  return attachment.source === 'clipboard'
+}
+
 /**
  * Strips base64 file parts from all messages except the most recent user message.
  * Replaces stripped images with a short text reference so the model still sees
  * the turn happened. Used as middleware via wrapLanguageModel() to prevent
  * resending every image on every API call.
+ *
+ * If no user message is present in the array, returns a shallow-cloned copy unchanged
+ * (no-op) — there is no "current turn" to anchor the strip against.
  */
+/**
+ * Hard guard: throws the first time it encounters an attachment that isn't safe to
+ * send to the model. Kept as a pure helper (no Vue refs, no stores) so `buildMessagePayload`
+ * can call it AND the UI layer can unit-test the exact failure messages.
+ */
+export function assertReadyForSend(
+  attachments: readonly PendingAttachment[],
+): void {
+  for (const a of attachments) {
+    if (a.isUploading) {
+      throw new Error(`Waiting for image upload to finish: ${a.fileName}`)
+    }
+    if (!a.visionBlob) {
+      throw new Error(`Attachment missing vision data: ${a.fileName}`)
+    }
+  }
+}
+
 export function stripPreviousTurnImages<
   T extends { role: string; content: unknown },
 >(messages: ReadonlyArray<T>): T[] {
@@ -35,6 +69,8 @@ export function stripPreviousTurnImages<
       break
     }
   }
+
+  if (lastUserIndex === -1) return messages.map((msg) => ({ ...msg }))
 
   return messages.map((msg, index) => {
     if (index === lastUserIndex) return { ...msg }
@@ -121,6 +157,7 @@ export function useChatImages(brandId: string) {
         a.id === tempId
           ? {
               ...a,
+              recordId: record.id,
               storageUrl: signedUrl,
               width: processed.width,
               height: processed.height,
@@ -138,7 +175,7 @@ export function useChatImages(brandId: string) {
 
   function removeAttachment(id: string): void {
     const attachment = attachments.value.find((a) => a.id === id)
-    if (attachment?.source === 'clipboard') {
+    if (attachment && shouldRevoke(attachment)) {
       URL.revokeObjectURL(attachment.localPreviewUrl)
     }
     attachments.value = attachments.value.filter((a) => a.id !== id)
@@ -146,9 +183,46 @@ export function useChatImages(brandId: string) {
 
   function clearAttachments(): void {
     for (const a of attachments.value) {
-      if (a.source === 'clipboard') URL.revokeObjectURL(a.localPreviewUrl)
+      if (shouldRevoke(a)) URL.revokeObjectURL(a.localPreviewUrl)
     }
     attachments.value = []
+  }
+
+  function hasPendingUploads(): boolean {
+    return attachments.value.some((a) => a.isUploading)
+  }
+
+  /**
+   * Build the message payload the AI SDK's `sendMessage` expects: the user's raw text
+   * plus a `FileUIPart[]` carrying the downscaled vision copy as a `data:` URL so the
+   * model can actually see the image. Media-library URLs the model needs for
+   * `placeMediaImage` are surfaced via the system prompt, not injected into user text.
+   *
+   * Throws via `assertReadyForSend` if any attachment is still uploading or missing
+   * its vision blob — callers must catch and surface a toast instead of silently dropping.
+   */
+  async function buildMessagePayload(
+    text: string,
+  ): Promise<{ text: string; files: FileUIPart[] }> {
+    const current = attachments.value
+    if (current.length === 0) return { text, files: [] }
+
+    assertReadyForSend(current)
+
+    const files: FileUIPart[] = []
+
+    for (const a of current) {
+      // visionBlob is guaranteed non-null by assertReadyForSend above.
+      const dataUrl = await blobToDataUrl(a.visionBlob as Blob)
+      files.push({
+        type: 'file',
+        mediaType: 'image/jpeg',
+        filename: a.fileName,
+        url: dataUrl,
+      })
+    }
+
+    return { text, files }
   }
 
   return {
@@ -157,5 +231,7 @@ export function useChatImages(brandId: string) {
     attachFromClipboard,
     removeAttachment,
     clearAttachments,
+    hasPendingUploads,
+    buildMessagePayload,
   }
 }

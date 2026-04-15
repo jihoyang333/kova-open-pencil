@@ -5,7 +5,7 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from 'reka-ui'
-import { computed, markRaw, nextTick, ref, watch } from 'vue'
+import { computed, markRaw, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 
 import { clearToolLogEntries, didHitStepLimit } from '@/ai/tools'
 import ChatInput from '@/components/chat/ChatInput.vue'
@@ -13,8 +13,10 @@ import ChatMessage from '@/components/chat/ChatMessage.vue'
 import PromptChips from '@/components/chat/PromptChips.vue'
 import { useAIChat } from '@/composables/use-chat'
 import { useChatImages } from '@/composables/use-chat-images'
+import { toast } from '@/composables/use-toast'
 import { useChatStore } from '@/stores/chat'
 
+import type { CampaignType, ChatAttachmentForAI } from '@/ai/build-system-prompt'
 import type { Chat } from '@ai-sdk/vue'
 import type { UIMessage } from 'ai'
 
@@ -23,7 +25,12 @@ const { canvasId, brandId } = defineProps<{
   brandId: string
 }>()
 
-const { ensureChat, resetChat } = useAIChat()
+const {
+  ensureChat,
+  resetChat,
+  setActiveCampaignType,
+  setActiveChatAttachmentsForAI,
+} = useAIChat()
 const chatStore = useChatStore()
 const chatImages = useChatImages(brandId)
 const fileInput = ref<HTMLInputElement | null>(null)
@@ -57,9 +64,6 @@ const showContinue = computed(() => {
   return last.role === 'assistant' && didHitStepLimit()
 })
 
-// TODO(M5.5): Wired into buildSystemPrompt() when it replaces the static system prompt.
-const activeCampaignType = ref<string | undefined>(undefined)
-
 // Initialize: load conversations for this canvas.
 watch(
   () => brandId,
@@ -83,11 +87,25 @@ function scrollToBottom() {
 
 watch(messages, scrollToBottom, { deep: true })
 
-async function handleSubmit(text: string, campaignType?: string) {
+async function handleSubmit(text: string, campaignType?: CampaignType) {
   if (status.value === 'streaming' || status.value === 'submitted') return
+  if (chatImages.hasPendingUploads()) {
+    toast.show('Waiting for image upload to finish…', 'warning')
+    return
+  }
   if (!isExpanded.value) isExpanded.value = true
 
-  activeCampaignType.value = campaignType
+  setActiveCampaignType(campaignType)
+
+  const chatAttachmentsForAI: ChatAttachmentForAI[] = chatImages.attachments.value
+    .filter((a) => a.storageUrl && !a.isUploading)
+    .map((a) => ({
+      fileName: a.fileName,
+      width: a.width,
+      height: a.height,
+      publicUrl: a.storageUrl as string,
+    }))
+  setActiveChatAttachmentsForAI(chatAttachmentsForAI)
 
   try {
     initError.value = null
@@ -99,10 +117,25 @@ async function handleSubmit(text: string, campaignType?: string) {
     return
   }
 
+  // Re-check after async ensureChat — an upload may have started/finished meanwhile.
+  if (chatImages.hasPendingUploads()) {
+    toast.show('Waiting for image upload to finish…', 'warning')
+    return
+  }
+
+  let payload: { text: string; files: Awaited<ReturnType<typeof chatImages.buildMessagePayload>>['files'] }
+  try {
+    payload = await chatImages.buildMessagePayload(text)
+  } catch (e) {
+    console.error('Failed to build message payload:', e)
+    toast.show('Could not prepare attached images. Please re-attach and try again.', 'error')
+    return
+  }
+
   // Persist user message (non-blocking — don't prevent AI send on persistence failure)
   if (chatStore.activeConversationId) {
     try {
-      await chatStore.addMessage(chatStore.activeConversationId, 'user', text)
+      await chatStore.addMessage(chatStore.activeConversationId, 'user', payload.text)
     } catch (e) {
       console.error('Failed to persist message:', e)
     }
@@ -110,12 +143,14 @@ async function handleSubmit(text: string, campaignType?: string) {
   // TODO(M5.5): Persist assistant response on stream complete.
 
   chat.value
-    ?.sendMessage({ text })
+    ?.sendMessage({ text: payload.text, files: payload.files })
+    .then(() => {
+      // Only clear on success so the user can retry after a 401/rate-limit without re-pasting.
+      chatImages.clearAttachments()
+    })
     .catch((e: unknown) => {
       console.error('Chat error:', e)
-    })
-    .finally(() => {
-      chatImages.clearAttachments()
+      toast.show(e instanceof Error ? e.message : 'Chat request failed', 'error')
     })
 }
 
@@ -131,16 +166,23 @@ async function handleFileSelected(e: Event) {
   const target = e.target as HTMLInputElement
   const files = target.files
   if (!files) return
-  for (const file of files) {
-    if (file.type.startsWith('image/')) {
-      try {
-        await chatImages.attachFromClipboard(file)
-      } catch (err) {
-        console.error('Failed to attach image:', err)
-      }
+
+  const images = Array.from(files).filter((f) => f.type.startsWith('image/'))
+  target.value = ''
+  if (images.length === 0) return
+
+  // attachFromClipboard inserts the pending placeholder synchronously, so running these
+  // in parallel is safe — each call awaits its own upload independently.
+  const results = await Promise.allSettled(
+    images.map((file) => chatImages.attachFromClipboard(file)),
+  )
+  for (const r of results) {
+    if (r.status === 'rejected') {
+      console.error('Failed to attach image:', r.reason)
+      const msg = r.reason instanceof Error ? r.reason.message : 'Failed to attach image'
+      toast.show(msg, 'error')
     }
   }
-  target.value = ''
 }
 
 async function handleAttachClipboard(file: File) {
@@ -148,12 +190,18 @@ async function handleAttachClipboard(file: File) {
     await chatImages.attachFromClipboard(file)
   } catch (err) {
     console.error('Failed to attach pasted image:', err)
+    const msg = err instanceof Error ? err.message : 'Failed to attach pasted image'
+    toast.show(msg, 'error')
   }
 }
 
 function handleRemoveAttachment(id: string) {
   chatImages.removeAttachment(id)
 }
+
+onBeforeUnmount(() => {
+  chatImages.clearAttachments()
+})
 
 async function handleNewTab() {
   const conv = await chatStore.createConversation(brandId, canvasId)
@@ -188,7 +236,7 @@ async function handleSwitchTab(conversationId: string) {
   <!-- Expanded popup -->
   <div
     v-else
-    class="fixed bottom-4 left-4 z-50 flex h-[500px] w-[400px] flex-col rounded-2xl border border-border bg-panel shadow-2xl"
+    class="fixed bottom-4 left-4 z-50 flex h-[500px] w-[400px] flex-col rounded-2xl border border-border bg-panel shadow-2xl select-text"
   >
     <!-- Header: tab bar -->
     <div class="flex shrink-0 items-center gap-1 border-b border-border px-2 py-1.5">

@@ -170,6 +170,70 @@ describe('buildSystemPrompt', () => {
     expect(result).toContain('Showing 20 most recent')
   })
 
+  test('includes chat attachments section when chatAttachments provided', async () => {
+    const { buildSystemPrompt } = await import('@/ai/build-system-prompt')
+    const result = await buildSystemPrompt({
+      brandProfile: null,
+      availableImages: [],
+      brandMemories: [],
+      chatAttachments: [
+        {
+          fileName: 'ref.jpg',
+          width: 800,
+          height: 600,
+          publicUrl:
+            'https://x.supabase.co/storage/v1/object/sign/chat-attachments/ref.jpg',
+        },
+      ],
+    })
+    expect(result).toContain('Images Attached This Turn')
+    expect(result).toContain('ref.jpg')
+    expect(result).toContain(
+      'https://x.supabase.co/storage/v1/object/sign/chat-attachments/ref.jpg',
+    )
+    expect(result).toMatch(/only.*explicitly ask/i)
+  })
+
+  test('omits chat attachments section when list is empty', async () => {
+    const { buildSystemPrompt } = await import('@/ai/build-system-prompt')
+    const result = await buildSystemPrompt({
+      brandProfile: null,
+      availableImages: [],
+      brandMemories: [],
+      chatAttachments: [],
+    })
+    expect(result).not.toContain('Images Attached This Turn')
+  })
+
+  test('chat attachments section is distinct from media library section', async () => {
+    const { buildSystemPrompt } = await import('@/ai/build-system-prompt')
+    const result = await buildSystemPrompt({
+      brandProfile: null,
+      availableImages: [
+        {
+          fileName: 'lib.jpg',
+          fileType: 'image/jpeg',
+          width: 100,
+          height: 100,
+          publicUrl: 'https://x.supabase.co/storage/v1/object/public/media/lib.jpg',
+          mediaId: 'm1',
+        },
+      ],
+      brandMemories: [],
+      chatAttachments: [
+        {
+          fileName: 'att.jpg',
+          width: 100,
+          height: 100,
+          publicUrl:
+            'https://x.supabase.co/storage/v1/object/sign/chat-attachments/att.jpg',
+        },
+      ],
+    })
+    expect(result).toContain('Available Media Library Images')
+    expect(result).toContain('Images Attached This Turn')
+  })
+
   test('includes memory instructions', async () => {
     const { buildSystemPrompt } = await import('@/ai/build-system-prompt')
     const result = await buildSystemPrompt({

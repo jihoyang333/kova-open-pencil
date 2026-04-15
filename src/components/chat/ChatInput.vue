@@ -35,7 +35,10 @@ const input = ref('')
 const isStreaming = computed(() => status === 'streaming' || status === 'submitted')
 const selectedModelName = computed(() => modelID.value)
 const hasAttachments = computed(() => attachments.length > 0)
-const canSubmit = computed(() => input.value.trim().length > 0 || hasAttachments.value)
+const isUploading = computed(() => attachments.some((a) => a.isUploading))
+const canSubmit = computed(
+  () => (input.value.trim().length > 0 || hasAttachments.value) && !isUploading.value,
+)
 
 function handleSubmit(e: Event) {
   e.preventDefault()
