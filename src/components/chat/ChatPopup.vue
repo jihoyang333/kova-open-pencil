@@ -9,6 +9,7 @@ import { computed, markRaw, nextTick, onBeforeUnmount, onMounted, ref, watch } f
 
 import { clearToolLogEntries, didHitStepLimit } from '@/ai/tools'
 import ChatInput from '@/components/chat/ChatInput.vue'
+import ChatMediaPickerDialog from '@/components/chat/ChatMediaPickerDialog.vue'
 import ChatMessage from '@/components/chat/ChatMessage.vue'
 import PromptChips from '@/components/chat/PromptChips.vue'
 import { useAIChat } from '@/composables/use-chat'
@@ -19,6 +20,7 @@ import { useChatStore } from '@/stores/chat'
 import type { CampaignType, ChatAttachmentForAI } from '@/ai/build-system-prompt'
 import type { Chat } from '@ai-sdk/vue'
 import type { UIMessage } from 'ai'
+import type { MediaAsset } from '@/types/kova/media'
 
 const { canvasId, brandId } = defineProps<{
   canvasId: string
@@ -36,7 +38,7 @@ const {
 } = useAIChat()
 const chatStore = useChatStore()
 const chatImages = useChatImages(brandId)
-const fileInput = ref<HTMLInputElement | null>(null)
+const mediaPickerOpen = ref(false)
 
 const isExpanded = ref(false)
 const chat = ref<Chat<UIMessage> | null>(null)
@@ -160,29 +162,16 @@ function handleStop() {
 }
 
 function handleAttachImage() {
-  fileInput.value?.click()
+  mediaPickerOpen.value = true
 }
 
-async function handleFileSelected(e: Event) {
-  const target = e.target as HTMLInputElement
-  const files = target.files
-  if (!files) return
-
-  const images = Array.from(files).filter((f) => f.type.startsWith('image/'))
-  target.value = ''
-  if (images.length === 0) return
-
-  // attachFromClipboard inserts the pending placeholder synchronously, so running these
-  // in parallel is safe — each call awaits its own upload independently.
-  const results = await Promise.allSettled(
-    images.map((file) => chatImages.attachFromClipboard(file)),
-  )
-  for (const r of results) {
-    if (r.status === 'rejected') {
-      console.error('Failed to attach image:', r.reason)
-      const msg = r.reason instanceof Error ? r.reason.message : 'Failed to attach image'
-      toast.show(msg, 'error')
-    }
+async function handleMediaPickerSelect(asset: MediaAsset): Promise<void> {
+  try {
+    await chatImages.attachFromMediaLibrary(asset)
+  } catch (err) {
+    console.error('Failed to attach media library image:', err)
+    const msg = err instanceof Error ? err.message : 'Failed to attach image'
+    toast.show(msg, 'error')
   }
 }
 
@@ -380,16 +369,10 @@ async function handleSwitchTab(conversationId: string) {
       @remove-attachment="handleRemoveAttachment"
     />
 
-    <!-- Hidden file input for image selection -->
-    <!-- TODO(M5.5): Replace with media library picker dialog -->
-    <input
-      ref="fileInput"
-      type="file"
-      accept="image/*"
-      multiple
-      class="hidden"
-      data-test-id="chat-file-input"
-      @change="handleFileSelected"
+    <ChatMediaPickerDialog
+      v-model:open="mediaPickerOpen"
+      :brand-id="brandId"
+      @select="handleMediaPickerSelect"
     />
   </div>
 </template>
