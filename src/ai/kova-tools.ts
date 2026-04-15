@@ -4,6 +4,8 @@ import * as v from 'valibot'
 
 import { makeFigmaFromStore } from '@/automation/figma-factory'
 import { computeAllLayouts } from '@open-pencil/core'
+import { useBrandMemoriesStore } from '@/stores/brand-memories'
+import { useBrandsStore } from '@/stores/brands'
 
 import type { EditorStore } from '@/stores/editor'
 
@@ -119,5 +121,39 @@ export function createKovaTools(store: EditorStore) {
     },
   })
 
-  return { placeMediaImage } as const
+  const saveBrandMemory = tool({
+    description:
+      'Save a brand memory that will persist across all future chat sessions for this brand. ' +
+      'Use source "auto" when you detect a durable preference or constraint from the user. ' +
+      'Use source "user" when the user explicitly asks you to remember something.',
+    inputSchema: valibotSchema(
+      v.object({
+        content: v.pipe(
+          v.string(),
+          v.description('The memory content to save — a single concise fact or preference')
+        ),
+        source: v.pipe(
+          v.picklist(['auto', 'user']),
+          v.description('"auto" = AI-detected preference, "user" = explicitly requested by user')
+        ),
+      })
+    ),
+    execute: async ({ content, source }) => {
+      // Resolve stores at execute-time so brand switching mid-session picks up
+      // the current brand, and so createKovaTools(store) stays a single-arg function.
+      const brandsStore = useBrandsStore()
+      const brandId = brandsStore.selectedBrand?.id
+      if (!brandId) return 'Failed to save memory: no brand selected'
+
+      try {
+        await useBrandMemoriesStore().saveMemory(brandId, content, source)
+        return `Memory saved: "${content}"`
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Unknown error'
+        return `Failed to save memory: ${message}`
+      }
+    },
+  })
+
+  return { placeMediaImage, saveBrandMemory } as const
 }

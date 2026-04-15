@@ -9,12 +9,14 @@ import { MAX_AGENT_STEPS, createAITools, recordStepUsage, resetRunSteps } from '
 import { stripPreviousTurnImages } from '@/composables/use-chat-images'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/auth'
+import { useBrandMemoriesStore } from '@/stores/brand-memories'
 import { useBrandsStore } from '@/stores/brands'
 import { useEditorStore } from '@/stores/editor'
 import { useMediaStore } from '@/stores/media'
 import { ACP_AGENTS, IS_BROWSER, IS_TAURI } from '@open-pencil/core'
 
 import type { AvailableImage, CampaignType, ChatAttachmentForAI } from '@/ai/build-system-prompt'
+import type { BrandMemory } from '@/types/kova/brand-memory'
 import type { ACPAgentID, AIProviderID } from '@open-pencil/core'
 import type { ChatTransport, UIMessage } from 'ai'
 
@@ -29,6 +31,16 @@ const activeCampaignType = ref<CampaignType | undefined>(undefined)
 
 function setActiveCampaignType(type: CampaignType | undefined): void {
   activeCampaignType.value = type
+}
+
+// Per-user-turn cache for brand memories. Cleared by resetChat() and refreshed
+// at the start of each user turn via refreshActiveBrandMemories(). Prevents the
+// per-step Supabase round-trip that would otherwise fire inside prepareCall.
+const activeBrandMemories = ref<readonly BrandMemory[]>([])
+
+export async function refreshActiveBrandMemories(brandId: string | undefined): Promise<void> {
+  if (!brandId) { activeBrandMemories.value = []; return }
+  activeBrandMemories.value = await useBrandMemoriesStore().fetchMemories(brandId)
 }
 
 // Set by ChatPopup before each sendMessage call so prepareCall can surface the
@@ -146,11 +158,10 @@ function createTransport(): ChatTransport<UIMessage> {
         publicUrl: mediaStore.getPublicUrl(img.storage_path),
         mediaId: img.id,
       }))
-      // TODO(M5.5): Source brandMemories from a brand-memory store when it exists.
       const instructions = await buildSystemPrompt({
         brandProfile,
         availableImages,
-        brandMemories: [],
+        brandMemories: activeBrandMemories.value,
         chatAttachments: activeChatAttachmentsForAI.value,
         campaignType: activeCampaignType.value,
       })
@@ -188,6 +199,7 @@ async function ensureChat(): Promise<Chat<UIMessage> | null> {
 
 function resetChat() {
   chat = null
+  activeBrandMemories.value = []
 }
 
 if (IS_BROWSER) {
@@ -204,6 +216,7 @@ export function useAIChat() {
     isConfigured,
     ensureChat,
     resetChat,
+    refreshActiveBrandMemories,
     setActiveCampaignType,
     setActiveChatAttachmentsForAI,
   }
