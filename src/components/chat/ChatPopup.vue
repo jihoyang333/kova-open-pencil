@@ -5,7 +5,7 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from 'reka-ui'
-import { computed, markRaw, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, markRaw, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import { clearToolLogEntries, didHitStepLimit } from '@/ai/tools'
 import ChatInput from '@/components/chat/ChatInput.vue'
@@ -28,8 +28,11 @@ const { canvasId, brandId } = defineProps<{
 const {
   ensureChat,
   resetChat,
+  toUIMessages,
   setActiveCampaignType,
   setActiveChatAttachmentsForAI,
+  refreshActiveBrandMemories,
+  setAssistantFinishHandler,
 } = useAIChat()
 const chatStore = useChatStore()
 const chatImages = useChatImages(brandId)
@@ -73,7 +76,9 @@ watch(
       const conv = await chatStore.createConversation(bid, canvasId)
       chatStore.activeConversationId = conv.id
     } else {
-      chatStore.activeConversationId = chatStore.conversations[0].id
+      const firstId = chatStore.conversations[0].id
+      chatStore.activeConversationId = firstId
+      await handleSwitchTab(firstId)
     }
   },
   { immediate: true },
@@ -106,6 +111,7 @@ async function handleSubmit(text: string, campaignType?: CampaignType) {
       publicUrl: a.storageUrl as string,
     }))
   setActiveChatAttachmentsForAI(chatAttachmentsForAI)
+  await refreshActiveBrandMemories(brandId)
 
   try {
     initError.value = null
@@ -140,14 +146,9 @@ async function handleSubmit(text: string, campaignType?: CampaignType) {
       console.error('Failed to persist message:', e)
     }
   }
-  // TODO(M5.5): Persist assistant response on stream complete.
-
   chat.value
     ?.sendMessage({ text: payload.text, files: payload.files })
-    .then(() => {
-      // Only clear on success so the user can retry after a 401/rate-limit without re-pasting.
-      chatImages.clearAttachments()
-    })
+    .then(() => chatImages.clearAttachments())
     .catch((e: unknown) => {
       console.error('Chat error:', e)
       toast.show(e instanceof Error ? e.message : 'Chat request failed', 'error')
@@ -199,7 +200,28 @@ function handleRemoveAttachment(id: string) {
   chatImages.removeAttachment(id)
 }
 
+onMounted(() => {
+  setAssistantFinishHandler((message) => {
+    const conversationId = chatStore.activeConversationId
+    if (!conversationId) return
+
+    const textParts = message.parts.filter(
+      (p): p is { type: 'text'; text: string } => p.type === 'text',
+    )
+    const text = textParts.map((p) => p.text).join('')
+
+    const toolCalls = message.parts
+      .filter((p) => 'toolCallId' in p)
+      .map((p) => ({ ...p } as unknown as Record<string, unknown>))
+
+    chatStore
+      .addMessage(conversationId, 'assistant', text, [], toolCalls)
+      .catch((e) => console.error('Failed to persist assistant response:', e))
+  })
+})
+
 onBeforeUnmount(() => {
+  setAssistantFinishHandler(null)
   chatImages.clearAttachments()
 })
 
@@ -218,6 +240,18 @@ async function handleSwitchTab(conversationId: string) {
   chat.value = null
   resetChat()
   clearToolLogEntries()
+  chatImages.clearAttachments()
+
+  if (chatStore.messages.length > 0) {
+    isExpanded.value = true
+    const restored = toUIMessages(chatStore.messages)
+    try {
+      const c = await ensureChat(restored)
+      if (c) chat.value = markRaw(c)
+    } catch (e) {
+      console.error('Failed to restore chat history:', e)
+    }
+  }
 }
 </script>
 

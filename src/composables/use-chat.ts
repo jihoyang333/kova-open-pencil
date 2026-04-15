@@ -17,8 +17,16 @@ import { ACP_AGENTS, IS_BROWSER, IS_TAURI } from '@open-pencil/core'
 
 import type { AvailableImage, CampaignType, ChatAttachmentForAI } from '@/ai/build-system-prompt'
 import type { BrandMemory } from '@/types/kova/brand-memory'
+import type { ChatMessage } from '@/types/kova/chat'
 import type { ACPAgentID, AIProviderID } from '@open-pencil/core'
 import type { ChatTransport, UIMessage } from 'ai'
+
+type AssistantFinishHandler = (msg: UIMessage) => void
+let assistantFinishHandler: AssistantFinishHandler | null = null
+
+function setAssistantFinishHandler(fn: AssistantFinishHandler | null): void {
+  assistantFinishHandler = fn
+}
 
 const providerID = ref<AIProviderID>('anthropic')
 const modelID = ref(import.meta.env.VITE_AI_MODEL ?? 'claude-sonnet-4-6')
@@ -188,11 +196,26 @@ function createTransport(): ChatTransport<UIMessage> {
   return new DirectChatTransport({ agent }) as unknown as ChatTransport<UIMessage>
 }
 
-async function ensureChat(): Promise<Chat<UIMessage> | null> {
+function toUIMessages(stored: readonly ChatMessage[]): UIMessage[] {
+  return stored.map((m) => ({
+    id: m.id,
+    role: m.role,
+    parts: [{ type: 'text' as const, text: m.content }],
+  }))
+}
+
+async function ensureChat(messages?: UIMessage[]): Promise<Chat<UIMessage> | null> {
   if (!isConfigured.value) return null
   if (!chat) {
     const transport = isACPProvider.value ? await createACPTransport() : createTransport()
-    chat = new Chat<UIMessage>({ transport })
+    chat = new Chat<UIMessage>({
+      transport,
+      messages,
+      onFinish: ({ message, isError, isAbort }) => {
+        if (isError || isAbort) return
+        assistantFinishHandler?.(message)
+      },
+    })
   }
   return chat
 }
@@ -216,8 +239,10 @@ export function useAIChat() {
     isConfigured,
     ensureChat,
     resetChat,
+    toUIMessages,
     refreshActiveBrandMemories,
     setActiveCampaignType,
     setActiveChatAttachmentsForAI,
+    setAssistantFinishHandler,
   }
 }
