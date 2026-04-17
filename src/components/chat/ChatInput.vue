@@ -6,7 +6,7 @@ import {
   TooltipRoot,
   TooltipTrigger
 } from 'reka-ui'
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 
 import { uiButton } from '@/components/ui/button'
 import { uiInput } from '@/components/ui/input'
@@ -31,6 +31,7 @@ const emit = defineEmits<{
 }>()
 
 const input = ref('')
+const textareaEl = ref<HTMLTextAreaElement>()
 
 const isStreaming = computed(() => status === 'streaming' || status === 'submitted')
 const selectedModelName = computed(() => modelID.value)
@@ -40,11 +41,30 @@ const canSubmit = computed(
   () => (input.value.trim().length > 0 || hasAttachments.value) && !isUploading.value,
 )
 
+function resizeTextarea() {
+  const el = textareaEl.value
+  if (!el) return
+  el.style.height = 'auto'
+  el.style.height = `${Math.min(el.scrollHeight, 120)}px`
+}
+
+function handleKeydown(e: KeyboardEvent) {
+  if (e.code === 'Enter' && !e.shiftKey) {
+    e.preventDefault()
+    handleSubmit(e)
+  }
+}
+
+function handleInput() {
+  nextTick(resizeTextarea)
+}
+
 function handleSubmit(e: Event) {
   e.preventDefault()
   if (!canSubmit.value) return
   emit('submit', input.value.trim())
   input.value = ''
+  nextTick(resizeTextarea)
 }
 
 function handlePaste(e: ClipboardEvent) {
@@ -102,7 +122,7 @@ function handlePaste(e: ClipboardEvent) {
       </div>
 
       <!-- Input form -->
-      <form class="flex items-center gap-1.5" @submit="handleSubmit">
+      <form class="flex items-end gap-1.5" @submit="handleSubmit">
         <TooltipRoot>
           <TooltipTrigger as-child>
             <button
@@ -125,13 +145,16 @@ function handlePaste(e: ClipboardEvent) {
             </TooltipContent>
           </TooltipPortal>
         </TooltipRoot>
-        <input
+        <textarea
+          ref="textareaEl"
           v-model="input"
-          type="text"
+          rows="1"
           data-test-id="chat-input"
           placeholder="Design an email with Kova AI..."
-          :class="uiInput({ class: 'min-w-0 flex-1 placeholder:text-muted' })"
+          :class="uiInput({ class: 'min-w-0 flex-1 resize-none overflow-y-auto placeholder:text-muted' })"
           :disabled="isStreaming"
+          @keydown="handleKeydown"
+          @input="handleInput"
           @paste="handlePaste"
           @copy.stop
           @cut.stop

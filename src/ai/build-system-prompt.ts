@@ -4,7 +4,10 @@ import EMAIL_SECTIONS from '@/data/email-sections.md?raw'
 import IMAGE_HANDLING from '@/data/image-handling.md?raw'
 import MEMORY_INSTRUCTIONS from '@/data/memory-instructions.md?raw'
 import type { Brand } from '@/types/kova/database'
+import type { BrandMemory } from '@/types/kova/brand-memory'
 import { formatBrandKitPrompt } from '@/utils/format-brand-prompt'
+
+export type { BrandMemory }
 
 export interface AvailableImage {
   readonly fileName: string
@@ -13,12 +16,6 @@ export interface AvailableImage {
   readonly height: number | null
   readonly publicUrl: string
   readonly mediaId: string
-}
-
-export interface BrandMemory {
-  readonly id: string
-  readonly content: string
-  readonly source: 'auto' | 'user'
 }
 
 export interface ChatAttachmentForAI {

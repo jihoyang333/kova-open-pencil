@@ -5,10 +5,11 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from 'reka-ui'
-import { computed, markRaw, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, markRaw, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import { clearToolLogEntries, didHitStepLimit } from '@/ai/tools'
 import ChatInput from '@/components/chat/ChatInput.vue'
+import ChatMediaPickerDialog from '@/components/chat/ChatMediaPickerDialog.vue'
 import ChatMessage from '@/components/chat/ChatMessage.vue'
 import PromptChips from '@/components/chat/PromptChips.vue'
 import { useAIChat } from '@/composables/use-chat'
@@ -19,6 +20,7 @@ import { useChatStore } from '@/stores/chat'
 import type { CampaignType, ChatAttachmentForAI } from '@/ai/build-system-prompt'
 import type { Chat } from '@ai-sdk/vue'
 import type { UIMessage } from 'ai'
+import type { MediaAsset } from '@/types/kova/media'
 
 const { canvasId, brandId } = defineProps<{
   canvasId: string
@@ -27,13 +29,17 @@ const { canvasId, brandId } = defineProps<{
 
 const {
   ensureChat,
+  reconnectChat,
   resetChat,
+  toUIMessages,
   setActiveCampaignType,
   setActiveChatAttachmentsForAI,
+  refreshActiveBrandMemories,
+  setAssistantFinishHandler,
 } = useAIChat()
 const chatStore = useChatStore()
 const chatImages = useChatImages(brandId)
-const fileInput = ref<HTMLInputElement | null>(null)
+const mediaPickerOpen = ref(false)
 
 const isExpanded = ref(false)
 const chat = ref<Chat<UIMessage> | null>(null)
@@ -73,7 +79,9 @@ watch(
       const conv = await chatStore.createConversation(bid, canvasId)
       chatStore.activeConversationId = conv.id
     } else {
-      chatStore.activeConversationId = chatStore.conversations[0].id
+      const firstId = chatStore.conversations[0].id
+      chatStore.activeConversationId = firstId
+      await handleSwitchTab(firstId)
     }
   },
   { immediate: true },
@@ -106,10 +114,17 @@ async function handleSubmit(text: string, campaignType?: CampaignType) {
       publicUrl: a.storageUrl as string,
     }))
   setActiveChatAttachmentsForAI(chatAttachmentsForAI)
+  await refreshActiveBrandMemories(brandId)
+
+  const conversationId = chatStore.activeConversationId
+  if (!conversationId) {
+    initError.value = 'No active conversation'
+    return
+  }
 
   try {
     initError.value = null
-    const c = await ensureChat()
+    const c = await ensureChat(conversationId)
     if (c) chat.value = markRaw(c)
   } catch (e) {
     console.error('Failed to initialize chat:', e)
@@ -133,21 +148,14 @@ async function handleSubmit(text: string, campaignType?: CampaignType) {
   }
 
   // Persist user message (non-blocking — don't prevent AI send on persistence failure)
-  if (chatStore.activeConversationId) {
-    try {
-      await chatStore.addMessage(chatStore.activeConversationId, 'user', payload.text)
-    } catch (e) {
-      console.error('Failed to persist message:', e)
-    }
+  try {
+    await chatStore.addMessage(conversationId, 'user', payload.text)
+  } catch (e) {
+    console.error('Failed to persist message:', e)
   }
-  // TODO(M5.5): Persist assistant response on stream complete.
-
   chat.value
     ?.sendMessage({ text: payload.text, files: payload.files })
-    .then(() => {
-      // Only clear on success so the user can retry after a 401/rate-limit without re-pasting.
-      chatImages.clearAttachments()
-    })
+    .then(() => chatImages.clearAttachments())
     .catch((e: unknown) => {
       console.error('Chat error:', e)
       toast.show(e instanceof Error ? e.message : 'Chat request failed', 'error')
@@ -159,29 +167,16 @@ function handleStop() {
 }
 
 function handleAttachImage() {
-  fileInput.value?.click()
+  mediaPickerOpen.value = true
 }
 
-async function handleFileSelected(e: Event) {
-  const target = e.target as HTMLInputElement
-  const files = target.files
-  if (!files) return
-
-  const images = Array.from(files).filter((f) => f.type.startsWith('image/'))
-  target.value = ''
-  if (images.length === 0) return
-
-  // attachFromClipboard inserts the pending placeholder synchronously, so running these
-  // in parallel is safe — each call awaits its own upload independently.
-  const results = await Promise.allSettled(
-    images.map((file) => chatImages.attachFromClipboard(file)),
-  )
-  for (const r of results) {
-    if (r.status === 'rejected') {
-      console.error('Failed to attach image:', r.reason)
-      const msg = r.reason instanceof Error ? r.reason.message : 'Failed to attach image'
-      toast.show(msg, 'error')
-    }
+async function handleMediaPickerSelect(asset: MediaAsset): Promise<void> {
+  try {
+    await chatImages.attachFromMediaLibrary(asset)
+  } catch (err) {
+    console.error('Failed to attach media library image:', err)
+    const msg = err instanceof Error ? err.message : 'Failed to attach image'
+    toast.show(msg, 'error')
   }
 }
 
@@ -199,7 +194,28 @@ function handleRemoveAttachment(id: string) {
   chatImages.removeAttachment(id)
 }
 
+onMounted(() => {
+  setAssistantFinishHandler((message, conversationId) => {
+    const textParts = message.parts.filter(
+      (p): p is { type: 'text'; text: string } => p.type === 'text',
+    )
+    const text = textParts.map((p) => p.text).join('')
+
+    const toolCalls = message.parts
+      .filter((p) => 'toolCallId' in p)
+      .map((p) => ({ ...p } as unknown as Record<string, unknown>))
+
+    chatStore
+      .addMessage(conversationId, 'assistant', text, [], toolCalls)
+      .catch((e) => {
+        console.error('Failed to persist assistant response:', e)
+        toast.show('Failed to save chat history — messages may not persist', 'error')
+      })
+  })
+})
+
 onBeforeUnmount(() => {
+  setAssistantFinishHandler(null)
   chatImages.clearAttachments()
 })
 
@@ -214,10 +230,34 @@ async function handleNewTab() {
 
 async function handleSwitchTab(conversationId: string) {
   chatStore.activeConversationId = conversationId
-  await chatStore.fetchMessages(conversationId)
+  clearToolLogEntries()
+  chatImages.clearAttachments()
+
+  // If there's a live Chat for this conversation (in-flight or just-finished
+  // stream), reconnect to it directly so the user sees streaming resume
+  // instantly instead of loading stale state from Supabase.
+  const reconnected = reconnectChat(conversationId)
+  if (reconnected) {
+    chat.value = markRaw(reconnected)
+    isExpanded.value = true
+    return
+  }
+
+  // No active stream — load history from Supabase
   chat.value = null
   resetChat()
-  clearToolLogEntries()
+  await chatStore.fetchMessages(conversationId)
+
+  if (chatStore.messages.length > 0) {
+    isExpanded.value = true
+    const restored = toUIMessages(chatStore.messages)
+    try {
+      const c = await ensureChat(conversationId, restored)
+      if (c) chat.value = markRaw(c)
+    } catch (e) {
+      console.error('Failed to restore chat history:', e)
+    }
+  }
 }
 </script>
 
@@ -346,16 +386,10 @@ async function handleSwitchTab(conversationId: string) {
       @remove-attachment="handleRemoveAttachment"
     />
 
-    <!-- Hidden file input for image selection -->
-    <!-- TODO(M5.5): Replace with media library picker dialog -->
-    <input
-      ref="fileInput"
-      type="file"
-      accept="image/*"
-      multiple
-      class="hidden"
-      data-test-id="chat-file-input"
-      @change="handleFileSelected"
+    <ChatMediaPickerDialog
+      v-model:open="mediaPickerOpen"
+      :brand-id="brandId"
+      @select="handleMediaPickerSelect"
     />
   </div>
 </template>
