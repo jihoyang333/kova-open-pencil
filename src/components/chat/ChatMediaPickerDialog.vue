@@ -2,6 +2,7 @@
 import {
   DialogClose,
   DialogContent,
+  DialogDescription,
   DialogOverlay,
   DialogPortal,
   DialogRoot,
@@ -26,15 +27,24 @@ const emit = defineEmits<{
 
 const mediaStore = useMediaStore()
 const searchQuery = ref('')
+// Latch the successful fetch so we don't re-hit Supabase every time the user
+// toggles the dialog. We set this AFTER the await so a failed fetch can retry
+// on the next open instead of silently showing an empty grid forever.
 let hasFetched = false
 
 watch(
   () => props.open,
   async (isOpen) => {
-    if (isOpen && !hasFetched) {
-      hasFetched = true
-      await mediaStore.fetchImages(props.brandId)
+    if (!isOpen) {
+      searchQuery.value = ''
+      return
     }
+    if (hasFetched) return
+    await mediaStore.fetchImages(props.brandId)
+    // fetchImages handles errors internally (shows toast, never throws).
+    // Only latch if the store actually loaded images so a failed fetch
+    // (network error, expired session) retries on next open.
+    if (mediaStore.images.length > 0) hasFetched = true
   },
 )
 
@@ -57,11 +67,15 @@ function handleSelect(asset: MediaAsset): void {
             Pick from Media Library
           </DialogTitle>
           <DialogClose
+            aria-label="Close"
             class="flex size-6 items-center justify-center rounded-lg text-muted transition-colors hover:bg-hover hover:text-[#ccc]"
           >
             <icon-lucide-x class="size-3.5" />
           </DialogClose>
         </div>
+        <DialogDescription class="sr-only">
+          Browse and select an image from this brand's media library to attach to the chat.
+        </DialogDescription>
 
         <!-- Search -->
         <div class="shrink-0 border-b border-border px-4 py-2">
@@ -71,6 +85,7 @@ function handleSelect(asset: MediaAsset): void {
               v-model="searchQuery"
               type="text"
               placeholder="Search images..."
+              aria-label="Search images"
               class="flex-1 bg-transparent text-xs text-white placeholder:text-muted focus:outline-none"
             />
           </div>

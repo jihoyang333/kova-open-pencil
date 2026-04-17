@@ -21,7 +21,7 @@ import type { ChatMessage } from '@/types/kova/chat'
 import type { ACPAgentID, AIProviderID } from '@open-pencil/core'
 import type { ChatTransport, UIMessage } from 'ai'
 
-type AssistantFinishHandler = (msg: UIMessage) => void
+type AssistantFinishHandler = (msg: UIMessage, conversationId: string) => void
 let assistantFinishHandler: AssistantFinishHandler | null = null
 
 function setAssistantFinishHandler(fn: AssistantFinishHandler | null): void {
@@ -105,6 +105,12 @@ function createModel() {
 let overrideTransport: (() => ChatTransport<UIMessage>) | null = null
 
 let chat: Chat<UIMessage> | null = null
+
+// Map conversationId → Chat instance for streams that are still in-flight
+// after a tab switch. Prevents GC (no other strong references survive
+// resetChat + chat.value = null) and lets the user reconnect to a live
+// stream when switching back to a tab. Instances self-remove in onFinish.
+const activeChatMap = new Map<string, Chat<UIMessage>>()
 
 const ANTHROPIC_CACHE_CONTROL = {
   anthropic: { cacheControl: { type: 'ephemeral' } }
@@ -204,23 +210,52 @@ function toUIMessages(stored: readonly ChatMessage[]): UIMessage[] {
   }))
 }
 
-async function ensureChat(messages?: UIMessage[]): Promise<Chat<UIMessage> | null> {
+// `conversationId` is captured into the `onFinish` closure at Chat creation
+// time so that a stream which completes after the user has already switched
+// tabs (or unmounted the popup) persists against the conversation it actually
+// belongs to, not whichever tab happens to be active when the stream finishes.
+async function ensureChat(
+  conversationId: string,
+  messages?: UIMessage[],
+): Promise<Chat<UIMessage> | null> {
   if (!isConfigured.value) return null
+
+  // Reuse an in-flight Chat for this conversation (e.g. user switched back
+  // to a tab whose stream is still running or just finished).
+  const existing = activeChatMap.get(conversationId)
+  if (existing) {
+    chat = existing
+    return chat
+  }
+
   if (!chat) {
     const transport = isACPProvider.value ? await createACPTransport() : createTransport()
-    chat = new Chat<UIMessage>({
+    const instance = new Chat<UIMessage>({
       transport,
       messages,
       onFinish: ({ message, isError, isAbort }) => {
+        activeChatMap.delete(conversationId)
         if (isError || isAbort) return
-        assistantFinishHandler?.(message)
+        assistantFinishHandler?.(message, conversationId)
       },
     })
+    chat = instance
+    activeChatMap.set(conversationId, instance)
   }
   return chat
 }
 
+// Reconnect to a Chat instance that is still streaming in the background
+// for the given conversation. Returns null if no in-flight Chat exists.
+function reconnectChat(conversationId: string): Chat<UIMessage> | null {
+  const existing = activeChatMap.get(conversationId)
+  if (!existing) return null
+  chat = existing
+  return existing
+}
+
 function resetChat() {
+  // Don't remove from activeChatMap — in-flight streams self-remove in onFinish.
   chat = null
   activeBrandMemories.value = []
 }
@@ -238,6 +273,7 @@ export function useAIChat() {
     activeTab,
     isConfigured,
     ensureChat,
+    reconnectChat,
     resetChat,
     toUIMessages,
     refreshActiveBrandMemories,

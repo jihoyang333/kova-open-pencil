@@ -29,6 +29,7 @@ const { canvasId, brandId } = defineProps<{
 
 const {
   ensureChat,
+  reconnectChat,
   resetChat,
   toUIMessages,
   setActiveCampaignType,
@@ -115,9 +116,15 @@ async function handleSubmit(text: string, campaignType?: CampaignType) {
   setActiveChatAttachmentsForAI(chatAttachmentsForAI)
   await refreshActiveBrandMemories(brandId)
 
+  const conversationId = chatStore.activeConversationId
+  if (!conversationId) {
+    initError.value = 'No active conversation'
+    return
+  }
+
   try {
     initError.value = null
-    const c = await ensureChat()
+    const c = await ensureChat(conversationId)
     if (c) chat.value = markRaw(c)
   } catch (e) {
     console.error('Failed to initialize chat:', e)
@@ -141,12 +148,10 @@ async function handleSubmit(text: string, campaignType?: CampaignType) {
   }
 
   // Persist user message (non-blocking — don't prevent AI send on persistence failure)
-  if (chatStore.activeConversationId) {
-    try {
-      await chatStore.addMessage(chatStore.activeConversationId, 'user', payload.text)
-    } catch (e) {
-      console.error('Failed to persist message:', e)
-    }
+  try {
+    await chatStore.addMessage(conversationId, 'user', payload.text)
+  } catch (e) {
+    console.error('Failed to persist message:', e)
   }
   chat.value
     ?.sendMessage({ text: payload.text, files: payload.files })
@@ -190,10 +195,7 @@ function handleRemoveAttachment(id: string) {
 }
 
 onMounted(() => {
-  setAssistantFinishHandler((message) => {
-    const conversationId = chatStore.activeConversationId
-    if (!conversationId) return
-
+  setAssistantFinishHandler((message, conversationId) => {
     const textParts = message.parts.filter(
       (p): p is { type: 'text'; text: string } => p.type === 'text',
     )
@@ -205,7 +207,10 @@ onMounted(() => {
 
     chatStore
       .addMessage(conversationId, 'assistant', text, [], toolCalls)
-      .catch((e) => console.error('Failed to persist assistant response:', e))
+      .catch((e) => {
+        console.error('Failed to persist assistant response:', e)
+        toast.show('Failed to save chat history — messages may not persist', 'error')
+      })
   })
 })
 
@@ -225,17 +230,29 @@ async function handleNewTab() {
 
 async function handleSwitchTab(conversationId: string) {
   chatStore.activeConversationId = conversationId
-  await chatStore.fetchMessages(conversationId)
-  chat.value = null
-  resetChat()
   clearToolLogEntries()
   chatImages.clearAttachments()
+
+  // If there's a live Chat for this conversation (in-flight or just-finished
+  // stream), reconnect to it directly so the user sees streaming resume
+  // instantly instead of loading stale state from Supabase.
+  const reconnected = reconnectChat(conversationId)
+  if (reconnected) {
+    chat.value = markRaw(reconnected)
+    isExpanded.value = true
+    return
+  }
+
+  // No active stream — load history from Supabase
+  chat.value = null
+  resetChat()
+  await chatStore.fetchMessages(conversationId)
 
   if (chatStore.messages.length > 0) {
     isExpanded.value = true
     const restored = toUIMessages(chatStore.messages)
     try {
-      const c = await ensureChat(restored)
+      const c = await ensureChat(conversationId, restored)
       if (c) chat.value = markRaw(c)
     } catch (e) {
       console.error('Failed to restore chat history:', e)
