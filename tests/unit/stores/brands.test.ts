@@ -192,4 +192,46 @@ describe('brands store', () => {
     const store = useBrandsStore()
     await expect(store.createBrand('Test')).rejects.toThrow('Not authenticated')
   })
+
+  test('proposedBrandKit starts null', () => {
+    const store = useBrandsStore()
+    expect(store.proposedBrandKit).toBeNull()
+  })
+
+  test('proposeFromShopify stores kit against brand id', () => {
+    const store = useBrandsStore()
+    const kit = {
+      primaryColor: '#FF0000',
+      secondaryColor: '#00FF00',
+      headingFont: 'Inter',
+      bodyFont: 'Inter',
+      logoUrl: 'https://cdn.shopify.com/logo.png',
+    }
+
+    store.proposeFromShopify('brand-42', kit)
+
+    expect(store.proposedBrandKit).toEqual({ brandId: 'brand-42', kit })
+  })
+
+  test('proposeFromShopify does not mutate the input kit', () => {
+    const store = useBrandsStore()
+    const kit = { primaryColor: '#111111' }
+    const snapshot = { ...kit }
+
+    store.proposeFromShopify('brand-1', kit)
+    store.proposedBrandKit!.kit.primaryColor = '#999999'
+
+    expect(kit).toEqual(snapshot)
+  })
+
+  test('proposeFromShopify replaces any prior proposal', () => {
+    const store = useBrandsStore()
+    store.proposeFromShopify('brand-a', { primaryColor: '#000000' })
+    store.proposeFromShopify('brand-b', { primaryColor: '#FFFFFF' })
+
+    expect(store.proposedBrandKit).toEqual({
+      brandId: 'brand-b',
+      kit: { primaryColor: '#FFFFFF' },
+    })
+  })
 })

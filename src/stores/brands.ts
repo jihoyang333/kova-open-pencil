@@ -6,10 +6,24 @@ import { useAuthStore } from '@/stores/auth'
 
 import type { Brand, BrandColors, BrandFonts } from '@/types/kova/database'
 
+export interface ShopifyBrandKit {
+  primaryColor?: string
+  secondaryColor?: string
+  headingFont?: string
+  bodyFont?: string
+  logoUrl?: string
+}
+
+export interface ProposedBrandKit {
+  brandId: string
+  kit: ShopifyBrandKit
+}
+
 export const useBrandsStore = defineStore('brands', () => {
   const brands = ref<Brand[]>([])
   const isLoading = ref(false)
   const selectedBrandId = ref<string | null>(null)
+  const proposedBrandKit = ref<ProposedBrandKit | null>(null)
 
   const sortedBrands = computed(() =>
     [...brands.value].sort((a, b) => a.name.localeCompare(b.name))
@@ -162,10 +176,15 @@ export const useBrandsStore = defineStore('brands', () => {
     return finalBrand
   }
 
+  function proposeFromShopify(brandId: string, kit: Readonly<ShopifyBrandKit>): void {
+    proposedBrandKit.value = { brandId, kit: { ...kit } }
+  }
+
   return {
     brands,
     isLoading,
     selectedBrandId,
+    proposedBrandKit,
     sortedBrands,
     selectedBrand,
     selectBrand,
@@ -173,6 +192,7 @@ export const useBrandsStore = defineStore('brands', () => {
     createBrand,
     updateBrand,
     deleteBrand,
-    createBrandFull
+    createBrandFull,
+    proposeFromShopify
   }
 })
