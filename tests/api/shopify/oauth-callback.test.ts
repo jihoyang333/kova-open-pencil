@@ -14,7 +14,10 @@ mock.module('../../../api/_shared/shopify-client', () => ({
     const trimmed = input.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '')
     return /^[a-z0-9][a-z0-9-]*\.myshopify\.com$/.test(trimmed) ? trimmed : null
   },
+  probeShopExists: async () => true,
   SHOPIFY_API_VERSION: '2024-10',
+  SHOPIFY_SCOPES:
+    'read_products,read_themes,read_online_store_pages,read_orders,read_inventory,read_discounts',
 }))
 
 interface OauthStateRow {
