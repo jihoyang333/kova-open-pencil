@@ -1,0 +1,161 @@
+import { describe, it, expect, mock, beforeEach } from 'bun:test'
+
+const BRAND_ID = 'brand-uuid-1'
+const SHOP = 'test.myshopify.com'
+const WEBHOOK_ID = 'wh-uuid-1'
+const TOPIC = 'products/update'
+
+// Control HMAC verification result
+let hmacResult = true
+mock.module('../../../api/_shared/shopify-hmac', () => ({
+  verifyShopifyHmac: async (_body: string, _sig: string, _secret: string): Promise<boolean> =>
+    hmacResult,
+}))
+
+// Capture QStash publish calls
+const qstashCalls: Array<{ url: string; body: unknown }> = []
+mock.module('../../../api/_shared/qstash', () => ({
+  publishToQStash: async (url: string, body: unknown): Promise<void> => {
+    qstashCalls.push({ url, body })
+  },
+}))
+
+// Control Supabase responses and capture insert calls
+let connResult: { data: { brand_id: string } | null } = { data: { brand_id: BRAND_ID } }
+let insertError: { code?: string } | null = null
+const insertCalls: Array<{ table: string; data: unknown }> = []
+
+mock.module('@supabase/supabase-js', () => ({
+  createClient: () => ({
+    from: (table: string) => ({
+      select: () => ({
+        eq: () => ({
+          maybeSingle: async () => connResult,
+        }),
+      }),
+      insert: (data: unknown) => {
+        insertCalls.push({ table, data })
+        return { error: insertError }
+      },
+    }),
+  }),
+}))
+
+const { default: handler } = await import('../../../api/shopify/webhooks')
+
+function makeWebhookReq(
+  body: string,
+  overrides: {
+    sig?: string
+    shop?: string
+    topic?: string
+    webhookId?: string
+  } = {},
+): Request {
+  return new Request('http://local/api/shopify/webhooks', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-shopify-hmac-sha256': overrides.sig ?? 'valid-sig',
+      'x-shopify-shop-domain': overrides.shop ?? SHOP,
+      'x-shopify-topic': overrides.topic ?? TOPIC,
+      'x-shopify-webhook-id': overrides.webhookId ?? WEBHOOK_ID,
+    },
+    body,
+  })
+}
+
+const samplePayload = JSON.stringify({ id: 123, title: 'Test Product' })
+
+describe('POST /api/shopify/webhooks', () => {
+  beforeEach(() => {
+    process.env.SUPABASE_URL = 'http://localhost:54321'
+    process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-key'
+    process.env.SHOPIFY_WEBHOOK_SECRET = 'test-webhook-secret'
+    hmacResult = true
+    connResult = { data: { brand_id: BRAND_ID } }
+    insertError = null
+    qstashCalls.length = 0
+    insertCalls.length = 0
+  })
+
+  it('401 when HMAC verification fails', async () => {
+    hmacResult = false
+    const res = await handler(makeWebhookReq(samplePayload))
+    expect(res.status).toBe(401)
+    expect(qstashCalls.length).toBe(0)
+  })
+
+  it('400 when x-shopify-webhook-id header is missing', async () => {
+    const res = await handler(
+      new Request('http://local/api/shopify/webhooks', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-shopify-hmac-sha256': 'valid-sig',
+          'x-shopify-shop-domain': SHOP,
+          'x-shopify-topic': TOPIC,
+          // webhook-id intentionally omitted
+        },
+        body: samplePayload,
+      }),
+    )
+    expect(res.status).toBe(400)
+  })
+
+  it('400 when x-shopify-topic header is missing', async () => {
+    const res = await handler(
+      new Request('http://local/api/shopify/webhooks', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-shopify-hmac-sha256': 'valid-sig',
+          'x-shopify-shop-domain': SHOP,
+          'x-shopify-webhook-id': WEBHOOK_ID,
+          // topic intentionally omitted
+        },
+        body: samplePayload,
+      }),
+    )
+    expect(res.status).toBe(400)
+  })
+
+  it('200 on duplicate webhook (23505 unique violation) without enqueueing', async () => {
+    insertError = { code: '23505' }
+    const res = await handler(makeWebhookReq(samplePayload))
+    expect(res.status).toBe(200)
+    expect(qstashCalls.length).toBe(0)
+  })
+
+  it('200 on success and enqueues to QStash worker', async () => {
+    const res = await handler(makeWebhookReq(samplePayload))
+    expect(res.status).toBe(200)
+    expect(qstashCalls.length).toBe(1)
+    expect(qstashCalls[0].url).toContain('/api/shopify/webhook-worker')
+  })
+
+  it('enqueues correct payload with topic, shop, brand_id, and parsed payload', async () => {
+    await handler(makeWebhookReq(samplePayload))
+    const enqueued = qstashCalls[0].body as {
+      webhook_id: string
+      topic: string
+      shop: string
+      brand_id: string
+      payload: { id: number; title: string }
+    }
+    expect(enqueued.webhook_id).toBe(WEBHOOK_ID)
+    expect(enqueued.topic).toBe(TOPIC)
+    expect(enqueued.shop).toBe(SHOP)
+    expect(enqueued.brand_id).toBe(BRAND_ID)
+    expect(enqueued.payload.id).toBe(123)
+  })
+
+  it('200 and still enqueues when no connection found (brand_id null)', async () => {
+    connResult = { data: null }
+    const res = await handler(makeWebhookReq(samplePayload))
+    expect(res.status).toBe(200)
+    expect(qstashCalls.length).toBe(1)
+    const enqueued = qstashCalls[0].body as { brand_id: string | null }
+    expect(enqueued.brand_id).toBeNull()
+  })
+})
