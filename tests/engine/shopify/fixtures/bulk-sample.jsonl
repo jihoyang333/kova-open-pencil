@@ -1,0 +1,6 @@
+{"id":"gid://shopify/Product/1","handle":"tshirt","title":"Tshirt","status":"ACTIVE","productType":"Apparel","vendor":"Kova","tags":["new"],"publishedAt":"2026-01-01T00:00:00Z","descriptionHtml":"<p>T</p>"}
+{"id":"gid://shopify/ProductVariant/11","sku":"TS-M","title":"M","price":"19.99","compareAtPrice":null,"inventoryQuantity":42,"availableForSale":true,"selectedOptions":[{"name":"Size","value":"M"}],"__parentId":"gid://shopify/Product/1"}
+{"id":"gid://shopify/MediaImage/111","image":{"url":"https://cdn/img.jpg","altText":"T","width":800,"height":800},"__parentId":"gid://shopify/Product/1"}
+{"id":"gid://shopify/Metafield/1111","namespace":"custom","key":"care","value":"Wash cold","type":"single_line_text_field","ownerType":"PRODUCT","__parentId":"gid://shopify/Product/1"}
+{"id":"gid://shopify/Collection/2","handle":"summer","title":"Summer","ruleSet":null,"sortOrder":"MANUAL","image":null,"productsCount":1}
+{"id":"gid://shopify/Product/1","__parentId":"gid://shopify/Collection/2"}
