@@ -61,6 +61,8 @@ CREATE TABLE shopify_media (
   UNIQUE(brand_id, shopify_media_id)
 );
 
+-- owner_id is polymorphic (product | variant | shop); no FK by design.
+-- Sync path MUST delete metafields before deleting a product/variant to avoid orphans.
 CREATE TABLE shopify_metafields (
   id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   brand_id     uuid NOT NULL REFERENCES brands(id) ON DELETE CASCADE,
@@ -129,12 +131,16 @@ COMMENT ON TABLE shopify_orders_agg IS
 ALTER TABLE shopify_connections ADD COLUMN sync_progress jsonb NOT NULL DEFAULT '{"phase":"idle","count_done":0,"count_total":0}'::jsonb;
 
 -- Compliance audit log (Task 2.4).
+-- user_id is stored directly so the audit trail survives brand deletion
+-- (brand_id uses ON DELETE SET NULL per Shopify GDPR webhook semantics).
+-- Writes are service-role-only; authenticated users get SELECT on their own rows.
 CREATE TABLE shopify_compliance_log (
   id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   topic         text NOT NULL,
   brand_id      uuid REFERENCES brands(id) ON DELETE SET NULL,
+  user_id       uuid REFERENCES auth.users(id) ON DELETE SET NULL,
   shop_domain   text NOT NULL,
-  customer_id   text, -- stored only for audit trail; no PII beyond Shopify's id
+  customer_id   text, -- stored only for audit trail; no PII beyond Shopify's opaque id
   received_at   timestamptz NOT NULL DEFAULT now(),
   responded_at  timestamptz,
   status        text NOT NULL DEFAULT 'received'
@@ -148,9 +154,14 @@ CREATE INDEX ON shopify_media             (brand_id, product_id);
 CREATE INDEX ON shopify_collections       (brand_id, updated_at DESC);
 CREATE INDEX ON shopify_collection_products (product_id);
 CREATE INDEX ON shopify_discounts         (brand_id, status, starts_at);
+-- Basic recency scan
 CREATE INDEX ON shopify_orders_agg        (brand_id, date DESC);
+-- Bestseller hot-path: filter by brand+date range, sort by qty_sold DESC
+CREATE INDEX ON shopify_orders_agg        (brand_id, date DESC, qty_sold DESC) INCLUDE (variant_id, revenue);
 
 -- §7.8 RLS — users can read/write only rows belonging to brands they own.
+-- All auth.uid() calls use the (SELECT auth.uid()) form so they are evaluated
+-- once per statement rather than once per row.
 ALTER TABLE shopify_products               ENABLE ROW LEVEL SECURITY;
 ALTER TABLE shopify_variants               ENABLE ROW LEVEL SECURITY;
 ALTER TABLE shopify_variant_prices         ENABLE ROW LEVEL SECURITY;
@@ -164,12 +175,12 @@ ALTER TABLE shopify_compliance_log         ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "users_own_brand_shopify_products" ON shopify_products
   FOR ALL USING (
-    brand_id IN (SELECT id FROM brands WHERE user_id = auth.uid())
+    brand_id IN (SELECT id FROM brands WHERE user_id = (SELECT auth.uid()))
   );
 
 CREATE POLICY "users_own_brand_shopify_variants" ON shopify_variants
   FOR ALL USING (
-    brand_id IN (SELECT id FROM brands WHERE user_id = auth.uid())
+    brand_id IN (SELECT id FROM brands WHERE user_id = (SELECT auth.uid()))
   );
 
 -- shopify_variant_prices has no brand_id; scope through the parent variant.
@@ -177,23 +188,23 @@ CREATE POLICY "users_own_brand_shopify_variant_prices" ON shopify_variant_prices
   FOR ALL USING (
     variant_id IN (
       SELECT id FROM shopify_variants
-      WHERE brand_id IN (SELECT id FROM brands WHERE user_id = auth.uid())
+      WHERE brand_id IN (SELECT id FROM brands WHERE user_id = (SELECT auth.uid()))
     )
   );
 
 CREATE POLICY "users_own_brand_shopify_media" ON shopify_media
   FOR ALL USING (
-    brand_id IN (SELECT id FROM brands WHERE user_id = auth.uid())
+    brand_id IN (SELECT id FROM brands WHERE user_id = (SELECT auth.uid()))
   );
 
 CREATE POLICY "users_own_brand_shopify_metafields" ON shopify_metafields
   FOR ALL USING (
-    brand_id IN (SELECT id FROM brands WHERE user_id = auth.uid())
+    brand_id IN (SELECT id FROM brands WHERE user_id = (SELECT auth.uid()))
   );
 
 CREATE POLICY "users_own_brand_shopify_collections" ON shopify_collections
   FOR ALL USING (
-    brand_id IN (SELECT id FROM brands WHERE user_id = auth.uid())
+    brand_id IN (SELECT id FROM brands WHERE user_id = (SELECT auth.uid()))
   );
 
 -- shopify_collection_products has no brand_id; scope through the parent collection.
@@ -201,23 +212,22 @@ CREATE POLICY "users_own_brand_shopify_collection_products" ON shopify_collectio
   FOR ALL USING (
     collection_id IN (
       SELECT id FROM shopify_collections
-      WHERE brand_id IN (SELECT id FROM brands WHERE user_id = auth.uid())
+      WHERE brand_id IN (SELECT id FROM brands WHERE user_id = (SELECT auth.uid()))
     )
   );
 
 CREATE POLICY "users_own_brand_shopify_discounts" ON shopify_discounts
   FOR ALL USING (
-    brand_id IN (SELECT id FROM brands WHERE user_id = auth.uid())
+    brand_id IN (SELECT id FROM brands WHERE user_id = (SELECT auth.uid()))
   );
 
 CREATE POLICY "users_own_brand_shopify_orders_agg" ON shopify_orders_agg
   FOR ALL USING (
-    brand_id IN (SELECT id FROM brands WHERE user_id = auth.uid())
+    brand_id IN (SELECT id FROM brands WHERE user_id = (SELECT auth.uid()))
   );
 
--- shopify_compliance_log is service-role-only (webhook handler writes, admin reads);
--- but we still enforce brand ownership on any authenticated read for defence-in-depth.
-CREATE POLICY "users_own_brand_shopify_compliance_log" ON shopify_compliance_log
-  FOR ALL USING (
-    brand_id IN (SELECT id FROM brands WHERE user_id = auth.uid())
+-- shopify_compliance_log: service-role writes only; authenticated users get SELECT.
+CREATE POLICY "users_own_brand_shopify_compliance_log_select" ON shopify_compliance_log
+  FOR SELECT USING (
+    user_id = (SELECT auth.uid())
   );
