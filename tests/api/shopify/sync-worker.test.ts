@@ -1,11 +1,12 @@
 import { describe, it, expect, mock, beforeEach } from 'bun:test'
-import { createHmac } from 'node:crypto'
 
 const BRAND_ID = 'brand-uuid-1'
 const SIGNING_KEY = 'test-signing-key'
+const BUDGET_MS = 260_000
 
-// QStash Receiver mock — validates by checking a known HMAC
 let verifyResult = true
+const publishCalls: unknown[] = []
+
 mock.module('@upstash/qstash', () => ({
   Receiver: class {
     async verify(_opts: unknown): Promise<boolean> {
@@ -13,7 +14,9 @@ mock.module('@upstash/qstash', () => ({
     }
   },
   Client: class {
-    async publishJSON(_opts: unknown): Promise<void> {}
+    async publishJSON(opts: unknown): Promise<void> {
+      publishCalls.push(opts)
+    }
   },
 }))
 
@@ -63,6 +66,7 @@ describe('POST /api/shopify/sync/worker', () => {
     process.env.QSTASH_CURRENT_SIGNING_KEY = SIGNING_KEY
     process.env.QSTASH_NEXT_SIGNING_KEY = SIGNING_KEY
     upsertCalls.length = 0
+    publishCalls.length = 0
     verifyResult = true
     productIdMap = new Map()
   })
@@ -85,6 +89,31 @@ describe('POST /api/shopify/sync/worker', () => {
     expect(res.status).toBe(200)
     const productUpserts = upsertCalls.filter((c) => c.table === 'shopify_products')
     expect(productUpserts.length).toBeGreaterThan(0)
+  })
+
+  it('502 when JSONL file fetch fails', async () => {
+    globalThis.fetch = mock(async () => new Response('Not Found', { status: 404 })) as typeof fetch
+    const res = await handler(makeWorkerReq({ brand_id: BRAND_ID, url: 'http://cdn/bulk.jsonl', cursor: 0, count_total: 1 }))
+    expect(res.status).toBe(502)
+  })
+
+  it('re-enqueues continuation and returns chunked when budget is exceeded', async () => {
+    const lines = [
+      JSON.stringify({ id: 'gid://shopify/Product/1', handle: 'shirt', title: 'Shirt', status: 'ACTIVE' }),
+    ]
+    globalThis.fetch = mock(async () => new Response(lines.join('\n'), { status: 200 })) as typeof fetch
+
+    let callIdx = 0
+    const realNow = Date.now
+    try {
+      Date.now = (): number => callIdx++ === 0 ? realNow() : realNow() + BUDGET_MS + 1000
+      const res = await handler(makeWorkerReq({ brand_id: BRAND_ID, url: 'http://cdn/bulk.jsonl', cursor: 0, count_total: 1 }))
+      expect(res.status).toBe(200)
+      expect(await res.text()).toBe('chunked')
+      expect(publishCalls.length).toBe(1)
+    } finally {
+      Date.now = realNow
+    }
   })
 })
 
@@ -154,6 +183,35 @@ describe('resolveFks', () => {
     )
 
     expect(result[0].owner_id).toBe(productUuid)
+    expect(result[0]._parent_type).toBeUndefined()
+    expect(result[0]._parent_id).toBeUndefined()
+  })
+
+  it('resolves _parent_id + _parent_type for metafield rows (variant parent)', async () => {
+    const variantShopifyId = 'gid://shopify/ProductVariant/1'
+    const variantUuid = 'variant-uuid-xyz'
+
+    const rows = [{ namespace: 'custom', key: 'size_guide', value: 'XL', _parent_type: 'productvariant', _parent_id: variantShopifyId }]
+    const result = await resolveFks(
+      mock(() => ({
+        from: (_t: string) => ({
+          select: (_c: string) => ({
+            eq: (_col: string, _v: unknown) => ({
+              in: (_col2: string, _vals: string[]) =>
+                Promise.resolve({
+                  data: [{ id: variantUuid, shopify_variant_id: variantShopifyId }],
+                  error: null,
+                }),
+            }),
+          }),
+        }),
+      }))() as never,
+      BRAND_ID,
+      'shopify_metafields',
+      rows,
+    )
+
+    expect(result[0].owner_id).toBe(variantUuid)
     expect(result[0]._parent_type).toBeUndefined()
     expect(result[0]._parent_id).toBeUndefined()
   })
