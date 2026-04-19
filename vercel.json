@@ -1,0 +1,8 @@
+{
+  "crons": [
+    { "path": "/api/shopify/cron/orders-agg",      "schedule": "0 2 * * *" },
+    { "path": "/api/shopify/cron/inventory-delta", "schedule": "0 * * * *" },
+    { "path": "/api/shopify/cron/product-delta",   "schedule": "0 */6 * * *" },
+    { "path": "/api/shopify/cron/purge-worker",    "schedule": "30 3 * * *" }
+  ]
+}
