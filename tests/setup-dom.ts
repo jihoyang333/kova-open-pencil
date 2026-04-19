@@ -1,10 +1,16 @@
 import { GlobalWindow } from 'happy-dom'
 
+// Preserve native Web Crypto before happy-dom potentially replaces it
+const nativeCrypto = globalThis.crypto
+
 const window = new GlobalWindow()
 
 // Register essential DOM globals for @vue/test-utils
 // Expose window itself
 ;(globalThis as Record<string, unknown>).window = window
+
+// Restore native Web Crypto so crypto.subtle works correctly in tests
+globalThis.crypto = nativeCrypto
 
 const globals = [
   'document',

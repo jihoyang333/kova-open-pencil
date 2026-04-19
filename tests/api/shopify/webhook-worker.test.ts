@@ -1,83 +1,80 @@
-import { describe, it, expect, mock, beforeEach } from 'bun:test'
+import { describe, it, expect, mock, beforeEach, beforeAll, afterAll } from 'bun:test'
 
 const BRAND_ID = 'brand-uuid-1'
 const SHOP = 'test.myshopify.com'
 
 // Control QStash signature verification
 let qstashVerifyResult = true
-mock.module('@upstash/qstash', () => ({
-  Receiver: class {
-    async verify(_opts: unknown): Promise<boolean> {
-      return qstashVerifyResult
-    }
-  },
-}))
 
 // Capture publishToQStash calls (used by processBulkFinish)
 const qstashPublishCalls: Array<{ url: string; body: unknown }> = []
-mock.module('../../../api/_shared/qstash', () => ({
-  publishToQStash: async (url: string, body: unknown): Promise<void> => {
-    qstashPublishCalls.push({ url, body })
-  },
-}))
 
 // Capture Supabase calls
 const fromCalls: Array<{ table: string; op: string; data?: unknown; filter?: unknown }> = []
 let connResult: { data: { brand_id: string } | null } = { data: { brand_id: BRAND_ID } }
 
-mock.module('@supabase/supabase-js', () => ({
-  createClient: () => ({
-    from: (table: string) => ({
-      update: (data: unknown) => ({
-        eq: (col: string, val: unknown) => {
-          fromCalls.push({ table, op: 'update', data, filter: { [col]: val } })
-          return { error: null }
-        },
-      }),
-      delete: () => ({
-        eq: (col: string, val: unknown) => ({
-          eq: (col2: string, val2: unknown) => {
-            fromCalls.push({ table, op: 'delete', filter: { [col]: val, [col2]: val2 } })
+let handler: (req: Request) => Promise<Response>
+
+describe('POST /api/shopify/webhook-worker', () => {
+  beforeAll(async () => {
+    mock.module('@upstash/qstash', () => ({
+      Receiver: class {
+        async verify(_opts: unknown): Promise<boolean> {
+          return qstashVerifyResult
+        }
+      },
+    }))
+
+    mock.module('../../../api/_shared/qstash', () => ({
+      publishToQStash: async (url: string, body: unknown): Promise<void> => {
+        qstashPublishCalls.push({ url, body })
+      },
+    }))
+
+    mock.module('@supabase/supabase-js', () => ({
+      createClient: () => ({
+        from: (table: string) => ({
+          update: (data: unknown) => ({
+            eq: (col: string, val: unknown) => {
+              fromCalls.push({ table, op: 'update', data, filter: { [col]: val } })
+              return { error: null }
+            },
+          }),
+          delete: () => ({
+            eq: (col: string, val: unknown) => ({
+              eq: (col2: string, val2: unknown) => {
+                fromCalls.push({ table, op: 'delete', filter: { [col]: val, [col2]: val2 } })
+                return { error: null }
+              },
+            }),
+          }),
+          insert: (data: unknown) => {
+            fromCalls.push({ table, op: 'insert', data })
+            return { error: null }
+          },
+          select: () => ({
+            eq: () => ({
+              maybeSingle: async () => connResult,
+            }),
+          }),
+          upsert: (data: unknown) => {
+            fromCalls.push({ table, op: 'upsert', data })
             return { error: null }
           },
         }),
+        rpc: (fn: string, args: unknown) => {
+          fromCalls.push({ table: 'rpc', op: fn, data: args })
+          return { error: null }
+        },
       }),
-      insert: (data: unknown) => {
-        fromCalls.push({ table, op: 'insert', data })
-        return { error: null }
-      },
-      select: () => ({
-        eq: () => ({
-          maybeSingle: async () => connResult,
-        }),
-      }),
-      upsert: (data: unknown) => {
-        fromCalls.push({ table, op: 'upsert', data })
-        return { error: null }
-      },
-    }),
-    rpc: (fn: string, args: unknown) => {
-      fromCalls.push({ table: 'rpc', op: fn, data: args })
-      return { error: null }
-    },
-  }),
-}))
+    }))
 
-const { default: handler } = await import('../../../api/shopify/webhook-worker')
-
-function makeWorkerReq(payload: unknown): Request {
-  const body = JSON.stringify(payload)
-  return new Request('http://local/api/shopify/webhook-worker', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'upstash-signature': 'valid-sig',
-    },
-    body,
+    const mod = await import('../../../api/shopify/webhook-worker')
+    handler = mod.default
   })
-}
 
-describe('POST /api/shopify/webhook-worker', () => {
+  afterAll(() => mock.restore())
+
   beforeEach(() => {
     process.env.SUPABASE_URL = 'http://localhost:54321'
     process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-key'
@@ -411,3 +408,15 @@ describe('POST /api/shopify/webhook-worker', () => {
     expect(data?.status).toBe('processed')
   })
 })
+
+function makeWorkerReq(payload: unknown): Request {
+  const body = JSON.stringify(payload)
+  return new Request('http://local/api/shopify/webhook-worker', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'upstash-signature': 'valid-sig',
+    },
+    body,
+  })
+}

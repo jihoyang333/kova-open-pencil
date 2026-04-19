@@ -1,24 +1,18 @@
-import { describe, it, expect, mock, beforeEach } from 'bun:test'
+import { describe, it, expect, mock, beforeEach, beforeAll, afterAll } from 'bun:test'
+import { createHmac } from 'node:crypto'
 
 const BRAND_ID = 'brand-uuid-1'
 const SHOP = 'test.myshopify.com'
 const WEBHOOK_ID = 'wh-uuid-1'
 const TOPIC = 'products/update'
+const WEBHOOK_SECRET = 'test-webhook-secret'
 
-// Control HMAC verification result
-let hmacResult = true
-mock.module('../../../api/_shared/shopify-hmac', () => ({
-  verifyShopifyHmac: async (_body: string, _sig: string, _secret: string): Promise<boolean> =>
-    hmacResult,
-}))
+function computeHmac(body: string): string {
+  return createHmac('sha256', WEBHOOK_SECRET).update(body).digest('base64')
+}
 
 // Capture QStash publish calls
 const qstashCalls: Array<{ url: string; body: unknown }> = []
-mock.module('../../../api/_shared/qstash', () => ({
-  publishToQStash: async (url: string, body: unknown): Promise<void> => {
-    qstashCalls.push({ url, body })
-  },
-}))
 
 // Control Supabase responses and capture calls
 let connResult: { data: { brand_id: string } | null } = { data: { brand_id: BRAND_ID } }
@@ -26,55 +20,43 @@ let insertError: { code?: string } | null = null
 const insertCalls: Array<{ table: string; data: unknown }> = []
 const eqCalls: Array<{ column: string; value: unknown }> = []
 
-mock.module('@supabase/supabase-js', () => ({
-  createClient: () => ({
-    from: (table: string) => ({
-      select: () => ({
-        eq: (column: string, value: unknown) => {
-          eqCalls.push({ column, value })
-          return { maybeSingle: async () => connResult }
-        },
-      }),
-      insert: (data: unknown) => {
-        insertCalls.push({ table, data })
-        return { error: insertError }
-      },
-    }),
-  }),
-}))
-
-const { default: handler } = await import('../../../api/shopify/webhooks')
-
-function makeWebhookReq(
-  body: string,
-  overrides: {
-    sig?: string
-    shop?: string
-    topic?: string
-    webhookId?: string
-  } = {},
-): Request {
-  return new Request('http://local/api/shopify/webhooks', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-shopify-hmac-sha256': overrides.sig ?? 'valid-sig',
-      'x-shopify-shop-domain': overrides.shop ?? SHOP,
-      'x-shopify-topic': overrides.topic ?? TOPIC,
-      'x-shopify-webhook-id': overrides.webhookId ?? WEBHOOK_ID,
-    },
-    body,
-  })
-}
-
-const samplePayload = JSON.stringify({ id: 123, title: 'Test Product' })
+let handler: (req: Request) => Promise<Response>
 
 describe('POST /api/shopify/webhooks', () => {
+  beforeAll(async () => {
+    mock.module('../../../api/_shared/qstash', () => ({
+      publishToQStash: async (url: string, body: unknown): Promise<void> => {
+        qstashCalls.push({ url, body })
+      },
+    }))
+
+    mock.module('@supabase/supabase-js', () => ({
+      createClient: () => ({
+        from: (table: string) => ({
+          select: () => ({
+            eq: (column: string, value: unknown) => {
+              eqCalls.push({ column, value })
+              return { maybeSingle: async () => connResult }
+            },
+          }),
+          insert: (data: unknown) => {
+            insertCalls.push({ table, data })
+            return { error: insertError }
+          },
+        }),
+      }),
+    }))
+
+    const mod = await import('../../../api/shopify/webhooks')
+    handler = mod.default
+  })
+
+  afterAll(() => mock.restore())
+
   beforeEach(() => {
     process.env.SUPABASE_URL = 'http://localhost:54321'
     process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-key'
-    process.env.SHOPIFY_WEBHOOK_SECRET = 'test-webhook-secret'
-    hmacResult = true
+    process.env.SHOPIFY_WEBHOOK_SECRET = WEBHOOK_SECRET
     connResult = { data: { brand_id: BRAND_ID } }
     insertError = null
     qstashCalls.length = 0
@@ -83,41 +65,42 @@ describe('POST /api/shopify/webhooks', () => {
   })
 
   it('401 when HMAC verification fails', async () => {
-    hmacResult = false
-    const res = await handler(makeWebhookReq(samplePayload))
+    const res = await handler(makeWebhookReq(samplePayload, { sig: 'invalid-sig' }))
     expect(res.status).toBe(401)
     expect(qstashCalls.length).toBe(0)
   })
 
   it('400 when x-shopify-webhook-id header is missing', async () => {
+    const body = samplePayload
     const res = await handler(
       new Request('http://local/api/shopify/webhooks', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-shopify-hmac-sha256': 'valid-sig',
+          'x-shopify-hmac-sha256': computeHmac(body),
           'x-shopify-shop-domain': SHOP,
           'x-shopify-topic': TOPIC,
           // webhook-id intentionally omitted
         },
-        body: samplePayload,
+        body,
       }),
     )
     expect(res.status).toBe(400)
   })
 
   it('400 when x-shopify-topic header is missing', async () => {
+    const body = samplePayload
     const res = await handler(
       new Request('http://local/api/shopify/webhooks', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-shopify-hmac-sha256': 'valid-sig',
+          'x-shopify-hmac-sha256': computeHmac(body),
           'x-shopify-shop-domain': SHOP,
           'x-shopify-webhook-id': WEBHOOK_ID,
           // topic intentionally omitted
         },
-        body: samplePayload,
+        body,
       }),
     )
     expect(res.status).toBe(400)
@@ -189,3 +172,27 @@ describe('POST /api/shopify/webhooks', () => {
     expect(enqueued.brand_id).toBeNull()
   })
 })
+
+function makeWebhookReq(
+  body: string,
+  overrides: {
+    sig?: string
+    shop?: string
+    topic?: string
+    webhookId?: string
+  } = {},
+): Request {
+  return new Request('http://local/api/shopify/webhooks', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-shopify-hmac-sha256': overrides.sig ?? computeHmac(body),
+      'x-shopify-shop-domain': overrides.shop ?? SHOP,
+      'x-shopify-topic': overrides.topic ?? TOPIC,
+      'x-shopify-webhook-id': overrides.webhookId ?? WEBHOOK_ID,
+    },
+    body,
+  })
+}
+
+const samplePayload = JSON.stringify({ id: 123, title: 'Test Product' })

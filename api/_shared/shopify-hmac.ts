@@ -1,7 +1,7 @@
 /**
  * Verify a Shopify HMAC-SHA256 webhook signature using Web Crypto API.
  * Compatible with both Node.js and Edge runtimes.
- * Uses timing-safe comparison to prevent timing attacks.
+ * Uses crypto.subtle.verify for timing-safe comparison.
  */
 export async function verifyShopifyHmac(
   rawBody: string,
@@ -16,19 +16,11 @@ export async function verifyShopifyHmac(
       enc.encode(secret),
       { name: 'HMAC', hash: 'SHA-256' },
       false,
-      ['sign'],
+      ['verify'],
     )
-    const mac = new Uint8Array(await crypto.subtle.sign('HMAC', key, enc.encode(rawBody)))
-    const expected = btoa(String.fromCharCode(...mac))
-    return timingSafeEqualStr(expected, headerSig)
+    const sigBytes = Uint8Array.from(atob(headerSig), c => c.charCodeAt(0))
+    return await crypto.subtle.verify('HMAC', key, sigBytes, enc.encode(rawBody))
   } catch {
     return false
   }
-}
-
-function timingSafeEqualStr(a: string, b: string): boolean {
-  if (a.length !== b.length) return false
-  let mismatch = 0
-  for (let i = 0; i < a.length; i++) mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i)
-  return mismatch === 0
 }
