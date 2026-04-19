@@ -13,6 +13,14 @@ mock.module('@upstash/qstash', () => ({
   },
 }))
 
+// Capture publishToQStash calls (used by processBulkFinish)
+const qstashPublishCalls: Array<{ url: string; body: unknown }> = []
+mock.module('../../../api/_shared/qstash', () => ({
+  publishToQStash: async (url: string, body: unknown): Promise<void> => {
+    qstashPublishCalls.push({ url, body })
+  },
+}))
+
 // Capture Supabase calls
 const fromCalls: Array<{ table: string; op: string; data?: unknown; filter?: unknown }> = []
 let connResult: { data: { brand_id: string } | null } = { data: { brand_id: BRAND_ID } }
@@ -78,6 +86,7 @@ describe('POST /api/shopify/webhook-worker', () => {
     qstashVerifyResult = true
     connResult = { data: { brand_id: BRAND_ID } }
     fromCalls.length = 0
+    qstashPublishCalls.length = 0
   })
 
   it('401 when QStash signature verification fails', async () => {
@@ -124,6 +133,8 @@ describe('POST /api/shopify/webhook-worker', () => {
     const productOp = fromCalls.find((c) => c.table === 'shopify_products')
     expect(productOp).toBeDefined()
     expect(productOp?.op === 'upsert' || productOp?.op === 'update').toBe(true)
+    const data = productOp?.data as Record<string, unknown>
+    expect(data?.shopify_product_id).toBe('123')
   })
 
   it('upserts product on products/update', async () => {
@@ -156,6 +167,130 @@ describe('POST /api/shopify/webhook-worker', () => {
     expect(deleteOp).toBeDefined()
   })
 
+  it('upserts collection on collections/create', async () => {
+    const res = await handler(
+      makeWorkerReq({
+        webhook_id: 'wh-c1',
+        topic: 'collections/create',
+        shop: SHOP,
+        brand_id: BRAND_ID,
+        payload: {
+          id: 111,
+          handle: 'summer-sale',
+          title: 'Summer Sale',
+          body_html: '<p>desc</p>',
+          products_count: 5,
+        },
+      }),
+    )
+    expect(res.status).toBe(200)
+    const op = fromCalls.find((c) => c.table === 'shopify_collections' && c.op === 'upsert')
+    expect(op).toBeDefined()
+    const data = op?.data as Record<string, unknown>
+    expect(data?.shopify_collection_id).toBe('111')
+    expect(data?.handle).toBe('summer-sale')
+    expect(data?.collection_type).toBe('manual')
+  })
+
+  it('marks smart collection when rules present on collections/update', async () => {
+    const res = await handler(
+      makeWorkerReq({
+        webhook_id: 'wh-c2',
+        topic: 'collections/update',
+        shop: SHOP,
+        brand_id: BRAND_ID,
+        payload: {
+          id: 222,
+          handle: 'smart-col',
+          title: 'Smart Collection',
+          rules: [{ column: 'tag', relation: 'equals', condition: 'summer' }],
+          products_count: 3,
+        },
+      }),
+    )
+    expect(res.status).toBe(200)
+    const op = fromCalls.find((c) => c.table === 'shopify_collections' && c.op === 'upsert')
+    expect(op).toBeDefined()
+    const data = op?.data as Record<string, unknown>
+    expect(data?.collection_type).toBe('smart')
+  })
+
+  it('deletes collection on collections/delete', async () => {
+    const res = await handler(
+      makeWorkerReq({
+        webhook_id: 'wh-c3',
+        topic: 'collections/delete',
+        shop: SHOP,
+        brand_id: BRAND_ID,
+        payload: { id: 333 },
+      }),
+    )
+    expect(res.status).toBe(200)
+    const op = fromCalls.find((c) => c.table === 'shopify_collections' && c.op === 'delete')
+    expect(op).toBeDefined()
+    const filter = op?.filter as Record<string, unknown>
+    expect(filter?.shopify_collection_id).toBe('333')
+  })
+
+  it('upserts discount on discounts/create', async () => {
+    const res = await handler(
+      makeWorkerReq({
+        webhook_id: 'wh-d1',
+        topic: 'discounts/create',
+        shop: SHOP,
+        brand_id: BRAND_ID,
+        payload: {
+          id: 444,
+          title: 'SUMMER20',
+          code: 'SUMMER20',
+          status: 'enabled',
+          starts_at: '2026-06-01T00:00:00Z',
+          value_type: 'percentage',
+          value: '20.0',
+        },
+      }),
+    )
+    expect(res.status).toBe(200)
+    const op = fromCalls.find((c) => c.table === 'shopify_discounts' && c.op === 'upsert')
+    expect(op).toBeDefined()
+    const data = op?.data as Record<string, unknown>
+    expect(data?.shopify_discount_id).toBe('444')
+    expect(data?.status).toBe('active')
+    expect(data?.code).toBe('SUMMER20')
+  })
+
+  it('upserts discount on discounts/update', async () => {
+    const res = await handler(
+      makeWorkerReq({
+        webhook_id: 'wh-d2',
+        topic: 'discounts/update',
+        shop: SHOP,
+        brand_id: BRAND_ID,
+        payload: { id: 555, title: 'FALL10', status: 'active', value_type: 'fixed_amount', value: '10' },
+      }),
+    )
+    expect(res.status).toBe(200)
+    const op = fromCalls.find((c) => c.table === 'shopify_discounts' && c.op === 'upsert')
+    expect(op).toBeDefined()
+  })
+
+  it('deletes discount on discounts/delete', async () => {
+    const res = await handler(
+      makeWorkerReq({
+        webhook_id: 'wh-d3',
+        topic: 'discounts/delete',
+        shop: SHOP,
+        brand_id: BRAND_ID,
+        payload: { id: 666 },
+      }),
+    )
+    expect(res.status).toBe(200)
+    const op = fromCalls.find((c) => c.table === 'shopify_discounts' && c.op === 'delete')
+    expect(op).toBeDefined()
+    const filter = op?.filter as Record<string, unknown>
+    expect(filter?.shopify_discount_id).toBe('666')
+  })
+
   it('updates inventory_qty on inventory_levels/update', async () => {
     const res = await handler(
       makeWorkerReq({
@@ -171,6 +306,70 @@ describe('POST /api/shopify/webhook-worker', () => {
     expect(updateOp).toBeDefined()
     const data = updateOp?.data as { inventory_qty: number }
     expect(data?.inventory_qty).toBe(42)
+  })
+
+  it('updates shop fields on shop/update', async () => {
+    const res = await handler(
+      makeWorkerReq({
+        webhook_id: 'wh-s1',
+        topic: 'shop/update',
+        shop: SHOP,
+        brand_id: BRAND_ID,
+        payload: { currency: 'EUR', iana_timezone: 'Europe/Paris', primary_locale: 'fr' },
+      }),
+    )
+    expect(res.status).toBe(200)
+    const op = fromCalls.find((c) => c.table === 'shopify_connections' && c.op === 'update')
+    expect(op).toBeDefined()
+    const data = op?.data as Record<string, unknown>
+    expect(data?.currency).toBe('EUR')
+    expect(data?.timezone).toBe('Europe/Paris')
+    expect(data?.primary_locale).toBe('fr')
+  })
+
+  it('delegates bulk_operations/finish to processBulkFinish and enqueues sync worker', async () => {
+    const res = await handler(
+      makeWorkerReq({
+        webhook_id: 'wh-b1',
+        topic: 'bulk_operations/finish',
+        shop: SHOP,
+        brand_id: BRAND_ID,
+        payload: {
+          admin_graphql_api_id: 'gid://shopify/BulkOperation/1',
+          status: 'completed',
+          url: 'https://storage.example.com/bulk.jsonl',
+          object_count: 100,
+        },
+      }),
+    )
+    expect(res.status).toBe(200)
+    const progressOp = fromCalls.find(
+      (c) => c.table === 'shopify_connections' && c.op === 'update',
+    )
+    expect(progressOp).toBeDefined()
+    const data = progressOp?.data as Record<string, unknown>
+    const progress = data?.sync_progress as Record<string, unknown>
+    expect(progress?.phase).toBe('parsing')
+    expect(progress?.count_total).toBe(100)
+    expect(qstashPublishCalls.length).toBe(1)
+    expect(qstashPublishCalls[0].url).toContain('/api/shopify/sync/worker')
+  })
+
+  it('no-op bulk_operations/finish when status is not completed', async () => {
+    await handler(
+      makeWorkerReq({
+        webhook_id: 'wh-b2',
+        topic: 'bulk_operations/finish',
+        shop: SHOP,
+        brand_id: BRAND_ID,
+        payload: { status: 'running', url: '', object_count: 0 },
+      }),
+    )
+    const progressOp = fromCalls.find(
+      (c) => c.table === 'shopify_connections' && c.op === 'update',
+    )
+    expect(progressOp).toBeUndefined()
+    expect(qstashPublishCalls.length).toBe(0)
   })
 
   it('disconnects + schedules purge on app/uninstalled', async () => {
