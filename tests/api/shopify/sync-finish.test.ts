@@ -1,58 +1,20 @@
-import { describe, it, expect, mock, beforeEach } from 'bun:test'
+import { describe, it, expect, mock, beforeAll, beforeEach, afterAll } from 'bun:test'
+import { createHmac } from 'node:crypto'
 
 const BRAND_ID = 'brand-uuid-1'
 const SHOP = 'test.myshopify.com'
 const JSONL_URL = 'https://storage.googleapis.com/bulk-op/output.jsonl'
+const WEBHOOK_SECRET = 'test-webhook-secret'
 
-// Control HMAC verification result
-let hmacResult = true
-mock.module('../../../api/_shared/shopify-hmac', () => ({
-  verifyShopifyHmac: async (_body: string, _sig: string, _secret: string): Promise<boolean> =>
-    hmacResult,
-}))
+function computeHmac(body: string): string {
+  return createHmac('sha256', WEBHOOK_SECRET).update(body).digest('base64')
+}
 
-// Capture QStash publish calls
 const qstashCalls: Array<{ url: string; body: unknown }> = []
-mock.module('../../../api/_shared/qstash', () => ({
-  publishToQStash: async (url: string, body: unknown): Promise<void> => {
-    qstashCalls.push({ url, body })
-  },
-}))
-
-// Control Supabase responses and capture update calls
 let connResult: { data: { brand_id: string } | null } = { data: { brand_id: BRAND_ID } }
 const updateCalls: Array<{ sync_progress: unknown }> = []
 
-mock.module('@supabase/supabase-js', () => ({
-  createClient: () => ({
-    from: (_table: string) => ({
-      select: () => ({
-        eq: () => ({
-          single: async () => connResult,
-        }),
-      }),
-      update: (data: { sync_progress: unknown }) => {
-        updateCalls.push(data)
-        return { eq: () => ({ error: null }) }
-      },
-    }),
-  }),
-}))
-
-const { default: handler } = await import('../../../api/shopify/sync/bulk-finish')
-
-function makeWebhookReq(payload: unknown, overrides: { sig?: string; shop?: string } = {}): Request {
-  const body = JSON.stringify(payload)
-  return new Request('http://local/api/shopify/sync/bulk-finish', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-shopify-hmac-sha256': overrides.sig ?? 'valid-sig',
-      'x-shopify-shop-domain': overrides.shop ?? SHOP,
-    },
-    body,
-  })
-}
+let handler: (req: Request) => Promise<Response>
 
 const completedPayload = {
   admin_graphql_api_id: 'gid://shopify/BulkOperation/1',
@@ -61,20 +23,54 @@ const completedPayload = {
   object_count: 42,
 }
 
+function makeWebhookReq(payload: unknown, overrides: { sig?: string; shop?: string } = {}): Request {
+  const body = JSON.stringify(payload)
+  return new Request('http://local/api/shopify/sync/bulk-finish', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-shopify-hmac-sha256': overrides.sig ?? computeHmac(body),
+      'x-shopify-shop-domain': overrides.shop ?? SHOP,
+    },
+    body,
+  })
+}
+
 describe('POST /api/shopify/sync/bulk-finish', () => {
+  beforeAll(async () => {
+    mock.module('../../../api/_shared/qstash', () => ({
+      publishToQStash: async (url: string, body: unknown): Promise<void> => {
+        qstashCalls.push({ url, body })
+      },
+    }))
+    mock.module('@supabase/supabase-js', () => ({
+      createClient: () => ({
+        from: (_table: string) => ({
+          select: () => ({ eq: () => ({ single: async () => connResult }) }),
+          update: (data: { sync_progress: unknown }) => {
+            updateCalls.push(data)
+            return { eq: () => ({ error: null }) }
+          },
+        }),
+      }),
+    }))
+    const mod = await import('../../../api/shopify/sync/bulk-finish')
+    handler = mod.default
+  })
+
+  afterAll(() => mock.restore())
+
   beforeEach(() => {
     process.env.SUPABASE_URL = 'http://localhost:54321'
     process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-key'
-    process.env.SHOPIFY_WEBHOOK_SECRET = 'test-webhook-secret'
-    hmacResult = true
+    process.env.SHOPIFY_WEBHOOK_SECRET = WEBHOOK_SECRET
     connResult = { data: { brand_id: BRAND_ID } }
     qstashCalls.length = 0
     updateCalls.length = 0
   })
 
   it('401 when HMAC verification fails', async () => {
-    hmacResult = false
-    const res = await handler(makeWebhookReq(completedPayload))
+    const res = await handler(makeWebhookReq(completedPayload, { sig: 'invalid-sig' }))
     expect(res.status).toBe(401)
   })
 

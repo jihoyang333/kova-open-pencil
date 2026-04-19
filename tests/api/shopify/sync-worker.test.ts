@@ -1,4 +1,4 @@
-import { describe, it, expect, mock, beforeEach } from 'bun:test'
+import { describe, it, expect, mock, beforeAll, beforeEach, afterAll } from 'bun:test'
 
 const BRAND_ID = 'brand-uuid-1'
 const SIGNING_KEY = 'test-signing-key'
@@ -6,46 +6,16 @@ const BUDGET_MS = 260_000
 
 let verifyResult = true
 const publishCalls: unknown[] = []
-
-mock.module('@upstash/qstash', () => ({
-  Receiver: class {
-    async verify(_opts: unknown): Promise<boolean> {
-      return verifyResult
-    }
-  },
-  Client: class {
-    async publishJSON(opts: unknown): Promise<void> {
-      publishCalls.push(opts)
-    }
-  },
-}))
-
-// Track supabase upsert calls
 const upsertCalls: Array<{ table: string; rows: unknown[] }> = []
 let productIdMap: Map<string, string> = new Map()
 
-mock.module('@supabase/supabase-js', () => ({
-  createClient: () => ({
-    from: (table: string) => ({
-      upsert: async (rows: unknown[]) => {
-        upsertCalls.push({ table, rows })
-        return { error: null }
-      },
-      update: () => ({ eq: () => ({ error: null }) }),
-      select: (_cols: string) => ({
-        eq: (_col: string, _val: unknown) => ({
-          in: (_col2: string, vals: string[]) =>
-            Promise.resolve({
-              data: vals.map((v) => ({ id: productIdMap.get(v) ?? `uuid-for-${v}`, shopify_product_id: v })),
-              error: null,
-            }),
-        }),
-      }),
-    }),
-  }),
-}))
-
-const { default: handler, resolveFks } = await import('../../../api/shopify/sync/worker')
+let handler: (req: Request) => Promise<Response>
+let resolveFks: (
+  admin: unknown,
+  brandId: string,
+  table: string,
+  rows: Array<Record<string, unknown>>,
+) => Promise<Array<Record<string, unknown>>>
 
 function makeWorkerReq(body: unknown, sig = 'valid-sig'): Request {
   const bodyStr = JSON.stringify(body)
@@ -60,6 +30,46 @@ function makeWorkerReq(body: unknown, sig = 'valid-sig'): Request {
 }
 
 describe('POST /api/shopify/sync/worker', () => {
+  beforeAll(async () => {
+    mock.module('@upstash/qstash', () => ({
+      Receiver: class {
+        async verify(_opts: unknown): Promise<boolean> {
+          return verifyResult
+        }
+      },
+    }))
+    mock.module('../../../api/_shared/qstash', () => ({
+      publishToQStash: async (url: string, body: unknown): Promise<void> => {
+        publishCalls.push({ url, body })
+      },
+    }))
+    mock.module('@supabase/supabase-js', () => ({
+      createClient: () => ({
+        from: (table: string) => ({
+          upsert: async (rows: unknown[]) => {
+            upsertCalls.push({ table, rows: rows as Array<Record<string, unknown>> })
+            return { error: null }
+          },
+          update: () => ({ eq: () => ({ error: null }) }),
+          select: (_cols: string) => ({
+            eq: (_col: string, _val: unknown) => ({
+              in: (_col2: string, vals: string[]) =>
+                Promise.resolve({
+                  data: vals.map((v) => ({ id: productIdMap.get(v) ?? `uuid-for-${v}`, shopify_product_id: v })),
+                  error: null,
+                }),
+            }),
+          }),
+        }),
+      }),
+    }))
+    const mod = await import('../../../api/shopify/sync/worker')
+    handler = mod.default
+    resolveFks = mod.resolveFks
+  })
+
+  afterAll(() => mock.restore())
+
   beforeEach(() => {
     process.env.SUPABASE_URL = 'http://localhost:54321'
     process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-key'
@@ -161,7 +171,6 @@ describe('resolveFks', () => {
     const productShopifyId = 'gid://shopify/Product/1'
     const productUuid = 'product-uuid-xyz'
 
-    // Parser emits _parent_id (the GID) and _parent_type ('product')
     const rows = [{ url: 'https://cdn/img.jpg', _parent_type: 'product', _parent_id: productShopifyId }]
     const result = await resolveFks(
       mock(() => ({

@@ -1,10 +1,14 @@
 import { describe, it, expect, mock, beforeEach, beforeAll, afterAll } from 'bun:test'
+import { createHmac } from 'node:crypto'
 
 const BRAND_ID = 'brand-uuid-compliance'
 const SHOP = 'compliance-test.myshopify.com'
 const WEBHOOK_ID = 'wh-compliance-1'
+const WEBHOOK_SECRET = 'test-compliance-secret'
 
-let hmacResult = true
+function computeHmac(body: string): string {
+  return createHmac('sha256', WEBHOOK_SECRET).update(body).digest('base64')
+}
 
 const fromCalls: Array<{ table: string; op: string; data?: unknown }> = []
 const tablesAccessed: string[] = []
@@ -14,10 +18,6 @@ let handler: (req: Request) => Promise<Response>
 
 describe('POST /api/shopify/compliance', () => {
   beforeAll(async () => {
-    mock.module('../../../api/_shared/shopify-hmac', () => ({
-      verifyShopifyHmac: async (): Promise<boolean> => hmacResult,
-    }))
-
     mock.module('@supabase/supabase-js', () => ({
       createClient: () => ({
         from: (table: string) => {
@@ -52,8 +52,7 @@ describe('POST /api/shopify/compliance', () => {
   beforeEach(() => {
     process.env.SUPABASE_URL = 'http://localhost:54321'
     process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-key'
-    process.env.SHOPIFY_WEBHOOK_SECRET = 'test-compliance-secret'
-    hmacResult = true
+    process.env.SHOPIFY_WEBHOOK_SECRET = WEBHOOK_SECRET
     connResult = { data: { brand_id: BRAND_ID } }
     fromCalls.length = 0
     tablesAccessed.length = 0
@@ -61,22 +60,19 @@ describe('POST /api/shopify/compliance', () => {
 
   // (a) HMAC rejection — all three compliance topics
   it('401 on bad HMAC for customers/data_request', async () => {
-    hmacResult = false
-    const res = await handler(makeReq('{}', 'customers/data_request'))
+    const res = await handler(makeReq('{}', 'customers/data_request', 'invalid-sig'))
     expect(res.status).toBe(401)
     expect(fromCalls.length).toBe(0)
   })
 
   it('401 on bad HMAC for customers/redact', async () => {
-    hmacResult = false
-    const res = await handler(makeReq('{}', 'customers/redact'))
+    const res = await handler(makeReq('{}', 'customers/redact', 'invalid-sig'))
     expect(res.status).toBe(401)
     expect(fromCalls.length).toBe(0)
   })
 
   it('401 on bad HMAC for shop/redact', async () => {
-    hmacResult = false
-    const res = await handler(makeReq('{}', 'shop/redact'))
+    const res = await handler(makeReq('{}', 'shop/redact', 'invalid-sig'))
     expect(res.status).toBe(401)
     expect(fromCalls.length).toBe(0)
   })
@@ -198,12 +194,12 @@ describe('POST /api/shopify/compliance', () => {
   })
 })
 
-function makeReq(body: string, topic: string): Request {
+function makeReq(body: string, topic: string, sig?: string): Request {
   return new Request('http://local/api/shopify/compliance', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-shopify-hmac-sha256': 'any-sig',
+      'x-shopify-hmac-sha256': sig ?? computeHmac(body),
       'x-shopify-shop-domain': SHOP,
       'x-shopify-topic': topic,
       'x-shopify-webhook-id': WEBHOOK_ID,
