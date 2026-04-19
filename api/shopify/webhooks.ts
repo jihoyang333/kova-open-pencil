@@ -2,6 +2,8 @@ import { createClient } from '@supabase/supabase-js'
 import { verifyShopifyHmac } from '../_shared/shopify-hmac'
 import { publishToQStash } from '../_shared/qstash'
 
+export const config = { runtime: 'edge' as const }
+
 export default async function handler(req: Request): Promise<Response> {
   const rawBody = await req.text()
 
@@ -25,20 +27,20 @@ export default async function handler(req: Request): Promise<Response> {
   const { data: conn } = await supabase
     .from('shopify_connections')
     .select('brand_id')
-    .eq('shop', shop)
+    .eq('shop_domain', shop)
     .maybeSingle()
 
   const brandId: string | null = conn?.brand_id ?? null
 
   const { error: logErr } = await supabase
     .from('shopify_webhook_log')
-    .insert({ webhook_id: webhookId, topic, shop, brand_id: brandId })
+    .insert({ webhook_id: webhookId, topic, brand_id: brandId })
 
   if (logErr && (logErr as { code?: string }).code === '23505') {
     return new Response('OK', { status: 200 })
   }
 
-  const workerUrl = `${process.env.VERCEL_URL ?? 'http://localhost:3000'}/api/shopify/webhook-worker`
+  const workerUrl = `${new URL(req.url).origin}/api/shopify/webhook-worker`
   await publishToQStash(workerUrl, {
     webhook_id: webhookId,
     topic,

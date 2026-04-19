@@ -20,18 +20,20 @@ mock.module('../../../api/_shared/qstash', () => ({
   },
 }))
 
-// Control Supabase responses and capture insert calls
+// Control Supabase responses and capture calls
 let connResult: { data: { brand_id: string } | null } = { data: { brand_id: BRAND_ID } }
 let insertError: { code?: string } | null = null
 const insertCalls: Array<{ table: string; data: unknown }> = []
+const eqCalls: Array<{ column: string; value: unknown }> = []
 
 mock.module('@supabase/supabase-js', () => ({
   createClient: () => ({
     from: (table: string) => ({
       select: () => ({
-        eq: () => ({
-          maybeSingle: async () => connResult,
-        }),
+        eq: (column: string, value: unknown) => {
+          eqCalls.push({ column, value })
+          return { maybeSingle: async () => connResult }
+        },
       }),
       insert: (data: unknown) => {
         insertCalls.push({ table, data })
@@ -77,6 +79,7 @@ describe('POST /api/shopify/webhooks', () => {
     insertError = null
     qstashCalls.length = 0
     insertCalls.length = 0
+    eqCalls.length = 0
   })
 
   it('401 when HMAC verification fails', async () => {
@@ -132,6 +135,33 @@ describe('POST /api/shopify/webhooks', () => {
     expect(res.status).toBe(200)
     expect(qstashCalls.length).toBe(1)
     expect(qstashCalls[0].url).toContain('/api/shopify/webhook-worker')
+  })
+
+  it('worker URL is derived from request origin', async () => {
+    await handler(makeWebhookReq(samplePayload))
+    expect(qstashCalls[0].url).toBe('http://local/api/shopify/webhook-worker')
+  })
+
+  it('looks up connection by shop_domain column', async () => {
+    await handler(makeWebhookReq(samplePayload))
+    expect(eqCalls[0].column).toBe('shop_domain')
+    expect(eqCalls[0].value).toBe(SHOP)
+  })
+
+  it('webhook_log insert does not include shop field', async () => {
+    await handler(makeWebhookReq(samplePayload))
+    const logInsert = insertCalls.find((c) => c.table === 'shopify_webhook_log')
+    expect(logInsert).toBeDefined()
+    expect((logInsert!.data as Record<string, unknown>).shop).toBeUndefined()
+  })
+
+  it('webhook_log insert includes webhook_id, topic, and brand_id', async () => {
+    await handler(makeWebhookReq(samplePayload))
+    const logInsert = insertCalls.find((c) => c.table === 'shopify_webhook_log')
+    const data = logInsert!.data as Record<string, unknown>
+    expect(data.webhook_id).toBe(WEBHOOK_ID)
+    expect(data.topic).toBe(TOPIC)
+    expect(data.brand_id).toBe(BRAND_ID)
   })
 
   it('enqueues correct payload with topic, shop, brand_id, and parsed payload', async () => {
