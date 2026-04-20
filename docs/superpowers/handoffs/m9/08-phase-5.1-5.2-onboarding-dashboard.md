@@ -38,7 +38,7 @@ bun run test:unit
 - Modify: `src/components/onboarding/BrandUrlStep.vue` — drop its router next-link to brand-kit extraction; route to `/onboarding/store-type` first when user reaches the brand-URL point.
 - Test: `tests/engine/shopify/onboarding-routing.test.ts`
 
-- [ ] **Step 1: Write `StoreTypeStep.vue`** — three cards (Shopify | Something else | No store yet), brand-name passed as a prop. On "Shopify" → capture `shop` from an input + validate via `normalizeShopDomain` client-side → navigate to `/api/shopify/oauth/start?shop=...&brand_id=...`. On "Something else" → route to existing `BrandUrlStep`. On "No store yet" → skip to brand-kit review with defaults.
+- [x] **Step 1: Write `StoreTypeStep.vue`** — three cards (Shopify | Something else | No store yet), brand-name passed as a prop. On "Shopify" → capture `shop` from an input + validate via `normalizeShopDomain` client-side → navigate to `/api/shopify/oauth/start?shop=...&brand_id=...`. On "Something else" → route to existing `BrandUrlStep`. On "No store yet" → skip to brand-kit review with defaults.
 
 ```vue
 <script setup lang="ts">
@@ -87,11 +87,11 @@ function noStoreYet():  void { router.push({ path: '/onboarding/brand-kit-review
 </template>
 ```
 
-- [ ] **Step 2: Add `src/lib/shop-domain.ts`** — client-safe mirror of `normalizeShopDomain` from `api/_shared/shopify-client.ts`. (Duplicated intentionally; api/ is server-only.)
+- [x] **Step 2: Add `src/lib/shop-domain.ts`** — client-safe mirror of `normalizeShopDomain` from `api/_shared/shopify-client.ts`. (Duplicated intentionally; api/ is server-only.)
 
-- [ ] **Step 3: Wire router** — modify `src/router.ts` to register the new route.
+- [x] **Step 3: Wire router** — modify `src/router.ts` to register the new route.
 
-- [ ] **Step 4: Routing test** (Playwright unit, or Vue Router unit test) — asserts that after brand-name step, user lands on store-type, and "Shopify" button builds the correct OAuth URL.
+- [x] **Step 4: Routing test** (Playwright unit, or Vue Router unit test) — asserts that after brand-name step, user lands on store-type, and "Shopify" button builds the correct OAuth URL.
 
 - [ ] **Step 5: Commit**
 

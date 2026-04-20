@@ -170,7 +170,7 @@ return {
 
 - [x] **Step 4: Run — expect PASS**
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/ai/kova-tools.ts tests/engine/shopify/ai-tools.test.ts
@@ -187,9 +187,9 @@ git commit -m "feat(m9): five Shopify AI tools (valibot + brand-scoped)"
 
 **CRITICAL constraint:** `SYSTEM_PROMPT` constant in `use-chat.ts` is never modified. This task extends the **existing M5 dynamic-context pipeline** in `build-system-prompt.ts`, appending a Shopify block.
 
-- [ ] **Step 1: Read `build-system-prompt.ts`** to locate the existing context-append points.
+- [x] **Step 1: Read `build-system-prompt.ts`** to locate the existing context-append points.
 
-- [ ] **Step 2: Write the failing test**
+- [x] **Step 2: Write the failing test**
 
 ```ts
 // tests/engine/shopify/build-system-prompt.test.ts
@@ -215,9 +215,9 @@ describe('buildShopifyContextBlock', () => {
 })
 ```
 
-- [ ] **Step 3: Run — expect FAIL**
+- [x] **Step 3: Run — expect FAIL**
 
-- [ ] **Step 4: Extend `build-system-prompt.ts`**
+- [x] **Step 4: Extend `build-system-prompt.ts`**
 
 ```ts
 // export async function buildSystemPrompt(...): concatenates existing blocks
@@ -249,9 +249,9 @@ export async function buildShopifyContextBlock(input: ShopifyContextInput): Prom
 // with data resolved from shopify_connections / shopify_collections / shopify_orders_agg for the active brand.
 ```
 
-- [ ] **Step 5: Run — expect PASS**
+- [x] **Step 5: Run — expect PASS**
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/ai/build-system-prompt.ts tests/engine/shopify/build-system-prompt.test.ts
@@ -264,11 +264,11 @@ git commit -m "feat(m9): dynamic system prompt — per-brand Shopify context blo
 
 ## Exit criteria
 
-- [ ] All steps in 4.1 and 4.2 marked [x].
-- [ ] `bun run check` passes.
-- [ ] `bun run test:unit` passes — AI tools tests + system-prompt tests green.
-- [ ] Two commits: AI tools commit + system-prompt commit.
-- [ ] Final commit subject: `feat(m9): dynamic system prompt — per-brand Shopify context block`
+- [x] All steps in 4.1 and 4.2 marked [x].
+- [x] `bun run check` passes.
+- [x] `bun run test:unit` passes — AI tools tests + system-prompt tests green. (12 pre-existing upstream OpenPencil failures in `packages/core/` fig codec, fonts, COLOR var, MCP — same count/names before and after this chunk; out of scope per CLAUDE.md.)
+- [x] Two commits: AI tools commit + system-prompt commit. (Also: `feat(m9): create brand_profiles row during onboarding` — necessary FK backfill so tools can resolve brand context.)
+- [x] Final commit subject: `feat(m9): dynamic system prompt — per-brand Shopify context block`
 
 ## Handoff to next chunk
 
