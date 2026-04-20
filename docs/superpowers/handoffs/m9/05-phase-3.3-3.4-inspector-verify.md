@@ -37,7 +37,7 @@ bun run test:unit
 - Modify: `src/components/PropertiesPanel.vue` (or whichever properties-panel host exists — confirm during task) to mount the new inspector when a FRAME with a matching binding is selected. **CLAUDE.md exception:** this modifies the properties panel. Check the 2026-04-18 exception log at §13 of the spec — it only covers the **left sidebar**. Properties panel edits are NOT covered. Before editing `PropertiesPanel.vue`, Ralph MUST ask Jiho via AskUserQuestion for explicit permission. If denied, fall back to mounting the inspector inline inside the Shop panel's "selected" state.
 - Test: `tests/engine/shopify/inspector-state.test.ts`
 
-- [ ] **Step 1: Write state helpers test**
+- [x] **Step 1: Write state helpers test**
 
 ```ts
 // tests/engine/shopify/inspector-state.test.ts
