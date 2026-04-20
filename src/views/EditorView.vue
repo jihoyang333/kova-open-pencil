@@ -5,6 +5,7 @@ import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { useHead } from '@unhead/vue'
 import { SplitterGroup, SplitterPanel, SplitterResizeHandle } from 'reka-ui'
 
+import { useCanvasBindingsPersistence } from '@/composables/useCanvasBindingsPersistence'
 import { useImportImages } from '@/composables/use-import-images'
 import { useKeyboard } from '@/composables/use-keyboard'
 import { useMenu } from '@/composables/use-menu'
@@ -58,6 +59,7 @@ if (canvasId) {
 
   // Track the initially loaded name to prevent redundant sync on mount
   let loadedName = ''
+  let saveBindings: (() => Promise<void>) | null = null
 
   onMounted(async () => {
     // Fetch canvas record directly (search active + trashed)
@@ -78,6 +80,9 @@ if (canvasId) {
     await brandsStore.fetchBrands()
     if (data.brand_id) {
       brandsStore.selectBrand(data.brand_id)
+      const persistence = useCanvasBindingsPersistence(canvasId, data.brand_id as string)
+      await persistence.loadBindings()
+      saveBindings = persistence.saveBindings
     }
   })
 
@@ -96,8 +101,9 @@ if (canvasId) {
     { debounce: 500 }
   )
 
-  // Capture thumbnail on leave (non-blocking)
+  // Capture thumbnail and save bindings on leave (non-blocking)
   onBeforeRouteLeave(() => {
+    if (saveBindings) void saveBindings()
     void captureThumbnail(canvasId)
   })
 
