@@ -128,6 +128,30 @@ The user attached the following images in their current message. Use them as vis
 ${lines}`
 }
 
+export interface ShopifyContextInput {
+  readonly brandId: string
+  readonly hasConnection: boolean
+  readonly conn?: { readonly shop_domain: string; readonly currency: string; readonly timezone: string }
+  readonly topCollections?: ReadonlyArray<{ readonly title: string }>
+  readonly bestsellers?: ReadonlyArray<{ readonly title: string }>
+  readonly brandName?: string
+}
+
+export async function buildShopifyContextBlock(input: ShopifyContextInput): Promise<string> {
+  if (!input.hasConnection || !input.conn) {
+    return `## Brand: ${input.brandName ?? 'unknown'}\nShopify: not connected for this brand.`
+  }
+  const lines: string[] = []
+  lines.push(`## Brand: ${input.brandName ?? 'unknown'}`)
+  lines.push(`Shopify: connected → ${input.conn.shop_domain}`)
+  lines.push(`Currency: ${input.conn.currency} · Timezone: ${input.conn.timezone}`)
+  if (input.topCollections?.length)
+    lines.push(`Top collections: ${input.topCollections.map((c) => c.title).join(', ')}`)
+  if (input.bestsellers?.length)
+    lines.push(`Bestsellers (30-day): ${input.bestsellers.map((b) => b.title).join(', ')}`)
+  return lines.join('\n')
+}
+
 function formatAvailableImages(images: readonly AvailableImage[]): string {
   const limited = images.slice(0, MAX_IMAGES)
   const imageLines = limited
