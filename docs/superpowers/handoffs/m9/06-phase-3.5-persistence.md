@@ -79,8 +79,8 @@ git commit -m "feat(m9): canvas product-variant bindings persistence"
 - [x] Migration applied to Supabase via `mcp__supabase__apply_migration`.
 - [x] `database-reviewer` agent dispatched on the migration SQL file.
 - [x] `bun run check` passes.
-- [ ] `bun run test:unit` passes — persistence test green.
-- [ ] Final commit subject: `feat(m9): canvas product-variant bindings persistence`
+- [x] `bun run test:unit` passes — persistence test green.
+- [x] Final commit subject: `feat(m9): canvas product-variant bindings persistence`
 
 ## Handoff to next chunk
 

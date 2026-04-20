@@ -39,7 +39,7 @@ bun run test:unit
 - Modify: `src/ai/kova-tools.ts`
 - Test: `tests/engine/shopify/ai-tools.test.ts`
 
-- [ ] **Step 1: Write the failing test** — one case per tool that asserts input/output valibot shape + Supabase query is brand-scoped.
+- [x] **Step 1: Write the failing test** — one case per tool that asserts input/output valibot shape + Supabase query is brand-scoped.
 
 ```ts
 // tests/engine/shopify/ai-tools.test.ts
@@ -70,9 +70,9 @@ describe('shopify AI tools', () => {
 })
 ```
 
-- [ ] **Step 2: Run — expect FAIL**
+- [x] **Step 2: Run — expect FAIL**
 
-- [ ] **Step 3: Extend `src/ai/kova-tools.ts`** — add the five tools to the returned object. Each tool:
+- [x] **Step 3: Extend `src/ai/kova-tools.ts`** — add the five tools to the returned object. Each tool:
 
 ```ts
 import * as v from 'valibot'
@@ -168,7 +168,7 @@ return {
 }
 ```
 
-- [ ] **Step 4: Run — expect PASS**
+- [x] **Step 4: Run — expect PASS**
 
 - [ ] **Step 5: Commit**
 

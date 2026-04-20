@@ -66,7 +66,11 @@ describe('completeOnboarding', () => {
   })
 
   test('saves name, creates brand, creates canvas, sets onboarded, redirects to editor', async () => {
-    // Mock the users update for onboarded=true
+    // Mock brand_profiles insert
+    mockFrom.mockReturnValueOnce({
+      insert: () => Promise.resolve({ error: null }),
+    })
+    // Mock users update for onboarded=true
     mockFrom.mockReturnValueOnce({
       update: () => ({
         eq: () => Promise.resolve({ error: null }),
@@ -76,6 +80,7 @@ describe('completeOnboarding', () => {
     await completeOnboarding({
       name: 'Jiho',
       brandName: 'Kova',
+      brandUrl: 'https://kova.design',
       colors: { primary: '#000', secondary: '#fff', accent: '#f00', background: '#eee' },
       fonts: { heading: 'Inter', body: 'Georgia' },
       voice: 'Professional',
@@ -87,6 +92,7 @@ describe('completeOnboarding', () => {
     expect(mockUpdateName).toHaveBeenCalledWith('Jiho')
     expect(mockBrandsStore.createBrandFull).toHaveBeenCalledWith({
       name: 'Kova',
+      url: 'https://kova.design',
       colors: { primary: '#000', secondary: '#fff', accent: '#f00', background: '#eee' },
       fonts: { heading: 'Inter', body: 'Georgia' },
       voice: 'Professional',
@@ -95,6 +101,7 @@ describe('completeOnboarding', () => {
       logoFile: null,
     })
     expect(mockCanvasesStore.createCanvas).toHaveBeenCalledWith('brand-1', 'Kova - Canvas 1')
+    expect(mockFrom).toHaveBeenCalledWith('brand_profiles')
     expect(mockFrom).toHaveBeenCalledWith('users')
     expect(mockPush).toHaveBeenCalledWith('/editor/canvas-1')
   })
@@ -106,6 +113,7 @@ describe('completeOnboarding', () => {
       completeOnboarding({
         name: 'Jiho',
         brandName: 'Kova',
+        brandUrl: '',
         colors: null,
         fonts: null,
         voice: null,
@@ -125,6 +133,7 @@ describe('completeOnboarding', () => {
       completeOnboarding({
         name: 'Jiho',
         brandName: 'Kova',
+        brandUrl: '',
         colors: null,
         fonts: null,
         voice: null,

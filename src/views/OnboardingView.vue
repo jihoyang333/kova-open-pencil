@@ -74,6 +74,7 @@ async function handleFinish(): Promise<void> {
     await completeOnboarding({
       name: state.name.value,
       brandName: state.brandName.value,
+      brandUrl: state.brandUrl.value,
       colors: state.colors.value,
       fonts: state.fonts.value,
       voice: state.voice.value,
