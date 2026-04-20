@@ -353,4 +353,40 @@ describe('GET /api/shopify/cron/product-delta', () => {
     expect(diffMs).toBeGreaterThanOrEqual(6 * 60 * 60 * 1000)
     expect(diffMs).toBeLessThan(7 * 60 * 60 * 1000)
   })
+
+  // --- Row shape ---
+
+  it('buildUpsertRows row has exactly the expected keys', () => {
+    const rows = buildUpsertRows(BRAND_A, [
+      { id: 1, handle: 'h', title: 'T', body_html: null, product_type: null, vendor: null, tags: '', status: 'active', published_at: null },
+    ]) as Array<Record<string, unknown>>
+    const expectedKeys = ['brand_id', 'description_html', 'handle', 'product_type', 'published_at', 'shopify_product_id', 'status', 'tags', 'title', 'vendor']
+    expect(Object.keys(rows[0]).sort()).toEqual(expectedKeys.sort())
+  })
+
+  // --- Response body shape ---
+
+  it('success response body has exactly { ok: true }', async () => {
+    shopifyResponses[SHOP_A] = { status: 200, body: { products: [] } }
+    const res = await handler(new Request('http://local/api/shopify/cron/product-delta'))
+    const body = (await res.json()) as Record<string, unknown>
+    expect(Object.keys(body).sort()).toEqual(['ok'])
+    expect(body.ok).toBe(true)
+  })
+
+  it('error response body has exactly { ok, errors } with errors as string[]', async () => {
+    activeConnections = [
+      { brand_id: BRAND_A, shop_domain: SHOP_A },
+      { brand_id: BRAND_B, shop_domain: SHOP_B },
+    ]
+    tokenByBrand = { [BRAND_A]: 'token-a', [BRAND_B]: 'token-b' }
+    shopifyResponses[SHOP_A] = { status: 200, body: { products: [] } }
+    shopifyResponses[SHOP_B] = { status: 500, body: {} }
+    const res = await handler(new Request('http://local/api/shopify/cron/product-delta'))
+    const body = (await res.json()) as Record<string, unknown>
+    expect(Object.keys(body).sort()).toEqual(['errors', 'ok'])
+    expect(body.ok).toBe(false)
+    expect(Array.isArray(body.errors)).toBe(true)
+    expect((body.errors as unknown[]).every((e) => typeof e === 'string')).toBe(true)
+  })
 })

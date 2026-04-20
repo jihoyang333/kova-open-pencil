@@ -52,15 +52,15 @@ bun run test:unit     # bun:test
 
 - [x] **Step 2: Implement `orders-agg.ts`** — per-brand: query Shopify `orders.json?updated_at_min=yesterday` paginated, aggregate `variant_id → { qty, revenue }` per date, upsert into `shopify_orders_agg`. Zero PII.
 
-- [ ] **Step 3: Implement `inventory-delta.ts`** — webhook-loss fallback: for each active brand, query `inventory_levels.json?updated_at_min=last_hour`, upsert into `shopify_variants.inventory_qty`.
+- [x] **Step 3: Implement `inventory-delta.ts`** — webhook-loss fallback: for each active brand, query `inventory_levels.json?updated_at_min=last_hour`, upsert into `shopify_variants.inventory_qty`.
 
-- [ ] **Step 4: Implement `product-delta.ts`** — every 6h: query `products.json?updated_at_min=last_6h`, upsert.
+- [x] **Step 4: Implement `product-delta.ts`** — every 6h: query `products.json?updated_at_min=last_6h`, upsert.
 
-- [ ] **Step 5: Implement `purge-worker.ts`** — every night: for each `shopify_purge_queue` row with `scheduled_at < now() AND completed_at IS NULL`, cascade-delete all `shopify_*` rows for that `brand_id`, then set `completed_at`.
+- [x] **Step 5: Implement `purge-worker.ts`** — every night: for each `shopify_purge_queue` row with `scheduled_at < now() AND completed_at IS NULL`, cascade-delete all `shopify_*` rows for that `brand_id`, then set `completed_at`.
 
-- [ ] **Step 6: Unit tests** — shape assertions per handler; integration test for `purge-worker` that seeds a connection + products and asserts all rows gone.
+- [x] **Step 6: Unit tests** — shape assertions per handler; integration test for `purge-worker` that seeds a connection + products and asserts all rows gone.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add api/shopify/cron/ vercel.json tests/api/shopify/cron-*.test.ts
@@ -73,11 +73,11 @@ git commit -m "feat(m9): shopify cron jobs — orders agg, deltas, purge worker"
 
 ## Exit criteria
 
-- [ ] Steps 3–7 all marked [x] above.
-- [ ] `bun run check` passes with zero errors.
-- [ ] `bun run test:unit` passes — new cron tests green.
-- [ ] Coverage on `api/shopify/cron/*` ≥ 80%.
-- [ ] Final commit subject: `feat(m9): shopify cron jobs — orders agg, deltas, purge worker`
+- [x] Steps 3–7 all marked [x] above.
+- [x] `bun run check` passes with zero errors.
+- [x] `bun run test:unit` passes — new cron tests green.
+- [x] Coverage on `api/shopify/cron/*` ≥ 80%.
+- [x] Final commit subject: `feat(m9): shopify cron jobs — orders agg, deltas, purge worker`
 
 ## Handoff to next chunk
 

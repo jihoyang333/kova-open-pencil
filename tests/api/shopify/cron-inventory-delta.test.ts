@@ -22,6 +22,8 @@ const fetchUrls: string[] = []
 const shopifyResponses: Record<string, { status: number; body: unknown; link?: string }> = {}
 
 let handler: (req: Request) => Promise<Response>
+let aggregateByItem: (levels: Array<{ inventory_item_id: number; available: number | null }>) => Map<number, number>
+let buildUpdates: (qtyByItemId: Map<number, number>, variantNumericByItemId: Map<number, number>, localIdMap: Map<number, string>) => Array<{ id: string; inventory_qty: number }>
 
 describe('GET /api/shopify/cron/inventory-delta', () => {
   beforeAll(async () => {
@@ -88,6 +90,8 @@ describe('GET /api/shopify/cron/inventory-delta', () => {
 
     const mod = await import('../../../api/shopify/cron/inventory-delta')
     handler = mod.default
+    aggregateByItem = mod.aggregateByItem
+    buildUpdates = mod.buildUpdates
   })
 
   afterAll(() => mock.restore())
@@ -343,5 +347,111 @@ describe('GET /api/shopify/cron/inventory-delta', () => {
 
     const res = await handler(new Request('http://local/api/shopify/cron/inventory-delta'))
     expect(res.status).toBe(207)
+  })
+
+  // --- aggregateByItem unit tests ---
+
+  it('aggregateByItem sums available across entries for same item_id', () => {
+    const result = aggregateByItem([
+      { inventory_item_id: 1, available: 3 },
+      { inventory_item_id: 1, available: 7 },
+    ])
+    expect(result.get(1)).toBe(10)
+  })
+
+  it('aggregateByItem skips null available values', () => {
+    const result = aggregateByItem([
+      { inventory_item_id: 1, available: null },
+      { inventory_item_id: 1, available: 5 },
+    ])
+    expect(result.get(1)).toBe(5)
+  })
+
+  it('aggregateByItem returns empty map for empty input', () => {
+    expect(aggregateByItem([]).size).toBe(0)
+  })
+
+  it('aggregateByItem treats zero available as valid (out of stock)', () => {
+    const result = aggregateByItem([{ inventory_item_id: 1, available: 0 }])
+    expect(result.get(1)).toBe(0)
+    expect(result.has(1)).toBe(true)
+  })
+
+  it('aggregateByItem produces separate entries for distinct item_ids', () => {
+    const result = aggregateByItem([
+      { inventory_item_id: 10, available: 4 },
+      { inventory_item_id: 20, available: 6 },
+    ])
+    expect(result.get(10)).toBe(4)
+    expect(result.get(20)).toBe(6)
+    expect(result.size).toBe(2)
+  })
+
+  // --- buildUpdates unit tests ---
+
+  it('buildUpdates maps item_id through variant chain to local UUID', () => {
+    const qtyByItemId = new Map([[100, 5]])
+    const variantNumericByItemId = new Map([[100, 999]])
+    const localIdMap = new Map([[999, 'local-uuid-abc']])
+    const result = buildUpdates(qtyByItemId, variantNumericByItemId, localIdMap)
+    expect(result).toEqual([{ id: 'local-uuid-abc', inventory_qty: 5 }])
+  })
+
+  it('buildUpdates skips items with no variant mapping', () => {
+    const qtyByItemId = new Map([[100, 5]])
+    const result = buildUpdates(qtyByItemId, new Map(), new Map([[999, 'local-uuid-abc']]))
+    expect(result).toEqual([])
+  })
+
+  it('buildUpdates skips items with no local UUID', () => {
+    const qtyByItemId = new Map([[100, 5]])
+    const variantNumericByItemId = new Map([[100, 999]])
+    const result = buildUpdates(qtyByItemId, variantNumericByItemId, new Map())
+    expect(result).toEqual([])
+  })
+
+  it('buildUpdates output rows have exactly { id, inventory_qty } keys', () => {
+    const qtyByItemId = new Map([[100, 5]])
+    const variantNumericByItemId = new Map([[100, 999]])
+    const localIdMap = new Map([[999, 'local-uuid-abc']])
+    const result = buildUpdates(qtyByItemId, variantNumericByItemId, localIdMap) as Array<Record<string, unknown>>
+    expect(Object.keys(result[0]).sort()).toEqual(['id', 'inventory_qty'])
+  })
+
+  it('buildUpdates handles multiple items correctly', () => {
+    const qtyByItemId = new Map([[100, 3], [200, 7]])
+    const variantNumericByItemId = new Map([[100, 111], [200, 222]])
+    const localIdMap = new Map([[111, 'local-a'], [222, 'local-b']])
+    const result = buildUpdates(qtyByItemId, variantNumericByItemId, localIdMap)
+    const byId = new Map(result.map((r) => [r.id, r.inventory_qty]))
+    expect(byId.get('local-a')).toBe(3)
+    expect(byId.get('local-b')).toBe(7)
+  })
+
+  // --- Response body shape ---
+
+  it('success response body has exactly { ok: true }', async () => {
+    activeConnections = []
+    const res = await handler(new Request('http://local/api/shopify/cron/inventory-delta'))
+    const body = (await res.json()) as Record<string, unknown>
+    expect(Object.keys(body).sort()).toEqual(['ok'])
+    expect(body.ok).toBe(true)
+  })
+
+  it('error response body has exactly { ok, errors } with errors as string[]', async () => {
+    activeConnections = [
+      { brand_id: BRAND_A, shop_domain: SHOP_A },
+      { brand_id: BRAND_B, shop_domain: SHOP_B },
+    ]
+    tokenByBrand = { [BRAND_A]: 'token-a', [BRAND_B]: 'token-b' }
+    variantsByBrand[BRAND_B] = []
+    shopifyResponses[SHOP_A] = { status: 200, body: { inventory_levels: [] } }
+    shopifyResponses[SHOP_B] = { status: 500, body: {} }
+    const res = await handler(new Request('http://local/api/shopify/cron/inventory-delta'))
+    const body = (await res.json()) as Record<string, unknown>
+    expect(Object.keys(body).sort()).toEqual(['errors', 'ok'])
+    expect(body.ok).toBe(false)
+    expect(Array.isArray(body.errors)).toBe(true)
+    expect((body.errors as unknown[]).every((e) => typeof e === 'string')).toBe(true)
   })
 })

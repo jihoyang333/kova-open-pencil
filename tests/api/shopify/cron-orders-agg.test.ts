@@ -362,4 +362,31 @@ describe('GET /api/shopify/cron/orders-agg', () => {
     const body = (await res.json()) as { ok: boolean }
     expect(body.ok).toBe(true)
   })
+
+  // --- Response body shape ---
+
+  it('success response body has exactly { ok: true }', async () => {
+    shopifyResponses[SHOP_A] = { status: 200, body: { orders: [] } }
+    const res = await handler(new Request('http://local/api/shopify/cron/orders-agg'))
+    const body = (await res.json()) as Record<string, unknown>
+    expect(Object.keys(body).sort()).toEqual(['ok'])
+    expect(body.ok).toBe(true)
+  })
+
+  it('error response body has exactly { ok, errors } with errors as string[]', async () => {
+    activeConnections = [
+      { brand_id: BRAND_A, shop_domain: SHOP_A },
+      { brand_id: BRAND_B, shop_domain: SHOP_B },
+    ]
+    tokenByBrand = { [BRAND_A]: 'token-a', [BRAND_B]: 'token-b' }
+    variantsByBrand[BRAND_B] = []
+    shopifyResponses[SHOP_A] = { status: 200, body: { orders: [] } }
+    shopifyResponses[SHOP_B] = { status: 500, body: {} }
+    const res = await handler(new Request('http://local/api/shopify/cron/orders-agg'))
+    const body = (await res.json()) as Record<string, unknown>
+    expect(Object.keys(body).sort()).toEqual(['errors', 'ok'])
+    expect(body.ok).toBe(false)
+    expect(Array.isArray(body.errors)).toBe(true)
+    expect((body.errors as unknown[]).every((e) => typeof e === 'string')).toBe(true)
+  })
 })

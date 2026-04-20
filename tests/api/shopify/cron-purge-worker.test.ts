@@ -346,4 +346,36 @@ describe('GET /api/shopify/cron/purge-worker', () => {
 
     expect(queueCompletions.some((c) => c.id === QUEUE_ROW_1)).toBe(false)
   })
+
+  // --- Response body shape ---
+
+  it('success response body has exactly { ok: true }', async () => {
+    pendingRows = [{ id: QUEUE_ROW_1, brand_id: BRAND_A, scheduled_at: PAST_DATE }]
+    const res = await handler(new Request('http://local/api/shopify/cron/purge-worker'))
+    const body = (await res.json()) as Record<string, unknown>
+    expect(Object.keys(body).sort()).toEqual(['ok'])
+    expect(body.ok).toBe(true)
+  })
+
+  it('partial failure response body has exactly { ok, errors } with errors as string[]', async () => {
+    pendingRows = [
+      { id: QUEUE_ROW_1, brand_id: BRAND_A, scheduled_at: PAST_DATE },
+      { id: QUEUE_ROW_2, brand_id: BRAND_B, scheduled_at: PAST_DATE },
+    ]
+    failBrandsOnDelete.add(BRAND_A)
+    const res = await handler(new Request('http://local/api/shopify/cron/purge-worker'))
+    const body = (await res.json()) as Record<string, unknown>
+    expect(Object.keys(body).sort()).toEqual(['errors', 'ok'])
+    expect(body.ok).toBe(false)
+    expect(Array.isArray(body.errors)).toBe(true)
+    expect((body.errors as unknown[]).every((e) => typeof e === 'string')).toBe(true)
+  })
+
+  it('queue error response body has exactly { error: string }', async () => {
+    queueQueryError = { message: 'db unavailable' }
+    const res = await handler(new Request('http://local/api/shopify/cron/purge-worker'))
+    const body = (await res.json()) as Record<string, unknown>
+    expect(Object.keys(body).sort()).toEqual(['error'])
+    expect(typeof body.error).toBe('string')
+  })
 })
