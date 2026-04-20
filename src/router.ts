@@ -9,6 +9,7 @@ const LoginView = () => import('./views/LoginView.vue')
 const SignupView = () => import('./views/SignupView.vue')
 const DashboardView = () => import('./views/DashboardView.vue')
 const OnboardingView = () => import('./views/OnboardingView.vue')
+const StoreTypeStep = () => import('./components/onboarding/StoreTypeStep.vue')
 const EditorView = () => import('./views/EditorView.vue')
 const CanvasGrid = () => import('./views/dashboard/CanvasGrid.vue')
 const TrashView = () => import('./views/dashboard/TrashView.vue')
@@ -60,6 +61,11 @@ const routes = [
   {
     path: '/onboarding',
     component: OnboardingView,
+    meta: { requiresAuth: true, requiresOnboarding: false, onboardingOnly: true }
+  },
+  {
+    path: '/onboarding/store-type',
+    component: StoreTypeStep,
     meta: { requiresAuth: true, requiresOnboarding: false, onboardingOnly: true }
   },
   {
