@@ -107,8 +107,8 @@ describe('GET /api/shopify/cron/orders-agg', () => {
         { id: LOCAL_VARIANT_2, shopify_variant_id: `gid://shopify/ProductVariant/${SHOPIFY_NUM_2}` },
       ],
     }
+    for (const key of Object.keys(shopifyResponses)) delete shopifyResponses[key]
     shopifyResponses[SHOP_A] = { status: 200, body: { orders: [] } }
-    delete shopifyResponses[SHOP_B]
   })
 
   // --- Auth ---
@@ -295,14 +295,16 @@ describe('GET /api/shopify/cron/orders-agg', () => {
   // --- Pagination ---
 
   it('follows Link: next header to fetch all pages', async () => {
-    const page2Url = `https://${SHOP_A}/admin/api/2024-10/orders.json?page_info=page2`
-    shopifyResponses[SHOP_A] = {
+    const page2Key = 'page_info=orders-page2'
+    const page2Url = `https://${SHOP_A}/admin/api/2024-10/orders.json?${page2Key}`
+    // Remove the catch-all SHOP_A key so specific keys below match unambiguously
+    delete shopifyResponses[SHOP_A]
+    shopifyResponses['orders.json?status=any'] = {
       status: 200,
       body: { orders: [{ created_at: '2026-04-18T10:00:00Z', line_items: [{ variant_id: SHOPIFY_NUM_1, quantity: 1, price: '5.00' }] }] },
       link: `<${page2Url}>; rel="next"`,
     }
-    // Override with a more specific matcher for page2
-    shopifyResponses['page_info=page2'] = {
+    shopifyResponses[page2Key] = {
       status: 200,
       body: { orders: [{ created_at: '2026-04-18T12:00:00Z', line_items: [{ variant_id: SHOPIFY_NUM_1, quantity: 2, price: '5.00' }] }] },
     }
