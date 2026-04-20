@@ -1,9 +1,32 @@
-// tests/engine/shopify/store-shopify-products.test.ts
-import { describe, it, expect, beforeEach } from 'bun:test'
+import { describe, it, expect, mock, beforeAll, beforeEach, afterAll } from 'bun:test'
 import { createPinia, setActivePinia } from 'pinia'
-import { useShopifyProductsStore } from '../../../src/stores/shopify-products'
+
+type UseShopifyProductsStore = typeof import('../../../src/stores/shopify-products')['useShopifyProductsStore']
+let useShopifyProductsStore: UseShopifyProductsStore
 
 describe('useShopifyProductsStore', () => {
+  beforeAll(async () => {
+    const makeChannel = () => {
+      const ch: Record<string, unknown> = {}
+      ch['on'] = () => ch
+      ch['subscribe'] = (_cb?: (s: string) => void) => ch
+      ch['unsubscribe'] = () => Promise.resolve('ok' as const)
+      return ch
+    }
+    const makeQuery = (): Record<string, unknown> => ({
+      select: () => makeQuery(),
+      eq: () => Promise.resolve({ data: [], error: null }),
+    })
+    mock.module('@/lib/supabase', () => {
+      const supabase = { from: () => makeQuery(), channel: makeChannel, rpc: () => Promise.resolve({ data: null, error: null }) }
+      return { supabase, getSupabase: () => supabase }
+    })
+    const mod = await import('../../../src/stores/shopify-products')
+    useShopifyProductsStore = mod.useShopifyProductsStore
+  })
+
+  afterAll(() => mock.restore())
+
   beforeEach(() => setActivePinia(createPinia()))
 
   it('fetches brand-scoped products on loadForBrand', async () => {
