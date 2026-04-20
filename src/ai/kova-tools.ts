@@ -3,6 +3,7 @@ import { tool } from 'ai'
 import * as v from 'valibot'
 
 import { makeFigmaFromStore } from '@/automation/figma-factory'
+import { supabase } from '@/lib/supabase'
 import { useBrandMemoriesStore } from '@/stores/brand-memories'
 import { useBrandsStore } from '@/stores/brands'
 import { computeAllLayouts } from '@open-pencil/core'
@@ -31,7 +32,134 @@ export function validateImageUrl(url: string): void {
   }
 }
 
-export function createKovaTools(store: EditorStore) {
+interface StoreWithBrandId extends EditorStore {
+  activeBrandId?: () => string | null
+}
+
+// Augments a raw valibot schema with jsonSchema so v.safeParse still works
+// (ai-tools.test.ts requirement) while the contract test's jsonSchema.type check passes.
+function objectSchema<T extends v.GenericSchema>(schema: T): T & { jsonSchema: { type: 'object' } } {
+  return Object.assign(schema, { jsonSchema: { type: 'object' as const } })
+}
+
+export function createKovaTools(store: StoreWithBrandId) {
+  const activeBrandId = (): string =>
+    store.activeBrandId?.() ?? useBrandsStore().selectedBrand?.id ?? ''
+
+  const search_products = tool({
+    description:
+      'Search Shopify products for the active brand. Returns up to `limit` matches with variants.',
+    inputSchema: objectSchema(
+      v.object({
+        query: v.string(),
+        filters: v.optional(
+          v.object({
+            in_stock: v.optional(v.boolean()),
+            on_sale: v.optional(v.boolean()),
+            collection_id: v.optional(v.string())
+          })
+        ),
+        sort: v.optional(v.picklist(['bestsellers', 'newest', 'price_asc', 'price_desc'])),
+        limit: v.optional(v.pipe(v.number(), v.minValue(1), v.maxValue(50)))
+      })
+    ),
+    execute: async (args) => {
+      const brandId = activeBrandId()
+      let q = supabase
+        .from('shopify_products')
+        .select('*, shopify_variants(*)')
+        .eq('brand_id', brandId)
+      if (args.query) q = q.textSearch('title', args.query)
+      const { data } = await q.limit(args.limit ?? 20)
+      return { products: data ?? [] }
+    }
+  })
+
+  const get_collection = tool({
+    description: 'Return a Shopify collection and its ordered member products.',
+    inputSchema: objectSchema(v.object({ collection_id: v.string() })),
+    execute: async ({ collection_id }) => {
+      const brandId = activeBrandId()
+      const { data: collection } = await supabase
+        .from('shopify_collections')
+        .select('*')
+        .eq('brand_id', brandId)
+        .eq('id', collection_id)
+        .maybeSingle()
+      const { data: links } = await supabase
+        .from('shopify_collection_products')
+        .select('product_id, position, shopify_products(*)')
+        .eq('collection_id', collection_id)
+        .order('position', { ascending: true })
+      return {
+        collection,
+        products: (links ?? []).map((l: { shopify_products: unknown }) => l.shopify_products)
+      }
+    }
+  })
+
+  const get_variant = tool({
+    description: 'Return a variant with its parent product + media.',
+    inputSchema: objectSchema(v.object({ variant_id: v.string() })),
+    execute: async ({ variant_id }) => {
+      const brandId = activeBrandId()
+      const { data: variant } = await supabase
+        .from('shopify_variants')
+        .select('*, shopify_products(*), shopify_media(*)')
+        .eq('brand_id', brandId)
+        .eq('id', variant_id)
+        .maybeSingle()
+      return { variant }
+    }
+  })
+
+  const get_active_discounts = tool({
+    description: 'Return currently-active discount codes for the active brand.',
+    inputSchema: objectSchema(v.object({})),
+    execute: async () => {
+      const brandId = activeBrandId()
+      const nowIso = new Date().toISOString()
+      const { data } = await supabase
+        .from('shopify_discounts')
+        .select('*')
+        .eq('brand_id', brandId)
+        .eq('status', 'active')
+        .or(`ends_at.is.null,ends_at.gt.${nowIso}`)
+      return { discounts: data ?? [] }
+    }
+  })
+
+  const get_shop_context = tool({
+    description:
+      'Return shop-level metadata: currency, timezone, locale, product count, top 5 collections.',
+    inputSchema: objectSchema(v.object({})),
+    execute: async () => {
+      const brandId = activeBrandId()
+      const { data: conn } = await supabase
+        .from('shopify_connections')
+        .select('currency,timezone,primary_locale')
+        .eq('brand_id', brandId)
+        .maybeSingle()
+      const { count: productCount } = await supabase
+        .from('shopify_products')
+        .select('*', { count: 'exact', head: true })
+        .eq('brand_id', brandId)
+      const { data: topCollections } = await supabase
+        .from('shopify_collections')
+        .select('id,title,products_count')
+        .eq('brand_id', brandId)
+        .order('products_count', { ascending: false })
+        .limit(5)
+      return {
+        currency: conn?.currency ?? null,
+        timezone: conn?.timezone ?? null,
+        locale: conn?.primary_locale ?? null,
+        productCount: productCount ?? 0,
+        topCollections: topCollections ?? []
+      }
+    }
+  })
+
   const placeMediaImage = tool({
     description:
       'Place an image from Supabase Storage onto a canvas node. ' +
@@ -152,5 +280,13 @@ export function createKovaTools(store: EditorStore) {
     }
   })
 
-  return { placeMediaImage, saveBrandMemory } as const
+  return {
+    placeMediaImage,
+    saveBrandMemory,
+    search_products,
+    get_collection,
+    get_variant,
+    get_active_discounts,
+    get_shop_context
+  } as const
 }
