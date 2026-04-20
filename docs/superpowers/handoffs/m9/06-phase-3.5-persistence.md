@@ -33,7 +33,7 @@ bun run test:unit
 - Create: `supabase/migrations/20260418_m9_03_canvas_bindings.sql`
 - Modify: the canvas-load + canvas-save composables (find via `Grep` for where canvases are persisted — see §14 open question #3)
 
-- [ ] **Step 1: Confirm existing canvas table name**
+- [x] **Step 1: Confirm existing canvas table name**
 
 ```
 Grep("CREATE TABLE canvases", supabase/migrations)
@@ -58,11 +58,11 @@ CREATE POLICY "users_own_brand_canvas_bindings" ON canvas_product_variant_bindin
 
 When M7 lands, a migration folds these rows into `canvases.product_variant_bindings jsonb` and drops the standalone table.
 
-- [ ] **Step 2: Write load/save composable** — `src/composables/useCanvasBindingsPersistence.ts` that (a) on canvas load: queries `canvas_product_variant_bindings` for `(canvas_id, brand_id)`, calls `useProductVariantBindingsStore().hydrate(data)`. (b) on canvas save: calls `dehydrate()` and upserts. Hook into the existing canvas-open and canvas-save lifecycle (find via `Grep("onCanvasOpen|onCanvasSave")`).
+- [x] **Step 2: Write load/save composable** — `src/composables/useCanvasBindingsPersistence.ts` that (a) on canvas load: queries `canvas_product_variant_bindings` for `(canvas_id, brand_id)`, calls `useProductVariantBindingsStore().hydrate(data)`. (b) on canvas save: calls `dehydrate()` and upserts. Hook into the existing canvas-open and canvas-save lifecycle (find via `Grep("onCanvasOpen|onCanvasSave")`).
 
-- [ ] **Step 3: Test** — integration test with a stubbed Supabase that asserts hydrate on load and upsert on save.
+- [x] **Step 3: Test** — integration test with a stubbed Supabase that asserts hydrate on load and upsert on save.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add supabase/migrations/20260418_m9_03_canvas_bindings.sql src/composables/useCanvasBindingsPersistence.ts tests/engine/shopify/canvas-bindings-persistence.test.ts
@@ -75,10 +75,10 @@ git commit -m "feat(m9): canvas product-variant bindings persistence"
 
 ## Exit criteria
 
-- [ ] All 4 steps marked [x].
-- [ ] Migration applied to Supabase via `mcp__supabase__apply_migration`.
-- [ ] `database-reviewer` agent dispatched on the migration SQL file.
-- [ ] `bun run check` passes.
+- [x] All 4 steps marked [x].
+- [x] Migration applied to Supabase via `mcp__supabase__apply_migration`.
+- [x] `database-reviewer` agent dispatched on the migration SQL file.
+- [x] `bun run check` passes.
 - [ ] `bun run test:unit` passes — persistence test green.
 - [ ] Final commit subject: `feat(m9): canvas product-variant bindings persistence`
 
