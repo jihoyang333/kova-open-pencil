@@ -59,9 +59,9 @@ describe('bindingStatus', () => {
 })
 ```
 
-- [ ] **Step 2: Run — expect FAIL**
+- [x] **Step 2: Run — expect FAIL**
 
-- [ ] **Step 3: Implement `state.ts`**
+- [x] **Step 3: Implement `state.ts`**
 
 ```ts
 import type { InferOutput } from 'valibot'
@@ -79,9 +79,9 @@ export function bindingStatus(_binding: Binding, variant: Variant | undefined): 
 }
 ```
 
-- [ ] **Step 4: Run — expect PASS**
+- [x] **Step 4: Run — expect PASS**
 
-- [ ] **Step 5: Implement `ProductVariantInspector.vue`**
+- [x] **Step 5: Implement `ProductVariantInspector.vue`**
 
 ```vue
 <script setup lang="ts">
@@ -140,9 +140,9 @@ function remove(): void { bindings.remove(props.frameId) }
 </template>
 ```
 
-- [ ] **Step 6: Mount the inspector** — AskUserQuestion Jiho first about the properties-panel exception. Then either edit `PropertiesPanel.vue` or (if denied) expose through Shop panel.
+- [x] **Step 6: Mount the inspector** — AskUserQuestion Jiho first about the properties-panel exception. Then either edit `PropertiesPanel.vue` or (if denied) expose through Shop panel.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/canvas-extensions/product-variant/state.ts src/components/inspector/ProductVariantInspector.vue tests/engine/shopify/inspector-state.test.ts
@@ -157,7 +157,7 @@ git commit -m "feat(m9): product-variant inspector — swap/remove + status badg
 - Create: `src/canvas-extensions/product-variant/verify.ts`
 - Test: `tests/engine/shopify/verify.test.ts`
 
-- [ ] **Step 1: Write the failing test** — all four branches per spec §6.3.
+- [x] **Step 1: Write the failing test** — all four branches per spec §6.3.
 
 ```ts
 // tests/engine/shopify/verify.test.ts
@@ -221,9 +221,9 @@ describe('verifyProductVariantsOnCanvas', () => {
 })
 ```
 
-- [ ] **Step 2: Run — expect FAIL**
+- [x] **Step 2: Run — expect FAIL**
 
-- [ ] **Step 3: Implement `verify.ts`**
+- [x] **Step 3: Implement `verify.ts`**
 
 ```ts
 import type { InferOutput } from 'valibot'
@@ -254,9 +254,9 @@ export async function verifyProductVariantsOnCanvas(
 }
 ```
 
-- [ ] **Step 4: Run — expect PASS**
+- [x] **Step 4: Run — expect PASS**
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/canvas-extensions/product-variant/verify.ts tests/engine/shopify/verify.test.ts
@@ -270,11 +270,11 @@ git commit -m "feat(m9): verifyProductVariantsOnCanvas — exposed to M6 export 
 
 ## Exit criteria
 
-- [ ] All steps in both 3.3 and 3.4 marked [x].
-- [ ] `bun run check` passes.
-- [ ] `bun run test:unit` passes — inspector state tests + all 4 verify tests green.
-- [ ] Two commits: inspector commit + verify commit.
-- [ ] Final commit subject: `feat(m9): verifyProductVariantsOnCanvas — exposed to M6 export pipeline`
+- [x] All steps in both 3.3 and 3.4 marked [x].
+- [x] `bun run check` passes.
+- [x] `bun run test:unit` passes — inspector state tests + all 4 verify tests green.
+- [x] Two commits: inspector commit + verify commit.
+- [x] Final commit subject: `feat(m9): verifyProductVariantsOnCanvas — exposed to M6 export pipeline`
 
 ## Handoff to next chunk
 
