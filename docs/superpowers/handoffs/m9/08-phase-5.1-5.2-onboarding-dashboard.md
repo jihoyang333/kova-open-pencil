@@ -124,6 +124,9 @@ git commit -m "feat(m9): onboarding store-type step (Shopify | other | none)"
 git add src/components/dashboard/IntegrationsCard.vue src/views/DashboardView.vue tests/engine/shopify/dashboard-integrations.test.ts
 git commit -m "feat(m9): dashboard integrations card + monthly banner"
 ```
+
+---
+
 <!-- BODY END -->
 
 ## Exit criteria

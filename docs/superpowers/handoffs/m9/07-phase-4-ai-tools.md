@@ -257,6 +257,9 @@ export async function buildShopifyContextBlock(input: ShopifyContextInput): Prom
 git add src/ai/build-system-prompt.ts tests/engine/shopify/build-system-prompt.test.ts
 git commit -m "feat(m9): dynamic system prompt — per-brand Shopify context block"
 ```
+
+---
+
 <!-- BODY END -->
 
 ## Exit criteria

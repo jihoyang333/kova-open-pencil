@@ -68,6 +68,9 @@ When M7 lands, a migration folds these rows into `canvases.product_variant_bindi
 git add supabase/migrations/20260418_m9_03_canvas_bindings.sql src/composables/useCanvasBindingsPersistence.ts tests/engine/shopify/canvas-bindings-persistence.test.ts
 git commit -m "feat(m9): canvas product-variant bindings persistence"
 ```
+
+---
+
 <!-- BODY END -->
 
 ## Exit criteria

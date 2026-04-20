@@ -141,6 +141,9 @@ if (import.meta.main) process.exit(await runLinter())
 git add scripts/lint-schema-invariants.ts tests/engine/shopify/lint-schema-invariants.test.ts tests/engine/shopify/fixtures/clean.sql tests/engine/shopify/fixtures/bad.sql package.json .github/workflows/schema-invariants.yml
 git commit -m "feat(m9): CI lint — no PII in shopify_orders_agg"
 ```
+
+---
+
 <!-- BODY END -->
 
 ## Exit criteria

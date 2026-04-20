@@ -85,6 +85,9 @@ git commit -m "feat(m9): editor brand-context pill"
 git add src/components/editor/sidebar/ShopPanel*.vue tests/engine/shopify/shop-panel.test.ts
 git commit -m "feat(m9): editor shop panel — products/collections/discounts"
 ```
+
+---
+
 <!-- BODY END -->
 
 ## Exit criteria

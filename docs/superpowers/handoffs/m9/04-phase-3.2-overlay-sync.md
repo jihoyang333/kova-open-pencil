@@ -54,6 +54,8 @@ Call `registerProductVariantOverlay()` from `src/main.ts` after Pinia is install
 git add src/canvas-extensions/product-variant/ src/stores/product-variant-bindings.ts src/engine/tool-calls.ts src/main.ts tests/engine/shopify/overlay-*.test.ts
 git commit -m "feat(m9): product-variant overlay — factory + bindings registry + webhook sync"
 ```
+
+
 <!-- BODY END -->
 
 ## Exit criteria

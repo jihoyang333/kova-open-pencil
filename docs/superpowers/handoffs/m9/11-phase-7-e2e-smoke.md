@@ -120,6 +120,17 @@ Fix every lint/type/dupe finding before committing. `bun run format` before comm
 
 ---
 
+## Subagent dispatch tips (for Ralph)
+
+Per `~/.claude/rules/common/agents.md`, dispatch these agents at the right moments:
+
+- **After every migration:** `database-reviewer` on the SQL file (RLS, indexes, cascades, PII).
+- **After every Phase:** `superpowers:code-reviewer` on the delta to main.
+- **Any security-sensitive change (OAuth, webhooks, vault, compliance):** `security-auditor`.
+- **E2E test generation:** `e2e-runner` (Task 7.1).
+
+---
+
 ## Definition of Done (per spec §15)
 
 - [ ] All 9 §2 success criteria pass against a real Shopify dev store.
@@ -129,6 +140,11 @@ Fix every lint/type/dupe finding before committing. `bun run format` before comm
 - [ ] `bun run lint:schema` green (no PII in orders_agg).
 - [ ] Sentry captures zero unhandled errors across a full connect→sync→design→export→disconnect flow on dev store.
 - [ ] No regressions to M1–M5.5 (existing non-Shopify brands work unchanged — verify by running existing E2E suite on main prior to merging).
+
+---
+
+**Plan complete.** Spec-source: `docs/superpowers/specs/2026-04-18-m9-shopify-design.md`. Execution target: Ralph Wiggum via `superpowers:subagent-driven-development`.
+
 <!-- BODY END -->
 
 ## Exit criteria

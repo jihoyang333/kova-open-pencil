@@ -28,6 +28,7 @@ bun run test:unit
 ```
 
 <!-- BODY START — verbatim extract from master-plan lines 1973..2208. Do not edit. -->
+
 ### Task 3.3 — Inspector variant switcher + unavailable state
 
 **Files:**
@@ -261,6 +262,10 @@ export async function verifyProductVariantsOnCanvas(
 git add src/canvas-extensions/product-variant/verify.ts tests/engine/shopify/verify.test.ts
 git commit -m "feat(m9): verifyProductVariantsOnCanvas — exposed to M6 export pipeline"
 ```
+
+---
+
+
 <!-- BODY END -->
 
 ## Exit criteria

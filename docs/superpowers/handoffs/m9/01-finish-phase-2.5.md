@@ -66,6 +66,9 @@ bun run test:unit     # bun:test
 git add api/shopify/cron/ vercel.json tests/api/shopify/cron-*.test.ts
 git commit -m "feat(m9): shopify cron jobs — orders agg, deltas, purge worker"
 ```
+
+---
+
 <!-- BODY END -->
 
 ## Exit criteria

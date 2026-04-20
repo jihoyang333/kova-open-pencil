@@ -164,6 +164,10 @@ export const useShopifyProductsStore = defineStore('shopify-products', () => {
 git add src/stores/shopify-products.ts tests/engine/shopify/store-shopify-products.test.ts
 git commit -m "feat(m9): useShopifyProductsStore with realtime→polling fallback"
 ```
+
+---
+
+
 <!-- BODY END -->
 
 ## Exit criteria
