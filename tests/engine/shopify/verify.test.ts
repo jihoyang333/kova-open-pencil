@@ -7,7 +7,7 @@ import { useShopifyProductsStore } from '../../../src/stores/shopify-products'
 
 function seedBinding(frame_id: string, variant_gid: string): void {
   useProductVariantBindingsStore().set({
-    frame_id, brand_id: 'b1',
+    frame_id, brand_id: '00000000-0000-0000-0000-000000000001',
     shopify_variant_id: variant_gid,
     bindings: { image: 'live', price: 'live', title: 'live', inventory: 'live' },
     snapshot: { title: 't', price: 1, currency: 'USD', image_url: '', inventory: 1, captured_at: '' },
