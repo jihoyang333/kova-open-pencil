@@ -1,4 +1,36 @@
+import { mock } from 'bun:test'
 import { GlobalWindow } from 'happy-dom'
+
+// Mock @/lib/supabase so store unit tests get a no-op client with empty data.
+// Cron tests (tests/api/**) mock @supabase/supabase-js directly — unaffected.
+// supabase-factory tests import @/lib/supabase-factory directly — also unaffected.
+mock.module('@/lib/supabase', () => {
+  const makeChannel = () => {
+    const ch: Record<string, unknown> = {}
+    ch['on'] = () => ch
+    ch['subscribe'] = () => ch
+    ch['unsubscribe'] = () => Promise.resolve('ok' as const)
+    return ch
+  }
+  const makeQuery = (): Record<string, unknown> => ({
+    select: () => makeQuery(),
+    eq: () => Promise.resolve({ data: [], error: null }),
+    lt: () => ({ is: () => Promise.resolve({ data: [], error: null }) }),
+    insert: () => Promise.resolve({ data: [], error: null }),
+    update: () => ({ eq: () => Promise.resolve({ data: [], error: null }) }),
+    delete: () => ({
+      eq: () => Promise.resolve({ data: null, error: null }),
+      in: () => Promise.resolve({ data: null, error: null }),
+    }),
+    upsert: () => Promise.resolve({ data: [], error: null }),
+  })
+  const supabase = {
+    from: () => makeQuery(),
+    channel: makeChannel,
+    rpc: () => Promise.resolve({ data: null, error: null }),
+  }
+  return { supabase, getSupabase: () => supabase, createSupabaseClient: () => supabase }
+})
 
 // Preserve native Web Crypto before happy-dom potentially replaces it
 const nativeCrypto = globalThis.crypto
