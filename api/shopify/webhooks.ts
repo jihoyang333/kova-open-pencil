@@ -19,10 +19,10 @@ export default async function handler(req: Request): Promise<Response> {
   if (!webhookId) return new Response('Missing webhook id', { status: 400 })
   if (!topic) return new Response('Missing topic', { status: 400 })
 
-  const supabase = createClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  )
+  const supabaseUrl = process.env.SUPABASE_URL
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!supabaseUrl || !serviceRoleKey) return new Response('Server configuration error', { status: 500 })
+  const supabase = createClient(supabaseUrl, serviceRoleKey)
 
   const { data: conn } = await supabase
     .from('shopify_connections')

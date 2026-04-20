@@ -13,7 +13,10 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   const shop = req.headers.get('x-shopify-shop-domain') ?? ''
-  const admin = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  const supabaseUrl = process.env.SUPABASE_URL
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!supabaseUrl || !serviceRoleKey) return new Response('Server configuration error', { status: 500 })
+  const admin = createClient(supabaseUrl, serviceRoleKey)
 
   const { data: conn } = await admin
     .from('shopify_connections')
@@ -26,7 +29,7 @@ export default async function handler(req: Request): Promise<Response> {
     brand_id: conn?.brand_id ?? null,
     shop_domain: shop,
     customer_id: null,
-    status: 'purge_scheduled',
+    status: conn?.brand_id ? 'purge_scheduled' : 'no_connection',
     responded_at: new Date().toISOString(),
   })
 

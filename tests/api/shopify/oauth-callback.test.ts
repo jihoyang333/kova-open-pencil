@@ -8,6 +8,7 @@ const CODE = 'test-auth-code'
 const ACCESS_TOKEN = 'shpat_test_token'
 const SHOP_GID = 'gid://shopify/Shop/4242'
 const SHOP_ID = 4242
+const VAULT_SECRET_ID = 'ffffffff-ffff-ffff-ffff-ffffffffffff'
 
 mock.module('../../../api/_shared/shopify-client', () => ({
   normalizeShopDomain: (input: string): string | null => {
@@ -84,6 +85,7 @@ mock.module('@supabase/supabase-js', () => ({
     rpc: async (fn: string, args: Record<string, unknown>) => {
       dbState.rpcCalls.push({ fn, args })
       if (dbState.rpcError) return { data: null, error: dbState.rpcError }
+      if (fn === 'create_shopify_vault_secret') return { data: VAULT_SECRET_ID, error: null }
       return { data: null, error: null }
     },
   }),
@@ -290,6 +292,15 @@ describe('GET /api/shopify/oauth/callback', () => {
     expect(res.status).toBe(502)
   })
 
+  it('returns 502 when vault RPC fails', async () => {
+    seedValidState()
+    dbState.rpcError = { message: 'vault error' }
+    const res = await handler(
+      req(`http://local/api/shopify/oauth/callback?state=${VALID_STATE}&code=${CODE}&shop=${SHOP}`)
+    )
+    expect(res.status).toBe(502)
+  })
+
   it('returns 502 when compliance webhook registration fails', async () => {
     seedValidState()
     fetchState.webhookStatus = 400
@@ -338,11 +349,14 @@ describe('GET /api/shopify/oauth/callback', () => {
     expect(upsert.row.timezone).toBe('America/Los_Angeles')
     expect(upsert.row.status).toBe('active')
 
-    // Vault RPC stores the access token.
-    const storeCall = dbState.rpcCalls.find((c) => c.fn === 'store_shopify_token')
-    expect(storeCall).toBeDefined()
-    expect(storeCall?.args.p_brand_id).toBe(BRAND_ID)
-    expect(storeCall?.args.p_token).toBe(ACCESS_TOKEN)
+    // Vault RPC stores the access token immediately after token exchange.
+    const vaultCall = dbState.rpcCalls.find((c) => c.fn === 'create_shopify_vault_secret')
+    expect(vaultCall).toBeDefined()
+    expect(vaultCall?.args.p_token).toBe(ACCESS_TOKEN)
+    expect(String(vaultCall?.args.p_name ?? '')).toContain(BRAND_ID)
+
+    // Connection row uses the real vault UUID (no dangling placeholder).
+    expect(upsert.row.access_token_secret_id).toBe(VAULT_SECRET_ID)
 
     // Webhooks registered.
     const webhookCalls = fetchState.calls.filter((c) => c.url.includes('/webhooks.json'))

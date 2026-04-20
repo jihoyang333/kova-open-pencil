@@ -194,7 +194,7 @@ async function persistConnection(
   shop: string,
   shopInfo: ShopInfo,
   scope: string,
-  accessToken: string
+  secretId: string
 ): Promise<void> {
   const shopId = parseShopId(shopInfo.id)
   if (shopId === null) throw new Error('Invalid shop id from Shopify')
@@ -204,7 +204,7 @@ async function persistConnection(
       brand_id: brandId,
       shop_domain: shop,
       shop_id: shopId,
-      access_token_secret_id: crypto.randomUUID(),
+      access_token_secret_id: secretId,
       scope,
       currency: shopInfo.currencyCode,
       timezone: shopInfo.ianaTimezone,
@@ -213,12 +213,6 @@ async function persistConnection(
     },
     { onConflict: 'brand_id' }
   )
-
-  await admin.rpc('store_shopify_token', {
-    p_brand_id: brandId,
-    p_token: accessToken,
-    p_name: `shopify_token_brand_${brandId}`,
-  })
 }
 
 async function kickOffBulkSync(origin: string, brandId: string, internalKey: string): Promise<void> {
@@ -252,6 +246,12 @@ export default async function handler(req: Request): Promise<Response> {
   )
   if (!token) return textError(502, 'Token exchange failed')
 
+  const { data: secretId, error: vaultError } = await admin.rpc(
+    'create_shopify_vault_secret',
+    { p_token: token.accessToken, p_name: `shopify_token_brand_${stateRow.brand_id}` },
+  )
+  if (vaultError || !secretId) return textError(502, 'Failed to vault access token')
+
   const shopInfo = await fetchShopInfo(params.shop, token.accessToken)
   if (!shopInfo) return textError(502, 'Failed to fetch shop metadata')
 
@@ -261,7 +261,7 @@ export default async function handler(req: Request): Promise<Response> {
     params.shop,
     shopInfo,
     token.scope,
-    token.accessToken
+    secretId as string
   )
 
   try {

@@ -2,14 +2,10 @@
 -- (1) auth.uid() → (SELECT auth.uid()) in all policies (per-statement evaluation)
 -- (2) compliance_log policy changed to SELECT-only (service-role writes)
 -- (3) compliance_log gets user_id column to preserve audit trail after brand deletion
--- (4) bestseller composite index added on shopify_orders_agg
 
 -- (3) Add user_id to compliance log for audit trail durability
 ALTER TABLE shopify_compliance_log
   ADD COLUMN user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL;
-
--- (4) Bestseller hot-path index: filter brand+date, sort qty_sold DESC
-CREATE INDEX ON shopify_orders_agg (brand_id, date DESC, qty_sold DESC) INCLUDE (variant_id, revenue);
 
 -- (1)+(2) Drop and recreate all policies with (SELECT auth.uid())
 DROP POLICY "users_own_brand_shopify_products"            ON shopify_products;

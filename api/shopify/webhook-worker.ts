@@ -13,10 +13,10 @@ interface WorkerPayload {
 export default async function handler(req: Request): Promise<Response> {
   const body = await req.text()
 
-  const receiver = new Receiver({
-    currentSigningKey: process.env.QSTASH_CURRENT_SIGNING_KEY!,
-    nextSigningKey: process.env.QSTASH_NEXT_SIGNING_KEY!,
-  })
+  const currentKey = process.env.QSTASH_CURRENT_SIGNING_KEY
+  const nextKey = process.env.QSTASH_NEXT_SIGNING_KEY
+  if (!currentKey || !nextKey) return new Response('Server configuration error', { status: 500 })
+  const receiver = new Receiver({ currentSigningKey: currentKey, nextSigningKey: nextKey })
 
   const sig = req.headers.get('upstash-signature') ?? ''
   const valid = await receiver.verify({ signature: sig, body })
@@ -27,10 +27,10 @@ export default async function handler(req: Request): Promise<Response> {
 
   if (!brand_id) return new Response('OK', { status: 200 })
 
-  const supabase = createClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  )
+  const supabaseUrl = process.env.SUPABASE_URL
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!supabaseUrl || !serviceRoleKey) return new Response('Server configuration error', { status: 500 })
+  const supabase = createClient(supabaseUrl, serviceRoleKey)
 
   await routeTopic(supabase, topic, shop, brand_id, payload, new URL(req.url).origin)
 

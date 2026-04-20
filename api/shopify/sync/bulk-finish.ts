@@ -51,13 +51,18 @@ export default async function handler(req: Request): Promise<Response> {
   const body = await req.text()
   const sig = req.headers.get('x-shopify-hmac-sha256') ?? ''
 
-  if (!await verifyShopifyHmac(body, sig, process.env.SHOPIFY_WEBHOOK_SECRET!)) {
+  const webhookSecret = process.env.SHOPIFY_WEBHOOK_SECRET
+  if (!webhookSecret) return new Response('Server configuration error', { status: 500 })
+  if (!await verifyShopifyHmac(body, sig, webhookSecret)) {
     return new Response('Unauthorized', { status: 401 })
   }
 
   const payload = JSON.parse(body) as BulkFinishPayload
   const shop = req.headers.get('x-shopify-shop-domain') ?? ''
-  const admin = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  const supabaseUrl = process.env.SUPABASE_URL
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!supabaseUrl || !serviceRoleKey) return new Response('Server configuration error', { status: 500 })
+  const admin = createClient(supabaseUrl, serviceRoleKey)
 
   const { data: conn } = await admin
     .from('shopify_connections')

@@ -7,6 +7,11 @@ export async function publishToQStash(
   body: unknown,
   client?: QStashClientLike,
 ): Promise<void> {
-  const c = client ?? new Client({ token: process.env.QSTASH_TOKEN! })
-  await c.publishJSON({ url, body })
+  if (client) {
+    await client.publishJSON({ url, body })
+    return
+  }
+  const token = process.env.QSTASH_TOKEN
+  if (!token) throw new Error('QSTASH_TOKEN not configured')
+  await new Client({ token }).publishJSON({ url, body })
 }
