@@ -34,4 +34,31 @@ describe('parseBulkJsonl', () => {
     for await (const _ of parseBulkJsonl(jsonl)) count++
     expect(count).toBe(10_000)
   })
+
+  it('skip: resumes from line N and yields correct lineNum', async () => {
+    const lines = [
+      JSON.stringify({ id: 'gid://shopify/Product/1', handle: 'p1', title: 'P1', status: 'ACTIVE' }),
+      JSON.stringify({ id: 'gid://shopify/Product/2', handle: 'p2', title: 'P2', status: 'ACTIVE' }),
+      JSON.stringify({ id: 'gid://shopify/Product/3', handle: 'p3', title: 'P3', status: 'ACTIVE' }),
+    ].join('\n')
+
+    const rows: Array<{ lineNum: number; record: Record<string, unknown> }> = []
+    for await (const row of parseBulkJsonl(lines, 2)) rows.push(row)
+
+    expect(rows).toHaveLength(1)
+    expect(rows[0].lineNum).toBe(3)
+    expect(rows[0].record.handle).toBe('p3')
+  })
+
+  it('skips malformed JSONL lines without crashing', async () => {
+    const lines = [
+      JSON.stringify({ id: 'gid://shopify/Product/1', handle: 'p1', title: 'P1', status: 'ACTIVE' }),
+      'NOT_VALID_JSON{{{{',
+      JSON.stringify({ id: 'gid://shopify/Product/2', handle: 'p2', title: 'P2', status: 'ACTIVE' }),
+    ].join('\n')
+
+    const rows: Array<{ table: string }> = []
+    for await (const row of parseBulkJsonl(lines)) rows.push(row)
+    expect(rows).toHaveLength(2)
+  })
 })

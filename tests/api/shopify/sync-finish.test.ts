@@ -81,6 +81,26 @@ describe('POST /api/shopify/sync/bulk-finish', () => {
     expect(updateCalls.length).toBe(0)
   })
 
+  it('200 on failed status: updates sync_progress to error phase', async () => {
+    const res = await handler(makeWebhookReq({ ...completedPayload, status: 'failed' }))
+    expect(res.status).toBe(200)
+    expect(qstashCalls.length).toBe(0)
+    expect(updateCalls.length).toBe(1)
+    const progress = updateCalls[0].sync_progress as { phase: string; error: string }
+    expect(progress.phase).toBe('error')
+    expect(progress.error).toContain('failed')
+  })
+
+  it('200 on cancelled status: updates sync_progress to error phase', async () => {
+    const res = await handler(makeWebhookReq({ ...completedPayload, status: 'cancelled' }))
+    expect(res.status).toBe(200)
+    expect(qstashCalls.length).toBe(0)
+    expect(updateCalls.length).toBe(1)
+    const progress = updateCalls[0].sync_progress as { phase: string; error: string }
+    expect(progress.phase).toBe('error')
+    expect(progress.error).toContain('cancelled')
+  })
+
   it('200 when bulk operation url is missing', async () => {
     const res = await handler(makeWebhookReq({ ...completedPayload, url: '' }))
     expect(res.status).toBe(200)

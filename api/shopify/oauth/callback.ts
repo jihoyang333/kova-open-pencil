@@ -28,6 +28,8 @@ const WEBHOOK_TOPICS = [
   'shop/redact',
 ] as const
 
+const COMPLIANCE_TOPICS = ['customers/data_request', 'customers/redact', 'shop/redact'] as const
+
 interface OauthStateRow {
   state: string
   brand_id: string
@@ -97,27 +99,27 @@ async function registerWebhooks(
   origin: string
 ): Promise<void> {
   const callbackBase = `${origin}/api/shopify/webhooks`
-  await Promise.all(
-    WEBHOOK_TOPICS.map((topic) =>
-      fetch(
-        `https://${shop}/admin/api/${SHOPIFY_API_VERSION}/webhooks.json`,
-        {
-          method: 'POST',
-          headers: {
-            'X-Shopify-Access-Token': accessToken,
-            ...JSON_HEADERS,
-          },
-          body: JSON.stringify({
-            webhook: {
-              topic,
-              address: `${callbackBase}?topic=${encodeURIComponent(topic)}`,
-              format: 'json',
-            },
-          }),
-        }
-      ).catch(() => null)
-    )
+
+  const registerOne = (topic: string) =>
+    fetch(`https://${shop}/admin/api/${SHOPIFY_API_VERSION}/webhooks.json`, {
+      method: 'POST',
+      headers: { 'X-Shopify-Access-Token': accessToken, ...JSON_HEADERS },
+      body: JSON.stringify({
+        webhook: { topic, address: `${callbackBase}?topic=${encodeURIComponent(topic)}`, format: 'json' },
+      }),
+    })
+
+  // Compliance webhooks must succeed — Shopify Partner policy requirement
+  for (const topic of COMPLIANCE_TOPICS) {
+    const res = await registerOne(topic).catch(() => null)
+    if (!res?.ok) throw new Error(`Failed to register compliance webhook: ${topic}`)
+  }
+
+  // Operational webhooks: best-effort
+  const operational = WEBHOOK_TOPICS.filter(
+    (t): boolean => !(COMPLIANCE_TOPICS as readonly string[]).includes(t),
   )
+  await Promise.all(operational.map((topic) => registerOne(topic).catch(() => null)))
 }
 
 interface ServerConfig {
@@ -125,6 +127,7 @@ interface ServerConfig {
   serviceRoleKey: string
   clientId: string
   clientSecret: string
+  internalKey: string
 }
 
 function loadConfig(): ServerConfig | null {
@@ -132,8 +135,9 @@ function loadConfig(): ServerConfig | null {
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
   const clientId = process.env.KOVA_SHOPIFY_CLIENT_ID
   const clientSecret = process.env.KOVA_SHOPIFY_CLIENT_SECRET
-  if (!supabaseUrl || !serviceRoleKey || !clientId || !clientSecret) return null
-  return { supabaseUrl, serviceRoleKey, clientId, clientSecret }
+  const internalKey = process.env.KOVA_INTERNAL_KEY
+  if (!supabaseUrl || !serviceRoleKey || !clientId || !clientSecret || !internalKey) return null
+  return { supabaseUrl, serviceRoleKey, clientId, clientSecret, internalKey }
 }
 
 interface CallbackParams {
@@ -171,14 +175,10 @@ async function consumeOauthState(
     .eq('state', state)
     .maybeSingle()
   const row = data as OauthStateRow | null
-  if (
-    !row ||
-    row.shop !== shop ||
-    new Date(row.expires_at).getTime() < Date.now()
-  ) {
-    return null
-  }
+  if (!row) return null
+  // Always delete — prevents stale rows from lingering regardless of validity
   await admin.from('shopify_oauth_state').delete().eq('state', state)
+  if (row.shop !== shop || new Date(row.expires_at).getTime() < Date.now()) return null
   return row
 }
 
@@ -221,13 +221,10 @@ async function persistConnection(
   })
 }
 
-async function kickOffBulkSync(origin: string, brandId: string): Promise<void> {
+async function kickOffBulkSync(origin: string, brandId: string, internalKey: string): Promise<void> {
   await fetch(`${origin}/api/shopify/sync/bulk-start`, {
     method: 'POST',
-    headers: {
-      ...JSON_HEADERS,
-      'X-Kova-Internal': process.env.KOVA_INTERNAL_KEY ?? '',
-    },
+    headers: { ...JSON_HEADERS, 'X-Kova-Internal': internalKey },
     body: JSON.stringify({ brand_id: brandId }),
   }).catch(() => null)
 }
@@ -267,8 +264,13 @@ export default async function handler(req: Request): Promise<Response> {
     token.accessToken
   )
 
-  await registerWebhooks(params.shop, token.accessToken, url.origin)
-  await kickOffBulkSync(url.origin, stateRow.brand_id)
+  try {
+    await registerWebhooks(params.shop, token.accessToken, url.origin)
+  } catch {
+    return textError(502, 'Failed to register required compliance webhooks')
+  }
+
+  await kickOffBulkSync(url.origin, stateRow.brand_id, config.internalKey)
 
   return Response.redirect(
     `${url.origin}/brand-kit/review?brand_id=${stateRow.brand_id}`,

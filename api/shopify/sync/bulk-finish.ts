@@ -17,6 +17,14 @@ export async function processBulkFinish(
   payload: BulkFinishPayload,
   workerOrigin: string,
 ): Promise<void> {
+  if (payload.status === 'failed' || payload.status === 'cancelled') {
+    await supabase
+      .from('shopify_connections')
+      .update({ sync_progress: { phase: 'error', error: `Bulk operation ${payload.status}` } })
+      .eq('brand_id', brandId)
+    return
+  }
+
   if (payload.status !== 'completed' || !payload.url) return
 
   await supabase

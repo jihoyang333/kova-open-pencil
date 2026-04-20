@@ -24,7 +24,7 @@ const BULK_QUERY = `
           } }
         }
         discountNodes {
-          edges { node { id ... on DiscountCodeBasic { codes(first: 1) { edges { node { code } } } title status startsAt endsAt } } }
+          edges { node { id ... on DiscountCodeBasic { title status startsAt endsAt } } }
         }
       }
     """) { bulkOperation { id status } userErrors { field message } }

@@ -121,6 +121,8 @@ describe('POST /api/shopify/sync/worker', () => {
       expect(res.status).toBe(200)
       expect(await res.text()).toBe('chunked')
       expect(publishCalls.length).toBe(1)
+      const requeued = (publishCalls[0] as { body: { cursor: number } }).body
+      expect(requeued.cursor).toBe(1) // line 1 was processed; next run skips it
     } finally {
       Date.now = realNow
     }

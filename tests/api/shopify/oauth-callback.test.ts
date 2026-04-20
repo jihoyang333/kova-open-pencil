@@ -205,6 +205,7 @@ beforeAll(() => {
   process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-role-test'
   process.env.KOVA_SHOPIFY_CLIENT_ID = 'test-client-id'
   process.env.KOVA_SHOPIFY_CLIENT_SECRET = 'test-client-secret'
+  process.env.KOVA_INTERNAL_KEY = 'test-internal-key'
 })
 
 beforeEach(() => {
@@ -283,6 +284,15 @@ describe('GET /api/shopify/oauth/callback', () => {
   it('returns 502 when Shopify token exchange fails', async () => {
     seedValidState()
     fetchState.tokenExchangeStatus = 400
+    const res = await handler(
+      req(`http://local/api/shopify/oauth/callback?state=${VALID_STATE}&code=${CODE}&shop=${SHOP}`)
+    )
+    expect(res.status).toBe(502)
+  })
+
+  it('returns 502 when compliance webhook registration fails', async () => {
+    seedValidState()
+    fetchState.webhookStatus = 400
     const res = await handler(
       req(`http://local/api/shopify/oauth/callback?state=${VALID_STATE}&code=${CODE}&shop=${SHOP}`)
     )

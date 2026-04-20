@@ -15,23 +15,43 @@ interface WorkerBody {
   count_total: number
 }
 
+interface WorkerConfig {
+  qstashCurrentKey: string
+  qstashNextKey: string
+  supabaseUrl: string
+  serviceRoleKey: string
+}
+
+function loadWorkerConfig(): WorkerConfig | null {
+  const qstashCurrentKey = process.env.QSTASH_CURRENT_SIGNING_KEY
+  const qstashNextKey = process.env.QSTASH_NEXT_SIGNING_KEY
+  const supabaseUrl = process.env.SUPABASE_URL
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!qstashCurrentKey || !qstashNextKey || !supabaseUrl || !serviceRoleKey) return null
+  return { qstashCurrentKey, qstashNextKey, supabaseUrl, serviceRoleKey }
+}
+
 export default async function handler(req: Request): Promise<Response> {
+  const cfg = loadWorkerConfig()
+  if (!cfg) return new Response('Server configuration error', { status: 500 })
+
   const body = await req.text()
   const sig = req.headers.get('upstash-signature') ?? ''
 
   const receiver = new Receiver({
-    currentSigningKey: process.env.QSTASH_CURRENT_SIGNING_KEY!,
-    nextSigningKey: process.env.QSTASH_NEXT_SIGNING_KEY!,
+    currentSigningKey: cfg.qstashCurrentKey,
+    nextSigningKey: cfg.qstashNextKey,
   })
 
   const valid = await receiver.verify({ body, signature: sig, url: req.url }).catch(() => false)
   if (!valid) return new Response('Unauthorized', { status: 401 })
 
   const { brand_id, url, cursor, count_total } = JSON.parse(body) as WorkerBody
-  const admin = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  const admin = createClient(cfg.supabaseUrl, cfg.serviceRoleKey)
 
   const started = Date.now()
-  const fileRes = await fetch(url, cursor > 0 ? { headers: { Range: `bytes=${cursor}-` } } : {})
+  // Always fetch from start; the parser skips already-processed lines via cursor
+  const fileRes = await fetch(url)
   if (!fileRes.ok || !fileRes.body) return new Response('Fetch failed', { status: 502 })
 
   const batches = new Map<string, Array<Record<string, unknown>>>()
@@ -40,15 +60,17 @@ export default async function handler(req: Request): Promise<Response> {
     for (const [table, rows] of batches) {
       if (rows.length === 0) continue
       const resolved = await resolveFks(admin, brand_id, table, rows)
-      await admin.from(table).upsert(resolved)
-      rows.length = 0
+      const { error } = await admin.from(table).upsert(resolved)
+      if (error) console.error(`[worker] upsert failed for ${table}:`, error.message)
+      batches.set(table, [])
     }
   }
 
-  let processed = cursor
+  let lastLineNum = cursor
   let count = 0
 
-  for await (const { table, record } of parseBulkJsonl(fileRes.body)) {
+  for await (const { table, record, lineNum } of parseBulkJsonl(fileRes.body, cursor)) {
+    lastLineNum = lineNum
     const rec = { brand_id, ...record }
     const arr = batches.get(table) ?? (batches.set(table, []).get(table) as Array<Record<string, unknown>>)
     arr.push(rec)
@@ -63,12 +85,10 @@ export default async function handler(req: Request): Promise<Response> {
         .update({ sync_progress: { phase: 'parsing', count_done: cursor + count, count_total, url } })
         .eq('brand_id', brand_id)
       await publishToQStash(`${new URL(req.url).origin}/api/shopify/sync/worker`, {
-        brand_id, url, cursor: processed, count_total,
+        brand_id, url, cursor: lastLineNum, count_total,
       })
       return new Response('chunked', { status: 200 })
     }
-
-    processed += (record._bytelen as number | undefined) ?? 0
   }
 
   await flush()
