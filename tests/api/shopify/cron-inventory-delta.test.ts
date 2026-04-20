@@ -287,7 +287,7 @@ describe('GET /api/shopify/cron/inventory-delta', () => {
     const page2Key = 'page_info=inv-page2'
     const page2Url = `https://${SHOP_A}/admin/api/2024-10/inventory_levels.json?${page2Key}`
 
-    shopifyResponses['inventory_levels.json'] = {
+    shopifyResponses['inventory_levels.json?updated_at_min'] = {
       status: 200,
       body: { inventory_levels: [{ inventory_item_id: ITEM_ID_1, available: 4 }] },
       link: `<${page2Url}>; rel="next"`,
