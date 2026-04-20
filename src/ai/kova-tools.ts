@@ -3,9 +3,9 @@ import { tool } from 'ai'
 import * as v from 'valibot'
 
 import { makeFigmaFromStore } from '@/automation/figma-factory'
-import { computeAllLayouts } from '@open-pencil/core'
 import { useBrandMemoriesStore } from '@/stores/brand-memories'
 import { useBrandsStore } from '@/stores/brands'
+import { computeAllLayouts } from '@open-pencil/core'
 
 import type { EditorStore } from '@/stores/editor'
 
@@ -43,17 +43,14 @@ export function createKovaTools(store: EditorStore) {
           v.string(),
           v.description('The ID of the target node to place the image on')
         ),
-        image_url: v.pipe(
-          v.string(),
-          v.description('Supabase Storage URL of the image')
-        ),
+        image_url: v.pipe(v.string(), v.description('Supabase Storage URL of the image')),
         scale_mode: v.optional(
           v.pipe(
             v.picklist(['FILL', 'FIT', 'CROP', 'TILE']),
             v.description('How to scale the image within the node')
           ),
           'FILL'
-        ),
+        )
       })
     ),
     execute: async ({ node_id, image_url, scale_mode }) => {
@@ -72,12 +69,12 @@ export function createKovaTools(store: EditorStore) {
       let imageBytes: Uint8Array
       try {
         const response = await fetch(image_url, {
-          signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+          signal: AbortSignal.timeout(FETCH_TIMEOUT_MS)
         })
 
         if (!response.ok) {
           return {
-            error: `Failed to load image from ${image_url}. HTTP ${response.status}. Using a placeholder instead.`,
+            error: `Failed to load image from ${image_url}. HTTP ${response.status}. Using a placeholder instead.`
           }
         }
 
@@ -85,7 +82,7 @@ export function createKovaTools(store: EditorStore) {
       } catch (e) {
         const message = e instanceof Error ? e.message : 'Unknown error'
         return {
-          error: `Failed to load image from ${image_url}. ${message}. Using a placeholder instead.`,
+          error: `Failed to load image from ${image_url}. ${message}. Using a placeholder instead.`
         }
       }
 
@@ -99,8 +96,8 @@ export function createKovaTools(store: EditorStore) {
           opacity: 1,
           visible: true,
           imageHash: image.hash,
-          imageScaleMode: scale_mode,
-        },
+          imageScaleMode: scale_mode
+        }
       ]
 
       const pageId = store.state.currentPageId
@@ -111,14 +108,14 @@ export function createKovaTools(store: EditorStore) {
       store.pushUndoEntry({
         label: 'AI: placeMediaImage',
         forward: () => store.restorePageFromSnapshot(afterSnapshot),
-        inverse: () => store.restorePageFromSnapshot(beforeSnapshot),
+        inverse: () => store.restorePageFromSnapshot(beforeSnapshot)
       })
 
       store.renderer?.aiClearActive()
       store.aiFlashDone([node_id])
 
       return { success: true, node_id, scale_mode }
-    },
+    }
   })
 
   const saveBrandMemory = tool({
@@ -135,7 +132,7 @@ export function createKovaTools(store: EditorStore) {
         source: v.pipe(
           v.picklist(['auto', 'user']),
           v.description('"auto" = AI-detected preference, "user" = explicitly requested by user')
-        ),
+        )
       })
     ),
     execute: async ({ content, source }) => {
@@ -152,7 +149,7 @@ export function createKovaTools(store: EditorStore) {
         const message = e instanceof Error ? e.message : 'Unknown error'
         return `Failed to save memory: ${message}`
       }
-    },
+    }
   })
 
   return { placeMediaImage, saveBrandMemory } as const

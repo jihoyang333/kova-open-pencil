@@ -109,7 +109,9 @@ const collab = useCollab(firstTab.store)
 provide(COLLAB_KEY, collab)
 
 const showMediaPanel = ref(false)
-provide(TOGGLE_MEDIA_PANEL_KEY, () => { showMediaPanel.value = !showMediaPanel.value })
+provide(TOGGLE_MEDIA_PANEL_KEY, () => {
+  showMediaPanel.value = !showMediaPanel.value
+})
 
 useEventListener(
   document,

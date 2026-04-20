@@ -15,7 +15,7 @@ import {
   DialogContent,
   DialogTitle,
   DialogDescription,
-  DialogClose,
+  DialogClose
 } from 'reka-ui'
 
 const route = useRoute()
@@ -46,27 +46,31 @@ const bodyFont = ref('')
 const isExtracting = ref(false)
 
 // Sync local state when brand changes (e.g. navigation or extraction)
-watch(brand, (b) => {
-  if (!b) return
-  // Don't overwrite local refs while extraction is in progress — the store
-  // may update (e.g. from logo save) with stale null values for fields that
-  // extraction just populated locally but hasn't persisted yet.
-  if (isExtracting.value) return
-  if (b.id !== loadedBrandId.value) {
-    loadedBrandId.value = b.id
-    hadDataOnLoad.value = !!(b.colors || b.fonts)
-  }
-  name.value = b.name
-  url.value = b.url ?? ''
-  voice.value = b.voice ?? ''
-  industry.value = b.industry ?? ''
-  primaryColor.value = b.colors?.primary ?? '#000000'
-  secondaryColor.value = b.colors?.secondary ?? '#000000'
-  accentColor.value = b.colors?.accent ?? '#000000'
-  backgroundColor.value = b.colors?.background ?? '#FFFFFF'
-  headingFont.value = b.fonts?.heading ?? ''
-  bodyFont.value = b.fonts?.body ?? ''
-}, { immediate: true })
+watch(
+  brand,
+  (b) => {
+    if (!b) return
+    // Don't overwrite local refs while extraction is in progress — the store
+    // may update (e.g. from logo save) with stale null values for fields that
+    // extraction just populated locally but hasn't persisted yet.
+    if (isExtracting.value) return
+    if (b.id !== loadedBrandId.value) {
+      loadedBrandId.value = b.id
+      hadDataOnLoad.value = !!(b.colors || b.fonts)
+    }
+    name.value = b.name
+    url.value = b.url ?? ''
+    voice.value = b.voice ?? ''
+    industry.value = b.industry ?? ''
+    primaryColor.value = b.colors?.primary ?? '#000000'
+    secondaryColor.value = b.colors?.secondary ?? '#000000'
+    accentColor.value = b.colors?.accent ?? '#000000'
+    backgroundColor.value = b.colors?.background ?? '#FFFFFF'
+    headingFont.value = b.fonts?.heading ?? ''
+    bodyFont.value = b.fonts?.body ?? ''
+  },
+  { immediate: true }
+)
 
 // --- Auto-save with debounce ---
 const formSnapshot = computed(() => ({
@@ -78,18 +82,22 @@ const formSnapshot = computed(() => ({
     primary: primaryColor.value,
     secondary: secondaryColor.value,
     accent: accentColor.value,
-    background: backgroundColor.value,
+    background: backgroundColor.value
   },
   fonts: {
     heading: headingFont.value || '',
-    body: bodyFont.value || '',
-  },
+    body: bodyFont.value || ''
+  }
 }))
 
 const initialSnapshot = ref('')
-watch(brand, (b) => {
-  if (b) initialSnapshot.value = JSON.stringify(formSnapshot.value)
-}, { immediate: true })
+watch(
+  brand,
+  (b) => {
+    if (b) initialSnapshot.value = JSON.stringify(formSnapshot.value)
+  },
+  { immediate: true }
+)
 
 watchDebounced(
   formSnapshot,
@@ -114,7 +122,7 @@ const hasExtractedBefore = computed(
   () => extractionDone.value || !!(brand.value?.colors || brand.value?.fonts)
 )
 
-const extractLabel = computed(() => hadDataOnLoad.value ? 'Re-extract' : 'Extract')
+const extractLabel = computed(() => (hadDataOnLoad.value ? 'Re-extract' : 'Extract'))
 
 const extractDomain = computed(() => {
   if (!url.value) return 'website'
@@ -138,7 +146,7 @@ async function runExtraction(): Promise<void> {
     const res = await fetch('/api/extract-brand', {
       method: 'POST',
       headers: getAuthHeaders(),
-      body: JSON.stringify({ url: targetUrl }),
+      body: JSON.stringify({ url: targetUrl })
     })
     if (!res.ok) throw new Error('Extraction failed')
     const data = await res.json()
@@ -175,13 +183,13 @@ async function runExtraction(): Promise<void> {
           primary: primaryColor.value,
           secondary: secondaryColor.value,
           accent: accentColor.value,
-          background: backgroundColor.value,
+          background: backgroundColor.value
         }
       }
       if (data.fonts) {
         extractedData.fonts = {
           heading: headingFont.value || '',
-          body: bodyFont.value || '',
+          body: bodyFont.value || ''
         }
       }
       if (typeof data.writing_style === 'string') extractedData.voice = data.writing_style
@@ -208,9 +216,13 @@ function confirmReExtract(): void {
 
 // --- Logo upload ---
 const logoPreviewUrl = ref(brand.value?.logo_url ?? '')
-watch(brand, (b) => {
-  logoPreviewUrl.value = b?.logo_url ?? ''
-}, { immediate: true })
+watch(
+  brand,
+  (b) => {
+    logoPreviewUrl.value = b?.logo_url ?? ''
+  },
+  { immediate: true }
+)
 
 async function handleLogoUpload(e: Event): Promise<void> {
   const input = e.target as HTMLInputElement
@@ -252,13 +264,17 @@ function goBack(): void {
 
 const nameInputRef = ref<HTMLInputElement | null>(null)
 
-watch(brand, async (b) => {
-  if (b?.name === 'Untitled Brand') {
-    await nextTick()
-    nameInputRef.value?.focus()
-    nameInputRef.value?.select()
-  }
-}, { immediate: true })
+watch(
+  brand,
+  async (b) => {
+    if (b?.name === 'Untitled Brand') {
+      await nextTick()
+      nameInputRef.value?.focus()
+      nameInputRef.value?.select()
+    }
+  },
+  { immediate: true }
+)
 </script>
 
 <template>
@@ -287,7 +303,7 @@ watch(brand, async (b) => {
           v-model="name"
           data-test-id="brand-settings-name"
           type="text"
-          class="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          class="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
         />
 
         <label class="pt-2 text-sm font-medium text-gray-700">Website URL</label>
@@ -296,7 +312,7 @@ watch(brand, async (b) => {
           data-test-id="brand-settings-url"
           type="url"
           placeholder="https://example.com"
-          class="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          class="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
         />
       </div>
     </section>
@@ -370,12 +386,7 @@ watch(brand, async (b) => {
           class="cursor-pointer rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
         >
           Replace logo
-          <input
-            type="file"
-            accept="image/*"
-            class="hidden"
-            @change="handleLogoUpload"
-          />
+          <input type="file" accept="image/*" class="hidden" @change="handleLogoUpload" />
         </label>
       </div>
     </section>
@@ -401,7 +412,7 @@ watch(brand, async (b) => {
           data-test-id="brand-settings-heading-font"
           type="text"
           placeholder="e.g. Montserrat"
-          class="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          class="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
         />
         <label class="pt-2 text-sm font-medium text-gray-700">Body</label>
         <input
@@ -409,7 +420,7 @@ watch(brand, async (b) => {
           data-test-id="brand-settings-body-font"
           type="text"
           placeholder="e.g. Open Sans"
-          class="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          class="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
         />
       </div>
     </section>
@@ -422,7 +433,7 @@ watch(brand, async (b) => {
         data-test-id="brand-settings-voice"
         rows="3"
         placeholder="Describe this brand's tone and voice…"
-        class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+        class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
       />
     </section>
 
@@ -434,7 +445,7 @@ watch(brand, async (b) => {
         data-test-id="brand-settings-industry"
         type="text"
         placeholder="e.g. Technology, Fashion, Food & Beverage"
-        class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+        class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
       />
     </section>
 
@@ -443,13 +454,14 @@ watch(brand, async (b) => {
       <DialogPortal>
         <DialogOverlay class="fixed inset-0 z-40 bg-black/50" />
         <DialogContent
-          class="fixed left-1/2 top-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white p-6 shadow-xl"
+          class="fixed top-1/2 left-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white p-6 shadow-xl"
         >
           <DialogTitle class="text-base font-semibold text-gray-900">
             {{ extractLabel }} brand data?
           </DialogTitle>
           <DialogDescription class="mt-2 text-sm text-gray-600">
-            This will overwrite your current colors, fonts, voice, and industry with fresh data from {{ url }}.
+            This will overwrite your current colors, fonts, voice, and industry with fresh data from
+            {{ url }}.
           </DialogDescription>
           <div class="mt-6 flex justify-end gap-3">
             <DialogClose as-child>

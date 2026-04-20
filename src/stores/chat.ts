@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/auth'
 
@@ -30,10 +31,7 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
-  async function createConversation(
-    brandId: string,
-    canvasId: string
-  ): Promise<ChatConversation> {
+  async function createConversation(brandId: string, canvasId: string): Promise<ChatConversation> {
     const userId = authStore.user?.id
     if (!userId) throw new Error('Not authenticated')
 
@@ -51,10 +49,7 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   async function deleteConversation(conversationId: string): Promise<void> {
-    const { error } = await supabase
-      .from('chat_conversations')
-      .delete()
-      .eq('id', conversationId)
+    const { error } = await supabase.from('chat_conversations').delete().eq('id', conversationId)
 
     if (error) throw new Error(error.message)
 
@@ -94,7 +89,7 @@ export const useChatStore = defineStore('chat', () => {
         role,
         content,
         attachments,
-        tool_calls: toolCalls,
+        tool_calls: toolCalls
       })
       .select()
       .single()
@@ -108,10 +103,7 @@ export const useChatStore = defineStore('chat', () => {
     return message
   }
 
-  async function updateConversationTitle(
-    conversationId: string,
-    title: string
-  ): Promise<void> {
+  async function updateConversationTitle(conversationId: string, title: string): Promise<void> {
     const now = new Date().toISOString()
 
     const { error } = await supabase
@@ -136,6 +128,6 @@ export const useChatStore = defineStore('chat', () => {
     deleteConversation,
     fetchMessages,
     addMessage,
-    updateConversationTitle,
+    updateConversationTitle
   }
 })

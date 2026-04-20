@@ -39,9 +39,9 @@ bun run test:unit
 - Create: `src/stores/product-variant-bindings.ts`
 - Test: `tests/engine/shopify/overlay-factory.test.ts`, `tests/engine/shopify/overlay-sync.test.ts`
 
-- [ ] **Step 1: Write `schema.ts`** — paste `ProductVariantBindingSchema` verbatim from spec §6.2.
+- [x] **Step 1: Write `schema.ts`** — paste `ProductVariantBindingSchema` verbatim from spec §6.2.
 
-- [ ] **Step 2: Write bindings store**
+- [x] **Step 2: Write bindings store**
 
 ```ts
 // src/stores/product-variant-bindings.ts
@@ -75,7 +75,7 @@ export const useProductVariantBindingsStore = defineStore('product-variant-bindi
 })
 ```
 
-- [ ] **Step 3: Write factory test**
+- [x] **Step 3: Write factory test**
 
 ```ts
 // tests/engine/shopify/overlay-factory.test.ts
@@ -112,9 +112,9 @@ describe('createProductVariantFrame', () => {
 })
 ```
 
-- [ ] **Step 4: Run — expect FAIL**
+- [x] **Step 4: Run — expect FAIL**
 
-- [ ] **Step 5: Implement `factory.ts`**
+- [x] **Step 5: Implement `factory.ts`**
 
 ```ts
 // src/canvas-extensions/product-variant/factory.ts
@@ -167,7 +167,7 @@ function formatPrice(cents: number, currency: string): string {
 
 **Note for Ralph:** `@/engine/tool-calls` must expose typed wrappers around OpenPencil's existing core tools. If the wrapper module does not already exist, create it at `src/engine/tool-calls.ts` and import from `packages/core/src/tools/*` (read-only access is allowed, only writes are forbidden).
 
-- [ ] **Step 6: Implement `sync.ts`**
+- [x] **Step 6: Implement `sync.ts`**
 
 ```ts
 // src/canvas-extensions/product-variant/sync.ts
@@ -203,10 +203,10 @@ function formatPrice(cents: number, currency: string): string {
 
 ## Exit criteria
 
-- [ ] Steps 1–6 marked [x].
-- [ ] `bun run check` passes.
-- [ ] `bun run test:unit` passes — factory tests green.
-- [ ] **Do not commit yet** — commit happens in Chunk 4 Step 10 after Steps 7–10 complete.
+- [x] Steps 1–6 marked [x].
+- [x] `bun run check` passes.
+- [x] `bun run test:unit` passes — factory tests green.
+- [x] **Do not commit yet** — commit happens in Chunk 4 Step 10 after Steps 7–10 complete.
 
 ## Handoff to next chunk
 

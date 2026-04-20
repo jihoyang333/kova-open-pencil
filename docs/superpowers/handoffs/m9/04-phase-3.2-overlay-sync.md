@@ -27,7 +27,7 @@ bun run test:unit
 ```
 
 <!-- BODY START — verbatim extract from master-plan lines 1943..1970. Do not edit. -->
-- [ ] **Step 7: Implement `register.ts`**
+- [x] **Step 7: Implement `register.ts`**
 
 ```ts
 // src/canvas-extensions/product-variant/register.ts
@@ -44,11 +44,11 @@ export function registerProductVariantOverlay(): void {
 
 Call `registerProductVariantOverlay()` from `src/main.ts` after Pinia is installed.
 
-- [ ] **Step 8: Write sync test** — asserts that updating a variant in the products store triggers `setText`/`setImage` on the bound frame's children.
+- [x] **Step 8: Write sync test** — asserts that updating a variant in the products store triggers `setText`/`setImage` on the bound frame's children.
 
-- [ ] **Step 9: Run — expect PASS**
+- [x] **Step 9: Run — expect PASS**
 
-- [ ] **Step 10: Commit**
+- [x] **Step 10: Commit**
 
 ```bash
 git add src/canvas-extensions/product-variant/ src/stores/product-variant-bindings.ts src/engine/tool-calls.ts src/main.ts tests/engine/shopify/overlay-*.test.ts
@@ -60,10 +60,10 @@ git commit -m "feat(m9): product-variant overlay — factory + bindings registry
 
 ## Exit criteria
 
-- [ ] Steps 7–10 marked [x].
-- [ ] `bun run check` passes.
-- [ ] `bun run test:unit` passes — factory + sync tests both green.
-- [ ] Final commit subject: `feat(m9): product-variant overlay — factory + bindings registry + webhook sync`
+- [x] Steps 7–10 marked [x].
+- [x] `bun run check` passes.
+- [x] `bun run test:unit` passes — factory + sync tests both green.
+- [x] Final commit subject: `feat(m9): product-variant overlay — factory + bindings registry + webhook sync`
 
 ## Handoff to next chunk
 

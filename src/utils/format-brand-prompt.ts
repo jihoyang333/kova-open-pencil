@@ -16,7 +16,7 @@ export function formatBrandKitPrompt(brand: Brand): string {
       primary && `primary: ${primary}`,
       secondary && `secondary: ${secondary}`,
       accent && `accent: ${accent}`,
-      background && `background: ${background}`,
+      background && `background: ${background}`
     ].filter(Boolean)
     if (colorEntries.length > 0) {
       sections.push(`**Colors:** ${colorEntries.join(', ')}`)
@@ -26,7 +26,7 @@ export function formatBrandKitPrompt(brand: Brand): string {
   if (brand.fonts) {
     const fontEntries = [
       brand.fonts.heading && `heading: ${brand.fonts.heading}`,
-      brand.fonts.body && `body: ${brand.fonts.body}`,
+      brand.fonts.body && `body: ${brand.fonts.body}`
     ].filter(Boolean)
     if (fontEntries.length > 0) {
       sections.push(`**Fonts:** ${fontEntries.join(', ')}`)

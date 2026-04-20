@@ -23,9 +23,13 @@ const placingId = ref<string | null>(null)
 const brandId = computed(() => brandsStore.selectedBrandId)
 
 // Fetch images when panel opens or brand changes
-watch(brandId, (id) => {
-  if (id) void mediaStore.fetchImages(id)
-}, { immediate: true })
+watch(
+  brandId,
+  (id) => {
+    if (id) void mediaStore.fetchImages(id)
+  },
+  { immediate: true }
+)
 
 async function handleSelect(image: MediaAsset): Promise<void> {
   if (placingId.value) return // already placing
@@ -81,7 +85,7 @@ async function handleDelete(image: MediaAsset): Promise<void> {
 <template>
   <div
     data-test-id="media-library-panel"
-    class="absolute right-4 top-14 z-30 flex h-[calc(100vh-80px)] w-72 flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg"
+    class="absolute top-14 right-4 z-30 flex h-[calc(100vh-80px)] w-72 flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg"
   >
     <!-- Header -->
     <div class="flex items-center justify-between border-b border-gray-200 px-4 py-3">
@@ -98,13 +102,15 @@ async function handleDelete(image: MediaAsset): Promise<void> {
     <!-- Search -->
     <div class="border-b border-gray-200 px-4 py-2">
       <div class="relative">
-        <icon-lucide-search class="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-gray-400" />
+        <icon-lucide-search
+          class="absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-gray-400"
+        />
         <input
           v-model="searchQuery"
           data-test-id="media-panel-search"
           type="text"
           placeholder="Search…"
-          class="w-full rounded-md border border-gray-200 py-1.5 pl-8 pr-3 text-xs text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          class="w-full rounded-md border border-gray-200 py-1.5 pr-3 pl-8 text-xs text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
         />
       </div>
     </div>
@@ -136,10 +142,6 @@ async function handleDelete(image: MediaAsset): Promise<void> {
     </div>
 
     <!-- Upload dialog -->
-    <UploadDialog
-      v-if="brandId"
-      v-model:open="showUploadDialog"
-      :brand-id="brandId"
-    />
+    <UploadDialog v-if="brandId" v-model:open="showUploadDialog" :brand-id="brandId" />
   </div>
 </template>

@@ -43,7 +43,7 @@ function handleNativeChange(e: Event): void {
       <PopoverTrigger as-child>
         <button
           :data-test-id="`brand-color-${label.toLowerCase()}`"
-          class="size-8 rounded-lg border border-gray-300 transition-shadow hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+          class="size-8 rounded-lg border border-gray-300 transition-shadow hover:shadow-md focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 focus:outline-none"
           :style="{ backgroundColor: modelValue }"
           :aria-label="`Pick ${label} color`"
         />

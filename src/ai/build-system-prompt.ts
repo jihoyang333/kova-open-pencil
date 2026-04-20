@@ -3,9 +3,10 @@ import EMAIL_GUIDELINES from '@/data/email-guidelines.md?raw'
 import EMAIL_SECTIONS from '@/data/email-sections.md?raw'
 import IMAGE_HANDLING from '@/data/image-handling.md?raw'
 import MEMORY_INSTRUCTIONS from '@/data/memory-instructions.md?raw'
-import type { Brand } from '@/types/kova/database'
-import type { BrandMemory } from '@/types/kova/brand-memory'
 import { formatBrandKitPrompt } from '@/utils/format-brand-prompt'
+
+import type { BrandMemory } from '@/types/kova/brand-memory'
+import type { Brand } from '@/types/kova/database'
 
 export type { BrandMemory }
 
@@ -25,7 +26,12 @@ export interface ChatAttachmentForAI {
   readonly publicUrl: string
 }
 
-export type CampaignType = 'educational' | 'community' | 'sales' | 'social-proof' | 'product-highlights'
+export type CampaignType =
+  | 'educational'
+  | 'community'
+  | 'sales'
+  | 'social-proof'
+  | 'product-highlights'
 
 export interface BuildSystemPromptInput {
   readonly brandProfile: Brand | null
@@ -40,7 +46,7 @@ const CAMPAIGN_GUIDE_MODULES: Record<CampaignType, () => Promise<{ default: stri
   community: () => import('@/data/campaigns/community-branded.md?raw'),
   sales: () => import('@/data/campaigns/sales.md?raw'),
   'social-proof': () => import('@/data/campaigns/social-proof.md?raw'),
-  'product-highlights': () => import('@/data/campaigns/product-highlights.md?raw'),
+  'product-highlights': () => import('@/data/campaigns/product-highlights.md?raw')
 }
 
 const FALLBACK_INFERENCE = `
@@ -90,7 +96,7 @@ export async function buildSystemPrompt(input: BuildSystemPromptInput): Promise<
     // Layer 8b: Images attached in the current user turn (ephemeral, conditional)
     ...(input.chatAttachments && input.chatAttachments.length > 0
       ? [formatChatAttachments(input.chatAttachments)]
-      : []),
+      : [])
   ]
 
   return layers.join('\n\n---\n\n')
@@ -110,7 +116,7 @@ function formatChatAttachments(attachments: readonly ChatAttachmentForAI[]): str
   const lines = attachments
     .map(
       (a, i) =>
-        `${i + 1}. "${a.fileName}" (${a.width ?? '?'}x${a.height ?? '?'}px) — url: ${a.publicUrl}`,
+        `${i + 1}. "${a.fileName}" (${a.width ?? '?'}x${a.height ?? '?'}px) — url: ${a.publicUrl}`
     )
     .join('\n')
 

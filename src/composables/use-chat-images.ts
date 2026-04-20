@@ -1,8 +1,8 @@
 import { ref } from 'vue'
 
-import { blobToDataUrl, createVisionCopy, processImage } from '@/utils/image-processing'
 import { useChatAttachmentsStore } from '@/stores/chat-attachments'
 import { useMediaStore } from '@/stores/media'
+import { blobToDataUrl, createVisionCopy, processImage } from '@/utils/image-processing'
 
 import type { FileUIPart } from 'ai'
 
@@ -46,9 +46,7 @@ function shouldRevoke(attachment: Pick<PendingAttachment, 'source'>): boolean {
  * send to the model. Kept as a pure helper (no Vue refs, no stores) so `buildMessagePayload`
  * can call it AND the UI layer can unit-test the exact failure messages.
  */
-export function assertReadyForSend(
-  attachments: readonly PendingAttachment[],
-): void {
+export function assertReadyForSend(attachments: readonly PendingAttachment[]): void {
   for (const a of attachments) {
     if (a.isUploading) {
       throw new Error(`Waiting for image upload to finish: ${a.fileName}`)
@@ -59,9 +57,9 @@ export function assertReadyForSend(
   }
 }
 
-export function stripPreviousTurnImages<
-  T extends { role: string; content: unknown },
->(messages: ReadonlyArray<T>): T[] {
+export function stripPreviousTurnImages<T extends { role: string; content: unknown }>(
+  messages: ReadonlyArray<T>
+): T[] {
   let lastUserIndex = -1
   for (let i = messages.length - 1; i >= 0; i--) {
     if (messages[i].role === 'user') {
@@ -77,9 +75,7 @@ export function stripPreviousTurnImages<
     if (typeof msg.content === 'string' || !Array.isArray(msg.content)) return { ...msg }
 
     const newContent = (msg.content as ReadonlyArray<{ type: string }>).map((part) =>
-      part.type === 'file'
-        ? { type: 'text' as const, text: PREVIOUS_IMAGE_PLACEHOLDER }
-        : part,
+      part.type === 'file' ? { type: 'text' as const, text: PREVIOUS_IMAGE_PLACEHOLDER } : part
     )
 
     return { ...msg, content: newContent } as T
@@ -115,7 +111,7 @@ export function useChatImages(brandId: string) {
       width: mediaAsset.width,
       height: mediaAsset.height,
       visionBlob: vision.blob,
-      isUploading: false,
+      isUploading: false
     }
 
     attachments.value = [...attachments.value, attachment]
@@ -132,24 +128,21 @@ export function useChatImages(brandId: string) {
       source: 'clipboard',
       width: null,
       height: null,
-      isUploading: true,
+      isUploading: true
     }
     attachments.value = [...attachments.value, pendingAttachment]
 
     try {
-      const [processed, vision] = await Promise.all([
-        processImage(file),
-        createVisionCopy(file),
-      ])
+      const [processed, vision] = await Promise.all([processImage(file), createVisionCopy(file)])
 
       const uploadedFile = new File([processed.blob], file.name, {
-        type: processed.mimeType,
+        type: processed.mimeType
       })
       const record = await chatAttachmentsStore.uploadChatImage(
         brandId,
         uploadedFile,
         processed.width,
-        processed.height,
+        processed.height
       )
       const signedUrl = await chatAttachmentsStore.getSignedUrl(record.storage_path)
 
@@ -162,9 +155,9 @@ export function useChatImages(brandId: string) {
               width: processed.width,
               height: processed.height,
               visionBlob: vision.blob,
-              isUploading: false,
+              isUploading: false
             }
-          : a,
+          : a
       )
     } catch (e) {
       attachments.value = attachments.value.filter((a) => a.id !== tempId)
@@ -201,9 +194,7 @@ export function useChatImages(brandId: string) {
    * Throws via `assertReadyForSend` if any attachment is still uploading or missing
    * its vision blob — callers must catch and surface a toast instead of silently dropping.
    */
-  async function buildMessagePayload(
-    text: string,
-  ): Promise<{ text: string; files: FileUIPart[] }> {
+  async function buildMessagePayload(text: string): Promise<{ text: string; files: FileUIPart[] }> {
     const current = attachments.value
     if (current.length === 0) return { text, files: [] }
 
@@ -218,7 +209,7 @@ export function useChatImages(brandId: string) {
         type: 'file',
         mediaType: 'image/jpeg',
         filename: a.fileName,
-        url: dataUrl,
+        url: dataUrl
       })
     }
 
@@ -232,6 +223,6 @@ export function useChatImages(brandId: string) {
     removeAttachment,
     clearAttachments,
     hasPendingUploads,
-    buildMessagePayload,
+    buildMessagePayload
   }
 }

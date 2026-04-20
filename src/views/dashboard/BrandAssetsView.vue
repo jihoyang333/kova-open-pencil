@@ -16,7 +16,7 @@ import {
   SelectRoot,
   SelectTrigger,
   SelectValue,
-  SelectViewport,
+  SelectViewport
 } from 'reka-ui'
 import { useMediaStore } from '@/stores/media'
 import { useCanvasesStore } from '@/stores/canvases'
@@ -34,7 +34,7 @@ const canvasesStore = useCanvasesStore()
 
 const brandId = computed(() => {
   const id = route.params.brandId
-  return Array.isArray(id) ? id[0] : id ?? ''
+  return Array.isArray(id) ? id[0] : (id ?? '')
 })
 const searchQuery = ref('')
 const sortBy = ref<SortOption>('newest')
@@ -53,9 +53,7 @@ const selectedCount = computed(() => selectedIds.value.size)
 const filteredImages = computed(() => {
   if (!searchQuery.value.trim()) return mediaStore.images
   const query = searchQuery.value.toLowerCase()
-  return mediaStore.images.filter((img) =>
-    img.file_name.toLowerCase().includes(query)
-  )
+  return mediaStore.images.filter((img) => img.file_name.toLowerCase().includes(query))
 })
 
 const SORT_OPTIONS: { value: SortOption; label: string }[] = [
@@ -63,7 +61,7 @@ const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: 'oldest', label: 'Oldest to newest' },
   { value: 'name-asc', label: 'Name A\u2013Z' },
   { value: 'name-desc', label: 'Name Z\u2013A' },
-  { value: 'size', label: 'Largest first' },
+  { value: 'size', label: 'Largest first' }
 ]
 
 function toggleSelect(image: MediaAsset): void {
@@ -99,13 +97,17 @@ function toggleSelectAll(): void {
 }
 
 // Fetch images when brand changes
-watch(brandId, (id) => {
-  if (id) {
-    void mediaStore.fetchImages(id)
-    void canvasesStore.fetchCanvases(id)
-  }
-  selectedIds.value = new Set()
-}, { immediate: true })
+watch(
+  brandId,
+  (id) => {
+    if (id) {
+      void mediaStore.fetchImages(id)
+      void canvasesStore.fetchCanvases(id)
+    }
+    selectedIds.value = new Set()
+  },
+  { immediate: true }
+)
 
 function openUploadDialog(tab: 'upload' | 'url'): void {
   uploadDialogTab.value = tab
@@ -146,7 +148,7 @@ function importToCanvas(canvasId: string): void {
     .map((img) => ({
       url: mediaStore.getPublicUrl(img.storage_path),
       fileName: img.file_name,
-      fileType: img.file_type,
+      fileType: img.file_type
     }))
 
   if (selectedImages.length === 0) {
@@ -167,9 +169,7 @@ async function executeBulkDelete(): Promise<void> {
   const imagesToDelete = mediaStore.images.filter((img) => ids.includes(img.id))
   showBulkDelete.value = false
 
-  const results = await Promise.allSettled(
-    imagesToDelete.map((img) => mediaStore.deleteImage(img))
-  )
+  const results = await Promise.allSettled(imagesToDelete.map((img) => mediaStore.deleteImage(img)))
 
   const failures = results.filter((r) => r.status === 'rejected')
   const successes = results.length - failures.length
@@ -291,13 +291,15 @@ async function executeBulkDelete(): Promise<void> {
 
         <!-- Search -->
         <div class="relative">
-          <icon-lucide-search class="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
+          <icon-lucide-search
+            class="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-gray-400"
+          />
           <input
             v-model="searchQuery"
             data-test-id="media-search"
             type="text"
             placeholder="Search image"
-            class="rounded-lg border border-gray-300 py-2 pl-9 pr-3 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            class="rounded-lg border border-gray-300 py-2 pr-3 pl-9 text-sm text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
           />
         </div>
 
@@ -308,7 +310,11 @@ async function executeBulkDelete(): Promise<void> {
           <button
             data-test-id="media-view-grid"
             class="rounded-l-lg px-2.5 py-2 transition-colors"
-            :class="viewMode === 'grid' ? 'bg-gray-100 text-gray-900' : 'text-gray-400 hover:text-gray-600'"
+            :class="
+              viewMode === 'grid'
+                ? 'bg-gray-100 text-gray-900'
+                : 'text-gray-400 hover:text-gray-600'
+            "
             @click="viewMode = 'grid'"
           >
             <icon-lucide-layout-grid class="size-4" />
@@ -316,7 +322,11 @@ async function executeBulkDelete(): Promise<void> {
           <button
             data-test-id="media-view-list"
             class="rounded-r-lg border-l border-gray-300 px-2.5 py-2 transition-colors"
-            :class="viewMode === 'list' ? 'bg-gray-100 text-gray-900' : 'text-gray-400 hover:text-gray-600'"
+            :class="
+              viewMode === 'list'
+                ? 'bg-gray-100 text-gray-900'
+                : 'text-gray-400 hover:text-gray-600'
+            "
             @click="viewMode = 'list'"
           >
             <icon-lucide-list class="size-4" />
@@ -366,8 +376,8 @@ async function executeBulkDelete(): Promise<void> {
         <h3 class="text-base font-semibold text-gray-900">Delete image</h3>
         <p class="mt-2 text-sm text-gray-600">
           Are you sure you want to delete
-          <strong class="font-medium text-gray-900">{{ pendingDelete.file_name }}</strong>?
-          This action cannot be undone.
+          <strong class="font-medium text-gray-900">{{ pendingDelete.file_name }}</strong
+          >? This action cannot be undone.
         </p>
         <div class="mt-6 flex justify-end gap-3">
           <button
@@ -397,7 +407,7 @@ async function executeBulkDelete(): Promise<void> {
     >
       <button
         data-test-id="media-preview-close"
-        class="absolute right-4 top-4 rounded-full bg-white/10 p-2 text-white hover:bg-white/20"
+        class="absolute top-4 right-4 rounded-full bg-white/10 p-2 text-white hover:bg-white/20"
         @click="previewImage = null"
       >
         <icon-lucide-x class="size-5" />
@@ -420,7 +430,7 @@ async function executeBulkDelete(): Promise<void> {
         <DialogOverlay class="fixed inset-0 z-40 bg-black/50" />
         <DialogContent
           data-test-id="media-canvas-picker"
-          class="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white p-6 shadow-xl"
+          class="fixed top-1/2 left-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white p-6 shadow-xl"
         >
           <DialogTitle class="text-base font-semibold text-gray-900">
             Import to canvas
@@ -465,15 +475,13 @@ async function executeBulkDelete(): Promise<void> {
         <DialogOverlay class="fixed inset-0 z-40 bg-black/50" />
         <DialogContent
           data-test-id="media-bulk-delete-confirm"
-          class="fixed left-1/2 top-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white p-6 shadow-xl"
+          class="fixed top-1/2 left-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white p-6 shadow-xl"
         >
-          <DialogTitle class="text-base font-semibold text-gray-900">
-            Delete images
-          </DialogTitle>
+          <DialogTitle class="text-base font-semibold text-gray-900"> Delete images </DialogTitle>
           <DialogDescription class="mt-2 text-sm text-gray-600">
             Are you sure you want to delete
-            <strong class="font-medium text-gray-900">{{ selectedCount }} image(s)</strong>?
-            This action cannot be undone.
+            <strong class="font-medium text-gray-900">{{ selectedCount }} image(s)</strong>? This
+            action cannot be undone.
           </DialogDescription>
           <div class="mt-6 flex justify-end gap-3">
             <DialogClose

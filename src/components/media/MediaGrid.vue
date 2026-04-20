@@ -31,9 +31,7 @@ const filteredAndSortedImages = computed(() => {
 
   if (props.searchQuery?.trim()) {
     const query = props.searchQuery.toLowerCase()
-    result = result.filter((img) =>
-      img.file_name.toLowerCase().includes(query)
-    )
+    result = result.filter((img) => img.file_name.toLowerCase().includes(query))
   }
 
   const sort = props.sortBy ?? 'newest'
@@ -74,7 +72,7 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
-    year: 'numeric',
+    year: 'numeric'
   })
 }
 </script>
@@ -124,9 +122,11 @@ function formatDate(iso: string): string {
           :aria-label="`Select ${image.file_name}`"
           tabindex="0"
           class="flex size-5 shrink-0 items-center justify-center rounded border-2 transition-colors"
-          :class="selectedIds?.has(image.id)
-            ? 'border-blue-500 bg-blue-500 text-white'
-            : 'border-gray-300 text-transparent'"
+          :class="
+            selectedIds?.has(image.id)
+              ? 'border-blue-500 bg-blue-500 text-white'
+              : 'border-gray-300 text-transparent'
+          "
           @click.stop="emit('select', image)"
           @keydown.enter.stop="emit('select', image)"
           @keydown.space.prevent.stop="emit('select', image)"

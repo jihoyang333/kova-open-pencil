@@ -6,13 +6,13 @@ import {
   DropdownMenuPortal,
   DropdownMenuRoot,
   DropdownMenuSeparator,
-  DropdownMenuTrigger,
+  DropdownMenuTrigger
 } from 'reka-ui'
 import { toast } from '@/composables/use-toast'
 import {
   MENU_ITEM_CLASS,
   DELETE_ITEM_CLASS,
-  MENU_CONTENT_CLASS,
+  MENU_CONTENT_CLASS
 } from '@/components/dashboard/menu-styles'
 import type { MediaAsset } from '@/types/kova/media'
 
@@ -34,16 +34,14 @@ const emit = defineEmits<{
 const isRenaming = ref(false)
 const renameValue = ref('')
 
-const aspectClass = computed(() =>
-  props.density === 'compact' ? 'aspect-square' : 'aspect-[4/3]'
-)
+const aspectClass = computed(() => (props.density === 'compact' ? 'aspect-square' : 'aspect-[4/3]'))
 
 const formattedDate = computed(() => {
   const d = new Date(props.image.created_at)
   return d.toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
-    year: 'numeric',
+    year: 'numeric'
   })
 })
 
@@ -87,25 +85,18 @@ async function copyUrl(): Promise<void> {
     class="group overflow-hidden rounded-lg border border-gray-200 bg-white transition-shadow hover:shadow-md"
     :class="{
       'pointer-events-none opacity-60': isPlacing,
-      'ring-2 ring-blue-500 ring-offset-1': selected,
+      'ring-2 ring-blue-500 ring-offset-1': selected
     }"
   >
     <!-- Image area -->
     <div class="relative cursor-pointer" :class="aspectClass" @click="emit('select', image)">
-      <img
-        :src="publicUrl"
-        :alt="image.file_name"
-        class="size-full object-cover"
-        loading="lazy"
-      />
+      <img :src="publicUrl" :alt="image.file_name" class="size-full object-cover" loading="lazy" />
 
       <!-- Hover overlay -->
-      <div
-        class="absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/30"
-      >
+      <div class="absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/30">
         <!-- Selection checkbox -->
         <div
-          class="absolute left-2 top-2 z-10"
+          class="absolute top-2 left-2 z-10"
           :class="selected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'"
         >
           <div
@@ -115,9 +106,11 @@ async function copyUrl(): Promise<void> {
             :aria-label="`Select ${image.file_name}`"
             tabindex="0"
             class="flex size-5 items-center justify-center rounded border-2 transition-colors"
-            :class="selected
-              ? 'border-blue-500 bg-blue-500 text-white'
-              : 'border-white bg-white/80 text-transparent hover:border-blue-300'"
+            :class="
+              selected
+                ? 'border-blue-500 bg-blue-500 text-white'
+                : 'border-white bg-white/80 text-transparent hover:border-blue-300'
+            "
             @click.stop="emit('select', image)"
             @keydown.enter.stop="emit('select', image)"
             @keydown.space.prevent.stop="emit('select', image)"
@@ -128,7 +121,7 @@ async function copyUrl(): Promise<void> {
 
         <!-- Bottom action bar -->
         <div
-          class="absolute bottom-0 left-0 right-0 flex items-center gap-1.5 px-2 pb-2 opacity-0 transition-opacity group-hover:opacity-100"
+          class="absolute right-0 bottom-0 left-0 flex items-center gap-1.5 px-2 pb-2 opacity-0 transition-opacity group-hover:opacity-100"
         >
           <div class="flex-1" />
 
@@ -151,11 +144,7 @@ async function copyUrl(): Promise<void> {
               <icon-lucide-more-vertical class="size-3.5 text-gray-700" />
             </DropdownMenuTrigger>
             <DropdownMenuPortal>
-              <DropdownMenuContent
-                :side-offset="4"
-                align="end"
-                :class="MENU_CONTENT_CLASS"
-              >
+              <DropdownMenuContent :side-offset="4" align="end" :class="MENU_CONTENT_CLASS">
                 <DropdownMenuItem :class="MENU_ITEM_CLASS" @select="copyUrl">
                   <icon-lucide-link class="size-4" /> Copy URL
                 </DropdownMenuItem>
@@ -163,10 +152,7 @@ async function copyUrl(): Promise<void> {
                   <icon-lucide-pencil class="size-4" /> Rename
                 </DropdownMenuItem>
                 <DropdownMenuSeparator class="mx-1 my-1 h-px bg-gray-100" />
-                <DropdownMenuItem
-                  :class="DELETE_ITEM_CLASS"
-                  @select="emit('delete', image)"
-                >
+                <DropdownMenuItem :class="DELETE_ITEM_CLASS" @select="emit('delete', image)">
                   <icon-lucide-trash-2 class="size-4" /> Delete
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -175,10 +161,7 @@ async function copyUrl(): Promise<void> {
         </div>
 
         <!-- Placing spinner -->
-        <div
-          v-if="isPlacing"
-          class="absolute inset-0 flex items-center justify-center"
-        >
+        <div v-if="isPlacing" class="absolute inset-0 flex items-center justify-center">
           <div class="rounded-full bg-white/90 p-2">
             <icon-lucide-loader-2 class="size-5 animate-spin text-gray-600" />
           </div>

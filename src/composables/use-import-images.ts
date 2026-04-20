@@ -1,5 +1,7 @@
 import { onMounted, onUnmounted } from 'vue'
+
 import { toast } from '@/composables/use-toast'
+
 import type { EditorStore } from '@/stores/editor'
 
 const STORAGE_KEY = 'kova-import-images'
@@ -83,13 +85,13 @@ export function useImportImages(store: EditorStore): void {
         Promise.allSettled(
           images.map(async (img) => {
             const response = await fetch(img.url, {
-              signal: abortController.signal,
+              signal: abortController.signal
             })
             if (!response.ok) throw new Error(`Failed to fetch ${img.fileName}`)
             const blob = await response.blob()
             return new File([blob], img.fileName, { type: img.fileType })
           })
-        ),
+        )
       ])
 
       if (cancelled) return
@@ -100,9 +102,7 @@ export function useImportImages(store: EditorStore): void {
       }
 
       const files = fetchSettled
-        .filter(
-          (r): r is PromiseFulfilledResult<File> => r.status === 'fulfilled'
-        )
+        .filter((r): r is PromiseFulfilledResult<File> => r.status === 'fulfilled')
         .map((r) => r.value)
 
       if (files.length === 0) {
@@ -119,10 +119,7 @@ export function useImportImages(store: EditorStore): void {
 
       const failed = fetchSettled.filter((r) => r.status === 'rejected').length
       if (failed > 0) {
-        toast.show(
-          `Placed ${files.length} image(s), ${failed} failed to load`,
-          'warning'
-        )
+        toast.show(`Placed ${files.length} image(s), ${failed} failed to load`, 'warning')
       }
     } catch {
       if (!cancelled) {

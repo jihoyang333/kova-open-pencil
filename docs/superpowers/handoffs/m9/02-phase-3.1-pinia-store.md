@@ -36,7 +36,7 @@ bun run test:unit
 - Create: `src/stores/shopify-products.ts`
 - Test: `tests/engine/shopify/store-shopify-products.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 // tests/engine/shopify/store-shopify-products.test.ts
@@ -77,9 +77,9 @@ describe('useShopifyProductsStore', () => {
 })
 ```
 
-- [ ] **Step 2: Run — expect FAIL**
+- [x] **Step 2: Run — expect FAIL**
 
-- [ ] **Step 3: Implement `src/stores/shopify-products.ts`**
+- [x] **Step 3: Implement `src/stores/shopify-products.ts`**
 
 ```ts
 import { defineStore } from 'pinia'
@@ -156,9 +156,9 @@ export const useShopifyProductsStore = defineStore('shopify-products', () => {
 })
 ```
 
-- [ ] **Step 4: Run — expect PASS**
+- [x] **Step 4: Run — expect PASS**
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/stores/shopify-products.ts tests/engine/shopify/store-shopify-products.test.ts
@@ -172,10 +172,10 @@ git commit -m "feat(m9): useShopifyProductsStore with realtime→polling fallbac
 
 ## Exit criteria
 
-- [ ] All steps marked [x].
-- [ ] `bun run check` passes with zero errors.
-- [ ] `bun run test:unit` passes — all 4 store tests green.
-- [ ] Final commit subject: `feat(m9): useShopifyProductsStore with realtime→polling fallback`
+- [x] All steps marked [x].
+- [x] `bun run check` passes with zero errors.
+- [x] `bun run test:unit` passes — all 4 store tests green.
+- [x] Final commit subject: `feat(m9): useShopifyProductsStore with realtime→polling fallback`
 
 ## Handoff to next chunk
 

@@ -1,12 +1,14 @@
-import { ref } from 'vue'
 import { defineStore } from 'pinia'
+import { ref } from 'vue'
+
+import { toast } from '@/composables/use-toast'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/auth'
-import { toast } from '@/composables/use-toast'
 import { MEDIA_ACCEPTED_TYPES, MEDIA_MAX_SIZE_BYTES } from '@/types/kova/media'
-import type { MediaAsset, MediaAcceptedType } from '@/types/kova/media'
 import { processImage } from '@/utils/image-processing'
 import { sanitizeFilename } from '@/utils/sanitize-filename'
+
+import type { MediaAsset, MediaAcceptedType } from '@/types/kova/media'
 
 export const useMediaStore = defineStore('media', () => {
   const images = ref<MediaAsset[]>([])
@@ -62,7 +64,7 @@ export const useMediaStore = defineStore('media', () => {
         file_size: processed.fileSize,
         width: processed.width,
         height: processed.height,
-        storage_path: storagePath,
+        storage_path: storagePath
       })
       .select()
       .single()
@@ -79,7 +81,7 @@ export const useMediaStore = defineStore('media', () => {
     png: 'image/png',
     gif: 'image/gif',
     webp: 'image/webp',
-    svg: 'image/svg+xml',
+    svg: 'image/svg+xml'
   }
 
   function inferMimeFromUrl(url: string): string | undefined {
@@ -114,10 +116,7 @@ export const useMediaStore = defineStore('media', () => {
     const trimmed = newName.trim()
     if (!trimmed) throw new Error('Name cannot be empty')
 
-    const { error } = await supabase
-      .from('media')
-      .update({ file_name: trimmed })
-      .eq('id', asset.id)
+    const { error } = await supabase.from('media').update({ file_name: trimmed }).eq('id', asset.id)
     if (error) throw error
 
     images.value = images.value.map((img) =>
@@ -126,10 +125,7 @@ export const useMediaStore = defineStore('media', () => {
   }
 
   async function deleteImage(asset: MediaAsset): Promise<void> {
-    const { error: dbError } = await supabase
-      .from('media')
-      .delete()
-      .eq('id', asset.id)
+    const { error: dbError } = await supabase.from('media').delete().eq('id', asset.id)
     if (dbError) throw dbError
 
     images.value = images.value.filter((img) => img.id !== asset.id)
@@ -155,6 +151,6 @@ export const useMediaStore = defineStore('media', () => {
     uploadImageFromUrl,
     renameImage,
     deleteImage,
-    getPublicUrl,
+    getPublicUrl
   }
 })

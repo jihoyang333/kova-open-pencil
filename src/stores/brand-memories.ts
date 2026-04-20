@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia'
+
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/auth'
+
 import type { BrandMemory, BrandMemorySource } from '@/types/kova/brand-memory'
 
 export const useBrandMemoriesStore = defineStore('brand-memories', () => {
@@ -40,19 +42,13 @@ export const useBrandMemoriesStore = defineStore('brand-memories', () => {
   }
 
   async function deleteMemory(memoryId: string): Promise<void> {
-    const { error } = await supabase
-      .from('brand_memories')
-      .delete()
-      .eq('id', memoryId)
+    const { error } = await supabase.from('brand_memories').delete().eq('id', memoryId)
 
     if (error) throw new Error(error.message)
   }
 
   async function updateMemory(memoryId: string, content: string): Promise<void> {
-    const { error } = await supabase
-      .from('brand_memories')
-      .update({ content })
-      .eq('id', memoryId)
+    const { error } = await supabase.from('brand_memories').update({ content }).eq('id', memoryId)
 
     if (error) throw new Error(error.message)
   }

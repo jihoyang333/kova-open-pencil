@@ -6,7 +6,7 @@ import {
   DialogOverlay,
   DialogPortal,
   DialogRoot,
-  DialogTitle,
+  DialogTitle
 } from 'reka-ui'
 import { ref, watch } from 'vue'
 
@@ -45,7 +45,7 @@ watch(
     // Only latch if the store actually loaded images so a failed fetch
     // (network error, expired session) retries on next open.
     if (mediaStore.images.length > 0) hasFetched = true
-  },
+  }
 )
 
 function handleSelect(asset: MediaAsset): void {
@@ -59,7 +59,7 @@ function handleSelect(asset: MediaAsset): void {
     <DialogPortal>
       <DialogOverlay class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" />
       <DialogContent
-        class="fixed left-1/2 top-1/2 z-50 flex h-[480px] w-[560px] -translate-x-1/2 -translate-y-1/2 flex-col rounded-xl border border-border bg-panel shadow-2xl"
+        class="fixed top-1/2 left-1/2 z-50 flex h-[480px] w-[560px] -translate-x-1/2 -translate-y-1/2 flex-col rounded-xl border border-border bg-panel shadow-2xl"
       >
         <!-- Header -->
         <div class="flex shrink-0 items-center justify-between border-b border-border px-4 py-3">

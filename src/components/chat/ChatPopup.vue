@@ -1,10 +1,5 @@
 <script setup lang="ts">
-import {
-  ScrollAreaRoot,
-  ScrollAreaScrollbar,
-  ScrollAreaThumb,
-  ScrollAreaViewport,
-} from 'reka-ui'
+import { ScrollAreaRoot, ScrollAreaScrollbar, ScrollAreaThumb, ScrollAreaViewport } from 'reka-ui'
 import { computed, markRaw, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import { clearToolLogEntries, didHitStepLimit } from '@/ai/tools'
@@ -35,7 +30,7 @@ const {
   setActiveCampaignType,
   setActiveChatAttachmentsForAI,
   refreshActiveBrandMemories,
-  setAssistantFinishHandler,
+  setAssistantFinishHandler
 } = useAIChat()
 const chatStore = useChatStore()
 const chatImages = useChatImages(brandId)
@@ -84,7 +79,7 @@ watch(
       await handleSwitchTab(firstId)
     }
   },
-  { immediate: true },
+  { immediate: true }
 )
 
 function scrollToBottom() {
@@ -111,7 +106,7 @@ async function handleSubmit(text: string, campaignType?: CampaignType) {
       fileName: a.fileName,
       width: a.width,
       height: a.height,
-      publicUrl: a.storageUrl as string,
+      publicUrl: a.storageUrl as string
     }))
   setActiveChatAttachmentsForAI(chatAttachmentsForAI)
   await refreshActiveBrandMemories(brandId)
@@ -138,7 +133,10 @@ async function handleSubmit(text: string, campaignType?: CampaignType) {
     return
   }
 
-  let payload: { text: string; files: Awaited<ReturnType<typeof chatImages.buildMessagePayload>>['files'] }
+  let payload: {
+    text: string
+    files: Awaited<ReturnType<typeof chatImages.buildMessagePayload>>['files']
+  }
   try {
     payload = await chatImages.buildMessagePayload(text)
   } catch (e) {
@@ -197,20 +195,18 @@ function handleRemoveAttachment(id: string) {
 onMounted(() => {
   setAssistantFinishHandler((message, conversationId) => {
     const textParts = message.parts.filter(
-      (p): p is { type: 'text'; text: string } => p.type === 'text',
+      (p): p is { type: 'text'; text: string } => p.type === 'text'
     )
     const text = textParts.map((p) => p.text).join('')
 
     const toolCalls = message.parts
       .filter((p) => 'toolCallId' in p)
-      .map((p) => ({ ...p } as unknown as Record<string, unknown>))
+      .map((p) => ({ ...p }) as unknown as Record<string, unknown>)
 
-    chatStore
-      .addMessage(conversationId, 'assistant', text, [], toolCalls)
-      .catch((e) => {
-        console.error('Failed to persist assistant response:', e)
-        toast.show('Failed to save chat history — messages may not persist', 'error')
-      })
+    chatStore.addMessage(conversationId, 'assistant', text, [], toolCalls).catch((e) => {
+      console.error('Failed to persist assistant response:', e)
+      toast.show('Failed to save chat history — messages may not persist', 'error')
+    })
   })
 })
 
@@ -338,9 +334,18 @@ async function handleSwitchTab(conversationId: string) {
               AI
             </div>
             <div class="flex items-center gap-1 py-2">
-              <span class="size-1.5 animate-bounce rounded-full bg-muted" style="animation-delay: 0ms" />
-              <span class="size-1.5 animate-bounce rounded-full bg-muted" style="animation-delay: 150ms" />
-              <span class="size-1.5 animate-bounce rounded-full bg-muted" style="animation-delay: 300ms" />
+              <span
+                class="size-1.5 animate-bounce rounded-full bg-muted"
+                style="animation-delay: 0ms"
+              />
+              <span
+                class="size-1.5 animate-bounce rounded-full bg-muted"
+                style="animation-delay: 150ms"
+              />
+              <span
+                class="size-1.5 animate-bounce rounded-full bg-muted"
+                style="animation-delay: 300ms"
+              />
             </div>
           </div>
 

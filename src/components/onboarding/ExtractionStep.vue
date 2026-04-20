@@ -117,7 +117,9 @@ async function runRealExtraction(): Promise<void> {
   let brandData: ExtractBrandResponse | null = null
   let fetchError: Error | null = null
   const dataPromise = brandPromise
-    .then((data) => { brandData = data })
+    .then((data) => {
+      brandData = data
+    })
     .catch((err: unknown) => {
       fetchError = err instanceof Error ? err : new Error('Extraction failed')
     })
@@ -164,9 +166,7 @@ async function runRealExtraction(): Promise<void> {
         heading: brandData.fonts.heading ?? '',
         body: brandData.fonts.body ?? ''
       }
-      const fontResult = [brandData.fonts.heading, brandData.fonts.body]
-        .filter(Boolean)
-        .join(', ')
+      const fontResult = [brandData.fonts.heading, brandData.fonts.body].filter(Boolean).join(', ')
       updateItem('fonts', { status: 'done', result: fontResult || undefined })
     } else {
       updateItem('fonts', { status: 'error', result: 'Could not detect fonts' })

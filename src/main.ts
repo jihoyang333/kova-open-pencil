@@ -7,6 +7,7 @@ import './app.css'
 import { IS_TAURI } from '@/constants'
 import { preloadFonts } from '@/engine/fonts'
 import { createAppRouter } from '@/router'
+import { registerProductVariantOverlay } from '@/canvas-extensions/product-variant/register'
 import { useAuthStore } from '@/stores/auth'
 
 import App from './App.vue'
@@ -19,6 +20,7 @@ const router = createAppRouter(createWebHistory())
 const app = createApp(App)
 
 app.use(pinia).use(router).use(head)
+registerProductVariantOverlay()
 
 // Initialize auth store before mounting — prevents flash of unauthenticated content.
 // Pinia must be installed via app.use(pinia) before calling useAuthStore().

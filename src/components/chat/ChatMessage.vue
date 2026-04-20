@@ -138,7 +138,7 @@ function userText(parts: readonly UIMessagePart[]): string {
         <div
           v-if="userText(message.parts)"
           data-test-id="chat-text-bubble"
-          class="rounded-xl rounded-br-md bg-accent px-3 py-2 text-xs leading-relaxed whitespace-pre-wrap break-words text-white"
+          class="rounded-xl rounded-br-md bg-accent px-3 py-2 text-xs leading-relaxed break-words whitespace-pre-wrap text-white"
         >
           {{ userText(message.parts) }}
         </div>

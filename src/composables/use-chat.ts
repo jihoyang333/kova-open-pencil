@@ -47,7 +47,10 @@ function setActiveCampaignType(type: CampaignType | undefined): void {
 const activeBrandMemories = ref<readonly BrandMemory[]>([])
 
 export async function refreshActiveBrandMemories(brandId: string | undefined): Promise<void> {
-  if (!brandId) { activeBrandMemories.value = []; return }
+  if (!brandId) {
+    activeBrandMemories.value = []
+    return
+  }
   activeBrandMemories.value = await useBrandMemoriesStore().fetchMemories(brandId)
 }
 
@@ -56,9 +59,7 @@ export async function refreshActiveBrandMemories(brandId: string | undefined): P
 // library list). Reset to [] after each send to keep the ephemeral framing.
 const activeChatAttachmentsForAI = ref<readonly ChatAttachmentForAI[]>([])
 
-function setActiveChatAttachmentsForAI(
-  attachments: readonly ChatAttachmentForAI[],
-): void {
+function setActiveChatAttachmentsForAI(attachments: readonly ChatAttachmentForAI[]): void {
   activeChatAttachmentsForAI.value = attachments
 }
 
@@ -96,7 +97,7 @@ function createModel() {
       headers.set('Authorization', `Bearer ${token}`)
 
       return globalThis.fetch(url, { ...init, headers })
-    },
+    }
   })
 
   return anthropic(modelID.value)
@@ -147,9 +148,9 @@ function createTransport(): ChatTransport<UIMessage> {
       specificationVersion: 'v3',
       transformParams: async ({ params }) => ({
         ...params,
-        prompt: stripPreviousTurnImages(params.prompt),
-      }),
-    },
+        prompt: stripPreviousTurnImages(params.prompt)
+      })
+    }
   })
   // The agent's static `instructions` is a fallback only — `prepareCall` rebuilds
   // the full layered system prompt per LLM call so brand profile, media library,
@@ -170,20 +171,20 @@ function createTransport(): ChatTransport<UIMessage> {
         width: img.width,
         height: img.height,
         publicUrl: mediaStore.getPublicUrl(img.storage_path),
-        mediaId: img.id,
+        mediaId: img.id
       }))
       const instructions = await buildSystemPrompt({
         brandProfile,
         availableImages,
         brandMemories: activeBrandMemories.value,
         chatAttachments: activeChatAttachmentsForAI.value,
-        campaignType: activeCampaignType.value,
+        campaignType: activeCampaignType.value
       })
       return {
         ...options,
         instructions,
         maxOutputTokens: 16384,
-        providerOptions: ANTHROPIC_CACHE_CONTROL,
+        providerOptions: ANTHROPIC_CACHE_CONTROL
       }
     },
     onStepFinish: ({ usage }) => {
@@ -206,7 +207,7 @@ function toUIMessages(stored: readonly ChatMessage[]): UIMessage[] {
   return stored.map((m) => ({
     id: m.id,
     role: m.role,
-    parts: [{ type: 'text' as const, text: m.content }],
+    parts: [{ type: 'text' as const, text: m.content }]
   }))
 }
 
@@ -216,7 +217,7 @@ function toUIMessages(stored: readonly ChatMessage[]): UIMessage[] {
 // belongs to, not whichever tab happens to be active when the stream finishes.
 async function ensureChat(
   conversationId: string,
-  messages?: UIMessage[],
+  messages?: UIMessage[]
 ): Promise<Chat<UIMessage> | null> {
   if (!isConfigured.value) return null
 
@@ -237,7 +238,7 @@ async function ensureChat(
         activeChatMap.delete(conversationId)
         if (isError || isAbort) return
         assistantFinishHandler?.(message, conversationId)
-      },
+      }
     })
     chat = instance
     activeChatMap.set(conversationId, instance)
@@ -279,6 +280,6 @@ export function useAIChat() {
     refreshActiveBrandMemories,
     setActiveCampaignType,
     setActiveChatAttachmentsForAI,
-    setAssistantFinishHandler,
+    setAssistantFinishHandler
   }
 }

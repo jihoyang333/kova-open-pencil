@@ -38,7 +38,7 @@ function scaleDown(
   const ratio = Math.min(maxDim / width, maxDim / height)
   return {
     width: Math.round(width * ratio),
-    height: Math.round(height * ratio),
+    height: Math.round(height * ratio)
   }
 }
 
@@ -95,7 +95,7 @@ export async function processImage(file: File): Promise<ProcessedImage> {
       mimeType: file.type,
       width: img.naturalWidth,
       height: img.naturalHeight,
-      fileSize: file.size,
+      fileSize: file.size
     }
   }
 
@@ -107,7 +107,7 @@ export async function processImage(file: File): Promise<ProcessedImage> {
     mimeType: file.type,
     width,
     height,
-    fileSize: blob.size,
+    fileSize: blob.size
   }
 }
 
@@ -145,7 +145,7 @@ export async function createVisionCopy(file: File): Promise<ProcessedImage> {
       mimeType: 'image/jpeg',
       width,
       height,
-      fileSize: lowerBlob.size,
+      fileSize: lowerBlob.size
     }
   }
 
@@ -154,6 +154,6 @@ export async function createVisionCopy(file: File): Promise<ProcessedImage> {
     mimeType: 'image/jpeg',
     width,
     height,
-    fileSize: blob.size,
+    fileSize: blob.size
   }
 }

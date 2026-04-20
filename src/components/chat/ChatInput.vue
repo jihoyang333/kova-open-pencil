@@ -38,7 +38,7 @@ const selectedModelName = computed(() => modelID.value)
 const hasAttachments = computed(() => attachments.length > 0)
 const isUploading = computed(() => attachments.some((a) => a.isUploading))
 const canSubmit = computed(
-  () => (input.value.trim().length > 0 || hasAttachments.value) && !isUploading.value,
+  () => (input.value.trim().length > 0 || hasAttachments.value) && !isUploading.value
 )
 
 function resizeTextarea() {
@@ -94,11 +94,7 @@ function handlePaste(e: ClipboardEvent) {
 
       <!-- Attachment thumbnails -->
       <div v-if="hasAttachments" class="mb-2 flex flex-wrap gap-1.5">
-        <div
-          v-for="a in attachments"
-          :key="a.id"
-          class="group relative"
-        >
+        <div v-for="a in attachments" :key="a.id" class="group relative">
           <img
             :src="a.localPreviewUrl"
             :alt="a.fileName"
@@ -113,7 +109,7 @@ function handlePaste(e: ClipboardEvent) {
           <button
             type="button"
             data-test-id="chat-remove-attachment"
-            class="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-surface text-canvas opacity-0 shadow-sm transition-opacity hover:bg-hover group-hover:opacity-100"
+            class="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-surface text-canvas opacity-0 shadow-sm transition-opacity group-hover:opacity-100 hover:bg-hover"
             @click="emit('remove-attachment', a.id)"
           >
             <icon-lucide-x class="size-2.5" />
@@ -151,7 +147,9 @@ function handlePaste(e: ClipboardEvent) {
           rows="1"
           data-test-id="chat-input"
           placeholder="Design an email with Kova AI..."
-          :class="uiInput({ class: 'min-w-0 flex-1 resize-none overflow-y-auto placeholder:text-muted' })"
+          :class="
+            uiInput({ class: 'min-w-0 flex-1 resize-none overflow-y-auto placeholder:text-muted' })
+          "
           :disabled="isStreaming"
           @keydown="handleKeydown"
           @input="handleInput"

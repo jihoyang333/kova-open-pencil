@@ -12,7 +12,7 @@ import {
   TabsRoot,
   TabsList,
   TabsTrigger,
-  TabsContent,
+  TabsContent
 } from 'reka-ui'
 import { useMediaStore } from '@/stores/media'
 import { toast } from '@/composables/use-toast'
@@ -39,7 +39,7 @@ const dragOver = ref(false)
 // File picker
 const { open: openFilePicker, onChange } = useFileDialog({
   accept: MEDIA_ACCEPT_STRING,
-  multiple: true,
+  multiple: true
 })
 
 onChange(async (files) => {
@@ -116,7 +116,7 @@ async function uploadFromUrl(): Promise<void> {
 
 function previewUrl(): void {
   const url = urlInput.value.trim()
-  urlPreview.value = (url.startsWith('https://') || url.startsWith('http://')) ? url : null
+  urlPreview.value = url.startsWith('https://') || url.startsWith('http://') ? url : null
 }
 
 function handleOpenChange(open: boolean): void {
@@ -137,11 +137,9 @@ function handleOpenChange(open: boolean): void {
       <DialogOverlay class="fixed inset-0 z-40 bg-black/50" />
       <DialogContent
         data-test-id="upload-dialog"
-        class="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white p-6 shadow-xl"
+        class="fixed top-1/2 left-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white p-6 shadow-xl"
       >
-        <DialogTitle class="text-base font-semibold text-gray-900">
-          Upload Images
-        </DialogTitle>
+        <DialogTitle class="text-base font-semibold text-gray-900"> Upload Images </DialogTitle>
         <DialogDescription class="mt-1 text-sm text-gray-500">
           Upload images from your device or paste a URL.
         </DialogDescription>
@@ -169,19 +167,13 @@ function handleOpenChange(open: boolean): void {
             <div
               data-test-id="upload-dropzone"
               class="flex flex-col items-center justify-center rounded-lg border-2 border-dashed px-4 py-10 text-center transition-colors"
-              :class="
-                dragOver
-                  ? 'border-blue-500 bg-blue-50'
-                  : 'border-gray-300 bg-gray-50'
-              "
+              :class="dragOver ? 'border-blue-500 bg-blue-50' : 'border-gray-300 bg-gray-50'"
               @dragover.prevent="dragOver = true"
               @dragleave="dragOver = false"
               @drop="handleDrop"
             >
               <icon-lucide-upload-cloud class="mb-3 size-10 text-gray-400" />
-              <p class="text-sm text-gray-600">
-                Drag & drop images here, or
-              </p>
+              <p class="text-sm text-gray-600">Drag & drop images here, or</p>
               <button
                 data-test-id="upload-pick-files"
                 class="mt-2 rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600 disabled:opacity-50"
@@ -190,24 +182,20 @@ function handleOpenChange(open: boolean): void {
               >
                 {{ isUploading ? 'Uploading\u2026' : 'Browse Files' }}
               </button>
-              <p class="mt-2 text-xs text-gray-400">
-                JPEG, PNG, GIF, WEBP, SVG — max 5 MB
-              </p>
+              <p class="mt-2 text-xs text-gray-400">JPEG, PNG, GIF, WEBP, SVG — max 5 MB</p>
             </div>
           </TabsContent>
 
           <!-- URL tab -->
           <TabsContent value="url" class="mt-4 space-y-4">
             <div>
-              <label class="mb-1 block text-sm font-medium text-gray-700">
-                Image URL
-              </label>
+              <label class="mb-1 block text-sm font-medium text-gray-700"> Image URL </label>
               <input
                 v-model="urlInput"
                 data-test-id="upload-url-input"
                 type="url"
                 placeholder="https://example.com/image.png"
-                class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
                 @blur="previewUrl"
                 @keydown.enter="uploadFromUrl"
               />

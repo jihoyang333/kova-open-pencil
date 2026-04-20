@@ -2,8 +2,8 @@ import { valibotSchema } from '@ai-sdk/valibot'
 import { tool } from 'ai'
 import * as v from 'valibot'
 
-import { makeFigmaFromStore } from '@/automation/figma-factory'
 import { createKovaTools } from '@/ai/kova-tools'
+import { makeFigmaFromStore } from '@/automation/figma-factory'
 import {
   CORE_TOOLS,
   collectFontKeys,

@@ -11,6 +11,7 @@ Call `saveBrandMemory` with `source: "auto"` when you detect:
 - **Recurring corrections**: If the user corrects the same thing twice in a conversation, it's a preference worth remembering
 
 Do **not** auto-save:
+
 - One-off requests for a single email ("make this one blue")
 - Conversation filler ("thanks", "looks good")
 - Facts already captured in the brand kit (colors, fonts, logo)
@@ -18,6 +19,7 @@ Do **not** auto-save:
 ### When to Save on Request (`source: "user"`)
 
 Call `saveBrandMemory` with `source: "user"` when the user explicitly asks:
+
 - "Remember this", "Save this", "Keep this in mind"
 - "From now on, always...", "Make a note that..."
 

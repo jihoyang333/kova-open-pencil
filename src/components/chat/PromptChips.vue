@@ -8,24 +8,24 @@ const emit = defineEmits<{
 const chips: ReadonlyArray<{ label: string; campaignType: CampaignType }> = [
   {
     label: 'A tips-and-tricks email that teaches something useful',
-    campaignType: 'educational',
+    campaignType: 'educational'
   },
   {
     label: 'Behind-the-scenes story about how we started',
-    campaignType: 'community',
+    campaignType: 'community'
   },
   {
     label: 'Flash sale with a countdown and bold CTA',
-    campaignType: 'sales',
+    campaignType: 'sales'
   },
   {
     label: 'Customer testimonial spotlight with before-and-after',
-    campaignType: 'social-proof',
+    campaignType: 'social-proof'
   },
   {
     label: 'New product drop with hero image and feature callouts',
-    campaignType: 'product-highlights',
-  },
+    campaignType: 'product-highlights'
+  }
 ] as const
 
 function handleChipClick(chip: (typeof chips)[number]) {

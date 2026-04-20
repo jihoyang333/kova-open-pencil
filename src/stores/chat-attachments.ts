@@ -16,7 +16,7 @@ export const useChatAttachmentsStore = defineStore('chat-attachments', () => {
     brandId: string,
     file: File,
     width: number | null,
-    height: number | null,
+    height: number | null
   ): Promise<ChatAttachment> {
     const userId = authStore.user?.id
     if (!userId) throw new Error('Not authenticated')
@@ -38,7 +38,7 @@ export const useChatAttachmentsStore = defineStore('chat-attachments', () => {
         file_size: file.size,
         width,
         height,
-        storage_path: storagePath,
+        storage_path: storagePath
       })
       .select()
       .single()

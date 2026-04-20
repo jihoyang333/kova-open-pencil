@@ -16,7 +16,7 @@ export const MEDIA_ACCEPTED_TYPES = [
   'image/png',
   'image/gif',
   'image/webp',
-  'image/svg+xml',
+  'image/svg+xml'
 ] as const
 
 export type MediaAcceptedType = (typeof MEDIA_ACCEPTED_TYPES)[number]
