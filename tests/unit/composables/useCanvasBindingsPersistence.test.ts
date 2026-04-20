@@ -1,7 +1,7 @@
 import { describe, test, expect, beforeEach, mock } from 'bun:test'
 import { setActivePinia, createPinia } from 'pinia'
 
-const CANVAS_ID = 'canvas-abc-123'
+const CANVAS_ID = '00000000-0000-0000-0000-000000000002'
 const BRAND_ID = '00000000-0000-0000-0000-000000000001'
 
 const sampleBinding = {
