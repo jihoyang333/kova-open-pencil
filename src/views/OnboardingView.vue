@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { computed, provide, ref } from 'vue'
+import { useRouter } from 'vue-router'
 
 import { completeOnboarding } from '@/composables/useOnboardingComplete'
 import { useOnboardingState } from '@/composables/useOnboardingState'
+import { getOnboardingNextRoute } from '@/router'
 
 import BrandNameStep from '@/components/onboarding/BrandNameStep.vue'
 import BrandUrlStep from '@/components/onboarding/BrandUrlStep.vue'
@@ -20,6 +22,7 @@ function extractErrorMessage(err: unknown): string {
   return 'Something went wrong. Please try again.'
 }
 
+const router = useRouter()
 const state = useOnboardingState()
 provide('onboardingState', state)
 
@@ -56,7 +59,12 @@ function handleButtonClick(): void {
   if (isFinishStep.value) {
     void handleFinish()
   } else if (state.canProceed.value) {
-    state.next()
+    const nextRoute = getOnboardingNextRoute(state.currentStep.value)
+    if (nextRoute) {
+      void router.push(nextRoute)
+    } else {
+      state.next()
+    }
   }
 }
 

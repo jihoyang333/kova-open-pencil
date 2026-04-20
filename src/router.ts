@@ -35,6 +35,12 @@ export function resolveGuard(
   return true
 }
 
+/** Returns a route to navigate to after the given onboarding step, or null to stay in-flow. */
+export function getOnboardingNextRoute(step: number): string | null {
+  if (step === 3) return '/onboarding/store-type'
+  return null
+}
+
 /** Resolves `/` redirect based on auth state */
 export function resolveRootRedirect(auth: AuthState): string {
   return auth.isAuthenticated ? '/dashboard' : '/login'
