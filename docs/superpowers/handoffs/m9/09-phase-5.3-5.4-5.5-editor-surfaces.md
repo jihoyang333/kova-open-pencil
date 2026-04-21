@@ -73,13 +73,13 @@ git commit -m "feat(m9): editor brand-context pill"
 - Create: `src/components/editor/sidebar/ShopPanelDiscounts.vue`
 - Modify: the existing left-sidebar host. Per spec §13, the left sidebar bypass is approved. **Do not extend to canvas/toolbar/layers/properties.**
 
-- [ ] **Step 1:** Tabbed panel using Reka UI `Tabs`. Products tab: search input (debounced) + filter chips (in-stock, on-sale, collection) + sort dropdown.
-- [ ] **Step 2:** Products render as cards; `draggable="true"` with custom drag payload `{type: 'shopify-variant', variant_id}`. Drop target: the canvas. Drop handler calls `createProductVariantFrame`.
-- [ ] **Step 3:** Post-drop toast (Reka UI `Toast`): *"Want me to build around this?"* [Yes, design a hero] [No]. Yes button pre-fills the AI chat and submits.
-- [ ] **Step 4:** Collections tab: list + drag → auto-layout frame with top 6 products in a 3×2 grid (use existing frame+auto-layout tools — no new primitive).
-- [ ] **Step 5:** Discounts tab: active codes; drag → styled text block bound to brand typography variable.
-- [ ] **Step 6:** Unit tests for: drag payload serialization, drop → `createProductVariantFrame` call, toast behavior.
-- [ ] **Step 7:** Commit.
+- [x] **Step 1:** Tabbed panel using Reka UI `Tabs`. Products tab: search input (debounced) + filter chips (in-stock, on-sale, collection) + sort dropdown.
+- [x] **Step 2:** Products render as cards; `draggable="true"` with custom drag payload `{type: 'shopify-variant', variant_id}`. Drop target: the canvas. Drop handler calls `createProductVariantFrame`.
+- [x] **Step 3:** Post-drop toast (Reka UI `Toast`): *"Want me to build around this?"* [Yes, design a hero] [No]. Yes button pre-fills the AI chat and submits.
+- [x] **Step 4:** Collections tab: list + drag → auto-layout frame with top 6 products in a 3×2 grid (use existing frame+auto-layout tools — no new primitive).
+- [x] **Step 5:** Discounts tab: active codes; drag → styled text block bound to brand typography variable.
+- [x] **Step 6:** Unit tests for: drag payload serialization, drop → `createProductVariantFrame` call, toast behavior.
+- [x] **Step 7:** Commit.
 
 ```bash
 git add src/components/editor/sidebar/ShopPanel*.vue tests/engine/shopify/shop-panel.test.ts
@@ -92,11 +92,11 @@ git commit -m "feat(m9): editor shop panel — products/collections/discounts"
 
 ## Exit criteria
 
-- [ ] All steps in 5.3, 5.4, and 5.5 marked [x].
-- [ ] `bun run check` passes.
-- [ ] `bun run test:unit` passes — brand-kit merge + shop panel tests green.
-- [ ] Three commits: merge-diff, brand-context-pill, shop-panel.
-- [ ] Final commit subject: `feat(m9): editor shop panel — products/collections/discounts`
+- [x] All steps in 5.3, 5.4, and 5.5 marked [x].
+- [x] `bun run check` passes.
+- [x] `bun run test:unit` passes — brand-kit merge + shop panel tests green.
+- [x] Three commits: merge-diff, brand-context-pill, shop-panel.
+- [x] Final commit subject: `feat(m9): editor shop panel — products/collections/discounts`
 
 ## Handoff to next chunk
 
