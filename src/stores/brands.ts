@@ -180,6 +180,10 @@ export const useBrandsStore = defineStore('brands', () => {
     proposedBrandKit.value = { brandId, kit: { ...kit } }
   }
 
+  async function applyShopifyMerge(brandId: string, chosen: Readonly<ShopifyBrandKit>): Promise<void> {
+    await applyKitSelection(brandId, chosen)
+  }
+
   async function applyKitSelection(brandId: string, kit: Readonly<ShopifyBrandKit>): Promise<void> {
     const brand = brands.value.find((b) => b.id === brandId)
     const updates: Partial<Omit<Brand, 'id' | 'user_id' | 'created_at' | 'updated_at'>> = {}
@@ -229,6 +233,7 @@ export const useBrandsStore = defineStore('brands', () => {
     deleteBrand,
     createBrandFull,
     proposeFromShopify,
+    applyShopifyMerge,
     applyKitSelection
   }
 })
