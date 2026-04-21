@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { authenticateRequest } from '../../_shared/auth'
 import { SHOPIFY_API_VERSION } from '../../_shared/shopify-client'
 
 export const config = { runtime: 'edge' as const }
@@ -44,28 +45,61 @@ interface BulkOperationResponse {
   }
 }
 
+const JSON_HEADERS = { 'Content-Type': 'application/json' } as const
+
+function jsonError(status: number, message: string): Response {
+  return new Response(JSON.stringify({ error: message }), { status, headers: JSON_HEADERS })
+}
+
 export default async function handler(req: Request): Promise<Response> {
-  if (req.headers.get('X-Kova-Internal') !== process.env.KOVA_INTERNAL_KEY) {
-    return new Response('Forbidden', { status: 403 })
+  const isInternal = req.headers.get('X-Kova-Internal') === process.env.KOVA_INTERNAL_KEY
+    && process.env.KOVA_INTERNAL_KEY !== undefined
+
+  let authorizedUserId: string | null = null
+
+  if (!isInternal) {
+    const authResult = await authenticateRequest(req)
+    if (authResult instanceof Response) return authResult
+    authorizedUserId = authResult.userId
   }
 
-  const { brand_id } = (await req.json()) as BulkStartBody
+  const body = (await req.json()) as BulkStartBody
+  const { brand_id } = body
+
   const supabaseUrl = process.env.SUPABASE_URL
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!supabaseUrl || !serviceRoleKey) return new Response('Server configuration error', { status: 500 })
+  if (!supabaseUrl || !serviceRoleKey) return jsonError(500, 'Server configuration error')
   const admin = createClient(supabaseUrl, serviceRoleKey)
+
+  // Verify brand ownership for user JWT path
+  if (!isInternal && authorizedUserId) {
+    const { data: ownedBrand } = await admin
+      .from('brands')
+      .select('id')
+      .eq('id', brand_id)
+      .eq('user_id', authorizedUserId)
+      .maybeSingle()
+    if (!ownedBrand) return jsonError(403, 'Forbidden')
+  }
 
   const { data: conn } = await admin
     .from('shopify_connections')
-    .select('shop_domain')
+    .select('shop_domain,sync_progress')
     .eq('brand_id', brand_id)
     .single()
-  if (!conn) return new Response('No connection', { status: 404 })
+  if (!conn) return jsonError(404, 'No connection')
+
+  // Block duplicate syncs
+  const progress = (conn as { shop_domain: string; sync_progress: { phase: string } | null }).sync_progress
+  if (progress?.phase === 'running' || progress?.phase === 'parsing') {
+    return jsonError(409, 'Sync already in progress')
+  }
 
   const { data: token } = await admin.rpc('read_shopify_token', { p_brand_id: brand_id })
 
+  const shopDomain = (conn as { shop_domain: string }).shop_domain
   const res = await fetch(
-    `https://${conn.shop_domain}/admin/api/${SHOPIFY_API_VERSION}/graphql.json`,
+    `https://${shopDomain}/admin/api/${SHOPIFY_API_VERSION}/graphql.json`,
     {
       method: 'POST',
       headers: {
@@ -76,9 +110,9 @@ export default async function handler(req: Request): Promise<Response> {
     },
   )
 
-  const body = (await res.json()) as BulkOperationResponse
-  const op = body.data.bulkOperationRunQuery.bulkOperation
-  if (!op) return new Response(JSON.stringify(body), { status: 502 })
+  const responseBody = (await res.json()) as BulkOperationResponse
+  const op = responseBody.data.bulkOperationRunQuery.bulkOperation
+  if (!op) return new Response(JSON.stringify(responseBody), { status: 502 })
 
   await admin
     .from('shopify_connections')

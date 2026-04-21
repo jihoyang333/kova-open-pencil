@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 
 import { supabase } from '@/lib/supabase'
 import { normalizeShopDomain } from '@/lib/shop-domain'
@@ -8,10 +8,20 @@ const props = defineProps<{ brandId: string }>()
 
 type ConnectionState = 'loading' | 'not-connected' | 'connected' | 'reauthorize'
 
+interface SyncProgress {
+  phase: 'idle' | 'running' | 'parsing' | 'done' | 'error'
+  count_done: number
+  count_total: number
+  error?: string
+}
+
 interface Connection {
   shop_domain: string
   last_synced_at: string | null
+  sync_progress: SyncProgress
 }
+
+const DEFAULT_PROGRESS: SyncProgress = { phase: 'idle', count_done: 0, count_total: 0 }
 
 const state = ref<ConnectionState>('loading')
 const connection = ref<Connection | null>(null)
@@ -21,6 +31,12 @@ const errorMsg = ref<string | null>(null)
 const isDisconnecting = ref(false)
 
 let popup: Window | null = null
+let syncChannel: ReturnType<typeof supabase.channel> | null = null
+
+const isSyncing = computed(() => {
+  const phase = connection.value?.sync_progress?.phase
+  return phase === 'running' || phase === 'parsing'
+})
 
 function formatSyncTime(ts: string | null): string {
   if (!ts) return 'Never synced'
@@ -30,7 +46,7 @@ function formatSyncTime(ts: string | null): string {
 async function loadConnection(): Promise<void> {
   const { data, error } = await supabase
     .from('shopify_connections')
-    .select('shop_domain,status,last_synced_at')
+    .select('shop_domain,status,last_synced_at,sync_progress')
     .eq('brand_id', props.brandId)
     .maybeSingle()
 
@@ -39,17 +55,54 @@ async function loadConnection(): Promise<void> {
     return
   }
 
-  const row = data as { shop_domain: string; status: string; last_synced_at: string | null }
+  const row = data as {
+    shop_domain: string
+    status: string
+    last_synced_at: string | null
+    sync_progress: SyncProgress | null
+  }
 
   if (row.status === 'active') {
-    connection.value = { shop_domain: row.shop_domain, last_synced_at: row.last_synced_at }
+    connection.value = {
+      shop_domain: row.shop_domain,
+      last_synced_at: row.last_synced_at,
+      sync_progress: row.sync_progress ?? DEFAULT_PROGRESS,
+    }
     state.value = 'connected'
   } else if (row.status === 'error') {
-    connection.value = { shop_domain: row.shop_domain, last_synced_at: row.last_synced_at }
+    connection.value = {
+      shop_domain: row.shop_domain,
+      last_synced_at: row.last_synced_at,
+      sync_progress: row.sync_progress ?? DEFAULT_PROGRESS,
+    }
     state.value = 'reauthorize'
   } else {
     state.value = 'not-connected'
   }
+}
+
+function subscribeToSyncProgress(): void {
+  syncChannel?.unsubscribe().catch(() => null)
+  syncChannel = supabase
+    .channel(`sync-progress-${props.brandId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'shopify_connections',
+        filter: `brand_id=eq.${props.brandId}`,
+      },
+      (payload) => {
+        if (connection.value && payload.new?.sync_progress) {
+          connection.value = {
+            ...connection.value,
+            sync_progress: payload.new.sync_progress as SyncProgress,
+          }
+        }
+      },
+    )
+    .subscribe()
 }
 
 function buildOAuthUrl(shop: string): string {
@@ -94,6 +147,29 @@ async function handleDisconnect(): Promise<void> {
   }
 }
 
+async function handleRefreshNow(): Promise<void> {
+  if (isSyncing.value) return
+  const { data: sessionData } = await supabase.auth.getSession()
+  const token = sessionData.session?.access_token ?? ''
+  const res = await fetch('/api/shopify/sync/bulk-start', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ brand_id: props.brandId }),
+  })
+  if (res.status === 409) {
+    return
+  }
+  if (res.ok && connection.value) {
+    connection.value = {
+      ...connection.value,
+      sync_progress: { phase: 'running', count_done: 0, count_total: 0 },
+    }
+  }
+}
+
 function onMessage(event: MessageEvent): void {
   if ((event.data as { type?: string } | null)?.type === 'shopify_oauth_success') {
     popup?.close()
@@ -104,10 +180,12 @@ function onMessage(event: MessageEvent): void {
 
 onMounted(async () => {
   await loadConnection()
+  subscribeToSyncProgress()
   window.addEventListener('message', onMessage)
 })
 
 onUnmounted(() => {
+  syncChannel?.unsubscribe().catch(() => null)
   window.removeEventListener('message', onMessage)
 })
 </script>
@@ -175,6 +253,31 @@ onUnmounted(() => {
       <p data-test-id="integrations-last-sync" class="mt-1 text-xs text-gray-500">
         {{ formatSyncTime(connection?.last_synced_at ?? null) }}
       </p>
+
+      <!-- Sync progress -->
+      <div
+        v-if="isSyncing"
+        data-test-id="integrations-sync-progress"
+        class="mt-2 flex items-center gap-2 text-xs text-gray-500"
+      >
+        <div class="size-3 animate-spin rounded-full border-2 border-gray-300 border-t-blue-500" />
+        <span
+          v-if="connection?.sync_progress?.phase === 'parsing' && connection.sync_progress.count_total > 0"
+        >
+          Syncing… {{ connection.sync_progress.count_done }} / {{ connection.sync_progress.count_total }}
+        </span>
+        <span v-else>Syncing your products…</span>
+      </div>
+
+      <!-- Sync error -->
+      <p
+        v-if="connection?.sync_progress?.phase === 'error'"
+        data-test-id="integrations-sync-error"
+        class="mt-2 text-xs text-red-600"
+      >
+        {{ connection.sync_progress.error ?? 'Sync failed. Please try again.' }}
+      </p>
+
       <div class="mt-3 flex items-center gap-3">
         <button
           data-test-id="integrations-disconnect-btn"
@@ -183,6 +286,15 @@ onUnmounted(() => {
           @click="handleDisconnect"
         >
           {{ isDisconnecting ? 'Disconnecting…' : 'Disconnect' }}
+        </button>
+        <span class="text-xs text-gray-300">|</span>
+        <button
+          data-test-id="integrations-refresh-btn"
+          class="text-xs text-gray-500 underline transition-colors hover:text-gray-900 disabled:opacity-50"
+          :disabled="isSyncing"
+          @click="handleRefreshNow"
+        >
+          {{ isSyncing ? 'Syncing…' : 'Refresh now' }}
         </button>
         <span class="text-xs text-gray-300">|</span>
         <router-link

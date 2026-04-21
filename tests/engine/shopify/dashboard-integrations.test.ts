@@ -11,8 +11,22 @@ const mockEq = mock(() => ({ maybeSingle: mockMaybeSingle }))
 const mockSelect = mock(() => ({ eq: mockEq }))
 const mockFrom = mock(() => ({ select: mockSelect }))
 
+const mockUnsubscribe = mock(() => Promise.resolve('ok' as const))
+const mockSubscribe = mock(() => mockRealtimeChannel)
+const mockRealtimeOn = mock(() => mockRealtimeChannel)
+const mockRealtimeChannel = { on: mockRealtimeOn, subscribe: mockSubscribe, unsubscribe: mockUnsubscribe }
+const mockChannelFn = mock(() => mockRealtimeChannel)
+
+const mockGetSession = mock(() =>
+  Promise.resolve({ data: { session: { access_token: 'test-jwt-token' } }, error: null }),
+)
+
 mock.module('@/lib/supabase', () => ({
-  supabase: { from: mockFrom },
+  supabase: {
+    from: mockFrom,
+    channel: mockChannelFn,
+    auth: { getSession: mockGetSession },
+  },
   getSupabase: () => ({ from: mockFrom }),
 }))
 
@@ -26,7 +40,7 @@ function mountCard(brandId = 'brand-test-1') {
   return mount(IntegrationsCard, {
     props: { brandId },
     global: {
-      stubs: { RouterLink: RouterLinkStub, 'icon-lucide-check-circle': true, 'icon-lucide-alert-triangle': true },
+      stubs: { RouterLink: RouterLinkStub, 'icon-lucide-check-circle': true, 'icon-lucide-alert-triangle': true, 'icon-lucide-refresh-cw': true },
     },
   })
 }
@@ -34,6 +48,14 @@ function mountCard(brandId = 'brand-test-1') {
 function setConnectionData(data: Record<string, unknown> | null, error: { message: string } | null = null) {
   _mockData = data
   _mockError = error
+}
+
+// Default idle connection fixture
+const IDLE_CONNECTION = {
+  shop_domain: 'acme.myshopify.com',
+  status: 'active',
+  last_synced_at: null,
+  sync_progress: { phase: 'idle', count_done: 0, count_total: 0 },
 }
 
 // ----- Tests -----
@@ -46,6 +68,11 @@ describe('IntegrationsCard', () => {
     mockSelect.mockClear()
     mockEq.mockClear()
     mockMaybeSingle.mockClear()
+    mockChannelFn.mockClear()
+    mockRealtimeOn.mockClear()
+    mockSubscribe.mockClear()
+    mockUnsubscribe.mockClear()
+    mockGetSession.mockClear()
   })
 
   describe('not-connected state', () => {
@@ -126,6 +153,7 @@ describe('IntegrationsCard', () => {
         shop_domain: 'acme.myshopify.com',
         status: 'active',
         last_synced_at: '2026-04-01T10:00:00Z',
+        sync_progress: { phase: 'idle', count_done: 0, count_total: 0 },
       })
       const wrapper = mountCard()
       await flushPromises()
@@ -143,6 +171,7 @@ describe('IntegrationsCard', () => {
         shop_domain: 'acme.myshopify.com',
         status: 'active',
         last_synced_at: null,
+        sync_progress: { phase: 'idle', count_done: 0, count_total: 0 },
       })
       const wrapper = mountCard()
       await flushPromises()
@@ -151,7 +180,7 @@ describe('IntegrationsCard', () => {
     })
 
     test('renders disconnect button and settings link', async () => {
-      setConnectionData({ shop_domain: 'acme.myshopify.com', status: 'active', last_synced_at: null })
+      setConnectionData({ ...IDLE_CONNECTION })
       const wrapper = mountCard('brand-abc')
       await flushPromises()
 
@@ -163,7 +192,7 @@ describe('IntegrationsCard', () => {
     })
 
     test('disconnect button calls the disconnect API and transitions to not-connected', async () => {
-      setConnectionData({ shop_domain: 'acme.myshopify.com', status: 'active', last_synced_at: null })
+      setConnectionData({ ...IDLE_CONNECTION })
       const fetchCalls: string[] = []
       const originalFetch = globalThis.fetch
       globalThis.fetch = mock(async (url: string) => {
@@ -217,6 +246,171 @@ describe('IntegrationsCard', () => {
     })
   })
 
+  describe('Refresh Now button', () => {
+    test('"Refresh now" button is visible in connected state when idle', async () => {
+      setConnectionData({ ...IDLE_CONNECTION })
+      const wrapper = mountCard()
+      await flushPromises()
+
+      expect(wrapper.find('[data-test-id="integrations-refresh-btn"]').exists()).toBe(true)
+    })
+
+    test('"Refresh now" button is enabled when sync phase is idle', async () => {
+      setConnectionData({ ...IDLE_CONNECTION })
+      const wrapper = mountCard()
+      await flushPromises()
+
+      const btn = wrapper.find('[data-test-id="integrations-refresh-btn"]')
+      expect((btn.element as HTMLButtonElement).disabled).toBe(false)
+    })
+
+    test('"Refresh now" button is disabled when sync phase is running', async () => {
+      setConnectionData({
+        ...IDLE_CONNECTION,
+        sync_progress: { phase: 'running', count_done: 0, count_total: 0 },
+      })
+      const wrapper = mountCard()
+      await flushPromises()
+
+      const btn = wrapper.find('[data-test-id="integrations-refresh-btn"]')
+      expect((btn.element as HTMLButtonElement).disabled).toBe(true)
+    })
+
+    test('"Refresh now" button is disabled when sync phase is parsing', async () => {
+      setConnectionData({
+        ...IDLE_CONNECTION,
+        sync_progress: { phase: 'parsing', count_done: 50, count_total: 100 },
+      })
+      const wrapper = mountCard()
+      await flushPromises()
+
+      const btn = wrapper.find('[data-test-id="integrations-refresh-btn"]')
+      expect((btn.element as HTMLButtonElement).disabled).toBe(true)
+    })
+
+    test('"Refresh now" button POSTs to /api/shopify/sync/bulk-start with JWT', async () => {
+      setConnectionData({ ...IDLE_CONNECTION })
+      const fetchRequests: Array<{ url: string; init: RequestInit }> = []
+      const originalFetch = globalThis.fetch
+      globalThis.fetch = mock(async (url: string, init: RequestInit) => {
+        fetchRequests.push({ url, init })
+        return new Response(JSON.stringify({ ok: true, bulk_op_id: 'gid://shopify/BulkOperation/1' }), { status: 200 })
+      }) as typeof fetch
+
+      const wrapper = mountCard('brand-abc')
+      await flushPromises()
+
+      await wrapper.find('[data-test-id="integrations-refresh-btn"]').trigger('click')
+      await flushPromises()
+
+      expect(fetchRequests[0]?.url).toContain('/api/shopify/sync/bulk-start')
+      const headers = fetchRequests[0]?.init?.headers as Record<string, string> | undefined
+      expect(headers?.['Authorization']).toContain('Bearer test-jwt-token')
+
+      globalThis.fetch = originalFetch
+    })
+
+    test('optimistically sets phase to running after successful refresh', async () => {
+      setConnectionData({ ...IDLE_CONNECTION })
+      const originalFetch = globalThis.fetch
+      globalThis.fetch = mock(async () =>
+        new Response(JSON.stringify({ ok: true, bulk_op_id: 'gid://shopify/BulkOperation/1' }), { status: 200 })
+      ) as typeof fetch
+
+      const wrapper = mountCard()
+      await flushPromises()
+
+      await wrapper.find('[data-test-id="integrations-refresh-btn"]').trigger('click')
+      await flushPromises()
+
+      // Button should be disabled after optimistic update
+      const btn = wrapper.find('[data-test-id="integrations-refresh-btn"]')
+      expect((btn.element as HTMLButtonElement).disabled).toBe(true)
+
+      globalThis.fetch = originalFetch
+    })
+
+    test('does not crash when server returns 409 (already syncing)', async () => {
+      setConnectionData({ ...IDLE_CONNECTION })
+      const originalFetch = globalThis.fetch
+      globalThis.fetch = mock(async () =>
+        new Response(JSON.stringify({ error: 'Sync already in progress' }), { status: 409 })
+      ) as typeof fetch
+
+      const wrapper = mountCard()
+      await flushPromises()
+
+      // Should not throw
+      await wrapper.find('[data-test-id="integrations-refresh-btn"]').trigger('click')
+      await flushPromises()
+
+      // Button should stay enabled (409 = no state change)
+      const btn = wrapper.find('[data-test-id="integrations-refresh-btn"]')
+      expect((btn.element as HTMLButtonElement).disabled).toBe(false)
+
+      globalThis.fetch = originalFetch
+    })
+  })
+
+  describe('sync progress display', () => {
+    test('shows spinner when phase is running', async () => {
+      setConnectionData({
+        ...IDLE_CONNECTION,
+        sync_progress: { phase: 'running', count_done: 0, count_total: 0 },
+      })
+      const wrapper = mountCard()
+      await flushPromises()
+
+      expect(wrapper.find('[data-test-id="integrations-sync-progress"]').exists()).toBe(true)
+    })
+
+    test('shows progress counts when phase is parsing with totals', async () => {
+      setConnectionData({
+        ...IDLE_CONNECTION,
+        sync_progress: { phase: 'parsing', count_done: 150, count_total: 300 },
+      })
+      const wrapper = mountCard()
+      await flushPromises()
+
+      const progressEl = wrapper.find('[data-test-id="integrations-sync-progress"]')
+      expect(progressEl.exists()).toBe(true)
+      expect(progressEl.text()).toContain('150')
+      expect(progressEl.text()).toContain('300')
+    })
+
+    test('hides progress indicator when phase is idle', async () => {
+      setConnectionData({ ...IDLE_CONNECTION })
+      const wrapper = mountCard()
+      await flushPromises()
+
+      expect(wrapper.find('[data-test-id="integrations-sync-progress"]').exists()).toBe(false)
+    })
+
+    test('hides progress indicator when phase is done', async () => {
+      setConnectionData({
+        ...IDLE_CONNECTION,
+        sync_progress: { phase: 'done', count_done: 300, count_total: 300 },
+      })
+      const wrapper = mountCard()
+      await flushPromises()
+
+      expect(wrapper.find('[data-test-id="integrations-sync-progress"]').exists()).toBe(false)
+    })
+
+    test('shows error message when phase is error', async () => {
+      setConnectionData({
+        ...IDLE_CONNECTION,
+        sync_progress: { phase: 'error', count_done: 0, count_total: 0, error: 'Bulk operation failed' },
+      })
+      const wrapper = mountCard()
+      await flushPromises()
+
+      const errEl = wrapper.find('[data-test-id="integrations-sync-error"]')
+      expect(errEl.exists()).toBe(true)
+      expect(errEl.text()).toContain('Bulk operation failed')
+    })
+  })
+
   describe('snapshots', () => {
     test('not-connected state matches snapshot', async () => {
       setConnectionData(null)
@@ -226,11 +420,7 @@ describe('IntegrationsCard', () => {
     })
 
     test('connected state matches snapshot', async () => {
-      setConnectionData({
-        shop_domain: 'acme.myshopify.com',
-        status: 'active',
-        last_synced_at: null,
-      })
+      setConnectionData({ ...IDLE_CONNECTION })
       const wrapper = mountCard()
       await flushPromises()
       expect(wrapper.html()).toMatchSnapshot()
@@ -241,6 +431,26 @@ describe('IntegrationsCard', () => {
         shop_domain: 'pending.myshopify.com',
         status: 'error',
         last_synced_at: null,
+      })
+      const wrapper = mountCard()
+      await flushPromises()
+      expect(wrapper.html()).toMatchSnapshot()
+    })
+
+    test('running state matches snapshot', async () => {
+      setConnectionData({
+        ...IDLE_CONNECTION,
+        sync_progress: { phase: 'running', count_done: 0, count_total: 0 },
+      })
+      const wrapper = mountCard()
+      await flushPromises()
+      expect(wrapper.html()).toMatchSnapshot()
+    })
+
+    test('parsing state matches snapshot', async () => {
+      setConnectionData({
+        ...IDLE_CONNECTION,
+        sync_progress: { phase: 'parsing', count_done: 150, count_total: 300 },
       })
       const wrapper = mountCard()
       await flushPromises()
