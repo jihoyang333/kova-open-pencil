@@ -32,6 +32,18 @@ export default defineConfig({
     {
       name: 'figma',
       testDir: './tests/figma'
+    },
+    {
+      // Shopify integration tests — requires a saved OAuth session.
+      // Run `tests/e2e/helpers/shopify-auth.ts` once to generate
+      // `tests/e2e/.auth/shopify-dev-store.json` before using this project.
+      name: 'shopify',
+      testDir: './tests/e2e',
+      testMatch: '**/m9-shopify.spec.ts',
+      fullyParallel: false,
+      use: {
+        storageState: './tests/e2e/.auth/shopify-dev-store.json'
+      }
     }
   ],
   webServer: {
