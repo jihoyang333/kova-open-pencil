@@ -61,7 +61,7 @@ export function useShopifyConnection(brandId: string): UseShopifyConnection {
     const [connResult, countResult] = await Promise.all([
       supabase
         .from('shopify_connections')
-        .select('shop_domain,status,last_synced_at,sync_progress,scopes')
+        .select('shop_domain,status,last_synced_at,sync_progress,scopes,history')
         .eq('brand_id', brandId)
         .maybeSingle(),
       supabase
@@ -82,19 +82,12 @@ export function useShopifyConnection(brandId: string): UseShopifyConnection {
       last_synced_at: string | null
       sync_progress: SyncProgress | null
       scopes: string[] | null
+      history?: HistoryEntry[] | null
     }
 
     const product_count = (countResult.count as number | null) ?? 0
     const scopes = row.scopes ?? []
-
-    // Fetch history separately so a missing column doesn't break connection load
-    const histResult = await supabase
-      .from('shopify_connections')
-      .select('history')
-      .eq('brand_id', brandId)
-      .maybeSingle()
-    const histRow = histResult.data as { history?: HistoryEntry[] | null } | null
-    const history: HistoryEntry[] = Array.isArray(histRow?.history) ? histRow.history : []
+    const history: HistoryEntry[] = Array.isArray(row.history) ? row.history : []
 
     if (row.status === 'active') {
       connection.value = {
@@ -196,6 +189,13 @@ export function useShopifyConnection(brandId: string): UseShopifyConnection {
       connection.value = {
         ...connection.value,
         sync_progress: { phase: 'running', count_done: 0, count_total: 0 },
+      }
+      return
+    }
+    if (!res.ok && connection.value) {
+      connection.value = {
+        ...connection.value,
+        sync_progress: { phase: 'error', count_done: 0, count_total: 0, error: 'Sync failed. Please try again.' },
       }
     }
   }

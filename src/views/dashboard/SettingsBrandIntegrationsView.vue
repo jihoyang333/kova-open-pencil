@@ -20,7 +20,7 @@ import { useShopifyConnection } from '@/composables/use-shopify-connection'
 const route = useRoute()
 const router = useRouter()
 
-const brandId = computed(() => route.params.brandId as string)
+const brandId = route.params.brandId as string
 
 const {
   state,
@@ -31,7 +31,7 @@ const {
   handleDisconnect,
   handleReauthorize,
   openOAuthPopup,
-} = useShopifyConnection(brandId.value)
+} = useShopifyConnection(brandId)
 
 // Connect flow
 const shopInput = ref('')
@@ -50,22 +50,32 @@ function handleConnect(): void {
 
 // Disconnect confirmation modal
 const showDisconnectModal = ref(false)
+const disconnectError = ref<string | null>(null)
 
 async function confirmDisconnect(): Promise<void> {
   showDisconnectModal.value = false
-  await handleDisconnect()
+  disconnectError.value = null
+  try {
+    await handleDisconnect()
+  } catch {
+    disconnectError.value = 'Disconnect failed. Please try again.'
+  }
 }
 
-// History: last 10 entries
-const historyRows = computed(() => (connection.value?.history ?? []).slice(-10))
+// History: last 10 entries, newest first
+const historyRows = computed(() =>
+  [...(connection.value?.history ?? [])]
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+    .slice(0, 10),
+)
 
 // Navigation
 function goBack(): void {
-  void router.push(`/dashboard/${brandId.value}/settings`)
+  void router.push(`/dashboard/${brandId}/settings`)
 }
 
 function goToBrandKit(): void {
-  void router.push(`/dashboard/${brandId.value}/settings`)
+  void router.push(`/dashboard/${brandId}/settings`)
 }
 
 // Helpers
@@ -305,6 +315,15 @@ function formatScope(scope: string): string {
             {{ isDisconnecting ? 'Disconnecting…' : 'Disconnect' }}
           </button>
         </div>
+
+        <!-- Disconnect error -->
+        <p
+          v-if="disconnectError"
+          data-test-id="integrations-disconnect-error"
+          class="text-xs text-red-600"
+        >
+          {{ disconnectError }}
+        </p>
       </div>
 
       <!-- Reauthorize -->
@@ -355,8 +374,8 @@ function formatScope(scope: string): string {
             </p>
             <ul v-else class="space-y-2">
               <li
-                v-for="(row, i) in historyRows"
-                :key="i"
+                v-for="row in historyRows"
+                :key="`${row.timestamp}-${row.event_type}`"
                 data-test-id="integrations-history-row"
                 class="flex items-center gap-3"
               >
