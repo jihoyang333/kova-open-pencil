@@ -1,0 +1,68 @@
+name: Shopify E2E
+
+on:
+  push:
+    branches:
+      - feat/m9-shopify
+      - main
+    paths:
+      - 'tests/e2e/m9-shopify.spec.ts'
+      - 'tests/e2e/helpers/shopify-auth.ts'
+      - 'playwright.config.ts'
+      - 'src/**'
+      - 'api/**'
+  workflow_dispatch:
+
+concurrency:
+  group: shopify-e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  shopify-e2e:
+    name: Playwright — Shopify integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: bun-${{ runner.os }}-
+
+      - run: bun install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        run: bunx playwright install chromium --with-deps
+
+      - name: Restore Shopify dev-store session
+        if: secrets.SHOPIFY_DEV_STORE_SESSION != ''
+        run: |
+          mkdir -p tests/e2e/.auth
+          printf '%s' '${{ secrets.SHOPIFY_DEV_STORE_SESSION }}' | base64 -d \
+            > tests/e2e/.auth/shopify-dev-store.json
+        env:
+          # Evaluated at run time — suppress the "no secret" warning when unset
+          SHOPIFY_DEV_STORE_SESSION: ${{ secrets.SHOPIFY_DEV_STORE_SESSION }}
+
+      - name: Run Shopify E2E (skips gracefully when creds absent)
+        run: bunx playwright test --project=shopify --reporter=list
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
+          TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
+          SHOPIFY_DEV_STORE: ${{ secrets.SHOPIFY_DEV_STORE }}
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-shopify-report
+          path: playwright-report/
+          retention-days: 7

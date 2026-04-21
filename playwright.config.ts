@@ -1,4 +1,8 @@
+import fs from 'node:fs'
+
 import { defineConfig } from '@playwright/test'
+
+const SHOPIFY_AUTH_PATH = './tests/e2e/.auth/shopify-dev-store.json'
 
 export default defineConfig({
   testDir: './tests',
@@ -42,7 +46,9 @@ export default defineConfig({
       testMatch: '**/m9-shopify.spec.ts',
       fullyParallel: false,
       use: {
-        storageState: './tests/e2e/.auth/shopify-dev-store.json'
+        storageState: fs.existsSync(SHOPIFY_AUTH_PATH)
+          ? SHOPIFY_AUTH_PATH
+          : undefined
       }
     }
   ],

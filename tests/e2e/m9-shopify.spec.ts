@@ -197,6 +197,15 @@ async function readPriceFromInspector(page: Page): Promise<string> {
 test.describe('M9 — Shopify integration', () => {
   test.describe.configure({ mode: 'serial' })
 
+  // Skip the entire suite when dev-store credentials are absent.
+  // In CI this relies on GitHub Actions secrets; locally run
+  // `tests/e2e/helpers/shopify-auth.ts` first to generate the session file.
+  test.skip(
+    !DEV_STORE || !TEST_EMAIL || !TEST_PASSWORD || !SERVICE_ROLE_KEY,
+    'Shopify dev-store credentials not configured — set SHOPIFY_DEV_STORE, ' +
+      'TEST_USER_EMAIL, TEST_USER_PASSWORD, SUPABASE_SERVICE_ROLE_KEY',
+  )
+
   let page: Page
   let context: BrowserContext
   let brandId: string
