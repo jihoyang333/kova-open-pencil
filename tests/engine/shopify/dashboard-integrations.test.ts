@@ -216,4 +216,35 @@ describe('IntegrationsCard', () => {
       expect(mockEq).toHaveBeenCalledWith('brand_id', 'my-brand-id')
     })
   })
+
+  describe('snapshots', () => {
+    test('not-connected state matches snapshot', async () => {
+      setConnectionData(null)
+      const wrapper = mountCard()
+      await flushPromises()
+      expect(wrapper.html()).toMatchSnapshot()
+    })
+
+    test('connected state matches snapshot', async () => {
+      setConnectionData({
+        shop_domain: 'acme.myshopify.com',
+        status: 'active',
+        last_synced_at: null,
+      })
+      const wrapper = mountCard()
+      await flushPromises()
+      expect(wrapper.html()).toMatchSnapshot()
+    })
+
+    test('reauthorize state matches snapshot', async () => {
+      setConnectionData({
+        shop_domain: 'pending.myshopify.com',
+        status: 'error',
+        last_synced_at: null,
+      })
+      const wrapper = mountCard()
+      await flushPromises()
+      expect(wrapper.html()).toMatchSnapshot()
+    })
+  })
 })
