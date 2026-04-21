@@ -35,11 +35,11 @@ bun run test:unit
 - Create: `src/components/brand-kit/BrandKitMergeDiff.vue`
 - Test: `tests/engine/shopify/brand-kit-merge.test.ts`
 
-- [ ] **Step 1: Merge test** — given `current = {primary: '#000', heading: 'Inter'}` and `proposed = {primary: '#F00', heading: 'Inter', logo: 'https://...'}`, renders two diff rows (primary, logo) and no row for heading (identical). Apply-selected writes the chosen values back.
+- [x] **Step 1: Merge test** — given `current = {primary: '#000', heading: 'Inter'}` and `proposed = {primary: '#F00', heading: 'Inter', logo: 'https://...'}`, renders two diff rows (primary, logo) and no row for heading (identical). Apply-selected writes the chosen values back.
 
-- [ ] **Step 2: Implement** — per-field radio group: `[x] Current #000  [ ] Shopify #F00`. Only diffing fields rendered. "Apply selected" calls `useBrandsStore().applyShopifyMerge(brandId, chosen)`.
+- [x] **Step 2: Implement** — per-field radio group: `[x] Current #000  [ ] Shopify #F00`. Only diffing fields rendered. "Apply selected" calls `useBrandsStore().applyShopifyMerge(brandId, chosen)`.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/components/brand-kit/BrandKitMergeDiff.vue tests/engine/shopify/brand-kit-merge.test.ts
@@ -54,7 +54,7 @@ git commit -m "feat(m9): brand-kit merge diff — field-by-field"
 - Create: `src/components/editor/BrandContextPill.vue`
 - Modify: `src/views/EditorView.vue` — mount the pill next to the canvas name.
 
-- [ ] **Step 1:** Pill displays `brand.name`. Reka UI `Tooltip` on hover shows shop domain + last-sync ago + "This canvas is linked to {brand}." Non-interactive for switching.
+- [x] **Step 1:** Pill displays `brand.name`. Reka UI `Tooltip` on hover shows shop domain + last-sync ago + "This canvas is linked to {brand}." Non-interactive for switching.
 - [ ] **Step 2:** Commit.
 
 ```bash
