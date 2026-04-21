@@ -5,6 +5,7 @@
  * Runs nightly (vercel.json schedule: "0 2 * * *").
  */
 import { createClient } from '@supabase/supabase-js'
+import { logShopifyError } from '../../_shared/shopify-error'
 
 export const maxDuration = 300
 
@@ -47,6 +48,7 @@ export default async function handler(req: Request): Promise<Response> {
         .update({ completed_at: new Date().toISOString() })
         .eq('id', row.id)
     } catch (err) {
+      logShopifyError(err, { brand_id: row.brand_id })
       errors.push(`${row.brand_id}: ${err instanceof Error ? err.message : String(err)}`)
     }
   }

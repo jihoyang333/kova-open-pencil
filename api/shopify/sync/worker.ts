@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 import { Receiver } from '@upstash/qstash'
 import { parseBulkJsonl } from '../../_shared/shopify-bulk-parser'
 import { publishToQStash } from '../../_shared/qstash'
+import { logShopifyError } from '../../_shared/shopify-error'
 
 export const config = { runtime: 'nodejs20.x' as const }
 export const maxDuration = 300
@@ -61,7 +62,7 @@ export default async function handler(req: Request): Promise<Response> {
       if (rows.length === 0) continue
       const resolved = await resolveFks(admin, brand_id, table, rows)
       const { error } = await admin.from(table).upsert(resolved)
-      if (error) console.error(`[worker] upsert failed for ${table}:`, error.message)
+      if (error) logShopifyError(new Error(`upsert failed for ${table}: ${error.message}`), { brand_id })
       batches.set(table, [])
     }
   }

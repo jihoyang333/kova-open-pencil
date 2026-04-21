@@ -4,6 +4,7 @@ import {
   normalizeShopDomain,
   SHOPIFY_API_VERSION,
 } from '../../_shared/shopify-client'
+import { logShopifyError } from '../../_shared/shopify-error'
 
 export const config = { runtime: 'edge' as const } as const
 
@@ -266,7 +267,8 @@ export default async function handler(req: Request): Promise<Response> {
 
   try {
     await registerWebhooks(params.shop, token.accessToken, url.origin)
-  } catch {
+  } catch (err) {
+    logShopifyError(err, { brand_id: stateRow.brand_id, shop_domain: params.shop })
     return textError(502, 'Failed to register required compliance webhooks')
   }
 

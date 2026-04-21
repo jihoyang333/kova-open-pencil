@@ -5,6 +5,7 @@
  * Runs at :00 every hour (vercel.json schedule: "0 * * * *").
  */
 import { createClient } from '@supabase/supabase-js'
+import { logShopifyError } from '../../_shared/shopify-error'
 import { SHOPIFY_API_VERSION } from '../../_shared/shopify-client'
 
 export const maxDuration = 300
@@ -61,6 +62,7 @@ export default async function handler(req: Request): Promise<Response> {
     try {
       await processOneBrand(admin, conn.brand_id, conn.shop_domain, updatedAtMin)
     } catch (err) {
+      logShopifyError(err, { brand_id: conn.brand_id, shop_domain: conn.shop_domain })
       errors.push(`${conn.brand_id}: ${err instanceof Error ? err.message : String(err)}`)
     }
   }
