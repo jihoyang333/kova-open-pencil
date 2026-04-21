@@ -15,6 +15,7 @@ const CanvasGrid = () => import('./views/dashboard/CanvasGrid.vue')
 const TrashView = () => import('./views/dashboard/TrashView.vue')
 const BrandAssetsView = () => import('./views/dashboard/BrandAssetsView.vue')
 const BrandSettingsView = () => import('./views/dashboard/BrandSettingsView.vue')
+const SettingsBrandIntegrationsView = () => import('./views/dashboard/SettingsBrandIntegrationsView.vue')
 const SettingsView = () => import('./views/dashboard/SettingsView.vue')
 
 interface AuthState {
@@ -87,6 +88,11 @@ const routes = [
       {
         path: 'settings',
         component: SettingsView,
+        meta: { requiresAuth: true, requiresOnboarding: true }
+      },
+      {
+        path: ':brandId/settings/integrations',
+        component: SettingsBrandIntegrationsView,
         meta: { requiresAuth: true, requiresOnboarding: true }
       },
       {

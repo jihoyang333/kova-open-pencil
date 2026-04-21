@@ -1,117 +1,20 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { ref } from 'vue'
 
-import { supabase } from '@/lib/supabase'
 import { normalizeShopDomain } from '@/lib/shop-domain'
+import { useShopifyConnection } from '@/composables/use-shopify-connection'
 
 const props = defineProps<{ brandId: string }>()
 
-type ConnectionState = 'loading' | 'not-connected' | 'connected' | 'reauthorize'
+const { state, connection, isSyncing, isDisconnecting, handleDisconnect, handleRefreshNow, handleReauthorize, openOAuthPopup } = useShopifyConnection(props.brandId)
 
-interface SyncProgress {
-  phase: 'idle' | 'running' | 'parsing' | 'done' | 'error'
-  count_done: number
-  count_total: number
-  error?: string
-}
-
-interface Connection {
-  shop_domain: string
-  last_synced_at: string | null
-  sync_progress: SyncProgress
-}
-
-const DEFAULT_PROGRESS: SyncProgress = { phase: 'idle', count_done: 0, count_total: 0 }
-
-const state = ref<ConnectionState>('loading')
-const connection = ref<Connection | null>(null)
 const shopInput = ref('')
 const inputVisible = ref(false)
 const errorMsg = ref<string | null>(null)
-const isDisconnecting = ref(false)
-
-let popup: Window | null = null
-let syncChannel: ReturnType<typeof supabase.channel> | null = null
-
-const isSyncing = computed(() => {
-  const phase = connection.value?.sync_progress?.phase
-  return phase === 'running' || phase === 'parsing'
-})
 
 function formatSyncTime(ts: string | null): string {
   if (!ts) return 'Never synced'
   return `Last synced ${new Date(ts).toLocaleDateString()}`
-}
-
-async function loadConnection(): Promise<void> {
-  const { data, error } = await supabase
-    .from('shopify_connections')
-    .select('shop_domain,status,last_synced_at,sync_progress')
-    .eq('brand_id', props.brandId)
-    .maybeSingle()
-
-  if (error || !data) {
-    state.value = 'not-connected'
-    return
-  }
-
-  const row = data as {
-    shop_domain: string
-    status: string
-    last_synced_at: string | null
-    sync_progress: SyncProgress | null
-  }
-
-  if (row.status === 'active') {
-    connection.value = {
-      shop_domain: row.shop_domain,
-      last_synced_at: row.last_synced_at,
-      sync_progress: row.sync_progress ?? DEFAULT_PROGRESS,
-    }
-    state.value = 'connected'
-  } else if (row.status === 'error') {
-    connection.value = {
-      shop_domain: row.shop_domain,
-      last_synced_at: row.last_synced_at,
-      sync_progress: row.sync_progress ?? DEFAULT_PROGRESS,
-    }
-    state.value = 'reauthorize'
-  } else {
-    state.value = 'not-connected'
-  }
-}
-
-function subscribeToSyncProgress(): void {
-  syncChannel?.unsubscribe().catch(() => null)
-  syncChannel = supabase
-    .channel(`sync-progress-${props.brandId}`)
-    .on(
-      'postgres_changes',
-      {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'shopify_connections',
-        filter: `brand_id=eq.${props.brandId}`,
-      },
-      (payload) => {
-        if (connection.value && payload.new?.sync_progress) {
-          connection.value = {
-            ...connection.value,
-            sync_progress: payload.new.sync_progress as SyncProgress,
-          }
-        }
-      },
-    )
-    .subscribe()
-}
-
-function buildOAuthUrl(shop: string): string {
-  const params = new URLSearchParams({ shop, brand_id: props.brandId })
-  return `/api/shopify/oauth/start?${params.toString()}`
-}
-
-function openOAuthPopup(shop: string): void {
-  popup = window.open(buildOAuthUrl(shop), 'shopify', 'width=620,height=780')
 }
 
 function handleConnect(): void {
@@ -123,71 +26,6 @@ function handleConnect(): void {
   errorMsg.value = null
   openOAuthPopup(normalized)
 }
-
-function handleReauthorize(): void {
-  if (connection.value) {
-    openOAuthPopup(connection.value.shop_domain)
-  }
-}
-
-async function handleDisconnect(): Promise<void> {
-  if (isDisconnecting.value) return
-  isDisconnecting.value = true
-  try {
-    const res = await fetch('/api/shopify/oauth/disconnect', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ brand_id: props.brandId }),
-    })
-    if (!res.ok) throw new Error('Disconnect failed')
-    connection.value = null
-    state.value = 'not-connected'
-  } finally {
-    isDisconnecting.value = false
-  }
-}
-
-async function handleRefreshNow(): Promise<void> {
-  if (isSyncing.value) return
-  const { data: sessionData } = await supabase.auth.getSession()
-  const token = sessionData.session?.access_token ?? ''
-  const res = await fetch('/api/shopify/sync/bulk-start', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ brand_id: props.brandId }),
-  })
-  if (res.status === 409) {
-    return
-  }
-  if (res.ok && connection.value) {
-    connection.value = {
-      ...connection.value,
-      sync_progress: { phase: 'running', count_done: 0, count_total: 0 },
-    }
-  }
-}
-
-function onMessage(event: MessageEvent): void {
-  if ((event.data as { type?: string } | null)?.type === 'shopify_oauth_success') {
-    popup?.close()
-    popup = null
-    void loadConnection()
-  }
-}
-
-onMounted(async () => {
-  await loadConnection()
-  subscribeToSyncProgress()
-  window.addEventListener('message', onMessage)
-})
-
-onUnmounted(() => {
-  syncChannel?.unsubscribe().catch(() => null)
-  window.removeEventListener('message', onMessage)
-})
 </script>
 
 <template>
@@ -299,7 +137,7 @@ onUnmounted(() => {
         <span class="text-xs text-gray-300">|</span>
         <router-link
           data-test-id="integrations-settings-link"
-          :to="`/dashboard/${brandId}/settings`"
+          :to="`/dashboard/${brandId}/settings/integrations`"
           class="text-xs text-gray-500 underline hover:text-gray-900"
         >
           Settings
