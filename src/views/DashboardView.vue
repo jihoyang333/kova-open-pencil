@@ -6,11 +6,44 @@ import AccountMenu from '@/components/dashboard/AccountMenu.vue'
 import BrandList from '@/components/dashboard/BrandList.vue'
 import EmptyState from '@/components/dashboard/EmptyState.vue'
 import { toast } from '@/composables/use-toast'
+import { supabase } from '@/lib/supabase'
 import { useBrandsStore } from '@/stores/brands'
+import {
+  dismissBanner,
+  hasBrandMissingShopify,
+  isBannerSuppressed,
+} from '@/utils/shopify-banner'
 
 const route = useRoute()
 const router = useRouter()
 const brandsStore = useBrandsStore()
+
+// --- Shopify banner ---
+const bannerDismissed = ref(false)
+const connectedBrandIds = ref<ReadonlySet<string>>(new Set())
+
+const showShopifyBanner = computed(() => {
+  if (bannerDismissed.value) return false
+  const brandIds = brandsStore.sortedBrands.map((b) => b.id)
+  return hasBrandMissingShopify(brandIds, connectedBrandIds.value)
+})
+
+function handleDismissBanner(): void {
+  dismissBanner(Date.now(), localStorage)
+  bannerDismissed.value = true
+}
+
+async function fetchConnectedBrandIds(): Promise<void> {
+  const brandIds = brandsStore.sortedBrands.map((b) => b.id)
+  if (brandIds.length === 0) return
+  const { data } = await supabase
+    .from('shopify_connections')
+    .select('brand_id')
+    .eq('status', 'active')
+    .in('brand_id', brandIds)
+  connectedBrandIds.value = new Set((data ?? []).map((r) => r.brand_id as string))
+}
+// ----------------------
 
 const heading = computed(() => {
   if (route.path.endsWith('/trash')) return 'Trash'
@@ -22,7 +55,9 @@ const heading = computed(() => {
 })
 
 onMounted(async () => {
+  bannerDismissed.value = isBannerSuppressed(Date.now(), localStorage)
   await brandsStore.fetchBrands()
+  await fetchConnectedBrandIds()
   redirectToFirstBrandIfNeeded()
 })
 
@@ -72,6 +107,22 @@ function redirectToFirstBrandIfNeeded(): void {
 
     <!-- Main area -->
     <div class="flex flex-1 flex-col overflow-hidden">
+      <!-- Shopify connect banner -->
+      <div
+        v-if="showShopifyBanner"
+        data-test-id="shopify-banner"
+        class="flex shrink-0 items-center justify-between bg-blue-50 px-6 py-2.5 text-sm text-blue-800"
+      >
+        <span>Connect Shopify to unlock AI-powered product emails for your brands.</span>
+        <button
+          data-test-id="shopify-banner-dismiss"
+          class="ml-4 shrink-0 text-blue-600 hover:text-blue-800"
+          @click="handleDismissBanner"
+        >
+          Dismiss
+        </button>
+      </div>
+
       <!-- Top bar -->
       <header class="flex shrink-0 items-center justify-between border-b border-gray-200 px-6 py-4">
         <h1 class="text-lg font-semibold text-gray-900">{{ heading }}</h1>
