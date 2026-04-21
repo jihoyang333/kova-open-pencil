@@ -1,5 +1,8 @@
+import { readFileSync } from 'node:fs'
 import { describe, expect, test } from 'bun:test'
 import { ALL_TOOLS, FigmaAPI, SceneGraph, computeAllLayouts, parseFigFile } from '@open-pencil/core'
+
+const FIXTURE_VALID = (() => { try { return readFileSync('tests/fixtures/gold-preview.fig').byteLength > 10_000 } catch { return false } })()
 
 describe('MCP tool execution', () => {
   function setup() {
@@ -217,7 +220,7 @@ describe('MCP tool execution', () => {
     expect(result.error).toContain('not found')
   })
 
-  test('open and query .fig file', async () => {
+  test.if(FIXTURE_VALID)('open and query .fig file', async () => {
     const data = await Bun.file('tests/fixtures/gold-preview.fig').arrayBuffer()
     const { api } = await setupWithFile(data)
     const pages = findTool('list_pages').execute(api, {}) as { pages: { name: string }[] }

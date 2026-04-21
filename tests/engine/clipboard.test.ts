@@ -14,6 +14,8 @@ import {
   type SceneNode,
 } from '@open-pencil/core'
 
+const FIXTURE_VALID = (() => { try { return readFileSync('tests/fixtures/gold-preview.fig').byteLength > 10_000 } catch { return false } })()
+
 function makeClipboardHtml(nodeChanges: unknown[], meta = { fileKey: 'test', pasteID: 1, dataType: 'scene' }) {
   // Minimal fig-kiwi clipboard: just meta + empty figma buffer
   // For real parsing we'd need actual Kiwi binary — these tests use importClipboardNodes directly
@@ -705,7 +707,7 @@ describe('buildFigmaClipboardHTML', () => {
   })
 })
 
-describe('gold-preview.fig clipboard roundtrip', () => {
+describe.if(FIXTURE_VALID)('gold-preview.fig clipboard roundtrip', () => {
   let graph: SceneGraph
   let pageId: string
   let topLevelNodes: SceneNode[]

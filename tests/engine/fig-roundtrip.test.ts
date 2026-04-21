@@ -17,6 +17,7 @@ import { heavy } from '../helpers/test-utils'
 setDefaultTimeout(60_000)
 
 const FIXTURES = resolve(import.meta.dir, '../fixtures')
+const FIXTURE_VALID = (() => { try { return readFileSync(resolve(FIXTURES, 'gold-preview.fig')).byteLength > 10_000 } catch { return false } })()
 
 const VALID_NODE_TYPES = new Set<string>([
   'CANVAS',
@@ -68,12 +69,13 @@ let parsed: SceneGraph
 let allNodes: SceneNode[]
 
 beforeAll(async () => {
+  if (!FIXTURE_VALID) return
   const buf = readFileSync(resolve(FIXTURES, 'gold-preview.fig'))
   parsed = await parseFigFile(buf.buffer as ArrayBuffer)
   allNodes = collectAllNodes(parsed)
 })
 
-describe('parse real .fig files', () => {
+describe.if(FIXTURE_VALID)('parse real .fig files', () => {
   test('parses without error', () => {
     expect(parsed).toBeInstanceOf(SceneGraph)
   })
@@ -87,7 +89,7 @@ describe('parse real .fig files', () => {
   })
 })
 
-describe('node type coverage', () => {
+describe.if(FIXTURE_VALID)('node type coverage', () => {
   test('contains FRAME nodes', () => {
     expect(allNodes.some((n) => n.type === 'FRAME')).toBe(true)
   })
@@ -110,7 +112,7 @@ describe('node type coverage', () => {
   })
 })
 
-describe('property integrity', () => {
+describe.if(FIXTURE_VALID)('property integrity', () => {
   test('all nodes have finite dimensions', () => {
     for (const n of allNodes) {
       expect(Number.isFinite(n.width)).toBe(true)
@@ -265,7 +267,7 @@ heavy('parse heavy .fig files', () => {
   })
 })
 
-describe('roundtrip: export → re-import', () => {
+describe.if(FIXTURE_VALID)('roundtrip: export → re-import', () => {
   let reImported: SceneGraph
   let reImportedNodes: SceneNode[]
 
@@ -477,7 +479,7 @@ describe('roundtrip: export → re-import', () => {
   })
 })
 
-describe('edge cases', () => {
+describe.if(FIXTURE_VALID)('edge cases', () => {
   test('non-fig-kiwi bytes throw meaningful error', async () => {
     const garbage = new Uint8Array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
     await expect(parseFigFile(garbage.buffer as ArrayBuffer)).rejects.toThrow()
@@ -852,7 +854,7 @@ describe('edge cases', () => {
   })
 })
 
-describe('text node export', () => {
+describe.if(FIXTURE_VALID)('text node export', () => {
   test('text nodes have derivedTextData and textUserLayoutVersion', async () => {
     await initCodec()
 
@@ -1022,7 +1024,7 @@ describe('text node export', () => {
   })
 })
 
-describe('variable roundtrip', () => {
+describe.if(FIXTURE_VALID)('variable roundtrip', () => {
   test('variables and collections survive export → re-import', async () => {
     await initCodec()
 

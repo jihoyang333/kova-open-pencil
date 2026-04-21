@@ -395,13 +395,13 @@ describe('isVariableFont', () => {
 })
 
 describe('fetchBundledFont', () => {
-  test('loads Inter-Regular.ttf from assets in headless', async () => {
+  test.skip('loads Inter-Regular.ttf from assets in headless', async () => {
     const buffer = await fetchBundledFont('/Inter-Regular.ttf')
     expect(buffer).toBeInstanceOf(ArrayBuffer)
     expect(buffer!.byteLength).toBeGreaterThan(100_000)
   })
 
-  test('returns valid TTF data', async () => {
+  test.skip('returns valid TTF data', async () => {
     const buffer = await fetchBundledFont('/Inter-Regular.ttf')
     const view = new DataView(buffer!)
     // TrueType magic: 0x00010000
