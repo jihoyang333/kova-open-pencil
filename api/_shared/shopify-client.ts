@@ -34,9 +34,12 @@ export function normalizeShopDomain(input: string): string | null {
  * 200/401/403 all indicate the shop resolves; anything else (incl. network
  * errors) is treated as "does not exist".
  */
-export async function probeShopExists(shop: string): Promise<boolean> {
+export async function probeShopExists(
+  shop: string,
+  fetchFn: typeof fetch = globalThis.fetch,
+): Promise<boolean> {
   try {
-    const res = await fetch(
+    const res = await fetchFn(
       `https://${shop}/admin/api/${SHOPIFY_API_VERSION}/shop.json`,
       { method: 'HEAD' }
     )

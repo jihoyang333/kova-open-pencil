@@ -12,6 +12,7 @@ mock.module('@supabase/supabase-js', () => ({
       select: () => ({
         eq: () => ({
           single: async () => connQueryResult,
+          maybeSingle: async () => connQueryResult,
         }),
       }),
       update: () => ({
@@ -19,6 +20,9 @@ mock.module('@supabase/supabase-js', () => ({
       }),
     }),
     rpc: () => Promise.resolve({ data: mockToken, error: null }),
+    auth: {
+      getUser: async () => ({ data: { user: null }, error: { message: 'Not authenticated' } }),
+    },
   }),
 }))
 
@@ -42,11 +46,12 @@ describe('POST /api/shopify/sync/bulk-start', () => {
   beforeEach(() => {
     process.env.KOVA_INTERNAL_KEY = INTERNAL_KEY
     process.env.SUPABASE_URL = 'http://localhost:54321'
+    process.env.VITE_SUPABASE_URL = 'http://localhost:54321'
     process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-key'
     connQueryResult = { data: mockConn, error: null }
   })
 
-  it('403 when X-Kova-Internal header is missing', async () => {
+  it('401 when X-Kova-Internal header is missing and no JWT', async () => {
     const res = await handler(
       new Request('http://local/api/shopify/sync/bulk-start', {
         method: 'POST',
@@ -54,10 +59,10 @@ describe('POST /api/shopify/sync/bulk-start', () => {
         body: JSON.stringify({ brand_id: 'b1' }),
       }),
     )
-    expect(res.status).toBe(403)
+    expect(res.status).toBe(401)
   })
 
-  it('403 when X-Kova-Internal header has wrong value', async () => {
+  it('401 when X-Kova-Internal header has wrong value and no JWT', async () => {
     const res = await handler(
       new Request('http://local/api/shopify/sync/bulk-start', {
         method: 'POST',
@@ -68,7 +73,7 @@ describe('POST /api/shopify/sync/bulk-start', () => {
         body: JSON.stringify({ brand_id: 'b1' }),
       }),
     )
-    expect(res.status).toBe(403)
+    expect(res.status).toBe(401)
   })
 
   it('404 when brand has no shopify connection', async () => {

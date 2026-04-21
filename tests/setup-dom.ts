@@ -63,6 +63,7 @@ const globals = [
   'MouseEvent',
   'InputEvent',
   'FocusEvent',
+  'MessageEvent',
   'MutationObserver',
   'ShadowRoot',
   'getComputedStyle',

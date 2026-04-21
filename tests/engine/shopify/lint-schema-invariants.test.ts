@@ -14,4 +14,14 @@ describe('lint-schema-invariants', () => {
     const code = await runLinter(['--fixture', join(fixtures, 'bad.sql')])
     expect(code).toBe(1)
   })
+
+  it('accepts a positional path arg without --fixture flag', async () => {
+    const code = await runLinter([join(fixtures, 'clean.sql')])
+    expect(code).toBe(0)
+  })
+
+  it('scans real migrations directory when called with no args', async () => {
+    const code = await runLinter([])
+    expect(code).toBe(0)
+  })
 })

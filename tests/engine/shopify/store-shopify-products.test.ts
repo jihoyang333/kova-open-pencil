@@ -56,4 +56,30 @@ describe('useShopifyProductsStore', () => {
     store._simulateRealtimeFailureForTest()
     expect(store.syncMode).toBe('polling')
   })
+
+  it('populates variantsById and variantsByGid from loaded variant rows', async () => {
+    const variant = { id: 'v-load-1', brand_id: 'b1', shopify_variant_id: 'gid://shopify/ProductVariant/999', title: 'S', price: 25, inventory_qty: 3, available: true }
+    mock.module('@/lib/supabase', () => {
+      const makeChannel = () => {
+        const ch: Record<string, unknown> = {}
+        ch['on'] = () => ch
+        ch['subscribe'] = () => ch
+        ch['unsubscribe'] = () => Promise.resolve('ok' as const)
+        return ch
+      }
+      const makeQuery = (table?: string): Record<string, unknown> => ({
+        select: () => makeQuery(table),
+        eq: () => Promise.resolve({ data: table === 'shopify_variants' ? [variant] : [], error: null }),
+      })
+      const supabase = { from: (t: string) => makeQuery(t), channel: makeChannel, rpc: () => Promise.resolve({ data: null, error: null }) }
+      return { supabase, getSupabase: () => supabase }
+    })
+    const { useShopifyProductsStore: freshStore } = await import('../../../src/stores/shopify-products')
+    setActivePinia(createPinia())
+    const store = freshStore()
+    await store.loadForBrand('b1')
+    expect(store.variantsById.has('v-load-1')).toBe(true)
+    expect(store.variantsByGid.has('gid://shopify/ProductVariant/999')).toBe(true)
+    expect(store.findVariant('gid://shopify/ProductVariant/999')?.id).toBe('v-load-1')
+  })
 })

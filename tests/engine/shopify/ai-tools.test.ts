@@ -1,8 +1,14 @@
-import { describe, it, expect, mock, beforeAll, beforeEach, afterAll } from 'bun:test'
+import { describe, it, expect, mock, beforeAll, beforeEach, afterAll, afterEach } from 'bun:test'
 import * as v from 'valibot'
 
 type CreateKovaTools = typeof import('../../../src/ai/kova-tools')['createKovaTools']
 let createKovaTools: CreateKovaTools
+
+// --- figma-factory / core mock state (mutated per-test) ---
+const figmaMock = {
+  nodeResult: { fills: [] as unknown[] } as Record<string, unknown> | null,
+}
+const SUPABASE_IMG_URL = 'https://abc.supabase.co/storage/v1/object/public/media-assets/img.png'
 
 // Tracks every .eq(col, val) call made against the mocked Supabase client.
 // Reset in beforeEach to isolate assertions per test.
@@ -34,6 +40,17 @@ beforeAll(async () => {
   mock.module('@/lib/supabase', () => ({
     supabase: { from: (_table: string) => makeQuery() },
     getSupabase: () => ({ from: (_table: string) => makeQuery() }),
+  }))
+
+  mock.module('@/automation/figma-factory', () => ({
+    makeFigmaFromStore: () => ({
+      getNodeById: (_id: string) => figmaMock.nodeResult,
+      createImage: (_bytes: Uint8Array) => ({ hash: 'img-hash-1' }),
+    }),
+  }))
+
+  mock.module('@open-pencil/core', () => ({
+    computeAllLayouts: () => {},
   }))
 
   const mod = await import('../../../src/ai/kova-tools')
@@ -153,3 +170,77 @@ describe('shopify AI tools — brand-scoped Supabase queries + output shape', ()
     expect(result).toHaveProperty('topCollections')
   })
 })
+
+// ---------------------------------------------------------------------------
+// placeMediaImage execute paths
+// ---------------------------------------------------------------------------
+
+type PlaceExecute = { execute: (args: { node_id: string; image_url: string; scale_mode?: string }) => Promise<Record<string, unknown>> }
+
+describe('placeMediaImage — execute paths', () => {
+  const savedFetch = globalThis.fetch
+
+  afterEach(() => {
+    globalThis.fetch = savedFetch
+    figmaMock.nodeResult = { fills: [] as unknown[] }
+  })
+
+  const makeStore = () => ({
+    state: { currentPageId: 'page-1' },
+    graph: {},
+    snapshotPage: () => ({ snap: true }),
+    requestRender: () => {},
+    pushUndoEntry: (_entry: unknown) => {},
+    renderer: { aiClearActive: () => {} },
+    aiFlashDone: (_ids: string[]) => {},
+  })
+
+  it('returns error for non-Supabase image URL', async () => {
+    const tools = createKovaTools(makeStore() as never)
+    const result = await (tools as Record<string, PlaceExecute>)['placeMediaImage'].execute({
+      node_id: 'n1', image_url: 'https://evil.com/img.png',
+    })
+    expect(result).toHaveProperty('error')
+  })
+
+  it('returns error when node is not found in the scene graph', async () => {
+    figmaMock.nodeResult = null
+    globalThis.fetch = mock(() => Promise.resolve(new Response(new Uint8Array([1, 2, 3]).buffer, { status: 200 }))) as typeof fetch
+    const tools = createKovaTools(makeStore() as never)
+    const result = await (tools as Record<string, PlaceExecute>)['placeMediaImage'].execute({
+      node_id: 'missing-node', image_url: SUPABASE_IMG_URL,
+    })
+    expect(result).toHaveProperty('error')
+    expect(String(result['error'])).toContain('not found')
+  })
+
+  it('returns error when fetch returns a non-ok status', async () => {
+    globalThis.fetch = mock(() => Promise.resolve(new Response(null, { status: 503 }))) as typeof fetch
+    const tools = createKovaTools(makeStore() as never)
+    const result = await (tools as Record<string, PlaceExecute>)['placeMediaImage'].execute({
+      node_id: 'n1', image_url: SUPABASE_IMG_URL,
+    })
+    expect(result).toHaveProperty('error')
+    expect(String(result['error'])).toContain('503')
+  })
+
+  it('returns error when fetch throws a network error', async () => {
+    globalThis.fetch = (() => Promise.reject(new Error('network down'))) as typeof fetch
+    const tools = createKovaTools(makeStore() as never)
+    const result = await (tools as Record<string, PlaceExecute>)['placeMediaImage'].execute({
+      node_id: 'n1', image_url: SUPABASE_IMG_URL,
+    })
+    expect(result).toHaveProperty('error')
+    expect(String(result['error'])).toContain('network down')
+  })
+
+  it('happy path: places image fill and returns success', async () => {
+    globalThis.fetch = mock(() => Promise.resolve(new Response(new Uint8Array([1, 2, 3]).buffer, { status: 200 }))) as typeof fetch
+    const tools = createKovaTools(makeStore() as never)
+    const result = await (tools as Record<string, PlaceExecute>)['placeMediaImage'].execute({
+      node_id: 'n1', image_url: SUPABASE_IMG_URL, scale_mode: 'FIT',
+    })
+    expect(result).toEqual({ success: true, node_id: 'n1', scale_mode: 'FIT' })
+  })
+})
+
