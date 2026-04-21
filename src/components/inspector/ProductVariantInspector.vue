@@ -20,11 +20,11 @@ const siblingVariants = computed(() => {
 
 function swapTo(gid: string): void {
   const v = variantsByGid.value.get(gid)
-  if (!binding.value || !v) return
+  if (!binding.value || !v || !binding.value.snapshot) return
   bindings.set({
     ...binding.value,
     shopify_variant_id: v.shopify_variant_id,
-    snapshot: { ...binding.value.snapshot!, title: v.title, price: v.price, inventory: v.inventory_qty, image_url: v.image_url ?? '', captured_at: new Date().toISOString() },
+    snapshot: { ...binding.value.snapshot, title: v.title, price: v.price, inventory: v.inventory_qty, image_url: v.image_url ?? '', captured_at: new Date().toISOString() },
   })
 }
 function remove(): void { bindings.remove(props.frameId) }
