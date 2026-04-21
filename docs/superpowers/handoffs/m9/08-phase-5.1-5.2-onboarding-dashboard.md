@@ -137,6 +137,29 @@ git commit -m "feat(m9): dashboard integrations card + monthly banner"
 - [x] Two commits: onboarding commit + dashboard commit. (Split into finer-grained commits: `feat(onboarding): add StoreTypeStep…`, `feat: add client-safe normalizeShopDomain…`, `feat(m9): wire /onboarding/store-type route + routing tests`, `feat(m9): route brand-name step to /onboarding/store-type` for 5.1; `feat(m9): dashboard integrations card…`, `feat(m9): monthly-resurface Shopify connect banner…`, `test(m9): snapshot IntegrationsCard states…` for 5.2.)
 - [x] Final commit subject: `feat(m9): dashboard integrations card + monthly banner` (Note: last commit is `test: skip engine tests requiring real fixtures or browser Worker support` — test-skip cleanup after the feature commits. The 5.2 feature commit `feat(m9): monthly-resurface Shopify connect banner on dashboard` landed at `8513e5c`.)
 
+## Known limitations (post-validation, 2026-04-21)
+
+During validation of this chunk, one architectural issue was identified and **intentionally not fixed** because the affected component is scheduled for retirement in the design-overhaul Phase 1:
+
+**Issue C — `StoreTypeStep.vue` standalone-route navigation is non-functional.**
+
+- The component is mounted at `/onboarding/store-type` as a standalone route (no parent listening).
+- It emits `connect-shopify`, `something-else`, and `skip` — none of these events have a listener on the standalone route, so clicking any of the three cards is a no-op.
+- The component's `brandId` prop is never supplied because the route definition passes no props, and the brand record is created only at `completeOnboarding` (end of onboarding) — there is no `brandId` available mid-flow.
+- `useOnboardingState` is a factory, not a singleton, so even if navigation were wired, the wizard state would be lost on cross-route navigation.
+- The original spec (lines 59–60 of this handoff) references target routes `/onboarding/brand-url` and `/onboarding/brand-kit-review` that never existed in `src/router.ts`.
+
+**Why not fixed:** per `docs/superpowers/handoffs/design-overhaul/00-master-plan.md`, Phase 1 retires `src/components/onboarding/**` entirely and rebuilds the flow as 6 steps per `ANNOTATIONS §01`. Any fix here (singleton composable, new routes, inline refactor, early brand creation) would be deleted in Phase 1. Fix is contingent on ambiguity #9 (M9 coordination strategy) in the master plan:
+- If M9 ships standalone → fix required before merge.
+- If M9 is absorbed into design-overhaul Phase 1 → Phase 1 rebuild supersedes; no fix needed.
+- If M9 is frozen/parked → no fix needed; never ships to users.
+
+**What was fixed during validation:**
+- Deduplicated `src/utils/shopify-validators.ts` → single source at `src/lib/shop-domain.ts`.
+- Converted `StoreTypeStep.vue` dark-mode styling to light-mode (per no-dark-mode rule).
+- Dropped the redundant `tests/unit/utils/shopify-validators.test.ts`.
+- Commits: `571f638 fix(m9): dedupe shop-domain validator and convert StoreTypeStep to light mode`.
+
 ## Handoff to next chunk
 
 Next chunk: `09-phase-5.3-5.4-5.5-editor-surfaces.md`
