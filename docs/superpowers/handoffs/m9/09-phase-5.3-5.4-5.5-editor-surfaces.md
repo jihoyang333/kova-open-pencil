@@ -55,7 +55,7 @@ git commit -m "feat(m9): brand-kit merge diff — field-by-field"
 - Modify: `src/views/EditorView.vue` — mount the pill next to the canvas name.
 
 - [x] **Step 1:** Pill displays `brand.name`. Reka UI `Tooltip` on hover shows shop domain + last-sync ago + "This canvas is linked to {brand}." Non-interactive for switching.
-- [ ] **Step 2:** Commit.
+- [x] **Step 2:** Commit.
 
 ```bash
 git add src/components/editor/BrandContextPill.vue src/views/EditorView.vue

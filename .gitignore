@@ -47,3 +47,8 @@ patches/skia-webgpu/
 Caddyfile.dev
 components.d.ts
 vue-stream-markdown/
+
+# Claude / Ralphy agent artifacts
+.claude/
+.ralphy/
+tsconfig.node.tsbuildinfo
