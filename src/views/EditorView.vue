@@ -20,7 +20,6 @@ import { useEditorStore } from '@/stores/editor'
 import { captureThumbnail } from '@/utils/capture-thumbnail'
 import { createTab, activeTab, getActiveStore } from '@/stores/tabs'
 
-import BrandContextPill from '@/components/editor/BrandContextPill.vue'
 import CollabPanel from '@/components/CollabPanel.vue'
 import EditorCanvas from '@/components/EditorCanvas.vue'
 import LayersPanel from '@/components/LayersPanel.vue'
@@ -185,10 +184,6 @@ onUnmounted(() => {
         <div
           class="flex shrink-0 items-center gap-2 border-b border-border px-1.5 py-1.5"
         >
-          <BrandContextPill
-            v-if="canvasId && brandsStore.selectedBrandId"
-            :brand-id="brandsStore.selectedBrandId"
-          />
           <CollabPanel />
         </div>
         <PropertiesPanel />

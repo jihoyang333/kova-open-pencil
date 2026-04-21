@@ -24,8 +24,11 @@ import { IS_TAURI } from '@/constants'
 import { openFileDialog } from '@/composables/use-menu'
 import { getRouter } from '@/router'
 import { useEditorStore } from '@/stores/editor'
+import { useBrandsStore } from '@/stores/brands'
+import BrandContextPill from '@/components/editor/BrandContextPill.vue'
 
 const store = useEditorStore()
+const brandsStore = useBrandsStore()
 
 const DOCUMENT_NAME_ID = 'document-name'
 const rename = useInlineRename<'document-name'>((_id, name) => {
@@ -201,6 +204,11 @@ const topMenus = [
         @dblclick="startRename"
         >{{ store.state.documentName }}</span
       >
+      <BrandContextPill
+        v-if="brandsStore.selectedBrandId"
+        :brand-id="brandsStore.selectedBrandId"
+        class="shrink-0"
+      />
       <button
         data-test-id="app-toggle-ui"
         class="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded text-muted transition-colors hover:bg-hover hover:text-surface"

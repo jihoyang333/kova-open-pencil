@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabase'
 import { toast } from '@/composables/use-toast'
 import { getAuthHeaders } from '@/utils/api-headers'
 import BrandColorPicker from '@/components/brand/BrandColorPicker.vue'
+import BrandKitMergeDiff from '@/components/brand-kit/BrandKitMergeDiff.vue'
 import {
   DialogRoot,
   DialogPortal,
@@ -17,6 +18,7 @@ import {
   DialogDescription,
   DialogClose
 } from 'reka-ui'
+import type { ShopifyBrandKit } from '@/stores/brands'
 
 const route = useRoute()
 const router = useRouter()
@@ -258,6 +260,20 @@ async function handleLogoUpload(e: Event): Promise<void> {
   }
 }
 
+const currentKit = computed<ShopifyBrandKit>(() => ({
+  primaryColor: brand.value?.colors?.primary,
+  secondaryColor: brand.value?.colors?.secondary,
+  headingFont: brand.value?.fonts?.heading ?? undefined,
+  bodyFont: brand.value?.fonts?.body ?? undefined,
+  logoUrl: brand.value?.logo_url ?? undefined,
+}))
+
+const pendingKit = computed(() =>
+  brandsStore.proposedBrandKit?.brandId === brandId.value
+    ? brandsStore.proposedBrandKit.kit
+    : null
+)
+
 function goBack(): void {
   void router.push(`/dashboard/${brandId.value}`)
 }
@@ -292,6 +308,16 @@ watch(
       <icon-lucide-arrow-left class="size-4" />
       Back to canvases
     </button>
+
+    <!-- Shopify pending changes banner -->
+    <BrandKitMergeDiff
+      v-if="pendingKit"
+      :brand-id="brandId"
+      :current="currentKit"
+      :proposed="pendingKit"
+      data-test-id="brand-settings-shopify-merge"
+      @applied="toast.show('Brand kit updated from Shopify')"
+    />
 
     <!-- Section 1: Brand Identity -->
     <section class="space-y-4">
