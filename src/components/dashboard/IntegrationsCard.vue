@@ -2,7 +2,7 @@
 import { onMounted, onUnmounted, ref } from 'vue'
 
 import { supabase } from '@/lib/supabase'
-import { normalizeShopDomain } from '@/utils/shopify-validators'
+import { normalizeShopDomain } from '@/lib/shop-domain'
 
 const props = defineProps<{ brandId: string }>()
 
