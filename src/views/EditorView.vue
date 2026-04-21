@@ -31,6 +31,9 @@ import TabBar from '@/components/TabBar.vue'
 import MediaLibraryPanel from '@/components/media/MediaLibraryPanel.vue'
 import Toolbar from '@/components/Toolbar.vue'
 import ChatPopup from '@/components/chat/ChatPopup.vue'
+import ShopBuildPrompt from '@/components/editor/ShopBuildPrompt.vue'
+import ShopPanel from '@/components/editor/sidebar/ShopPanel.vue'
+import { useShopDrop } from '@/composables/use-shop-drop'
 
 const route = useRoute()
 const params = useUrlSearchParams('history')
@@ -119,6 +122,9 @@ provide(TOGGLE_MEDIA_PANEL_KEY, () => {
   showMediaPanel.value = !showMediaPanel.value
 })
 
+const leftPanel = ref<'layers' | 'shop'>('layers')
+const { handleCanvasDrop, confirmBuildAround, dismissBuildPrompt, buildPromptVisible, buildPromptTitle } = useShopDrop()
+
 useEventListener(
   document,
   'wheel',
@@ -162,7 +168,36 @@ onUnmounted(() => {
       auto-save-id="editor-layout"
     >
       <SplitterPanel :default-size="18" :min-size="10" :max-size="30" class="flex">
-        <LayersPanel />
+        <div class="flex min-w-0 flex-1 flex-col overflow-hidden">
+          <!-- Shop/Layers tab strip (only when brand is connected) -->
+          <div
+            v-if="brandsStore.selectedBrandId"
+            class="flex h-7 shrink-0 items-stretch border-b border-r border-border bg-panel"
+          >
+            <button
+              data-test-id="left-panel-tab-layers"
+              class="flex-1 text-[10px] font-medium tracking-wide uppercase transition-colors"
+              :class="leftPanel === 'layers' ? 'text-surface' : 'text-muted hover:text-surface'"
+              @click="leftPanel = 'layers'"
+            >
+              Layers
+            </button>
+            <button
+              data-test-id="left-panel-tab-shop"
+              class="flex-1 text-[10px] font-medium tracking-wide uppercase transition-colors"
+              :class="leftPanel === 'shop' ? 'text-surface' : 'text-muted hover:text-surface'"
+              @click="leftPanel = 'shop'"
+            >
+              Shop
+            </button>
+          </div>
+          <LayersPanel v-if="leftPanel !== 'shop' || !brandsStore.selectedBrandId" />
+          <ShopPanel
+            v-else
+            :brand-id="brandsStore.selectedBrandId"
+            class="flex-1"
+          />
+        </div>
       </SplitterPanel>
       <SplitterResizeHandle
         data-test-id="left-splitter-handle"
@@ -171,7 +206,11 @@ onUnmounted(() => {
         <div class="pointer-events-none absolute inset-y-0 left-1/2 w-px -translate-x-1/2" />
       </SplitterResizeHandle>
       <SplitterPanel :default-size="64" :min-size="30" class="flex">
-        <div class="relative flex min-w-0 flex-1">
+        <div
+          class="relative flex min-w-0 flex-1"
+          @dragover.prevent
+          @drop.prevent="handleCanvasDrop"
+        >
           <EditorCanvas />
           <Toolbar />
           <MediaLibraryPanel v-if="showMediaPanel" @close="showMediaPanel = false" />
@@ -244,6 +283,14 @@ onUnmounted(() => {
       v-if="canvasId && brandsStore.selectedBrandId"
       :canvas-id="canvasId"
       :brand-id="brandsStore.selectedBrandId"
+    />
+
+    <!-- Shop drop: build-around prompt -->
+    <ShopBuildPrompt
+      :visible="buildPromptVisible"
+      :product-title="buildPromptTitle"
+      @confirm="confirmBuildAround"
+      @dismiss="dismissBuildPrompt"
     />
   </div>
 </template>

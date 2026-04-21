@@ -9,6 +9,7 @@ import ChatMessage from '@/components/chat/ChatMessage.vue'
 import PromptChips from '@/components/chat/PromptChips.vue'
 import { useAIChat } from '@/composables/use-chat'
 import { useChatImages } from '@/composables/use-chat-images'
+import { useChatCommands } from '@/composables/use-chat-commands'
 import { toast } from '@/composables/use-toast'
 import { useChatStore } from '@/stores/chat'
 
@@ -255,6 +256,14 @@ async function handleSwitchTab(conversationId: string) {
     }
   }
 }
+
+const { pendingMessage, consumePendingMessage } = useChatCommands()
+watch(pendingMessage, async (msg) => {
+  if (!msg) return
+  consumePendingMessage()
+  isExpanded.value = true
+  await handleSubmit(msg)
+})
 </script>
 
 <template>
