@@ -180,6 +180,41 @@ export const useBrandsStore = defineStore('brands', () => {
     proposedBrandKit.value = { brandId, kit: { ...kit } }
   }
 
+  async function applyKitSelection(brandId: string, kit: Readonly<ShopifyBrandKit>): Promise<void> {
+    const brand = brands.value.find((b) => b.id === brandId)
+    const updates: Partial<Omit<Brand, 'id' | 'user_id' | 'created_at' | 'updated_at'>> = {}
+
+    const hasColorUpdate = kit.primaryColor !== undefined || kit.secondaryColor !== undefined
+    if (hasColorUpdate) {
+      const existing = brand?.colors ?? { primary: '', secondary: '', accent: '', background: '' }
+      updates.colors = {
+        ...existing,
+        ...(kit.primaryColor !== undefined ? { primary: kit.primaryColor } : {}),
+        ...(kit.secondaryColor !== undefined ? { secondary: kit.secondaryColor } : {}),
+      }
+    }
+
+    const hasFontUpdate = kit.headingFont !== undefined || kit.bodyFont !== undefined
+    if (hasFontUpdate) {
+      const existing = brand?.fonts ?? { heading: '', body: '' }
+      updates.fonts = {
+        ...existing,
+        ...(kit.headingFont !== undefined ? { heading: kit.headingFont } : {}),
+        ...(kit.bodyFont !== undefined ? { body: kit.bodyFont } : {}),
+      }
+    }
+
+    if (kit.logoUrl !== undefined) {
+      updates.logo_url = kit.logoUrl
+    }
+
+    if (Object.keys(updates).length > 0) {
+      await updateBrand(brandId, updates)
+    }
+
+    proposedBrandKit.value = null
+  }
+
   return {
     brands,
     isLoading,
@@ -193,6 +228,7 @@ export const useBrandsStore = defineStore('brands', () => {
     updateBrand,
     deleteBrand,
     createBrandFull,
-    proposeFromShopify
+    proposeFromShopify,
+    applyKitSelection
   }
 })
