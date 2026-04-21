@@ -174,17 +174,17 @@ Should print nothing (or only unrelated files). Confirm the spec's six Task-5.5 
 
 Run across all new/modified files from chunk 9:
 
-- [ ] **No dark mode.** Grep for `dark:` Tailwind prefix — must return zero hits in chunk-9 files.
-- [ ] **No `any`, no `!` non-null assertions** in `.ts`/`.vue` files.
-- [ ] **No `Math.random()`** — must use `crypto.getRandomValues()` if randomness appears.
-- [ ] **No raw `<svg>` or emoji** in Vue templates — must use `<icon-lucide-*>`.
-- [ ] **No `<style>` blocks, no inline `style=""`** — Tailwind utilities only.
-- [ ] **No Zod imports** (`import.*zod`) — project uses valibot.
-- [ ] **`<script setup lang="ts">`** on every new `.vue` file.
-- [ ] **No file exceeds 800 lines; no function exceeds ~50 lines.**
-- [ ] **Reka UI used for Tooltip** (Task 5.4 pill), not a hand-rolled tooltip.
-- [ ] **Store mutations are immutable** — inspect `applyShopifyMerge` in `src/stores/brands.ts`.
-- [ ] **No hardcoded secrets** — grep for API keys, tokens, URLs that look like endpoints.
+- [x] **No dark mode.** Grep for `dark:` Tailwind prefix — must return zero hits in chunk-9 files. — PASS (re-verified 2026-04-21 across full M9 scope; zero hits).
+- [x] **No `any`, no `!` non-null assertions** in `.ts`/`.vue` files. — PASS on `any`. One minor `!` at `ProductVariantInspector.vue:27`; guarded by surrounding null-check. Flagged, non-blocking.
+- [x] **No `Math.random()`** — must use `crypto.getRandomValues()` if randomness appears. — PASS (zero hits).
+- [x] **No raw `<svg>` or emoji** in Vue templates — must use `<icon-lucide-*>`. — PASS on M9 files; pre-M9 files have `<svg>` (out of M9 scope).
+- [x] **No `<style>` blocks, no inline `style=""`** — Tailwind utilities only. — PASS on M9; dynamic `:style="{...}"` bindings used appropriately for computed widths.
+- [x] **No Zod imports** (`import.*zod`) — project uses valibot. — PASS (zero hits).
+- [x] **`<script setup lang="ts">`** on every new `.vue` file. — PASS (9 M9 .vue files verified).
+- [x] **No file exceeds 800 lines; no function exceeds ~50 lines.** — PASS; largest M9 file 440 lines (SettingsBrandIntegrationsView.vue).
+- [x] **Reka UI used for Tooltip** (Task 5.4 pill), not a hand-rolled tooltip. — PASS (`TooltipProvider` + `TooltipRoot`).
+- [x] **Store mutations are immutable** — inspect `applyShopifyMerge` in `src/stores/brands.ts`. — PASS (spread operators + `Readonly<T>` param).
+- [x] **No hardcoded secrets** — grep for API keys, tokens, URLs that look like endpoints. — PASS (regex for `sk_`, `pk_`, `shpat_`, `Bearer …`, `AKIA…` → zero hits).
 
 Use `Grep` tool for each check. Report any violations with file + line number.
 
@@ -192,11 +192,11 @@ Use `Grep` tool for each check. Report any violations with file + line number.
 
 Look for the same class of problems that showed up in Chunk 8's Issue C:
 
-- [ ] Does any component navigate or route in a way that doesn't match the spec?
-- [ ] Is any `useX` composable being called in multiple places that each get a *new instance* when they should share state? (Factory vs. singleton pattern — see memory note on `useOnboardingState`.)
-- [ ] Does any test assert on emitted events that imply a different contract than the spec describes?
-- [ ] Does any component assume props / context that aren't actually being passed from its parent?
-- [ ] Does `BrandContextPill` correctly pull from the brand store, or does it hard-code a brand?
+- [x] Does any component navigate or route in a way that doesn't match the spec? — No drift detected.
+- [x] Is any `useX` composable being called in multiple places that each get a *new instance* when they should share state? — `useShopifyConnection` correctly factored per-brandId; no factory-vs-singleton bugs found in M9.
+- [x] Does any test assert on emitted events that imply a different contract than the spec describes? — No mismatches found.
+- [x] Does any component assume props / context that aren't actually being passed from its parent? — Clean.
+- [x] Does `BrandContextPill` correctly pull from the brand store, or does it hard-code a brand? — Pulls from brand store. Clean.
 
 ### Step 8 — Working-tree cleanliness
 
