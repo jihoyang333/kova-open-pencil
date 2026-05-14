@@ -642,7 +642,7 @@ These primitives + integrations touch 3+ PRDs and need consistent treatment:
 | Primitive | Cluster of origin | Used by |
 |-----------|-------------------|---------|
 | `useConfirm()` composable | 11 + 08 | 03 (delete brand), 04 (delete account, cancel sub), 09 (delete snapshot, empty trash), 05 (delete tone snippet, delete saved block) |
-| Toast system | 11 | every cluster with mutation feedback (03, 04, 05, 06, 07, 09, 10) |
+| Toast system (incl. variant taxonomy: success / error / info / AI-gen) | 11 | every cluster with mutation feedback (03, 04, 05, 06, 07, 09, 10) |
 | Modal `.dlg` shell | 11 | 03, 04, 05, 08, 09 |
 | Loading skeletons | 11 | 02, 03, 04, 05, 09 |
 | Command-K palette | 11 | 02, 06 (canvas-aware nav) |
@@ -651,8 +651,12 @@ These primitives + integrations touch 3+ PRDs and need consistent treatment:
 | User preferences (Layer 1 JSONB + Layer 2 localStorage) | 12 | 06 (panel collapse), 08 (recent colors, ruler visibility), 07 (show text suggestions) |
 | Brand context (active brand selection) | 03 | 02, 04, 05, 06, 10 |
 | Snapshot/version-history store | 09 | 06 (autosnap heartbeat), 07 (scene graph stability), 10 (chat references canvas state) |
+| Vue Router meta theme detection (light vs dark) | 11 | 01, 02, 04 set per-route; 06–10 inherit dark (added per 00c §1.D) |
+| Supabase Realtime channel naming convention | 11 | 09 (snapshot progress), 10 (chat streaming), 04 (Shopify M9 sync progress) (added per 00c §1.D) |
+| Idempotency-key pattern for write Edge Functions | 11 | 01 (deletion request), 04 (Stripe webhook), 09 (snapshot create) (added per 00c §1.D) |
+| Tauri command-surface naming (`kova.*`) | 06 | 06 (canvas chrome owns Tauri menu), 07 (eyedropper Phase 2) (added per 00c §1.D) |
 
-**Implication:** Cluster 11 + 08 + 12 ship foundational primitives. Downstream clusters reference them by API, don't re-spec.
+**Implication:** Cluster 11 + 08 + 12 ship foundational primitives. Downstream clusters reference them by API, don't re-spec. The four cross-cuts added 2026-05-14 (per the comprehensive audit §1.D "hidden dependencies" finding) are owned by Cluster 11 + Cluster 06 and must be specced as named conventions, not re-invented per consuming PRD.
 
 ---
 
