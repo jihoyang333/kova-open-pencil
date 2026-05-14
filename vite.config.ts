@@ -121,8 +121,8 @@ export default defineConfig(async () => ({
     include: [...VITE_OPTIMIZE_DEPS_INCLUDE]
   },
   server: {
-    port: 1420,
-    strictPort: true,
+    port: process.env['PORT'] ? Number(process.env['PORT']) : 1420,
+    strictPort: !process.env['PORT'],
     host: host || false,
     hmr: host
       ? {

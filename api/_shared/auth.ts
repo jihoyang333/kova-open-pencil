@@ -28,15 +28,27 @@ export async function authenticateRequest(
     )
   }
 
+  let token: string | null = null
   const authHeader = req.headers.get('Authorization')
-  if (!authHeader?.startsWith('Bearer ')) {
+  if (authHeader?.startsWith('Bearer ')) {
+    token = authHeader.slice(7)
+  } else {
+    try {
+      const url = new URL(req.url)
+      const urlToken = url.searchParams.get('access_token')
+      if (urlToken) token = urlToken
+    } catch {
+      // malformed URL — falls through to 401
+    }
+  }
+
+  if (!token) {
     return new Response(
       JSON.stringify({ error: 'Authentication required' }),
       { status: 401, headers: JSON_HEADERS }
     )
   }
 
-  const token = authHeader.slice(7)
   const supabase = createClient(supabaseUrl, serviceRoleKey)
   const { data, error } = await supabase.auth.getUser(token)
 

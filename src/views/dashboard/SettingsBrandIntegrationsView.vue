@@ -45,7 +45,10 @@ function handleConnect(): void {
     return
   }
   connectError.value = null
-  openOAuthPopup(normalized)
+  const opened = openOAuthPopup(normalized)
+  if (!opened) {
+    connectError.value = 'Popup blocked. Allow popups for this site and try again.'
+  }
 }
 
 // Disconnect confirmation modal

@@ -24,7 +24,10 @@ function handleConnect(): void {
     return
   }
   errorMsg.value = null
-  openOAuthPopup(normalized)
+  const opened = openOAuthPopup(normalized)
+  if (!opened) {
+    errorMsg.value = 'Popup blocked. Allow popups for this site and try again.'
+  }
 }
 </script>
 

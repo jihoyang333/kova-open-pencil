@@ -8,7 +8,12 @@ import type { Plugin, ResolvedConfig, ViteDevServer } from 'vite'
 const API_ROUTES: Record<string, string> = {
   '/api/extract-brand': 'extract-brand.ts',
   '/api/analyze-writing-style': 'analyze-writing-style.ts',
-  '/api/ai-proxy/v1/messages': 'ai-proxy/v1/messages.ts'
+  '/api/ai-proxy/v1/messages': 'ai-proxy/v1/messages.ts',
+  '/api/shopify/oauth/start': 'shopify/oauth/start.ts',
+  '/api/shopify/oauth/callback': 'shopify/oauth/callback.ts',
+  '/api/shopify/oauth/disconnect': 'shopify/oauth/disconnect.ts',
+  '/api/shopify/sync/bulk-start': 'shopify/sync/bulk-start.ts',
+  '/api/shopify/sync/poll': 'shopify/sync/poll.ts'
 }
 
 async function bufferBody(req: IncomingMessage): Promise<Buffer> {
@@ -42,7 +47,7 @@ export function apiPlugin(): Plugin {
     configureServer(server: ViteDevServer) {
       server.middlewares.use(
         async (req: IncomingMessage, res: ServerResponse, next: () => void) => {
-          if (req.method !== 'POST' || !req.url) {
+          if (!req.url) {
             next()
             return
           }
@@ -60,7 +65,8 @@ export function apiPlugin(): Plugin {
               default: (request: Request) => Promise<Response>
             }
 
-            const body = await bufferBody(req)
+            const hasBody = req.method !== 'GET' && req.method !== 'HEAD'
+            const body = hasBody ? await bufferBody(req) : null
             const headers = new Headers()
             for (const [key, value] of Object.entries(req.headers)) {
               if (typeof value === 'string') {
@@ -68,10 +74,11 @@ export function apiPlugin(): Plugin {
               }
             }
 
-            const request = new Request(`http://localhost${req.url}`, {
+            const port = resolvedConfig.server.port ?? 1420
+            const request = new Request(`http://localhost:${port}${req.url}`, {
               method: req.method,
               headers,
-              body: body.length > 0 ? body : undefined
+              body: body && body.length > 0 ? body : undefined
             })
 
             const response = await mod.default(request)

@@ -1,4 +1,8 @@
 {
+  "installCommand": "bun install",
+  "buildCommand": "bun run build",
+  "devCommand": "bun run dev",
+  "outputDirectory": "dist",
   "crons": [
     { "path": "/api/shopify/cron/orders-agg",      "schedule": "0 2 * * *" },
     { "path": "/api/shopify/cron/inventory-delta", "schedule": "0 * * * *" },

@@ -265,17 +265,43 @@ export default async function handler(req: Request): Promise<Response> {
     secretId as string
   )
 
-  try {
-    await registerWebhooks(params.shop, token.accessToken, url.origin)
-  } catch (err) {
-    logShopifyError(err, { brand_id: stateRow.brand_id, shop_domain: params.shop })
-    return textError(502, 'Failed to register required compliance webhooks')
+  // Shopify cannot reach localhost — skip webhook registration in local dev
+  if (!url.origin.includes('localhost')) {
+    try {
+      await registerWebhooks(params.shop, token.accessToken, url.origin)
+    } catch (err) {
+      logShopifyError(err, { brand_id: stateRow.brand_id, shop_domain: params.shop })
+      return textError(502, 'Failed to register required compliance webhooks')
+    }
   }
 
   await kickOffBulkSync(url.origin, stateRow.brand_id, config.internalKey)
 
-  return Response.redirect(
-    `${url.origin}/brand-kit/review?brand_id=${stateRow.brand_id}`,
-    302
-  )
+  // Notify the parent window and close the popup. We use BroadcastChannel as
+  // the primary mechanism because Chrome severs window.opener when the popup
+  // navigates through a cross-origin page with COOP: same-origin (Shopify's
+  // OAuth page sets this), which makes the legacy postMessage path fail.
+  // postMessage is kept as a best-effort fallback for browsers without
+  // BroadcastChannel.
+  const origin = JSON.stringify(url.origin)
+  const brandIdJson = JSON.stringify(stateRow.brand_id)
+  const html = `<!DOCTYPE html><html><head><title>Shopify Connected</title></head><body><script>
+    (function () {
+      var payload = { type: 'shopify_oauth_success', brandId: ${brandIdJson} };
+      try {
+        var bc = new BroadcastChannel('kova-shopify-oauth');
+        bc.postMessage(payload);
+        bc.close();
+      } catch (e) {}
+      try {
+        if (window.opener) window.opener.postMessage(payload, ${origin});
+      } catch (e) {}
+      setTimeout(function () { window.close(); }, 50);
+    })();
+  <\/script><p>Shopify connected. You can close this window.</p></body></html>`
+
+  return new Response(html, {
+    status: 200,
+    headers: { 'Content-Type': 'text/html; charset=utf-8' },
+  })
 }

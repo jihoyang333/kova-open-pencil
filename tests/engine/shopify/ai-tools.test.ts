@@ -1,8 +1,14 @@
 import { describe, it, expect, mock, beforeAll, beforeEach, afterAll, afterEach } from 'bun:test'
 import * as v from 'valibot'
 
-type CreateKovaTools = typeof import('../../../src/ai/kova-tools')['createKovaTools']
+type KovaToolsModule = typeof import('../../../src/ai/kova-tools')
+type CreateKovaTools = KovaToolsModule['createKovaTools']
 let createKovaTools: CreateKovaTools
+let searchProductsSchema: KovaToolsModule['searchProductsSchema']
+let getCollectionSchema: KovaToolsModule['getCollectionSchema']
+let getVariantSchema: KovaToolsModule['getVariantSchema']
+let getActiveDiscountsSchema: KovaToolsModule['getActiveDiscountsSchema']
+let getShopContextSchema: KovaToolsModule['getShopContextSchema']
 
 // --- figma-factory / core mock state (mutated per-test) ---
 const figmaMock = {
@@ -55,6 +61,11 @@ beforeAll(async () => {
 
   const mod = await import('../../../src/ai/kova-tools')
   createKovaTools = mod.createKovaTools
+  searchProductsSchema = mod.searchProductsSchema
+  getCollectionSchema = mod.getCollectionSchema
+  getVariantSchema = mod.getVariantSchema
+  getActiveDiscountsSchema = mod.getActiveDiscountsSchema
+  getShopContextSchema = mod.getShopContextSchema
 })
 
 afterAll(() => mock.restore())
@@ -68,38 +79,31 @@ beforeEach(() => {
 // ---------------------------------------------------------------------------
 
 describe('shopify AI tools — input schema shapes', () => {
+  // Tests run against raw valibot schemas exported from kova-tools.ts.
+  // The AI SDK wraps these via valibotSchema() inside each tool definition;
+  // unit tests use the raw form so v.safeParse() works directly.
   it('search_products: {query} is required; optional fields accepted', () => {
-    const tools = createKovaTools({ activeBrandId: () => 'b1' } as never)
-    const schema = (tools as Record<string, { inputSchema: v.GenericSchema }>)['search_products'].inputSchema
-    expect(v.safeParse(schema, { query: 'shirt' }).success).toBe(true)
-    expect(v.safeParse(schema, { query: 'shirt', limit: 10, sort: 'newest' }).success).toBe(true)
-    expect(v.safeParse(schema, {}).success).toBe(false)
+    expect(v.safeParse(searchProductsSchema, { query: 'shirt' }).success).toBe(true)
+    expect(v.safeParse(searchProductsSchema, { query: 'shirt', limit: 10, sort: 'newest' }).success).toBe(true)
+    expect(v.safeParse(searchProductsSchema, {}).success).toBe(false)
   })
 
   it('get_collection: {collection_id} is required', () => {
-    const tools = createKovaTools({ activeBrandId: () => 'b1' } as never)
-    const schema = (tools as Record<string, { inputSchema: v.GenericSchema }>)['get_collection'].inputSchema
-    expect(v.safeParse(schema, { collection_id: 'col-1' }).success).toBe(true)
-    expect(v.safeParse(schema, {}).success).toBe(false)
+    expect(v.safeParse(getCollectionSchema, { collection_id: 'col-1' }).success).toBe(true)
+    expect(v.safeParse(getCollectionSchema, {}).success).toBe(false)
   })
 
   it('get_variant: {variant_id} is required', () => {
-    const tools = createKovaTools({ activeBrandId: () => 'b1' } as never)
-    const schema = (tools as Record<string, { inputSchema: v.GenericSchema }>)['get_variant'].inputSchema
-    expect(v.safeParse(schema, { variant_id: 'var-1' }).success).toBe(true)
-    expect(v.safeParse(schema, {}).success).toBe(false)
+    expect(v.safeParse(getVariantSchema, { variant_id: 'var-1' }).success).toBe(true)
+    expect(v.safeParse(getVariantSchema, {}).success).toBe(false)
   })
 
   it('get_active_discounts: accepts empty object', () => {
-    const tools = createKovaTools({ activeBrandId: () => 'b1' } as never)
-    const schema = (tools as Record<string, { inputSchema: v.GenericSchema }>)['get_active_discounts'].inputSchema
-    expect(v.safeParse(schema, {}).success).toBe(true)
+    expect(v.safeParse(getActiveDiscountsSchema, {}).success).toBe(true)
   })
 
   it('get_shop_context: accepts empty object', () => {
-    const tools = createKovaTools({ activeBrandId: () => 'b1' } as never)
-    const schema = (tools as Record<string, { inputSchema: v.GenericSchema }>)['get_shop_context'].inputSchema
-    expect(v.safeParse(schema, {}).success).toBe(true)
+    expect(v.safeParse(getShopContextSchema, {}).success).toBe(true)
   })
 })
 

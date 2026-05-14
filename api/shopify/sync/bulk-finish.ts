@@ -1,6 +1,7 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import { verifyShopifyHmac } from '../../_shared/shopify-hmac'
-import { publishToQStash } from '../../_shared/qstash'
+import { processBulkJsonl } from '../../_shared/shopify-bulk-processor'
+import { logShopifyError } from '../../_shared/shopify-error'
 
 export const config = { runtime: 'edge' as const }
 
@@ -15,7 +16,7 @@ export async function processBulkFinish(
   supabase: SupabaseClient,
   brandId: string,
   payload: BulkFinishPayload,
-  workerOrigin: string,
+  _workerOrigin: string,
 ): Promise<void> {
   if (payload.status === 'failed' || payload.status === 'cancelled') {
     await supabase
@@ -27,6 +28,8 @@ export async function processBulkFinish(
 
   if (payload.status !== 'completed' || !payload.url) return
 
+  // Idempotency comes from upserts in processBulkJsonl, not from a mutex.
+  // If webhook and poll race, both run; upserts converge to the same rows.
   await supabase
     .from('shopify_connections')
     .update({
@@ -39,12 +42,20 @@ export async function processBulkFinish(
     })
     .eq('brand_id', brandId)
 
-  await publishToQStash(`${workerOrigin}/api/shopify/sync/worker`, {
-    brand_id: brandId,
-    url: payload.url,
-    cursor: 0,
-    count_total: payload.object_count,
-  })
+  try {
+    await processBulkJsonl(supabase, brandId, payload.url, payload.object_count)
+  } catch (err: unknown) {
+    logShopifyError(err instanceof Error ? err : new Error('processBulkJsonl failed'), { brand_id: brandId })
+    await supabase
+      .from('shopify_connections')
+      .update({
+        sync_progress: {
+          phase: 'error',
+          error: err instanceof Error ? err.message : 'Sync failed',
+        },
+      })
+      .eq('brand_id', brandId)
+  }
 }
 
 export default async function handler(req: Request): Promise<Response> {

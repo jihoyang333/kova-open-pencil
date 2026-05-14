@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 
 import { normalizeShopDomain } from '@/lib/shop-domain'
+import { supabase } from '@/lib/supabase'
 
 const props = defineProps<{
   brandName: string
@@ -31,11 +32,14 @@ function handleShopifyClick(): void {
   selected.value = 'shopify'
 }
 
-function handleConnect(): void {
+async function handleConnect(): Promise<void> {
   if (!normalizedShop.value) return
+  const { data: sessionData } = await supabase.auth.getSession()
+  const token = sessionData.session?.access_token ?? ''
   const params = new URLSearchParams({
     shop: normalizedShop.value,
     brand_id: props.brandId,
+    access_token: token,
   })
   emit('connect-shopify', `/api/shopify/oauth/start?${params.toString()}`)
 }

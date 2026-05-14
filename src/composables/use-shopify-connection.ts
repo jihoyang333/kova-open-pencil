@@ -1,7 +1,9 @@
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import type { ComputedRef, Ref } from 'vue'
 
 import { supabase } from '@/lib/supabase'
+
+const POLL_INTERVAL_MS = 5000
 
 export type ConnectionState = 'loading' | 'not-connected' | 'connected' | 'reauthorize'
 
@@ -40,8 +42,8 @@ export interface UseShopifyConnection {
   unsubscribe(): void
   handleRefreshNow(): Promise<void>
   handleDisconnect(): Promise<void>
-  handleReauthorize(): void
-  openOAuthPopup(shop: string): void
+  handleReauthorize(): boolean
+  openOAuthPopup(shop: string): boolean
 }
 
 export function useShopifyConnection(brandId: string): UseShopifyConnection {
@@ -51,17 +53,46 @@ export function useShopifyConnection(brandId: string): UseShopifyConnection {
 
   let popup: Window | null = null
   let syncChannel: ReturnType<typeof supabase.channel> | null = null
+  let pollTimer: ReturnType<typeof setInterval> | null = null
 
   const isSyncing = computed(() => {
     const phase = connection.value?.sync_progress?.phase
     return phase === 'running' || phase === 'parsing'
   })
 
+  async function pollSyncStatus(): Promise<void> {
+    const { data: sessionData } = await supabase.auth.getSession()
+    const token = sessionData.session?.access_token ?? ''
+    try {
+      await fetch(`/api/shopify/sync/poll?brand_id=${encodeURIComponent(brandId)}`, {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      // Response intentionally ignored — the realtime subscription picks up
+      // any sync_progress mutations the poll triggered server-side.
+    } catch {
+      // Network blip — next tick will retry. Do not surface to UI.
+    }
+  }
+
+  function startPollLoop(): void {
+    if (pollTimer) return
+    pollTimer = setInterval(() => {
+      void pollSyncStatus()
+    }, POLL_INTERVAL_MS)
+  }
+
+  function stopPollLoop(): void {
+    if (!pollTimer) return
+    clearInterval(pollTimer)
+    pollTimer = null
+  }
+
   async function loadConnection(): Promise<void> {
     const [connResult, countResult] = await Promise.all([
       supabase
         .from('shopify_connections')
-        .select('shop_domain,status,last_synced_at,sync_progress,scopes,history')
+        .select('shop_domain,status,last_synced_at,sync_progress,scope')
         .eq('brand_id', brandId)
         .maybeSingle(),
       supabase
@@ -81,13 +112,17 @@ export function useShopifyConnection(brandId: string): UseShopifyConnection {
       status: string
       last_synced_at: string | null
       sync_progress: SyncProgress | null
-      scopes: string[] | null
-      history?: HistoryEntry[] | null
+      scope: string | null
     }
 
     const product_count = (countResult.count as number | null) ?? 0
-    const scopes = row.scopes ?? []
-    const history: HistoryEntry[] = Array.isArray(row.history) ? row.history : []
+    // DB stores scope as a comma-separated string (Shopify's format); the UI wants an array.
+    const scopes = (row.scope ?? '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+    // History isn't backed by a DB column yet; accordion renders empty until we add one.
+    const history: HistoryEntry[] = []
 
     if (row.status === 'active') {
       connection.value = {
@@ -142,15 +177,32 @@ export function useShopifyConnection(brandId: string): UseShopifyConnection {
     syncChannel?.unsubscribe().catch(() => null)
   }
 
-  function openOAuthPopup(shop: string): void {
-    const params = new URLSearchParams({ shop, brand_id: brandId })
-    popup = window.open(`/api/shopify/oauth/start?${params.toString()}`, 'shopify', 'width=620,height=780')
+  // Must stay synchronous so window.open() is called inside the user-gesture
+  // stack. Any `await` before window.open() lets the browser treat the popup
+  // as non-user-initiated and trigger the popup blocker.
+  function openOAuthPopup(shop: string): boolean {
+    popup = window.open('', 'shopify', 'width=620,height=780')
+    if (!popup) return false
+
+    void (async () => {
+      const { data: sessionData } = await supabase.auth.getSession()
+      const token = sessionData.session?.access_token ?? ''
+      const params = new URLSearchParams({
+        shop,
+        brand_id: brandId,
+        access_token: token,
+      })
+      if (popup && !popup.closed) {
+        popup.location.href = `/api/shopify/oauth/start?${params.toString()}`
+      }
+    })()
+
+    return true
   }
 
-  function handleReauthorize(): void {
-    if (connection.value) {
-      openOAuthPopup(connection.value.shop_domain)
-    }
+  function handleReauthorize(): boolean {
+    if (!connection.value) return true
+    return openOAuthPopup(connection.value.shop_domain)
   }
 
   async function handleDisconnect(): Promise<void> {
@@ -200,23 +252,59 @@ export function useShopifyConnection(brandId: string): UseShopifyConnection {
     }
   }
 
-  function onMessage(event: MessageEvent): void {
-    if ((event.data as { type?: string } | null)?.type === 'shopify_oauth_success') {
-      popup?.close()
-      popup = null
-      void loadConnection()
-    }
+  let oauthChannel: BroadcastChannel | null = null
+
+  interface OAuthSuccessPayload {
+    type?: string
+    brandId?: string
   }
+
+  function handleOAuthSuccess(payload: OAuthSuccessPayload | null): void {
+    if (payload?.type !== 'shopify_oauth_success') return
+    if (payload.brandId && payload.brandId !== brandId) return
+    popup?.close()
+    popup = null
+    void loadConnection()
+  }
+
+  function onMessage(event: MessageEvent): void {
+    handleOAuthSuccess(event.data as OAuthSuccessPayload | null)
+  }
+
+  watch(isSyncing, (syncing) => {
+    if (syncing) {
+      void pollSyncStatus()
+      startPollLoop()
+    } else {
+      stopPollLoop()
+    }
+  })
 
   onMounted(async () => {
     await loadConnection()
     subscribeToSyncProgress()
     window.addEventListener('message', onMessage)
+    // BroadcastChannel is the primary cross-popup transport — postMessage
+    // breaks when Shopify's cross-origin OAuth page severs window.opener.
+    try {
+      oauthChannel = new BroadcastChannel('kova-shopify-oauth')
+      oauthChannel.onmessage = (event: MessageEvent) =>
+        handleOAuthSuccess(event.data as OAuthSuccessPayload | null)
+    } catch {
+      oauthChannel = null
+    }
+    if (isSyncing.value) {
+      void pollSyncStatus()
+      startPollLoop()
+    }
   })
 
   onUnmounted(() => {
+    stopPollLoop()
     unsubscribe()
     window.removeEventListener('message', onMessage)
+    oauthChannel?.close()
+    oauthChannel = null
   })
 
   return {

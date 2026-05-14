@@ -324,7 +324,7 @@ describe('POST /api/shopify/webhook-worker', () => {
     expect(data?.primary_locale).toBe('fr')
   })
 
-  it('delegates bulk_operations/finish to processBulkFinish and enqueues sync worker', async () => {
+  it('delegates bulk_operations/finish to processBulkFinish (inline parse, no QStash)', async () => {
     const res = await handler(
       makeWorkerReq({
         webhook_id: 'wh-b1',
@@ -348,8 +348,8 @@ describe('POST /api/shopify/webhook-worker', () => {
     const progress = data?.sync_progress as Record<string, unknown>
     expect(progress?.phase).toBe('parsing')
     expect(progress?.count_total).toBe(100)
-    expect(qstashPublishCalls.length).toBe(1)
-    expect(qstashPublishCalls[0].url).toContain('/api/shopify/sync/worker')
+    // QStash is no longer used — bulk-finish processes JSONL inline.
+    expect(qstashPublishCalls.length).toBe(0)
   })
 
   it('no-op bulk_operations/finish when status is not completed', async () => {

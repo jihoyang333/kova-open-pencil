@@ -20,12 +20,12 @@ const BULK_QUERY = `
         collections {
           edges { node {
             id handle title descriptionHtml ruleSet { rules { column relation condition } } sortOrder
-            image { url } productsCount
+            image { url } productsCount { count }
             products { edges { node { id } } }
           } }
         }
         discountNodes {
-          edges { node { id ... on DiscountCodeBasic { title status startsAt endsAt } } }
+          edges { node { id discount { ... on DiscountCodeBasic { title status startsAt endsAt } } } }
         }
       }
     """) { bulkOperation { id status } userErrors { field message } }

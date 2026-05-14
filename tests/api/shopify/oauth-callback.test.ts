@@ -310,16 +310,21 @@ describe('GET /api/shopify/oauth/callback', () => {
     expect(res.status).toBe(502)
   })
 
-  it('happy path: exchanges token, upserts connection, stores vault token, registers webhooks, redirects', async () => {
+  it('happy path: exchanges token, upserts connection, stores vault token, registers webhooks, returns popup-close HTML', async () => {
     seedValidState()
     const res = await handler(
       req(`http://local/api/shopify/oauth/callback?state=${VALID_STATE}&code=${CODE}&shop=${SHOP}`)
     )
 
-    expect(res.status).toBe(302)
-    const loc = res.headers.get('location') ?? ''
-    expect(loc).toContain('/brand-kit/review')
-    expect(loc).toContain(`brand_id=${BRAND_ID}`)
+    // Response is an HTML page that signals the parent window via
+    // BroadcastChannel + postMessage and closes the popup. Parent navigates,
+    // not the popup, so this is 200 (not 302).
+    expect(res.status).toBe(200)
+    expect(res.headers.get('content-type') ?? '').toContain('text/html')
+    const html = await res.text()
+    expect(html).toContain('shopify_oauth_success')
+    expect(html).toContain(BRAND_ID)
+    expect(html).toContain('kova-shopify-oauth')
 
     // State row consumed (single-use).
     expect(dbState.deletedStates).toContain(VALID_STATE)

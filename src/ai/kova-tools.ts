@@ -36,11 +36,24 @@ interface StoreWithBrandId extends EditorStore {
   activeBrandId?: () => string | null
 }
 
-// Augments a raw valibot schema with jsonSchema so v.safeParse still works
-// (ai-tools.test.ts requirement) while the contract test's jsonSchema.type check passes.
-function objectSchema<T extends v.GenericSchema>(schema: T): T & { jsonSchema: { type: 'object' } } {
-  return Object.assign(schema, { jsonSchema: { type: 'object' as const } })
-}
+// Raw valibot schemas exported so unit tests can use v.safeParse against them.
+// AI SDK consumes them via valibotSchema() inside each tool definition below.
+export const searchProductsSchema = v.object({
+  query: v.string(),
+  filters: v.optional(
+    v.object({
+      in_stock: v.optional(v.boolean()),
+      on_sale: v.optional(v.boolean()),
+      collection_id: v.optional(v.string())
+    })
+  ),
+  sort: v.optional(v.picklist(['bestsellers', 'newest', 'price_asc', 'price_desc'])),
+  limit: v.optional(v.pipe(v.number(), v.minValue(1), v.maxValue(50)))
+})
+export const getCollectionSchema = v.object({ collection_id: v.string() })
+export const getVariantSchema = v.object({ variant_id: v.string() })
+export const getActiveDiscountsSchema = v.object({})
+export const getShopContextSchema = v.object({})
 
 export function createKovaTools(store: StoreWithBrandId) {
   const activeBrandId = (): string =>
@@ -49,20 +62,7 @@ export function createKovaTools(store: StoreWithBrandId) {
   const search_products = tool({
     description:
       'Search Shopify products for the active brand. Returns up to `limit` matches with variants.',
-    inputSchema: objectSchema(
-      v.object({
-        query: v.string(),
-        filters: v.optional(
-          v.object({
-            in_stock: v.optional(v.boolean()),
-            on_sale: v.optional(v.boolean()),
-            collection_id: v.optional(v.string())
-          })
-        ),
-        sort: v.optional(v.picklist(['bestsellers', 'newest', 'price_asc', 'price_desc'])),
-        limit: v.optional(v.pipe(v.number(), v.minValue(1), v.maxValue(50)))
-      })
-    ),
+    inputSchema: valibotSchema(searchProductsSchema),
     execute: async (args) => {
       const brandId = activeBrandId()
       let q = supabase
@@ -77,7 +77,7 @@ export function createKovaTools(store: StoreWithBrandId) {
 
   const get_collection = tool({
     description: 'Return a Shopify collection and its ordered member products.',
-    inputSchema: objectSchema(v.object({ collection_id: v.string() })),
+    inputSchema: valibotSchema(getCollectionSchema),
     execute: async ({ collection_id }) => {
       const brandId = activeBrandId()
       const { data: collection } = await supabase
@@ -100,7 +100,7 @@ export function createKovaTools(store: StoreWithBrandId) {
 
   const get_variant = tool({
     description: 'Return a variant with its parent product + media.',
-    inputSchema: objectSchema(v.object({ variant_id: v.string() })),
+    inputSchema: valibotSchema(getVariantSchema),
     execute: async ({ variant_id }) => {
       const brandId = activeBrandId()
       const { data: variant } = await supabase
@@ -115,7 +115,7 @@ export function createKovaTools(store: StoreWithBrandId) {
 
   const get_active_discounts = tool({
     description: 'Return currently-active discount codes for the active brand.',
-    inputSchema: objectSchema(v.object({})),
+    inputSchema: valibotSchema(getActiveDiscountsSchema),
     execute: async () => {
       const brandId = activeBrandId()
       const nowIso = new Date().toISOString()
@@ -132,7 +132,7 @@ export function createKovaTools(store: StoreWithBrandId) {
   const get_shop_context = tool({
     description:
       'Return shop-level metadata: currency, timezone, locale, product count, top 5 collections.',
-    inputSchema: objectSchema(v.object({})),
+    inputSchema: valibotSchema(getShopContextSchema),
     execute: async () => {
       const brandId = activeBrandId()
       const { data: conn } = await supabase

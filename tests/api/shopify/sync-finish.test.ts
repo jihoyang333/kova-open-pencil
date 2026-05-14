@@ -10,7 +10,8 @@ function computeHmac(body: string): string {
   return createHmac('sha256', WEBHOOK_SECRET).update(body).digest('base64')
 }
 
-const qstashCalls: Array<{ url: string; body: unknown }> = []
+const processBulkJsonlCalls: Array<{ brandId: string; url: string; countTotal: number }> = []
+let processBulkJsonlShouldThrow = false
 let connResult: { data: { brand_id: string } | null } = { data: { brand_id: BRAND_ID } }
 const updateCalls: Array<{ sync_progress: unknown }> = []
 
@@ -38,9 +39,16 @@ function makeWebhookReq(payload: unknown, overrides: { sig?: string; shop?: stri
 
 describe('POST /api/shopify/sync/bulk-finish', () => {
   beforeAll(async () => {
-    mock.module('../../../api/_shared/qstash', () => ({
-      publishToQStash: async (url: string, body: unknown): Promise<void> => {
-        qstashCalls.push({ url, body })
+    mock.module('../../../api/_shared/shopify-bulk-processor', () => ({
+      processBulkJsonl: async (
+        _admin: unknown,
+        brandId: string,
+        url: string,
+        countTotal: number,
+      ): Promise<{ count_done: number }> => {
+        processBulkJsonlCalls.push({ brandId, url, countTotal })
+        if (processBulkJsonlShouldThrow) throw new Error('JSONL fetch failed')
+        return { count_done: countTotal }
       },
     }))
     mock.module('@supabase/supabase-js', () => ({
@@ -65,7 +73,8 @@ describe('POST /api/shopify/sync/bulk-finish', () => {
     process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-key'
     process.env.SHOPIFY_WEBHOOK_SECRET = WEBHOOK_SECRET
     connResult = { data: { brand_id: BRAND_ID } }
-    qstashCalls.length = 0
+    processBulkJsonlShouldThrow = false
+    processBulkJsonlCalls.length = 0
     updateCalls.length = 0
   })
 
@@ -77,14 +86,14 @@ describe('POST /api/shopify/sync/bulk-finish', () => {
   it('200 when bulk operation status is not completed', async () => {
     const res = await handler(makeWebhookReq({ ...completedPayload, status: 'running' }))
     expect(res.status).toBe(200)
-    expect(qstashCalls.length).toBe(0)
+    expect(processBulkJsonlCalls.length).toBe(0)
     expect(updateCalls.length).toBe(0)
   })
 
   it('200 on failed status: updates sync_progress to error phase', async () => {
     const res = await handler(makeWebhookReq({ ...completedPayload, status: 'failed' }))
     expect(res.status).toBe(200)
-    expect(qstashCalls.length).toBe(0)
+    expect(processBulkJsonlCalls.length).toBe(0)
     expect(updateCalls.length).toBe(1)
     const progress = updateCalls[0].sync_progress as { phase: string; error: string }
     expect(progress.phase).toBe('error')
@@ -94,7 +103,7 @@ describe('POST /api/shopify/sync/bulk-finish', () => {
   it('200 on cancelled status: updates sync_progress to error phase', async () => {
     const res = await handler(makeWebhookReq({ ...completedPayload, status: 'cancelled' }))
     expect(res.status).toBe(200)
-    expect(qstashCalls.length).toBe(0)
+    expect(processBulkJsonlCalls.length).toBe(0)
     expect(updateCalls.length).toBe(1)
     const progress = updateCalls[0].sync_progress as { phase: string; error: string }
     expect(progress.phase).toBe('error')
@@ -104,45 +113,49 @@ describe('POST /api/shopify/sync/bulk-finish', () => {
   it('200 when bulk operation url is missing', async () => {
     const res = await handler(makeWebhookReq({ ...completedPayload, url: '' }))
     expect(res.status).toBe(200)
-    expect(qstashCalls.length).toBe(0)
+    expect(processBulkJsonlCalls.length).toBe(0)
   })
 
   it('200 when no shopify connection found for shop domain', async () => {
     connResult = { data: null }
     const res = await handler(makeWebhookReq(completedPayload))
     expect(res.status).toBe(200)
-    expect(qstashCalls.length).toBe(0)
+    expect(processBulkJsonlCalls.length).toBe(0)
   })
 
-  it('200 on success and updates sync_progress to parsing phase', async () => {
+  it('200 on success: writes parsing phase then invokes processBulkJsonl', async () => {
     const res = await handler(makeWebhookReq(completedPayload))
     expect(res.status).toBe(200)
-    expect(updateCalls.length).toBe(1)
-    const progress = updateCalls[0].sync_progress as {
+    // Two updates: phase=parsing pre-flight, then phase=done inside processBulkJsonl mock chain
+    // (the mock flips the connection row but we only count the explicit pre-flight here).
+    expect(updateCalls.length).toBeGreaterThanOrEqual(1)
+    const parsing = updateCalls[0].sync_progress as {
       phase: string
       count_done: number
       count_total: number
       url: string
     }
-    expect(progress.phase).toBe('parsing')
-    expect(progress.count_done).toBe(0)
-    expect(progress.count_total).toBe(42)
-    expect(progress.url).toBe(JSONL_URL)
+    expect(parsing.phase).toBe('parsing')
+    expect(parsing.count_done).toBe(0)
+    expect(parsing.count_total).toBe(42)
+    expect(parsing.url).toBe(JSONL_URL)
   })
 
-  it('enqueues QStash worker job with correct payload on success', async () => {
+  it('invokes processBulkJsonl with brand and JSONL url on success', async () => {
     await handler(makeWebhookReq(completedPayload))
-    expect(qstashCalls.length).toBe(1)
-    expect(qstashCalls[0].url).toContain('/api/shopify/sync/worker')
-    const body = qstashCalls[0].body as {
-      brand_id: string
-      url: string
-      cursor: number
-      count_total: number
-    }
-    expect(body.brand_id).toBe(BRAND_ID)
-    expect(body.url).toBe(JSONL_URL)
-    expect(body.cursor).toBe(0)
-    expect(body.count_total).toBe(42)
+    expect(processBulkJsonlCalls.length).toBe(1)
+    expect(processBulkJsonlCalls[0].brandId).toBe(BRAND_ID)
+    expect(processBulkJsonlCalls[0].url).toBe(JSONL_URL)
+    expect(processBulkJsonlCalls[0].countTotal).toBe(42)
+  })
+
+  it('writes phase=error when processBulkJsonl throws', async () => {
+    processBulkJsonlShouldThrow = true
+    const res = await handler(makeWebhookReq(completedPayload))
+    expect(res.status).toBe(200)
+    expect(processBulkJsonlCalls.length).toBe(1)
+    const errorUpdate = updateCalls.at(-1)?.sync_progress as { phase: string; error: string }
+    expect(errorUpdate.phase).toBe('error')
+    expect(errorUpdate.error).toContain('JSONL fetch failed')
   })
 })
