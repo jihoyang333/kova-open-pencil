@@ -236,3 +236,18 @@ The six months of decisions hold up. The reasoning is, with the exceptions named
 With those addressed, the verdict moves cleanly to ✅ **SOUND** and Wave 1 (Clusters 01 + 11) can proceed.
 
 — End of verdict —
+
+---
+
+## 8. Resolution (2026-05-14)
+
+All four §7 concerns were resolved by the founder + main thread on 2026-05-14:
+
+1. **D-5C — REVERSED.** The founder reversed the override after a plain-language walkthrough. Final: stay on the single Vite SPA; **no Nuxt in the MVP**; the marketing site is a separate, decoupled Astro project built later, blocking nothing. (`00d` §3.B D-5C updated; `00d` §3.C 2.D.1 "+ Nuxt" removed.)
+2. **D-6 / 18 failing tests — TRIAGED.** The full unit suite was run 2026-05-14: **1484 pass / 99 skip / 0 fail.** The "18 failing" was a stale memory artifact — `00c` Check 7 explicitly never ran the tests. The 99 skips are 14 legitimate, pre-existing skip sites (Linux-conditional, headless-asset, known-deferred-feature). No regression, no hidden failures, nothing to carry into Wave 6.
+3. **D-3 — GUARDRAIL RECORDED.** "AI-scraped voice/tone = an editable draft the user reviews and confirms, never a silent write" is written into the Shopify design spec §6; the Cluster 05 PRD owns the confirm-step UX.
+4. **Canonical design-system CSS — VERSION-CONTROLLED.** The four canonical `main-main-kova-scope/design-system/` files (`design.md`, `kova-hifi.css`, `kova-hifi-light.css`, `TOKEN_CANONICAL.md`) were brought under git on 2026-05-14.
+
+§6 items 2–5 (PRD-authoring hygiene) and the §5 item 2(a) re-label (`access_token`-in-URL → launch-blocking security) are recorded in `00-PRD_SCOPE_PLAN.md` §5.7 and `00d` §5.
+
+**Verdict moves to ✅ SOUND. Wave 1 PRD authoring (Clusters 01 + 11) is clear to begin.**

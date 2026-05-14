@@ -635,6 +635,34 @@ Audit cleared. PRDs author against ratified M9 state — not re-spec from scratc
 
 ---
 
+## 5.7. Pre-PRD external verification — outcome + resolutions
+
+> **External soundness verification complete 2026-05-14.** Two independent passes ran against the pre-PRD decisions:
+> - **`00e-EXTERNAL_VERIFICATION_VERDICT.md`** — reasoning audit of all ~45 pre-PRD decisions (per the `00d` handoff). Verdict: ⚠️ SOUND WITH CONCERNS — foundation strong, 18 official-source checks (15 confirm, 0 found wrong), 4 items to resolve before Wave 1.
+> - **`docs/superpowers/specs/2026-05-14-shopify-product-reference-VERIFICATION.md`** — migration-safety audit of the Shopify redesign spec. Verdict: ✅ SOUND (spec Rev 2 — 8 migration-plan gaps closed).
+
+### The 4 concerns — all resolved 2026-05-14
+
+| # | Concern | Resolution |
+|---|---------|-----------|
+| 1 | **D-5C (add Nuxt/SSR now)** — premature infrastructure on a faulty premise | **REVERSED.** Stay on the single Vite SPA for the whole app — no Nuxt anywhere in the 12-cluster MVP. Marketing site = separate, decoupled Astro project built later, blocking nothing. (See `00d` §3.B D-5C.) |
+| 2 | **D-6 (18 failing tests deferred to Wave 6)** — root cause never verified | **TRIAGED.** Full unit suite run 2026-05-14: **1484 pass / 99 skip / 0 fail.** The "18 failing" was a stale memory artifact; `00c` Check 7 never ran the tests. The 99 skips are 14 legitimate pre-existing skip sites. No regression; no test-debt into Wave 6. |
+| 3 | **D-3 (auto-extract brand voice via LLM)** — needs a confirm-before-write guardrail | **GUARDRAIL RECORDED.** AI-scraped voice/tone is an editable draft the user reviews and confirms — never a silent write. Recorded in the Shopify design spec §6; Cluster 05 PRD must spec the confirm step. |
+| 4 | **Canonical design-system CSS not version-controlled** | **FIXED.** `main-main-kova-scope/design-system/` (the 4 canonical files: `design.md`, `kova-hifi.css`, `kova-hifi-light.css`, `TOKEN_CANONICAL.md`) brought under version control 2026-05-14. |
+
+Also recategorized: the `access_token`-in-URL M9 onboarding flag → **launch-blocking security item** (Cluster 02 PRD), not "polish."
+
+### Non-blocking PRD-hygiene notes (from `00e` §6 — none gate Wave 1)
+
+- The marketing site has **no owning PRD** — correct: it is out of MVP scope, built separately later (Astro).
+- `2.C.7` multi-device wording overstates live sync — downstream PRDs must **not** promise live multi-device canvas sync (Trystero/awareness dormant per Q6; MVP is last-snapshot-wins on the server).
+- `D-5E` vs `2.D.6` — the deferred persistent staging Supabase project must carry a **firm pre-launch trigger**, not "closer to launch."
+- `D-3` RoPA/privacy disclosure (Cluster 01 + Cluster 05 PRDs) must explicitly name "storefront content analyzed for brand-voice inference" as an Anthropic sub-processor data flow.
+
+**Verdict after resolutions: ✅ SOUND. Wave 1 (Clusters 01 + 11) clear to begin.**
+
+---
+
 ## 6. Cross-cuts that span multiple PRDs
 
 These primitives + integrations touch 3+ PRDs and need consistent treatment:

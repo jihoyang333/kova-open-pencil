@@ -303,30 +303,24 @@ covered by the Top 10.
   linter. TRIVIAL to swap.
 - **🔍 Verifier scrutiny:** Minimal. Confirm lefthook integrates cleanly with a Bun project.
 
-#### D-5C · SSR vs SPA — **DECISION: add Nuxt / SSR now ⚠️ FOUNDER OVERRIDE**
-- **Audit recommendation:** *Stay on the Vite SPA.* The marketing site is out of MVP scope; auth
-  pages run light-theme on the same SPA; Nuxt can be added later as an additive project with no
-  migration pain.
-- **Founder's decision:** **Add Nuxt / SSR now anyway.**
-- **Founder's reasoning:** They want the SSR foundation in place from day one — a forward-looking
-  bet that a marketing site is coming and they would rather not migrate later.
-- **The honest tradeoff (presented to the founder before they confirmed):** The editor and
-  dashboard are inherently SPA — a canvas editor cannot be server-rendered. Auth pages do not need
-  SEO. The marketing site does not exist yet. So SSR/Nuxt buys little user-facing benefit at MVP,
-  while adding a second framework and a second build pipeline that every PRD wave must carry. The
-  auditor rated this **SOFT/additive** — i.e. adding Nuxt *later* is clean.
-- **Reversibility:** SOFT (additive — the SPA stays; Nuxt is added alongside).
-- **🔍 VERIFIER — SCRUTINIZE THIS HARDEST.** This is the **one decision where the founder went
-  against the audit recommendation.** Give your most direct, most honest assessment:
-  - Is adding Nuxt/SSR now genuinely the best long-term call, or is it premature infrastructure
-    that taxes every wave for a benefit that lands later (or never, if the marketing site is built
-    differently)?
-  - Check `nuxt.com/docs` — what does it actually take to add Nuxt to an existing Vite SPA
-    repository later vs. now? Is "additive later" as clean as the auditor claims?
-  - Is there a middle path the founder has not considered (e.g. a tiny static marketing site on
-    plain HTML/Astro, decoupled from the app entirely)?
-  - If you believe "stay SPA now" is clearly better, **say so plainly** — the founder explicitly
-    wants to be told if a decision is short-sighted.
+#### D-5C · SSR vs SPA — **DECISION: stay Vite SPA (founder override REVERSED 2026-05-14)**
+- **History:** The founder initially overrode the audit recommendation and chose "add Nuxt/SSR
+  now." The independent 00d verification — and the original audit — both judged that short-sighted.
+  After a plain-language walkthrough of the tradeoff, **the founder reversed the decision on
+  2026-05-14.**
+- **FINAL DECISION:** Stay on the single Vite SPA for the entire app. **Do not add Nuxt/SSR.** No
+  Nuxt anywhere in the 12-cluster MVP.
+- **Marketing site:** When a marketing site enters scope, it is built as a **separate, decoupled
+  project** (default tooling: Astro — zero-JS-by-default, strong SEO, free static hosting). It does
+  not live inside the app, does not share the app's framework, and does not block or depend on any
+  PRD. It can be built in parallel at any time.
+- **Reasoning:** The editor (CanvasKit) cannot be SSR'd; the dashboard, account, and auth pages sit
+  behind login and need no SEO — so SSR/Nuxt buys nothing for the actual product. Bolting Nuxt on
+  now would tax every PRD wave with a second framework + build pipeline for zero MVP benefit. There
+  is no "migration to avoid" — the marketing site was never going to live inside the app.
+- **Reversibility:** SOFT (the marketing-site tooling choice stays open until that site is scoped).
+- **Impact on PRDs:** Cluster 01 (auth pages) and Cluster 11 (shared UI infra) author against a
+  single Vite SPA render model.
 
 #### D-5D · Browser-only vs Tauri-first — **DECISION: browser-first, Tauri secondary**
 - **Reasoning:** Matches Figma's model (browser-first, zero install friction). Tauri ships as a
@@ -389,7 +383,7 @@ auditor recommended.** They are listed here so you can scan for any that are sho
 **Tooling + ops (`§2.D`, 11):**
 | # | Decision | Ratified choice | Rev. |
 |---|---|---|---|
-| 2.D.1 | CI/CD pipeline | Vercel for the SPA + Nuxt (preview + production); GitHub Actions for Tauri desktop builds on release tags | SOFT |
+| 2.D.1 | CI/CD pipeline | Vercel for the SPA (preview + production); GitHub Actions for Tauri desktop builds on release tags. *(D-5C reversed 2026-05-14 — "+ Nuxt" removed; no Nuxt in MVP.)* | SOFT |
 | 2.D.2 | Preview deployments | Per-PR Vercel Preview URL, password-protected | TRIVIAL |
 | 2.D.3 | Production deploy + rollback | Auto-deploy on `main`; `vercel rollback`; migrations run pre-deploy in CI, blocking the deploy on failure | SOFT |
 | 2.D.6 | Staging vs production isolation | Separate Supabase + separate Stripe account (test-mode keys) + separate Anthropic key per environment | SOFT |
@@ -464,19 +458,22 @@ input).
    rewrite to match the new product-reference architecture. → Will be rewritten as part of the
    Shopify-touching PRDs.
 2. **Three M9 onboarding polish FLAGs** (`00c` Check 1): (a) `access_token` is passed in a URL
-   query string — a JWT in a URL lands in server logs / browser history (a real, if low, security
-   concern); (b) no error UX on OAuth-start failure; (c) no re-entry handling if the user returns
-   to onboarding mid-flow. → Routed to the Cluster 02 PRD. **Verifier: confirm (a) is correctly
-   treated as a PRD-level fix and not something needing a founder decision now.**
+   query string — a JWT in a URL lands in server logs / browser history. **Recategorized per 00d
+   verification as a launch-blocking SECURITY item** (not "polish") — the Cluster 02 PRD must fix
+   it before launch (move the token to a POST body or a cookie). (b) no error UX on OAuth-start
+   failure; (c) no re-entry handling if the user returns to onboarding mid-flow — (b) and (c) are
+   PRD-level polish, routed to the Cluster 02 PRD.
 3. **The 5 Shopify AI tools return empty silently when no Shopify is connected** (`00c` Check 5) —
    the AI cannot tell *why* a response is empty. → Routed to the Cluster 10 PRD (spec a
    `{ error: 'No Shopify connection' }` response shape).
-4. **`--fill-2` hex drift** — `kova-hifi.css` says `#2c2c30`; `design.md` + `TOKEN_CANONICAL.md`
-   say `#303035`. A known-correct, single-value fix. → Will be fixed directly.
-5. **Five hidden cross-cuts** the audit found are missing from the PRD scope plan's §6 cross-cut
-   table: Vue Router theme detection, Supabase Realtime channel-naming convention, the
-   idempotency-key pattern for write Edge Functions, the Toast variant taxonomy, and the Tauri
-   command-surface naming convention. → Will be added to `00-PRD_SCOPE_PLAN.md §6`.
+4. **`--fill-2` hex drift** — `kova-hifi.css` said `#2c2c30`; `design.md` + `TOKEN_CANONICAL.md`
+   say `#303035`. **DONE 2026-05-14** — `kova-hifi.css` corrected to `#303035`, verified against
+   `Final.html` + all 8 batch-b files.
+5. **Hidden cross-cuts missing from PRD scope plan §6** — Vue Router theme detection, Supabase
+   Realtime channel-naming convention, the idempotency-key pattern for write Edge Functions, the
+   Tauri command-surface naming convention. **DONE 2026-05-14** — 4 rows added to
+   `00-PRD_SCOPE_PLAN.md §6` (Toast variant taxonomy was already partially present; sharpened on
+   its existing row).
 6. **~20 "PRD XX must spec ___" action items** scattered through `00c`'s Q1–Q25 reviews, §1.B, and
    §1.E (e.g. add `checkout.session.completed` to the Stripe webhook event list; add a
    `canvas_snapshots.format_version` column; spec the crop-position drag UI). → Each is routed to

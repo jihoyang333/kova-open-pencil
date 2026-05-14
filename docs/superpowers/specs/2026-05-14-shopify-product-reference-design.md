@@ -198,6 +198,7 @@ It must **NOT** drop these shared objects that those migrations touch but do not
 - **Composer-chip reference state** — per-canvas chat. Stored alongside chat state (Supabase, per M5 chat-storage model). Shape: ordered list of `product_id`s for the active canvas's chat. Hydrated on canvas load.
 - No new product/catalog tables — `shopify_products` / `shopify_variants` / `shopify_collections` / `shopify_media` already exist from M9.
 - **Brand voice/tone storage** — per audit decision #3, voice/tone snippets land on the `brands` table. ⚠️ **The columns do not exist yet.** Current reality (`20260317_m2_dashboard.sql`): `brands.voice` is `TEXT` (not JSONB), and `brands.tone_snippets` / `brands.saved_blocks` do not exist anywhere in `supabase/migrations/`. The Q8 JSONB columns (`tone_snippets`, `saved_blocks`, plus a decision on whether to widen `voice` `TEXT → JSONB` or keep it `TEXT`) require an **ADD migration owned by the Cluster 05 PRD** — not this design. `brand-kit-extract` populates them on connect once they exist.
+- **GUARDRAIL — AI-scraped voice/tone is a draft, never a silent write** (per 00d external verification, concern on D-3). When `brand-kit-extract` infers brand voice + tone snippets from storefront content via a Claude API call, the result is presented to the user as an **editable draft they review and confirm** in the Brand Kit UI — it is never written to `brands.voice` / `brands.tone_snippets` silently. The Cluster 05 PRD must spec this confirm-before-write step.
 
 ---
 
