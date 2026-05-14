@@ -4,6 +4,10 @@
 > **Author:** Claude (brainstorming session)
 > **Reviewer:** founder (Jiho Yang)
 > **Supersedes:** the M9 "drag-to-place + live-binding" product model
+>
+> **Revision history:**
+> - Rev 1, 2026-05-14 — initial APPROVED spec.
+> - Rev 2, 2026-05-14 — 8 verification gaps closed (independent verification pass; see `2026-05-14-shopify-product-reference-VERIFICATION.md`).
 
 ---
 
@@ -152,25 +156,40 @@ Brand name is **not** from Shopify — it is the Brand record itself (from onboa
 ### 5.1 RIP (delete entirely)
 - `src/canvas-extensions/product-variant/` — whole directory (`factory.ts`, `register.ts`, `schema.ts`, `state.ts`, `sync.ts`, `verify.ts`)
 - `src/stores/product-variant-bindings.ts`
-- `src/components/inspector/ProductVariantInspector.vue`
+- `src/components/inspector/ProductVariantInspector.vue` — already orphaned: no production importer (`PropertiesPanel.vue` never wired it). Risk-free delete.
 - `src/composables/use-shop-drop.ts` (drag payload serialization)
 - `src/composables/useCanvasBindingsPersistence.ts` (binding persistence)
+- `src/engine/tool-calls.ts` — imported only by the three ripped files above (`use-shop-drop.ts`, `product-variant/factory.ts`, `product-variant/sync.ts`); dead code post-migration.
+- `src/components/editor/ShopBuildPrompt.vue` — the drag-place "build around this?" toast; imported only by `EditorView.vue`.
+- `src/components/editor/sidebar/ShopPanelCollections.vue` and `src/components/editor/sidebar/ShopPanelDiscounts.vue` — panel-selectable collections/discounts contradict D4; imported only by `ShopPanel.vue`. Both self-contained (drag payload built inline, no shared imports).
 - `api/shopify/cron/orders-agg.ts`, `api/shopify/cron/inventory-delta.ts`
-- Registration / wiring lines referencing the above in `src/main.ts` and `src/views/EditorView.vue`
-- Any DB tables / migrations exclusive to product-variant bindings or order/inventory analytics — audit during implementation planning
+- The `orders-agg` and `inventory-delta` entries in the `crons` array of `vercel.json` — otherwise Vercel cron points at deleted functions. (`product-delta` and `purge-worker` cron entries stay.)
+- Registration / wiring lines referencing the above in `src/main.ts` and `src/views/EditorView.vue`. For `EditorView.vue` this is more than import lines: the `useCanvasBindingsPersistence` lifecycle (the `saveBindings` variable + its `onBeforeRouteLeave` call), the `useShopDrop` destructure, the canvas `@dragover`/`@drop` handler, and the `<ShopBuildPrompt>` render block.
+- DB tables exclusive to the ripped model — now identified: `canvas_product_variant_bindings` (created `20260418_m9_05_canvas_bindings.sql`, altered by `_05b_`/`_05c_`) and `shopify_orders_agg` (created `20260418_m9_02_catalog.sql`). The drop migration has constraints — see §5.4.
 
 ### 5.2 REWORK
-- `src/components/editor/sidebar/ShopPanelProducts.vue` → §4.1 spec (grid + multi-select + import bar; remove `draggable`/`onDragStart`; list products not variants)
-- `src/ai/kova-tools.ts` → `search_products`: drop the `bestsellers` sort option (depended on cut analytics, D6)
+- `src/components/editor/sidebar/ShopPanelProducts.vue` → §4.1 spec (grid + multi-select + import bar; remove `draggable`/`onDragStart` and the `serializeShopPayload` import; remove the In-stock/On-sale filter chips; list products not variants)
+- `src/components/editor/sidebar/ShopPanel.vue` → collapse the 3-tab `TabsRoot` (Products / Collections / Discounts) to render `ShopPanelProducts` directly. No tabs — products-only panel per D4.
+- `src/ai/kova-tools.ts` → `search_products`: drop the `bestsellers` option from the `sort` picklist in `searchProductsSchema`. (Note: the tool's `execute` never actually implemented sorting, so this is a schema-only change — but the option must go regardless, per D6.)
 - `src/stores/shopify-products.ts` → keep as the data store; trim variant-flat assumptions if any; ensure product-level grouping for the grid
+- `api/shopify/cron/purge-worker.ts` → remove `'shopify_orders_agg'` from its `directTables` delete list. The analytics cut drops that table, and a `.delete()` against a missing table throws. This rework **must land in the same migration/PR as the table drop**.
 
 ### 5.3 KEEP (as-is or near-as-is)
 - OAuth flow — `api/shopify/oauth/*`
 - Sync infra — `api/shopify/sync/*` (`bulk-start`, `worker`, `poll`, `bulk-finish`), `api/_shared/shopify-bulk-processor.ts`
+- Remaining crons — `api/shopify/cron/product-delta.ts` (catalog delta sync) and `api/shopify/cron/purge-worker.ts` (GDPR purge) stay scheduled in `vercel.json`. `purge-worker.ts` itself needs the small rework in §5.2.
 - 5 AI tools — `search_products` (minus bestsellers sort), `get_collection`, `get_variant`, `get_active_discounts`, `get_shop_context`
 - `placeMediaImage`, `saveBrandMemory`
-- `brand-kit-extract.ts` + `api/_shared/shopify-brand-kit.ts` — keep, **extend** with voice/tone (audit #3)
+- `brand-kit-extract.ts` + `api/_shared/shopify-brand-kit.ts` — keep, **extend** with voice/tone (audit #3); see §6 on the columns it writes to
 - Compliance handlers — `api/shopify/compliance/*` (GDPR / Shopify app-store requirements)
+
+### 5.4 Migration-drop caution
+
+The drop migration that removes `canvas_product_variant_bindings` and `shopify_orders_agg` must be written **surgically as a forward migration** — not a wholesale revert of `_05`/`_05b`/`_05c`. For each table it drops: the table, its indexes, its RLS policy, its CHECK constraints, and its *dedicated* `updated_at` trigger (`set_canvas_bindings_updated_at`).
+
+It must **NOT** drop these shared objects that those migrations touch but do not own:
+- `public.update_updated_at()` — the shared `updated_at` trigger function. Born in `20260316_users.sql:34`; `20260418_m9_05b_canvas_bindings_fixup.sql:8` only re-declares it (`CREATE OR REPLACE`). Used by triggers on `users`, `brands`, `canvases`, the M5 chat tables, and `shopify_connections`. Dropping it breaks every one of those triggers.
+- `idx_brands_user_id` — created in `20260420_m9_05c_canvas_bindings_fixup2.sql:20`. Backs every brand-scoped RLS policy in the codebase (`brand_id IN (SELECT id FROM brands WHERE user_id = auth.uid())`). Dropping it regresses RLS performance project-wide.
 
 ---
 
@@ -178,7 +197,7 @@ Brand name is **not** from Shopify — it is the Brand record itself (from onboa
 
 - **Composer-chip reference state** — per-canvas chat. Stored alongside chat state (Supabase, per M5 chat-storage model). Shape: ordered list of `product_id`s for the active canvas's chat. Hydrated on canvas load.
 - No new product/catalog tables — `shopify_products` / `shopify_variants` / `shopify_collections` / `shopify_media` already exist from M9.
-- Brand voice/tone storage — per audit decision #3, lands on `brands.voice` + `brands.tone_snippets` (Q8 JSONB columns). `brand-kit-extract` populates them on connect.
+- **Brand voice/tone storage** — per audit decision #3, voice/tone snippets land on the `brands` table. ⚠️ **The columns do not exist yet.** Current reality (`20260317_m2_dashboard.sql`): `brands.voice` is `TEXT` (not JSONB), and `brands.tone_snippets` / `brands.saved_blocks` do not exist anywhere in `supabase/migrations/`. The Q8 JSONB columns (`tone_snippets`, `saved_blocks`, plus a decision on whether to widen `voice` `TEXT → JSONB` or keep it `TEXT`) require an **ADD migration owned by the Cluster 05 PRD** — not this design. `brand-kit-extract` populates them on connect once they exist.
 
 ---
 
@@ -213,6 +232,6 @@ The M9 migration plan (§5) must be executed before or as part of these clusters
 | Item | Severity | Note |
 |------|----------|------|
 | Composer-chip reference persistence — confirmed per-canvas + across reloads. Exact storage column/shape is a Cluster 10 PRD detail. | LOW | Spec'd in §6; finalize in PRD. |
-| M9 may have DB tables exclusive to product-variant bindings / order analytics. | MEDIUM | Audit migrations during implementation planning; include drop migrations in the migration plan. |
+| DB tables exclusive to the ripped model — now identified, no longer "may have". | RESOLVED | `canvas_product_variant_bindings` + `shopify_orders_agg`, named in §5.1; drop-migration constraints in §5.4. |
 | `brand-kit-extract` logo extraction is best-effort (theme-dependent). | LOW | Acceptable — onboarding lets the user upload a logo manually as fallback. |
-| Existing M9 tests reference ripped artifacts (`product-variant`, `use-shop-drop`). | MEDIUM | Test cleanup is part of §5.1 RIP — remove dead tests, don't let them count as the "18 failing tests" debt. |
+| Existing M9 tests reference ripped artifacts. Cleanup is part of the §5 migration, not separate "failing-test debt." | MEDIUM | **Delete** (tied to RIP'd code): `tests/engine/canvas-extensions/product-variant/schema.test.ts`; `tests/engine/shopify/{overlay-factory,overlay-sync,verify,inspector-state,store-product-variant-bindings}.test.ts`; `tests/unit/composables/useCanvasBindingsPersistence.test.ts`; `tests/api/shopify/{cron-orders-agg,cron-inventory-delta}.test.ts`. **Rework** (tied to REWORK'd code): `tests/engine/shopify/shop-panel.test.ts` (drag/serialize → import-flow); `tests/e2e/m9-shopify.spec.ts` (whole E2E is drag-place + inspector). **Audit** (coupled to the dropped `shopify_orders_agg` table): `tests/engine/shopify/lint-schema-invariants.test.ts`; `tests/unit/migrations/{pii-linter,catalog}.test.ts`; `tests/api/shopify/{migration-catalog,cron-purge-worker,cron-purge-worker-integration,compliance}.test.ts`. |
