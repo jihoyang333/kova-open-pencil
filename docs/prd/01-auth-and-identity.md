@@ -4,7 +4,7 @@
 
 | Field | Value |
 |---|---|
-| **Status** | `DRAFT` (awaiting founder review) |
+| **Status** | `APPROVED` 2026-05-15 (founder: "all good, follow your recs") |
 | **Wave** | 1 (foundation) |
 | **Author** | Claude (Opus 4.7) |
 | **Reviewer** | Jiho Yang (founder) |
@@ -1101,13 +1101,11 @@ If user requests deletion → cron starts → Stripe step succeeds → user rest
 
 **Mitigation:** Restore re-creates Stripe Customer on next subscription action (Cluster 04 owns). `restore_account` RPC explicitly does NOT undo `succeeded` queue rows. Edge case is rare (cron runs daily, restore window is 30 days — cron only starts work at day 30). Document in operator runbook.
 
-### 12.4 ESCALATE: founder — B4.4 OTP lockout values
+### 12.4 RESOLVED 2026-05-15 — B4.4 OTP lockout values
 
-Hi-fi annotation B4.4 + sources: 5 attempts, 15-minute lockout. Per `00e §6` non-blocker. Default in this draft = `OTP_LOCKOUT_ATTEMPTS=5`, `OTP_LOCKOUT_MINUTES=15`. Supabase server-side has its own rate limits; our app-side gate is a UI affordance for messaging. **Decision needed:** ship these defaults, OR pick different numbers?
+Founder accepted recommended defaults: `OTP_LOCKOUT_ATTEMPTS=5`, `OTP_LOCKOUT_MINUTES=15`. Re-tune post-launch on abuse signal.
 
-**Recommendation:** ship defaults; abuse signals tune later.
-
-### 12.5 ESCALATE: founder — B4.6 enumeration risk
+### 12.5 RESOLVED 2026-05-15 — B4.6 enumeration risk
 
 Hi-fi annotation B4.6 explicitly raises this. The drawn UX tells the user "no account with this email" → enables an attacker to probe whether an email is registered.
 
@@ -1118,29 +1116,23 @@ Hi-fi annotation B4.6 explicitly raises this. The drawn UX tells the user "no ac
 | **A. Ship as drawn (default)** | Clear messaging; user knows immediately to switch to signup | Allows enumeration |
 | **B. Enumeration-safe pivot** | Always show A15.03 "Magic link sent to <email>" regardless of registration state | Prevents probing; user with no account never receives an email; user may sit confused on "magic link sent" forever |
 
-**Recommendation:** ship A as drawn for MVP. Re-evaluate post-launch if any abuse signals surface. Toggle behavior is gated by `B4_6_ENUMERATION_SAFE` feature flag for instant pivot.
+Founder accepted: ship as drawn (Option A). `B4_6_ENUMERATION_SAFE=false`. Flip if abuse signals surface.
 
-### 12.6 ESCALATE: founder — "Auto-submit OTP on 6th digit?"
+### 12.6 RESOLVED 2026-05-15 — Auto-submit OTP on 6th digit
 
-Hi-fi A15 annotation flags this. UX trade-off: auto-submit feels fast but creates accidental submits on paste/keyboard mistakes. Manual submit gives the user one beat to look at what they typed.
+Founder accepted: auto-submit on 6th digit. Wrong-code recovery via B4.3 preserved-cells pattern.
 
-**Recommendation:** **auto-submit on 6th digit AND submit triggers immediately** — saves a tap, matches industry norm (Stripe Checkout, Notion, Google). If wrong, the user lands in B4.3 with cells preserved, which is already the correct recovery affordance.
+### 12.7 RESOLVED 2026-05-15 — "Keep me signed in" default state
 
-### 12.7 ESCALATE: founder — "Keep me signed in" default state
-
-Hi-fi A15.06 shows toggle pre-toggled ON. This makes the 30-day refresh the default.
-
-**Recommendation:** ship as drawn (pre-toggled ON). Matches Figma + Notion + Linear defaults. User can opt out for shared/library machines.
+Founder accepted: pre-toggled ON. 30-day refresh = default.
 
 ### 12.8 OPEN QUESTION — Email-change "Revert" button mechanics
 
 B5.1 annotation says "Recommend confirm step (irreversible action)" for the foot-link "Revert email change". This PRD's §8.3 ships that. If founder wants a different model (one-click revert), flag.
 
-### 12.9 OPEN QUESTION — Tablet auto-rotate-and-reload behavior
+### 12.9 RESOLVED 2026-05-15 — Tablet auto-rotate-and-reload behavior
 
-B6.2 annotation flags the "I'll rotate my tablet" button should auto-listen for orientation change + reload. This PRD ships the auto-listen behavior in `useViewportGuard`. Confirm or change to manual-reload-only?
-
-**Recommendation:** ship auto-listen.
+Founder accepted: auto-listen + auto-reload on orientation change ≥1024px.
 
 ### 12.10 OPEN QUESTION — Account-pending-deletion view contents
 
