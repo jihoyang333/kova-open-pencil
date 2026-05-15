@@ -258,7 +258,7 @@ After APPROVED:
 
 | Wave | # | Cluster | Filename | Status | Author | Last update |
 |---|---|---|---|---|---|---|
-| **1** | 01 | Auth & Identity | `01-auth-and-identity.md` | PENDING | — | — |
+| **1** | 01 | Auth & Identity | `01-auth-and-identity.md` | IN-REVIEW | Claude (Opus 4.7) | 2026-05-15 |
 | **1** | 11 | Shared UI Infrastructure | `11-shared-ui-infrastructure.md` | PENDING | — | — |
 | **2** | 02 | Onboarding & Dashboard | `02-onboarding-and-dashboard.md` | PENDING | — | — |
 | **2** | 03 | Brand Management | `03-brand-management.md` | PENDING | — | — |
