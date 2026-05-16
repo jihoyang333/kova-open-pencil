@@ -27,7 +27,7 @@ Parallel PRD writing = safe (just docs). Parallel CODE execution = **risk**; onl
    │ Agent N drafts PRD       │
    │ Agent N runs writing-    │
    │   plans skill → makes    │
-   │   .claude/plans/NN-      │
+   │   docs/superpowers/plans/NN-      │
    │   slug-plan.md           │
    │ Agent N STOPS            │
    └──────────────────────────┘
@@ -48,7 +48,7 @@ Parallel PRD writing = safe (just docs). Parallel CODE execution = **risk**; onl
 
 ### Why this works
 
-- **No code touched** during dispatch phase — only `docs/prd/*.md` + `.claude/plans/*.md`.
+- **No code touched** during dispatch phase — only `docs/prd/*.md` + `docs/superpowers/plans/*.md`.
 - **Each agent is isolated** — different files, no shared writes.
 - **STOP rule** prevents agents from running plans before review.
 - **Review batch** catches drift early (one agent might invent infra not in 03 doc).
@@ -58,7 +58,7 @@ Parallel PRD writing = safe (just docs). Parallel CODE execution = **risk**; onl
 - Does NOT commit code.
 - Does NOT execute the implementation plan.
 - Does NOT push to remote.
-- Does NOT modify any file outside `docs/prd/NN-slug.md` and `.claude/plans/NN-slug-plan.md`.
+- Does NOT modify any file outside `docs/prd/NN-slug.md` and `docs/superpowers/plans/NN-slug-plan.md`.
 - Does NOT touch `packages/core/`, `src/`, `api/`, `supabase/migrations/`, or any test file.
 
 ---
@@ -119,7 +119,7 @@ Every cluster's dispatch prompt below uses the same boilerplate for context-load
 ### 3.4 Output paths
 
 - PRD: `kova-open-pencil-1/docs/prd/NN-slug.md` (status `DRAFT`)
-- Plan: `kova-open-pencil-1/.claude/plans/NN-slug-plan.md` (output of `superpowers:writing-plans` skill consuming the PRD)
+- Plan: `kova-open-pencil-1/docs/superpowers/plans/NN-slug-plan.md` (output of `superpowers:writing-plans` skill consuming the PRD)
 
 ### 3.5 STOP rule
 
@@ -128,7 +128,7 @@ After writing the plan, **STOP**. Do not:
 - Run `superpowers:test-driven-development`
 - Commit anything
 - Push to remote
-- Modify any file outside `docs/prd/NN-slug.md` and `.claude/plans/NN-slug-plan.md`
+- Modify any file outside `docs/prd/NN-slug.md` and `docs/superpowers/plans/NN-slug-plan.md`
 
 Final message to the parent agent must include:
 1. Path to PRD
@@ -224,7 +224,7 @@ KEY DECISIONS TO RECOMMEND (mark RESOLVED in §12):
 
 OUTPUT:
 1. PRD at /Users/jihoyang/kova-main/kova-open-pencil-1/docs/prd/02-onboarding-and-dashboard.md (status DRAFT, per template at 00-PRD_SCOPE_PLAN.md §5)
-2. Implementation plan via superpowers:writing-plans skill — output to /Users/jihoyang/kova-main/kova-open-pencil-1/.claude/plans/02-onboarding-and-dashboard-plan.md
+2. Implementation plan via superpowers:writing-plans skill — output to /Users/jihoyang/kova-main/kova-open-pencil-1/docs/superpowers/plans/02-onboarding-and-dashboard-plan.md
 
 STOP after both files written. DO NOT execute the plan. DO NOT commit. DO NOT touch any other file. Report back: PRD path + plan path + line counts + RESOLVED-item list + open ESCALATE items + cross-cuts list.
 
@@ -281,7 +281,7 @@ KEY DECISIONS TO RECOMMEND:
 
 OUTPUT:
 1. PRD at docs/prd/03-brand-management.md (status DRAFT)
-2. Plan via superpowers:writing-plans → .claude/plans/03-brand-management-plan.md
+2. Plan via superpowers:writing-plans → docs/superpowers/plans/03-brand-management-plan.md
 
 STOP. Same rules. Report back.
 
@@ -348,7 +348,7 @@ KEY DECISIONS TO RECOMMEND:
 
 OUTPUT:
 1. PRD at docs/prd/04-account-and-stripe-billing.md
-2. Plan via superpowers:writing-plans → .claude/plans/04-account-and-stripe-billing-plan.md
+2. Plan via superpowers:writing-plans → docs/superpowers/plans/04-account-and-stripe-billing-plan.md
 
 STOP. Same rules. Report back.
 
@@ -416,7 +416,7 @@ KEY DECISIONS TO RECOMMEND:
 
 OUTPUT:
 1. PRD at docs/prd/05-brand-kit-and-drag-drop.md
-2. Plan via superpowers:writing-plans → .claude/plans/05-brand-kit-and-drag-drop-plan.md
+2. Plan via superpowers:writing-plans → docs/superpowers/plans/05-brand-kit-and-drag-drop-plan.md
 
 STOP. Same rules. Report back.
 
@@ -484,7 +484,7 @@ KEY DECISIONS TO RECOMMEND:
 
 OUTPUT:
 1. PRD at docs/prd/06-canvas-editor-core-chrome.md
-2. Plan via superpowers:writing-plans → .claude/plans/06-canvas-editor-core-chrome-plan.md
+2. Plan via superpowers:writing-plans → docs/superpowers/plans/06-canvas-editor-core-chrome-plan.md
 
 STOP. Same rules. Report back. Flag if you needed to split into 06a/06b.
 
@@ -557,7 +557,7 @@ KEY DECISIONS TO RECOMMEND:
 
 OUTPUT:
 1. PRD at docs/prd/07a-canvas-engine-core-renderer.md
-2. Plan via superpowers:writing-plans → .claude/plans/07a-canvas-engine-core-renderer-plan.md
+2. Plan via superpowers:writing-plans → docs/superpowers/plans/07a-canvas-engine-core-renderer-plan.md
 
 STOP. Report back.
 
@@ -624,7 +624,7 @@ KEY DECISIONS TO RECOMMEND:
 
 OUTPUT:
 1. PRD at docs/prd/07b-canvas-engine-inspector-overlays.md
-2. Plan via superpowers:writing-plans → .claude/plans/07b-canvas-engine-inspector-overlays-plan.md
+2. Plan via superpowers:writing-plans → docs/superpowers/plans/07b-canvas-engine-inspector-overlays-plan.md
 
 STOP. Report back.
 
@@ -685,7 +685,7 @@ KEY DECISIONS TO RECOMMEND:
 
 OUTPUT:
 1. PRD at docs/prd/08-canvas-menus-popovers-shortcuts.md
-2. Plan via superpowers:writing-plans → .claude/plans/08-canvas-menus-popovers-shortcuts-plan.md
+2. Plan via superpowers:writing-plans → docs/superpowers/plans/08-canvas-menus-popovers-shortcuts-plan.md
 
 STOP. Report back.
 
@@ -744,7 +744,7 @@ KEY DECISIONS TO RECOMMEND:
 
 OUTPUT:
 1. PRD at docs/prd/09-version-history-and-trash.md
-2. Plan via superpowers:writing-plans → .claude/plans/09-version-history-and-trash-plan.md
+2. Plan via superpowers:writing-plans → docs/superpowers/plans/09-version-history-and-trash-plan.md
 
 STOP. Report back.
 
@@ -810,7 +810,7 @@ KEY DECISIONS TO RECOMMEND:
 
 OUTPUT:
 1. PRD at docs/prd/10-ai-chat-and-memory.md
-2. Plan via superpowers:writing-plans → .claude/plans/10-ai-chat-and-memory-plan.md
+2. Plan via superpowers:writing-plans → docs/superpowers/plans/10-ai-chat-and-memory-plan.md
 
 STOP. Report back.
 
@@ -881,7 +881,7 @@ KEY DECISIONS TO RECOMMEND:
 
 OUTPUT:
 1. PRD at docs/prd/11-shared-ui-infrastructure.md
-2. Plan via superpowers:writing-plans → .claude/plans/11-shared-ui-infrastructure-plan.md
+2. Plan via superpowers:writing-plans → docs/superpowers/plans/11-shared-ui-infrastructure-plan.md
 
 STOP. Report back.
 
@@ -941,7 +941,7 @@ KEY DECISIONS TO RECOMMEND:
 
 OUTPUT:
 1. PRD at docs/prd/12-settings-and-user-preferences.md
-2. Plan via superpowers:writing-plans → .claude/plans/12-settings-and-user-preferences-plan.md
+2. Plan via superpowers:writing-plans → docs/superpowers/plans/12-settings-and-user-preferences-plan.md
 
 STOP. Report back.
 
