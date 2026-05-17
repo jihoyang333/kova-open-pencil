@@ -260,16 +260,16 @@ After APPROVED:
 |---|---|---|---|---|---|---|
 | **1** | 01 | Auth & Identity | `01-auth-and-identity.md` | APPROVED | Claude (Opus 4.7) | 2026-05-15 |
 | **1** | 11 | Shared UI Infrastructure | `11-shared-ui-infrastructure.md` | IN-REVIEW | Claude (Opus 4.7) | 2026-05-15 |
-| **2** | 02 | Onboarding & Dashboard | `02-onboarding-and-dashboard.md` | PENDING | — | — |
+| **2** | 02 | Onboarding & Dashboard | `02-onboarding-and-dashboard.md` | DRAFT | Claude (Opus 4.7) | 2026-05-17 |
 | **2** | 03 | Brand Management | `03-brand-management.md` | DRAFT | Claude (Opus 4.7) | 2026-05-15 |
 | **3** | 04 | Account + Stripe Billing | `04-account-and-stripe-billing.md` | IN-DRAFT | Claude (Opus 4.7) | 2026-05-15 |
 | **3** | 12 | Settings + User Prefs | `12-settings-and-user-preferences.md` | IN-DRAFT | Claude (Opus 4.7) | 2026-05-15 |
-| **4** | 05 | Brand Kit + Drag-Drop | `05-brand-kit-and-drag-drop.md` | PENDING | — | — |
-| **4** | 06 | Canvas Editor Core Chrome | `06-canvas-editor-core-chrome.md` | PENDING | — | — |
+| **4** | 05 | Brand Kit + Drag-Drop | `05-brand-kit-and-drag-drop.md` | DRAFT | Claude (Opus 4.7) | 2026-05-15 |
+| **4** | 06 | Canvas Editor Core Chrome | `06-canvas-editor-core-chrome.md` | DRAFT | Claude (Opus 4.7) | 2026-05-15 |
 | **5** | 07a | Canvas Engine Core + Renderer | `07a-canvas-engine-core-renderer.md` | IN-DRAFT | Claude (Opus 4.7) | 2026-05-15 |
 | **5** | 07b | Canvas Engine Inspector + Overlays | `07b-canvas-engine-inspector-overlays.md` | IN-DRAFT | Claude (Opus 4.7) | 2026-05-15 |
 | **5** | 08 | Menus + Popovers + Shortcuts | `08-canvas-menus-popovers-shortcuts.md` | IN-DRAFT | Claude (Opus 4.7) | 2026-05-15 |
-| **6** | 09 | Version History + Trash | `09-version-history-and-trash.md` | PENDING | — | — |
+| **6** | 09 | Version History + Trash | `09-version-history-and-trash.md` | DRAFT | Claude (Opus 4.7) | 2026-05-17 |
 | **6** | 10 | AI Chat + Memory + Tools | `10-ai-chat-and-memory.md` | IN-DRAFT | Claude (Opus 4.7) | 2026-05-15 |
 
 **Status states:** `PENDING` → `IN-DRAFT` → `IN-REVIEW` → `APPROVED` → `IN-IMPLEMENTATION` → `SHIPPED`.
