@@ -3165,7 +3165,7 @@ Update `00a-PRD_AUTHORING_GUIDE.md` §7 tracker row for Cluster 01 to `SHIPPED` 
 
 ## Execution handoff
 
-Plan complete and saved to `kova-open-pencil-1/docs/superpowers/plans/01-auth-and-identity-plan.md`. Two execution options:
+Plan complete and saved to `kova-open-pencil-1/docs/plans/01-auth-and-identity-plan.md`. Two execution options:
 
 1. **Subagent-Driven (recommended)** — Parent dispatches a fresh subagent per task, reviews between tasks, fast iteration. Use `superpowers:subagent-driven-development`.
 
