@@ -377,14 +377,16 @@ For each cluster: scope boundary, 03-doc rows covered, hi-fi files referenced, Q
 
 ### Cluster 11 — Shared UI Infrastructure
 
-**Scope:** Toast system + error pages + modal primitives + loading skeletons + offline indicator + command-K palette + empty-state patterns. The non-feature-specific UI infrastructure all other clusters use.
+**Scope:** Toast system + error pages + modal primitives + loading skeletons + offline indicator + empty-state patterns. The non-feature-specific UI infrastructure all other clusters use.
+
+**2026-05-17 REVERSAL — Cmd+K command palette DROPPED.** Founder decision: canvas workflow doesn't need global navigation shortcut (users exit to dashboard for file/brand switching, not inside canvas). A5 hi-fi retired from MVP scope.
 
 **03-doc coverage:** Scattered cross-cuts. §3C #7 (right-click shell), #8 (useConfirm) overlap with Cluster 08 but the primitive lives here.
 
 **Hi-fi files referenced:**
 - `batch-a-additions/dark/Kova Hi-Fi B1 Toasts - Dark.html` (8 toast scenes: success/error/info/action/AI-gen/stacked/long-content/over-modal)
 - `batch-a-additions/dark/Kova Hi-Fi B2 Error Pages - Dark.html` (404/500/network-unreachable)
-- `batch-a/dark/Kova Hi-Fi A5 Command-K - Dark.html` (command palette — 3 scenes)
+- ~~`batch-a/dark/Kova Hi-Fi A5 Command-K - Dark.html`~~ (DROPPED 2026-05-17 — no Cmd+K in Kova)
 - `batch-a/dark/Kova Hi-Fi A6+A2a Popovers + A8 Dialogs - Dark.html` (modal `.dlg` shell + popover primitives)
 - `batch-a-additions/dark/Kova Hi-Fi B7 Loading Skeletons - Dark.html` (5 skeleton patterns)
 - `batch-a-additions/dark/Kova Hi-Fi B9 List Search Empty - Dark.html` (3 empty-result patterns)
