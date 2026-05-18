@@ -204,7 +204,7 @@ It must **NOT** drop these shared objects that those migrations touch but do not
 
 ## 7. Cross-cuts to PRD clusters
 
-This design feeds five PRD clusters (per `docs/prd/00-PRD_SCOPE_PLAN.md` §5.5):
+This design feeds five PRD clusters (per `docs/kova-final-prds/00-PRD_SCOPE_PLAN.md` §5.5):
 
 | Cluster | What it picks up from this design |
 |---------|-----------------------------------|
