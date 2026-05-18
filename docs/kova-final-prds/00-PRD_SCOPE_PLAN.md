@@ -733,3 +733,22 @@ After APPROVED → PRD enters implementation queue. `superpowers:writing-plans` 
 ## 10. Next step
 
 Both audits cleared, all 10 priority items ratified (see §5.6). **Ready for Wave 1.** Next: draft **`01-auth-and-identity.md`** (Cluster 01 Auth & Identity), then **`11-shared-ui-infrastructure.md`** (Cluster 11 Shared UI Infrastructure). Founder reviews each PRD before the next dispatches.
+
+---
+
+## 11. Pre-launch external account checklist (deferred 2026-05-17)
+
+Three external services are required for prod but **deferred during dev** per founder 2026-05-17. Implementation agents must stub these with TODO comments + env-var name placeholders during Phase 1. Founder wires real accounts (~1 hour batch) before first prod deploy.
+
+| Service | Used by | Env vars | Local dev workaround | Setup time |
+|---|---|---|---|---|
+| **Sentry** | All clusters (error tracking + session replays) | `VITE_SENTRY_DSN_BROWSER`, `SENTRY_DSN_SERVER` | None needed — silently no-op in dev | ~10 min |
+| **Resend** | Cluster 01 (magic-link, deletion confirm), Cluster 04 (Stripe receipts) | `RESEND_API_KEY` | Local Supabase Inbucket catches magic-link emails — sufficient for dev | ~15 min (DNS propagation slowest) |
+| **Vercel Cron** | Cluster 01 (delete-account cron), Cluster 11 (idempotency cleanup cron) | `CRON_SECRET` + Vercel Pro plan | Cron only fires in deployed env — trigger handlers manually via curl in dev | ~5 min |
+
+**Stub pattern for agents:** wrap each integration in a guard that returns a no-op when env var missing. Example: `if (!process.env.RESEND_API_KEY) { console.warn('Resend not configured — skipping send'); return; }`. Never block the dev flow.
+
+**Pre-launch wire-up checklist** (founder runs before first prod deploy):
+- [ ] Sentry — create kova-browser + kova-server projects → copy DSNs to env vars
+- [ ] Resend — add domain kova.app → SPF + DKIM DNS records → wait verify → generate API key
+- [ ] Vercel — upgrade to Pro → `openssl rand -hex 32` → save as `CRON_SECRET`
