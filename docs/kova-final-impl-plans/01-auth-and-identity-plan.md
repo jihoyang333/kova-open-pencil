@@ -3291,6 +3291,7 @@ Refs Cluster 01 PRD §5.5 + §8.8."
 
 **Files:**
 - Create: `kova-open-pencil-1/docs/operations/supabase-auth-config.md` (checklist for ops)
+- Modify: `kova-open-pencil-1/.env.example` — add `EMAIL_CHANGE_LINK_TTL_HOURS=24` (C-LOW01.7)
 
 - [ ] **Step 23.1: Document config + apply manually**
 
@@ -3324,6 +3325,7 @@ Apply each setting via Supabase Studio → Authentication → Providers / Settin
 - [ ] Magic link sign-in template customized
 - [ ] Email change verify template customized
 - [ ] Reset password template customized (for Phase 2)
+- [ ] Email change confirmation token expiry: **86400 seconds (24 hours)** — matches `EMAIL_CHANGE_LINK_TTL_HOURS=24` env var consumed by `api/auth/email-change-request.ts` and surfaced in B5.2 "expired link" copy.
 
 ## Redirect URLs
 
