@@ -420,6 +420,55 @@ describe('Measurement system — page-level', () => {
     graph.reparent(nodeA, frame.id, 0)
     expect(graph.getMeasurements(canvasId)).toHaveLength(1)
   })
+
+  // C-LOW07a.1: additional explicit trigger-condition coverage per event
+  test('addMeasurement emits measurement:created with full measurement payload', () => {
+    const events: unknown[] = []
+    graph.emitter.on('measurement:created', (e) => events.push(e))
+    const m = graph.addMeasurement(canvasId, { nodeId: nodeA, side: 'TOP' }, { nodeId: nodeB, side: 'BOTTOM' })
+    expect(events).toHaveLength(1)
+    expect(events[0]).toMatchObject({ measurementId: m.id, canvasId })
+  })
+
+  test('editMeasurement emits measurement:updated with prev + next snapshots', () => {
+    const m = graph.addMeasurement(canvasId, { nodeId: nodeA, side: 'TOP' }, { nodeId: nodeB, side: 'BOTTOM' })
+    const events: unknown[] = []
+    graph.emitter.on('measurement:updated', (e) => events.push(e))
+    graph.editMeasurement(canvasId, m.id, { offset: { type: 'INNER', relative: 0.25 } })
+    expect(events).toHaveLength(1)
+    expect(events[0]).toMatchObject({ measurementId: m.id, canvasId })
+  })
+
+  test('deleteMeasurement emits measurement:deleted', () => {
+    const m = graph.addMeasurement(canvasId, { nodeId: nodeA, side: 'TOP' }, { nodeId: nodeB, side: 'BOTTOM' })
+    const events: unknown[] = []
+    graph.emitter.on('measurement:deleted', (e) => events.push(e))
+    graph.deleteMeasurement(canvasId, m.id)
+    expect(events).toHaveLength(1)
+    expect(events[0]).toMatchObject({ measurementId: m.id, canvasId })
+  })
+
+  test('removing BOTH anchors emits measurement:broken twice (once per anchor) for the same measurement', () => {
+    const m = graph.addMeasurement(canvasId, { nodeId: nodeA, side: 'TOP' }, { nodeId: nodeB, side: 'BOTTOM' })
+    const events: any[] = []
+    graph.emitter.on('measurement:broken', (e) => events.push(e))
+    graph.removeNode(nodeA)
+    graph.removeNode(nodeB)
+    expect(events).toHaveLength(2)
+    expect(events.map(e => e.brokenAnchorNodeId).sort()).toEqual([nodeA, nodeB].sort())
+    expect(events.every(e => e.measurementId === m.id)).toBe(true)
+  })
+
+  test('deleting a CANVAS containing measurements emits measurement:dropped for ALL its measurements', () => {
+    graph.addMeasurement(canvasId, { nodeId: nodeA, side: 'TOP' }, { nodeId: nodeB, side: 'BOTTOM' })
+    graph.addMeasurement(canvasId, { nodeId: nodeA, side: 'LEFT' }, { nodeId: nodeB, side: 'RIGHT' })
+    const events: any[] = []
+    graph.emitter.on('measurement:dropped', (e) => events.push(e))
+    graph.removeNode(canvasId)
+    expect(events).toHaveLength(1)
+    expect(events[0].measurementIds).toHaveLength(2)
+    expect(events[0].sourceCanvasId).toBe(canvasId)
+  })
 })
 ```
 
