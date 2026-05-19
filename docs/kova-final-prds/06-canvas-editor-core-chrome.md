@@ -250,7 +250,7 @@ Every surface maps to a hi-fi file + scene/line range. Theme: **DARK** (per `fee
 
 | Surface | Hi-fi file | Scene / line | Notes |
 |---|---|---|---|
-| Tab strip (Design + AI) | Final.html | lines 337–359 (CSS), 811–820 (instance shows "Design" tab only in hi-fi; AI tab is the founder amendment 2026-05-15) | TWO tabs only. Default-active = Design. Click AI tab → switches via `useRightPanelStore.setActiveTab('ai')` |
+| Tab strip (Design + AI) | Final.html | lines 337–359 (CSS), 811–820 (instance shows "Design" tab only in hi-fi; AI tab is the founder amendment 2026-05-15) | TWO tabs only. **Default-active = AI** on first canvas open (per §12.13 founder ratification 2026-05-17; W0-7 propagation 2026-05-19). Subsequent opens read per-canvas `localStorage[right-panel-tab:${canvasId}]`. Click AI tab → switches via `useRightPanelStore.setActiveTab('ai')`. |
 | Zoom-r (right side of tab strip) | Final.html | lines 357, 815–818 | Current zoom % + caret (Cluster 08 ships zoom popover) |
 | Frame-head | Final.html | lines 361–378 (CSS), 822–833 (instance) | Frame title + caret + 3 action buttons (Code/Component/Theme — Phase 2 no-op in MVP) |
 | Inspector body scroll | Final.html | lines 380–381 | `.pbody` overflow auto; sections stack |
@@ -380,6 +380,8 @@ None at the chrome level. (Existing M5 CanvasKit + Yjs runtime continues unchang
 | `useFontStatus` (existing) | `src/composables/use-font-status.ts` | Missing-font detection per node + global "any-missing" flag (existing, extended by Cluster 05's font-loader) | Topbar "Missing fonts" pill |
 
 ### 6.4 Components
+
+**Icon convention (W0-4 — 2026-05-19):** every icon rendered by a component in this PRD uses `<KovaIcon name="..." size?="..." />` from Cluster 11 §6.4.2 / Plan 11 Task 4.4. The four retired alternates are forbidden per scope plan §6.2 W0-4 lock: (a) raw `<icon-lucide-*>` tags with dynamic names, (b) `<component :is="\`icon-lucide-${name}\`">` template-literal resolution, (c) `i-lucide-*` UnoCSS class strings (the pattern flagged by QA-B HIGH-7 in Plan 06 lines 500-502: `icon: 'i-lucide-crop'` / `'i-lucide-ruler'` etc. on tool defs), (d) `<Icon name="lucide:...">` Nuxt-style. Wave-3 cluster-06 fix agent migrates residual non-conforming icon bindings (ToolDef `icon` field becomes a lucide name passed to `<KovaIcon>`) during its pass.
 
 #### 6.4.1 View shell
 

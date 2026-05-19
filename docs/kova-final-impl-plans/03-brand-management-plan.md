@@ -3057,7 +3057,8 @@ function close(): void { modalState.value = null }
 
 function onSelect(brandId: string): void {
   store.selectBrand(brandId)
-  router.push(`/dashboard?brandId=${brandId}`)
+  // W0-3 canonical route: /brand/:brandId (RESTful path param per scope plan §6).
+  router.push(`/brand/${brandId}`)
 }
 
 // A2.a "Archived" filter — ENABLED MVP per 2026-05-17 reversal.
@@ -3451,7 +3452,8 @@ function enter(): void {
   if (!brand.value) { router.push('/brands'); return }
   store.selectBrand(brand.value.id)
   flow.reset()
-  router.push(`/dashboard?brandId=${brand.value.id}`)
+  // W0-3 canonical route: /brand/:brandId (RESTful path param per scope plan §6).
+  router.push(`/brand/${brand.value.id}`)
 }
 </script>
 <template>

@@ -67,7 +67,7 @@ A designer can: (1) edit every Q3-engine-ready property through the inspector wi
 - `DimLayerOverlay.vue` — translucent `rgba(0, 0, 0, 0.6)` overlay rendered over inverse of a `matchedNodeIds: string[]` prop (i.e. dims all non-matching nodes). Z-index 6 (sits above selection but below interaction overlays). Pure render layer — no input handling. Used by `FindOverlay.vue` and reserved for future "isolate" / "presentation" modes.
 - `FindOverlay.vue` — composes `DimLayerOverlay` (matched node IDs from `useFindStore`) + clickthrough handler (any click on dimmed node → `useFindStore.close()` + select the clicked node). Z-index 6. Per founder decision §12.12: full find canvas-focus mode owned by 07b.
 - `EyedropperCrosshair.vue` — 96px magnifier circle (2px white border, box-shadow `0 0 0 1px #1e1e1e, 0 8px 24px rgba(0,0,0,0.6)`) + inner 16×16 reticle + hex chip floats below-right (#2c2c2c bg, 1px `var(--line)` border, 11px Inter "tnum"). Z-index magnifier=9, hex chip=10. Hi-fi B8.7. Canvas-only per Q20 (Phase 2 = macOS Tauri screen-wide).
-- `MeasurementAnnotations.vue` — persistent dashed lines (1px solid `#F24822`) + caps (1×8 vert / 8×1 horz, `#F24822`) + label (`#F24822` bg, white text, 11px Inter "tnum", padding 1px 5px). Z-index 7. Persists across save/reload via 07a's MEASUREMENT NodeType. Hi-fi B8.9.
+- `MeasurementAnnotations.vue` — persistent dashed lines (1px solid `#F24822`) + caps (1×8 vert / 8×1 horz, `#F24822`) + label (`#F24822` bg, white text, 11px Inter "tnum", padding 1px 5px). Z-index 7. Persists across save/reload via 07a's page-level `Measurement` collection on the CANVAS-typed SceneNode (per PRD 07a §7.1b — measurements are NOT a NodeType; W0-7 propagation 2026-05-19). Hi-fi B8.9.
 
 **Find feature — canvas focus mode (07b end-to-end per founder decision §12.12):**
 
@@ -84,7 +84,7 @@ A designer can: (1) edit every Q3-engine-ready property through the inspector wi
 
 - `use-eyedropper.ts` — canvas-only sampling per Q20. Activates from `PaintEditor.vue` pipette button OR ^C shortcut. Reads pixel via canvas readback. Returns hex on click, cancels on Esc.
 - `use-slice-tool.ts` — slice-tool mode handler. Listens to canvas drag, creates SLICE NodeType (07a), sets default crop rect.
-- `use-measurement-tool.ts` — measurement-tool mode handler. Listens to canvas hover/click, creates MEASUREMENT NodeType (07a) with two anchor points.
+- `use-measurement-tool.ts` — measurement-tool mode handler. Listens to canvas hover/click, calls `figma.currentPage.addMeasurement({ nodeId, side }, { nodeId, side }, options?)` (07a §7.1b page-level API) with two anchor points + sides. Measurements are page-level records on the CANVAS-typed SceneNode, NOT a NodeType (W0-7 propagation 2026-05-19).
 - `use-export-pipeline.ts` — iterates SLICE nodes on the active page, renders each via 07a's `figma.exportAsync()`, batches into a ZIP via JSZip (Phase A → unbundled per-file download fallback if JSZip not installed; Phase B → JSZip in deps).
 - `use-find-search.ts` — query → matchedNodeIds via scene-graph traversal. Debounced. See find feature block above.
 - `use-camera-pan.ts` — animated camera viewport pan/zoom-to-fit. See find feature block above.
@@ -97,7 +97,7 @@ A designer can: (1) edit every Q3-engine-ready property through the inspector wi
 
 | Item | Owning PRD |
 |---|---|
-| All `packages/core/` modifications (NodeType additions: SLICE, MEASUREMENT; renderer mask compositing; renderer/measurements.ts; tool slot registration in `packages/core/src/tools/`; figma-api-proxy.ts proxy fields; kiwi/schema.ts version bump; CHANGELOG-KOVA.md) | **07a** Canvas Engine Core + Renderer |
+| All `packages/core/` modifications (NodeType addition: **SLICE** (17th NodeType); page-level `Measurement` methods on the CANVAS-typed SceneNode — `addMeasurement` / `getMeasurements` / `getMeasurementsForNode` / `editMeasurement` / `deleteMeasurement`, NOT a NodeType per 07a §7.1b W0-7 propagation 2026-05-19; renderer mask compositing; renderer/measurements.ts; tool slot registration in `packages/core/src/tools/`; figma-api-proxy.ts proxy fields; kiwi/schema.ts version bump; CHANGELOG-KOVA.md) | **07a** Canvas Engine Core + Renderer |
 | All renderer changes (`renderer/scene.ts`, `renderer/measurements.ts`) | 07a |
 | Top-level chrome that hosts the inspector + bottom toolbar that hosts tool buttons (`<TopChrome>`, `<BottomToolbar>`, `<RightPanel>`, `<LeftPanel>`) | 06 Canvas Editor Core Chrome |
 | Existing `properties/` inspector sections (PositionSection, LayoutSection, AppearanceSection, FillSection base, StrokeSection base, TypographySection base, EffectsSection base, ExportSection base, PageSection, VariablesSection) — 07b extends them; 06 owns the chrome and tab routing | 06 |
@@ -184,7 +184,7 @@ Every UI surface in 07b maps to a hi-fi file + scene ID. Engineers cite the scen
 | Layout guides (default ON) | B8.6 | `rgba(255,0,0,0.10)` per locked Q24 spec. Three modes: Uniform (16×16 checker), Columns (flex gap 12px padding 16px), Rows (flex-column gap 6px padding 8px). Z-index 3. No top-level toggle UI in MVP — visibility follows inspector state (line 2469-2470). |
 | Eyedropper magnifier | B8.7 | 96px diameter, 2px white border, box-shadow `0 0 0 1px #1e1e1e, 0 8px 24px rgba(0,0,0,0.6)`. Inner pixel grid: `rgba(255,255,255,0.10)` 16×16. Reticle: 16×16 box at center, 1.5px white border, 1px `#1e1e1e` shadow. Hex chip below-right: `#2c2c2c` bg, 1px `var(--line)` border, 11px Inter "tnum", padding 4px 8px, border-radius 4px, box-shadow `0 4px 12px rgba(0,0,0,0.4)`. Z-index magnifier=9, hex chip=10. 6× zoom inside magnifier. |
 | Selection (frame labels + size chip) | B8.8 | Selection box: 1px solid `var(--select)` (z-index 5). Handles: 8×8 white box, 1.5px `var(--select)` border, border-radius 1px (z-index 6). Frame label: `var(--select)` bg, white text Inter 11px, padding 1px 6px, border-radius 2px (z-index 7). Size chip (e.g., "360 × 100"): same chrome, centered below bbox. **Note:** selection box+handles ship with 06 chrome (consumes engine selection state). Frame label + size chip = 07b overlay. |
-| Measurement annotation (persistent) | B8.9 | Dashed lines: 1px solid `#F24822`. Caps: 1×8 vert / 8×1 horz, `#F24822`. Label: `#F24822` bg, white text 11px Inter "tnum", padding 1px 5px, border-radius 2px. Z-index 7. Persists across save/reload via 07a's MEASUREMENT NodeType. Selecting a measurement reveals endpoint handles in same red; dragging an endpoint re-anchors. |
+| Measurement annotation (persistent) | B8.9 | Dashed lines: 1px solid `#F24822`. Caps: 1×8 vert / 8×1 horz, `#F24822`. Label: `#F24822` bg, white text 11px Inter "tnum", padding 1px 5px, border-radius 2px. Z-index 7. Persists across save/reload via 07a's page-level `Measurement` collection on the CANVAS-typed SceneNode (per PRD 07a §7.1b — NOT a NodeType; W0-7 propagation 2026-05-19). Selecting a measurement reveals endpoint handles in same red; dragging an endpoint re-anchors. |
 | AI assist panel (Kova whisper accent) | B8.10 | `#5a7dff` (Kova brand blue) — the only canvas surface that uses Kova blue. Rings the AI panel, marks the toolbar AI tool, tints the input affordance. Everything else stays neutral / industry-standard. **Note:** the AI panel chrome itself is owned by 10 AI Chat. 07b's `FindOverlay`, `DimLayerOverlay`, and other overlays explicitly do NOT use Kova blue (per locked principle "identity surfaces only when AI is acting"). |
 | Find — typing / multi-match | (founder ref) `assets/07b/find-state-1-typing.png` | `SearchPanel.vue` slides in from left over layers-panel area. User types `frame` → 3 matches listed. Canvas shows `DimLayerOverlay` over all non-matching nodes (rgba(0,0,0,0.6) backdrop). Focused result (hovered or last-clicked) gets bright-blue selection box. No camera pan in multi-match state. |
 | Find — narrowed to 1 / focused | (founder ref) `assets/07b/find-state-2-focus.png` | Query narrowed to 1 result (e.g. `frame 4`) OR user clicked a specific row. Camera pans + zooms to fit target with 10% padding over 250ms ease-out. Target retains bright-blue selection box. Non-matching nodes still dimmed. Esc or × button exits; clicking a dimmed node also exits + selects clicked node (clickthrough). |
@@ -234,7 +234,7 @@ Component primitive classes lifted from hi-fi inline styles: `.ipt` (inspector i
 The two engine-side persistence touch points (both owned by 07a, listed here for visibility):
 
 - **SLICE NodeType** (07a item 1) — slice regions persist as scene-graph nodes.
-- **MEASUREMENT NodeType** (07a item 1) — measurement annotations persist as scene-graph nodes (per B8.9 "persists across save/reload").
+- **Page-level `Measurement` records on CANVAS** (07a §7.1b — NOT a NodeType; W0-7 propagation 2026-05-19) — measurement annotations persist as page-level records anchored to SceneNodes by side (per B8.9 "persists across save/reload").
 
 Layout-guides per-frame configuration uses existing Frame.layoutGrids field (shipped in OpenPencil core; no migration). Inspector `LayoutGuidesOverlay.vue` reads it, renders accordingly.
 
@@ -372,7 +372,7 @@ The only "backend" surface 07b touches indirectly: when `use-export-pipeline.ts`
 |---|---|---|---|
 | `useEyedropper` | `src/composables/use-eyedropper.ts` (NEW) | `(): { isActive: ComputedRef<boolean>; sampledHex: ComputedRef<string \| null>; activate(onSample: (hex: string) => void): void; cancel(): void }` | `PaintEditor.vue`, bottom-toolbar Eyedropper tool button (06 mounts) |
 | `useSliceTool` | `src/composables/use-slice-tool.ts` (NEW) | `(): { isActive: ComputedRef<boolean>; activate(): void; deactivate(): void }`; on activate, hooks `useCanvasInput`'s drag handler to spawn SLICE nodes via `figma.createSlice({ x, y, width, height })` (07a API) | `BottomToolbar` (06 mounts the tool button) |
-| `useMeasurementTool` | `src/composables/use-measurement-tool.ts` (NEW) | `(): { isActive: ComputedRef<boolean>; activate(): void; deactivate(): void }`; on activate, hooks two-click flow: first click anchors start, second click anchors end + creates MEASUREMENT node via `figma.createMeasurement({ start, end })` (07a API) | `BottomToolbar` (06 mounts) |
+| `useMeasurementTool` | `src/composables/use-measurement-tool.ts` (NEW) | `(): { isActive: ComputedRef<boolean>; activate(): void; deactivate(): void }`; on activate, hooks two-click flow: first click resolves the source-node + side anchor, second click resolves the target-node + side anchor and calls `figma.currentPage.addMeasurement({ nodeId, side }, { nodeId, side }, options?)` (07a §7.1b page-level API — NOT a NodeType factory; W0-7 propagation 2026-05-19) | `BottomToolbar` (06 mounts) |
 | `useExportPipeline` | `src/composables/use-export-pipeline.ts` (NEW) | `(): { exportAllSlices(opts: { quality?: number }): Promise<Blob>; exportSingleSlice(sliceId: string, opts: { format: 'PNG' \| 'JPG'; scale: 1 \| 2 \| 3; quality?: number }): Promise<Blob> }` | `ExportSection.vue` "Export N slices" button + Export-preview surface (B8.1 area) |
 | `useCopyPasteProps` | `src/composables/use-copy-paste-props.ts` (NEW) | `(): { copy(): void; paste(): void; canPaste: ComputedRef<boolean> }`; reads selection from `useEditorStore.selectedNodes`; writes via `useClipboardStore` | `RightPanel` global keyboard binding via 08's shortcut registry (⌘⌥C / ⌘⌥V) |
 | `useFindSearch` | `src/composables/use-find-search.ts` (NEW per §12.12) | `(): { runQuery(q: string): void; cancel(): void }`; debounced 80ms; traverses scene via `figma.currentPage.findAll(predicate)`; predicate is case-insensitive substring on `node.name`; writes `useFindStore.matchedNodeIds`; if exactly 1 match, also calls `useFindStore.focusNode(matches[0].id)` automatically; if 0 matches, sets empty; max 200 results returned to keep panel snappy | `useFindStore.setQuery` |
@@ -421,7 +421,7 @@ The only "backend" surface 07b touches indirectly: when `use-export-pipeline.ts`
 | `DimLayerOverlay` | `DimLayerOverlay.vue` | `dimmedNodeIds: string[]` (read from `useFindStore.dimmedNodeIds` by `FindOverlay`; reusable by future modes) | Pure-render: draws `rgba(0,0,0,0.6)` over each dimmed node's bbox. Z-index 6. No input handling. |
 | `FindOverlay` | `FindOverlay.vue` | (none — reads `useFindStore`) | Mounts `<DimLayerOverlay :dimmedNodeIds="findStore.dimmedNodeIds">` when `findStore.active`. Attaches a single canvas-level click handler: if click hits a dimmed node, calls `findStore.exitOnDimClick(nodeId)`; if click hits a matched node, does NOT exit find (lets the normal click pass through to selection). |
 | `EyedropperCrosshair` | `EyedropperCrosshair.vue` | (none — reads `useEyedropperStore`) | Renders only when `eyedropperStore.active`. Shows magnifier + reticle + hex chip. |
-| `MeasurementAnnotations` | `MeasurementAnnotations.vue` | (none) | Iterates MEASUREMENT NodeType (07a), renders dashed lines + caps + label per node. |
+| `MeasurementAnnotations` | `MeasurementAnnotations.vue` | (none) | Iterates `figma.currentPage.getMeasurements()` (07a §7.1b page-level API — NOT a NodeType iteration; W0-7 propagation 2026-05-19), renders dashed lines + caps + label per `Measurement` record. |
 
 All overlay components are pure-render (no internal mutation, except `FindOverlay`'s click handler which delegates to `useFindStore`). They mount inside `<CanvasOverlayLayer>` (a wrapper component owned by 06's `EditorView.vue`) which provides the absolute-positioned canvas-aligned coordinate space. The overlay layer itself is a single `<div class="canvas-overlays">` block per scene-graph render frame.
 
@@ -467,7 +467,7 @@ The receiver is registered inside `use-canvas-drop.ts` (existing composable). 07
 | Boolean operations | `figma.booleanOperation(op: 'UNION' \| 'SUBTRACT' \| 'INTERSECT' \| 'EXCLUDE')` from `figma-api.ts` (existing per Q3 #14) | `BooleanOpsRow` |
 | Eyedropper sample | `figma.canvas.readPixel(x: number, y: number): { r, g, b, a }` (07a exposes via figma-api-proxy) | `useEyedropper` |
 | Slice creation | `figma.createSlice({ x, y, width, height }): SliceNode` (07a NEW per item 1) | `useSliceTool` |
-| Measurement creation | `figma.createMeasurement({ start: Vector, end: Vector }): MeasurementNode` (07a NEW per item 1) | `useMeasurementTool` |
+| Measurement creation | `figma.currentPage.addMeasurement({ nodeId: string; side: 'TOP'\|'RIGHT'\|'BOTTOM'\|'LEFT' }, { nodeId, side }, options?: { offset?: MeasurementOffset; freeText?: string }): Measurement` (07a §7.1b page-level API — NOT a NodeType factory; W0-7 propagation 2026-05-19) | `useMeasurementTool` |
 | Slice export | `figma.exportAsync(node, { format: 'PNG' \| 'JPG', constraint: { type: 'SCALE', value: 1 \| 2 \| 3 }, quality?: number }): Promise<Uint8Array>` (existing) | `useExportPipeline` |
 | Find — scene traversal | `figma.currentPage.findAll(predicate: (node) => boolean): SceneNode[]` (existing OpenPencil API) | `useFindSearch` |
 | Find — node name read | `node.name: string` (existing field, all NodeTypes) | `useFindSearch` predicate |
@@ -489,11 +489,11 @@ The receiver is registered inside `use-canvas-drop.ts` (existing composable). 07
 | `DimLayerOverlay` | dimmed node IDs from `useFindStore.dimmedNodeIds` (07b owns; see §6.2.4) |
 | `FindOverlay` | full `useFindStore` state — drives mount + click handler dispatch (07b owns end-to-end per §12.12) |
 | `EyedropperCrosshair` | active state from `useEyedropperStore` (07b owns) |
-| `MeasurementAnnotations` | `node.type === 'MEASUREMENT'` (07a NEW NodeType) |
+| `MeasurementAnnotations` | `figma.currentPage.getMeasurements()` (07a §7.1b page-level collection — NOT a NodeType filter; W0-7 propagation 2026-05-19) |
 
 ### 7.3 What 07b explicitly does NOT touch
 
-- **`packages/core/src/scene-graph.ts`** — read by 07b via the public proxy; never modified. NodeType additions (SLICE, MEASUREMENT) live in 07a item 1.
+- **`packages/core/src/scene-graph.ts`** — read by 07b via the public proxy; never modified. NodeType addition (SLICE, 17th NodeType) + page-level `Measurement` methods on the CANVAS-typed SceneNode (`addMeasurement` / `getMeasurements` / `getMeasurementsForNode` / `editMeasurement` / `deleteMeasurement` — NOT a NodeType per 07a §7.1b W0-7 propagation 2026-05-19) live in 07a item 1.
 - **`packages/core/src/renderer/scene.ts`** — mask compositing in 07a item 7.
 - **`packages/core/src/renderer/measurements.ts`** — measurement rendering in 07a item 8.
 - **`packages/core/src/figma-api-proxy.ts`** — proxy field exposure in 07a item 9.
@@ -588,7 +588,7 @@ Every line is testable in code or browser. No "feels right." Engineers verify ea
 - [ ] `<DimLayerOverlay>` renders `rgba(0, 0, 0, 0.6)` over every node bbox listed in its `dimmedNodeIds` prop (verified via DevTools — overlay rects align pixel-perfect with node bboxes)
 - [ ] `<FindOverlay>` mounts only when `useFindStore.active=true`; click on a dimmed-node region exits find + selects that node (clickthrough per founder decision §12.12); click on a matched-node region does NOT exit find (lets the normal selection click pass through)
 - [ ] Eyedropper crosshair renders 96px magnifier + 16px reticle + hex chip per hi-fi B8.7 specs ONLY when `useEyedropperStore.active=true`
-- [ ] Measurement annotations render persistent dashed `#F24822` lines + caps + label per hi-fi B8.9 for every MEASUREMENT NodeType in viewport; persists after page reload (since 07a NodeType persists in Yjs)
+- [ ] Measurement annotations render persistent dashed `#F24822` lines + caps + label per hi-fi B8.9 for every `Measurement` returned by `figma.currentPage.getMeasurements()` whose anchor nodes are in the viewport; persists after page reload (since 07a's page-level `Measurement` collection persists in Yjs on the CANVAS-typed SceneNode; W0-7 propagation 2026-05-19)
 
 ### 8.4 Eyedropper flow
 
@@ -610,7 +610,7 @@ Every line is testable in code or browser. No "feels right." Engineers verify ea
 
 - [ ] Activating measurement tool (`useMeasurementTool.activate()`) sets `useEditorStore.activeTool='measurement'`
 - [ ] First click on canvas anchors the start point
-- [ ] Second click anchors end point + creates MEASUREMENT NodeType node via `figma.createMeasurement()`
+- [ ] Second click resolves target-node + side, then calls `figma.currentPage.addMeasurement({ nodeId, side }, { nodeId, side }, options?)` (07a §7.1b page-level API — NOT a NodeType factory; W0-7 propagation 2026-05-19)
 - [ ] Measurement renders via `MeasurementAnnotations` overlay with dashed `#F24822` lines + caps + label showing the distance
 - [ ] Selecting a measurement reveals endpoint handles in `#F24822`; dragging an endpoint re-anchors and updates the label
 
@@ -680,7 +680,7 @@ Target coverage: ≥85% on new composables, ≥80% on new components.
 |---|---|
 | `tests/unit/composables/use-eyedropper.test.ts` | activate / sample / cancel; callback wiring; sampledHex reactivity |
 | `tests/unit/composables/use-slice-tool.test.ts` | activate sets activeTool; drag handler creates SLICE node via mocked `figma.createSlice` |
-| `tests/unit/composables/use-measurement-tool.test.ts` | two-click flow: first click anchors start; second click creates MEASUREMENT |
+| `tests/unit/composables/use-measurement-tool.test.ts` | two-click flow: first click resolves source-node + side; second click resolves target-node + side and calls `figma.currentPage.addMeasurement(...)` (07a §7.1b page-level API; W0-7 propagation 2026-05-19) |
 | `tests/unit/composables/use-export-pipeline.test.ts` | iterates SLICE nodes; per-node exportAsync mocked; ZIP batching (mock JSZip); Phase A unbundled fallback |
 | `tests/unit/composables/use-copy-paste-props.test.ts` | copy reads Q23 fields off node; paste applies to target; incompatible-NodeType silent drop; multi-select paste |
 | `tests/unit/stores/clipboard.test.ts` | copyProps / pasteProps / clear; per-tab persistence (no localStorage) |
@@ -705,7 +705,7 @@ Target coverage: ≥85% on new composables, ≥80% on new components.
 | `tests/unit/components/canvas-overlays/DimLayerOverlay.test.ts` | Renders rgba(0,0,0,0.6) over each dimmedNodeId's bbox; empty when array empty; pure render (no input handling) |
 | `tests/unit/components/canvas-overlays/FindOverlay.test.ts` | Mounts only when findStore.active=true; click on dimmed-region calls findStore.exitOnDimClick(id); click on matched-region does NOT exit find |
 | `tests/unit/components/canvas-overlays/EyedropperCrosshair.test.ts` | Hidden when eyedropperStore.active=false; visible when true; magnifier + reticle + hex chip render |
-| `tests/unit/components/canvas-overlays/MeasurementAnnotations.test.ts` | Renders for MEASUREMENT NodeType; dashed lines + caps + label |
+| `tests/unit/components/canvas-overlays/MeasurementAnnotations.test.ts` | Renders one item per `Measurement` returned by `figma.currentPage.getMeasurements()` (07a §7.1b page-level API; W0-7 propagation 2026-05-19); dashed lines + caps + label |
 | `tests/unit/components/find/SearchPanel.test.ts` | Renders only when findStore.active; autofocuses input on mount; Esc closes; × button closes; result count line correct |
 | `tests/unit/components/find/SearchResultRow.test.ts` | Renders node icon + name + parent breadcrumb; hover state bg; focused state bg; click emits |
 | `tests/unit/composables/use-find-search.test.ts` | Case-insensitive substring on node.name; debounced 80ms; max 200 results; auto-focusNode when narrowed to 1 match |
@@ -836,7 +836,7 @@ Smoke tests via Vercel Agent Browser preferred per `e2e-runner` agent default. P
 
 | Other PRD | What we depend on (from them) | What they depend on us for |
 |---|---|---|
-| **07a — Canvas Engine Core + Renderer** | Every engine API listed in §7.1 + §7.2: SLICE NodeType, MEASUREMENT NodeType, scaleMode enum, GradientPaint type, Effect type, `figma.booleanOperation()`, `figma.canvas.readPixel()`, `figma.createSlice()`, `figma.createMeasurement()`, `figma.exportAsync()`, mask compositing in renderer/scene.ts, renderer/measurements.ts, figma-api-proxy field exposure, kiwi schema serialization | Every overlay component reads engine state via the proxy; if 07a renames a field, 07b updates the import. |
+| **07a — Canvas Engine Core + Renderer** | Every engine API listed in §7.1 + §7.2: SLICE NodeType (17th NodeType), page-level `Measurement` methods on the CANVAS-typed SceneNode (`addMeasurement` / `getMeasurements` / `getMeasurementsForNode` / `editMeasurement` / `deleteMeasurement` — NOT a NodeType, per 07a §7.1b W0-7 propagation 2026-05-19), scaleMode enum, GradientPaint type, Effect type, `figma.booleanOperation()`, `figma.canvas.readPixel()`, `figma.createSlice()`, `figma.exportAsync()`, mask compositing in renderer/scene.ts, renderer/measurements.ts, figma-api-proxy field exposure, kiwi schema serialization | Every overlay component reads engine state via the proxy; if 07a renames a field, 07b updates the import. |
 | **06 — Canvas Editor Core Chrome** | `<TopChrome>`, `<BottomToolbar>`, `<RightPanel>`, `<LeftPanel>`, inspector tab routing, the `<EditorView>` shell that mounts `<CanvasOverlayLayer>`. Existing `properties/*Section.vue` chrome | Inspector section *extensions* (07b extends EffectsSection, ExportSection, StrokeSection, TypographySection, FillSection, ColorPicker) — 06 owns the parent components; 07b's extensions land inside them via composition / slots / direct edit |
 | **08 — Canvas Menus + Popovers + Shortcuts** | `useShortcutsStore.register()` API for Boolean ops + copy/paste + pixel-grid + find shortcuts (Phase B — Phase A uses local fallback handler). `<KovaContextMenu>` for inspector right-click overflow (per Q18). **NOTE:** find feature itself is 100% 07b per founder decision §12.12 — 08 is NOT involved in find UX or `useFind` composable | None at runtime |
 | **09 — Version History + Trash** | None at runtime — 07b ships before 09; 09 consumes 07b's `useExportPipeline` output for snapshot thumbnails | `useExportPipeline.exportAllSlices()` produces image bytes 09 thumbnails consume |
@@ -861,7 +861,7 @@ Acknowledged + enforced:
 
 07b's components import engine APIs that 07a defines. If 07a slips, 07b's components fail at compile time (TypeScript) or at runtime (proxy methods undefined).
 
-**Mitigation:** 07a + 07b ship as a paired Wave 5 deploy — neither merges to main without the other. During development, 07b's tests mock the engine boundary (`figma.createSlice`, `figma.createMeasurement`, `figma.canvas.readPixel`) so 07b can build + test in isolation. CI runs the integration tests (§9.2) only after BOTH PRDs land on the integration branch.
+**Mitigation:** 07a + 07b ship as a paired Wave 5 deploy — neither merges to main without the other. During development, 07b's tests mock the engine boundary (`figma.createSlice`, `figma.currentPage.addMeasurement` (07a §7.1b page-level API — NOT a NodeType factory; W0-7 propagation 2026-05-19), `figma.canvas.readPixel`) so 07b can build + test in isolation. CI runs the integration tests (§9.2) only after BOTH PRDs land on the integration branch.
 
 ### 12.2 RISK (Medium) — Existing `properties/` vs audit-recommended `inspector/` directory
 
@@ -970,6 +970,21 @@ Acceptance §8.8 tests this matrix.
 **Feature gate:** `FEATURE_GATES.find = true` in Phase A (ships immediately, no 08 dependency).
 
 **Why 07b not 08:** 07b already owns canvas overlays + inspector wiring. Find feature touches: scene-graph read (07a engine), overlay render (07b), keyboard shortcut (07b extends 08-style registry but registers its own binding), Pinia state (07b). Zero overlap with 08's scope (which becomes keyboard-shortcut REGISTRY infrastructure, not Find UX itself).
+
+---
+
+### 12.13 RESOLVED — Cluster 07b owns find feature sole (W0-2 propagation)
+
+**RESOLVED 2026-05-17:** Cluster 07b owns find feature sole. **PROPAGATED 2026-05-19 (W0-2 dispatch):** PRD 08 / Plan 08 updated to drop their parallel find spec.
+
+| Surface | Before W0-2 | After W0-2 |
+|---|---|---|
+| `useFindStore` (Pinia) | PRD 08 §6.2.3 + Plan 08 Task 1.3 spec'd a hit-list store at `src/stores/find.ts` | PRD 08 §6.2.3 retired (cross-refs to 07b); Plan 08 Task 1.3 dropped. 07b sole owner — store at `src/stores/use-find-store.ts` (canvas-focus-mode shape) |
+| `<FindOverlay>` component | PRD 08 §6.4.3 + Plan 08 Task 5.1 spec'd a top-of-canvas overlay | PRD 08 §6.4.3 retired (cross-refs to 07b); Plan 08 Phase 5 dropped. 07b ships `SearchPanel` + `DimLayerOverlay` + `FindOverlay` at `src/components/find/` and `src/components/canvas-overlays/` |
+| `Cmd+F` shortcut binding | PRD 08 §6.1 / Plan 08 Task 5.2 registered binding into `useShortcutsStore` | Removed from PRD 08 / Plan 08. 07b registers its own binding via `src/composables/use-shortcuts.ts` extension |
+| `FindHighlightCanvasExtension` | Plan 08 Task 5.4 spec'd DOM-positioned overlay above CanvasKit | Removed from Plan 08. 07b's `DimLayerOverlay` + selection-box render (07a existing) cover the visual; no separate canvas-extension needed |
+
+**Wave-2 cleanup follow-up:** the cluster-08 Wave-2 fix agent SHOULD scrub the remaining secondary find references in PRD 08 §3.4 (Find overlay visual spec) + §6.3 useFind composable row + §7.2 cluster row + §8.4 acceptance + §9 test plan rows during its Wave-2 pass. W0-2 only ratifies the contract; full PRD 08 cleanup happens in Wave 2.
 
 ---
 

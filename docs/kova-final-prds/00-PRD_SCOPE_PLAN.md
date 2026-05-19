@@ -37,7 +37,8 @@ kova-open-pencil-1/docs/kova-final-prds/
   04-account-and-stripe-billing.md
   05-brand-kit-and-drag-drop.md
   06-canvas-editor-core-chrome.md
-  07-canvas-engine-extensions.md
+  07a-canvas-engine-core-renderer.md
+  07b-canvas-engine-inspector-overlays.md
   08-canvas-menus-popovers-shortcuts.md
   09-version-history-and-trash.md
   10-ai-chat-and-memory.md
@@ -239,7 +240,7 @@ For each cluster: scope boundary, 03-doc rows covered, hi-fi files referenced, Q
 - Top chrome composable: topbar layout, file menu, logo dropdown ("Back to dashboard"), brand label, avatar dropdown
 - Bottom toolbar: 9 tools (Move/Frame/Rectangle/Ellipse/Pen/Text/Comment/AI/Components) + tool registration (Slice + Measurement added in Cluster 07)
 - Left panel: Pages section + Layers tree (`useLayerTree()`, virtual scrolling, expand/collapse, drag-reorder)
-- Right panel / Inspector: tab routing (Design only at MVP — Prototype DEFERRED), properties section component (when no selection — §3C #13), per-section panels (Position/Layout/Fill/Stroke/Text/Effects/Export)
+- Right panel / Inspector: tab routing (Design + AI only at MVP — **Prototype OUT OF SCOPE entirely** (founder lock 2026-05-15; W0-8 propagation 2026-05-19 — Kova exports static images, NOT interactive prototypes; never building, not merely deferred)), properties section component (when no selection — §3C #13), per-section panels (Position/Layout/Fill/Stroke/Text/Effects/Export)
 - Color picker popover (B5 file 12) — picker logic, gradient editor, eyedropper trigger (canvas-only Q20)
 - `useNodeProps()` + `useMultiProps()` consumer pattern (existing in core, extend with new rows)
 
@@ -265,7 +266,7 @@ For each cluster: scope boundary, 03-doc rows covered, hi-fi files referenced, Q
 - Q1: Slice = first-class 17th NodeType in `packages/core/src/scene-graph.ts`. Lift core lock per CLAUDE.md amendment.
 - Q2: Mask compositing in `renderer/scene.ts` (data model already in core — `isMask` + `maskType`). All 3 mask types ship MVP.
 - Q3: 9 features engine-ready (vertical text align, all 4 gradient types, POLYGON, STAR, LINE, stroke align, all 5 effect types, boolean operations, vector network field). 1 partial (OpenType — needs SceneNode wiring). 4 missing (aspectRatio, page-export flag, page-bg-vis, scale tool).
-- Q11: Measurement = first-class 18th NodeType in `scene-graph.ts`. Path 1 (lift core lock).
+- Q11: Measurement (SUPERSEDED 2026-05-17 per founder lock #14 — measurements are page-level on the CANVAS-typed SceneNode via PageNode-equivalent methods (`addMeasurement` / `getMeasurements` / `getMeasurementsForNode` / `editMeasurement` / `deleteMeasurement`), NOT a NodeType. See PRD 07a §7.1b + §12.10. The earlier "Measurement = first-class 18th NodeType" framing has been retired; W0-7 propagation 2026-05-19.).
 - Q20: Eyedropper canvas-only MVP. Phase 2: screen-wide on macOS Tauri.
 - Q21: All 4 image-fill modes (Fill default, Fit, Crop, Tile).
 - Q22: JPG export 3-level dropdown (High 0.92 default / Medium 0.80 / Low 0.65).
@@ -273,7 +274,7 @@ For each cluster: scope boundary, 03-doc rows covered, hi-fi files referenced, Q
 - Q23: Copy/Paste properties full set (better than Figma's stroke-partial).
 
 **Infrastructure scope:**
-- **Core mods** (lift lock): SLICE NodeType, MEASUREMENT NodeType, aspectRatio prop, page-export flag, page-bg-visibility, scale tool, OpenType per-text-run wiring, list/link per-text-run attrs, tool registration in `tools/`
+- **Core mods** (lift lock): SLICE NodeType (17th NodeType); page-level `Measurement` methods on the CANVAS-typed SceneNode — `addMeasurement` / `getMeasurements` / `getMeasurementsForNode` / `editMeasurement` / `deleteMeasurement` (NOT a NodeType per founder lock #14 / PRD 07a §7.1b — W0-7 propagation 2026-05-19); aspectRatio prop, page-export flag, page-bg-visibility, scale tool, OpenType per-text-run wiring, list/link per-text-run attrs, tool registration in `tools/`
 - **Renderer-only:** Mask compositing in `renderer/scene.ts`. Effects already shipped (zero work per Q3 #12).
 - **Inspector wiring:** Vertical text align, stroke align, multiple fills, 4-mode image fill picker, gradient editor UI, Effects inspector (5 effect types), Boolean ops menu+inspector
 - **App-level overlays:** Frame outlines, Mask outlines, Slice region, Snap indicators, Layout guides (default-ON red 10% Q24), Pixel grid, Hover contour, Find highlight, Eyedropper crosshair, Measurement annotations
@@ -690,6 +691,66 @@ These primitives + integrations touch 3+ PRDs and need consistent treatment:
 | Tauri command-surface naming (`kova.*`) | 06 | 06 (canvas chrome owns Tauri menu), 07 (eyedropper Phase 2) (added per 00c §1.D) |
 
 **Implication:** Cluster 11 + 08 + 12 ship foundational primitives. Downstream clusters reference them by API, don't re-spec. The four cross-cuts added 2026-05-14 (per the comprehensive audit §1.D "hidden dependencies" finding) are owned by Cluster 11 + Cluster 06 and must be specced as named conventions, not re-invented per consuming PRD.
+
+### 6.1 Routing + store canonical (W0-3 — 2026-05-19)
+
+Per W0-3 founder ratification (resolves CT-002 from `docs/kova-final-qa/CONSOLIDATED-TRIAGE.md`), the canonical names for two load-bearing cross-cluster surfaces are locked:
+
+| Surface | Canonical name | Canonical path | Owner | Forbidden aliases |
+|---|---|---|---|---|
+| Brand dashboard route | `/brand/:brandId` (RESTful path param) | Vue Router definition in PRD 02 §6.1 | **02** (Onboarding & Dashboard) | `/dashboard?brandId=...` (query-param form) — retired |
+| Right-panel tab store (canvas) | `useRightPanelStore` | `src/stores/right-panel.ts` | **06** (Canvas Editor Core Chrome) | `useRightPanelTabStore`, `src/stores/right-panel-tab.ts` — retired |
+
+**Consumer enforcement:**
+
+- Every `router.push('/dashboard?brandId=...')` in Plan 03 has been rewritten to `router.push('/brand/${brandId}')` (W0-3).
+- Plan 06 E2E spec `brand-label-navigates.spec.ts` asserts `/brand/:brandId` (W0-3).
+- Plan 10 Task 17 imports `useRightPanelStore` from `@/stores/right-panel` (W0-3). The earlier `useRightPanelTabStore` name + `@/stores/right-panel-tab` path are retired.
+- Wave 2 / 3 cluster fix agents (02, 06) MUST update their PRDs to match these canonical names where their PRD body still cites the retired forms. PRD 06 §0 / §1 / §3.2 / §3.5 / §6.4 (brand-click handler) references to `/dashboard?brandId=` are scrubbed during Cluster 06 Wave-3 fix; this W0 commit does not touch PRD 06 prose to keep the W0 surface minimal.
+
+**Rationale:** RESTful path params (`/brand/:brandId`) are more idiomatic for shareable links, browser history, and back/forward navigation than query params (`/dashboard?brandId=`). The retired query-param form forced double routing logic (route + query-param watcher) in every consumer; the path-param form centralizes route guards on a single param. Store-name canonicalization eliminates the `useRightPanelStore` vs `useRightPanelTabStore` two-name drift surfaced by QA-C HIGH-10.
+
+### 6.2 Icon convention (W0-4 — 2026-05-19)
+
+Per W0-4 founder ratification (resolves CT-003 from `docs/kova-final-qa/CONSOLIDATED-TRIAGE.md` + QA-B CRITICAL-3 / CRITICAL-4 / HIGH-7 / HIGH-17 + QA-C HIGH-12), Cluster 11 ships a single `<KovaIcon name="...">` primitive (PRD 11 §6.4.2 / Plan 11 Task 4.4). **All icons across the app use this primitive.** No raw `<icon-lucide-*>` dynamic-name tags, no Nuxt-style `<Icon name="lucide:...">`, no `i-lucide-*` UnoCSS class strings, and no `<component :is="\`icon-lucide-${name}\`">` template-literal resolution. The primitive uses a static `Map<string, Component>` registry under the hood (avoids `unplugin-icons` dynamic-resolution failures) and tree-shakes per `~icons/lucide/<name>` auto-import.
+
+**Consumer enforcement:**
+
+- PRDs 02 / 03 / 04 / 05 / 06 each carry an "Icon convention (W0-4)" disclaimer at the top of §6.4 Components.
+- Wave-2 / Wave-3 cluster fix agents scrub residual non-conforming icon bindings (per QA-B CRITICAL-3 22 occurrences in Plan 03, QA-B CRITICAL-4 dynamic binding in Plan 04 line 2332, QA-B HIGH-7 + HIGH-17 in Plan 05 + 06).
+- Plan 11 Task 4.4 ships the primitive with TDD coverage; consumers must NOT shim a local icon wrapper.
+
+### 6.3 Test framework (W0-6 — 2026-05-19)
+
+Per W0-6 founder ratification (resolves CT-010 from `docs/kova-final-qa/CONSOLIDATED-TRIAGE.md` + QA-B CRITICAL-5 / CRITICAL-6 / HIGH-8), the project uses **`bun:test` exclusively**. The following APIs are forbidden in `tests/` and any other test file:
+
+- `jest.mock` / `jest.fn` / `jest.spyOn`
+- `vi.mock` / `vi.fn` / `vi.spyOn` (Vitest)
+- `mockImplementation` / `mockImplementationOnce` / `mockClear` / `mockReturnValue` / `mockReturnValueOnce`
+
+**Use the `bun:test` equivalents:** `mock.module(modulePath, factory)` at module level for module mocks; `mock(implementation)` at call site for function mocks; manual `mock.mockClear()` is permitted but the bound symbol must be a `bun:test` `mock` reference, not a `jest`/`vi` reference.
+
+**Consumer enforcement:**
+
+- Plan 11 Task 11.6 ships a CI grep gate + `bun run check:test-framework` script. The gate is composed into `bun run check`, so any plan author writing a jest/vitest API receives an immediate fail.
+- Wave-2 cluster fix agents for 01 / 02 / 03 / 04 replace `jest.mock` / `vi.mock` / `mockImplementationOnce` with `bun:test` equivalents during their pass.
+
+### 6.4 Founder lock #10 (no `as any`, no `process.env.X!`) (W0-9 — 2026-05-19)
+
+Per W0-9 founder ratification (resolves CT-009 from `docs/kova-final-qa/CONSOLIDATED-TRIAGE.md` + QA-B HIGH-1 + HIGH-2), founder lock #10 is enforced across `src/` + `api/` + `supabase/functions/`:
+
+- **Zero `as any` casts.** QA-B HIGH-2 audit: ~214 occurrences across the plan corpus (49 in Plan 03, 41 in Plan 06, 17 in Plan 07b, balance scattered).
+- **Zero `process.env.X!` non-null assertions.** QA-B HIGH-1 audit: 24 occurrences.
+
+**Replacements:**
+
+- `process.env.X!` → `requireEnv('X')` — typed env-var accessor that throws on missing/empty (Plan 11 Task 1.3b). The helper at `api/_shared/env.ts` returns `string`, not `string | undefined`, so callers receive a non-nullable value without a non-null assertion.
+- `as any` → explicit type narrowing — `as MyType` after runtime check, `unknown` + valibot parse, type predicates (`function isFoo(x: unknown): x is Foo`), or refactor the caller to use the correct narrow type.
+
+**Consumer enforcement:**
+
+- Plan 11 Task 11.7 ships a CI grep gate + `bun run check:lock10` script composed into `bun run check`. Any new `as any` or `process.env.X!` in `src/` / `api/` / `supabase/functions/` immediately fails CI.
+- Wave-2/3 cluster fix agents (03 / 06 / 07b / others) replace existing `as any` casts during their pass; each commits its sweep separately.
 
 ---
 

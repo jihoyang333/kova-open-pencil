@@ -1015,6 +1015,8 @@ export const useAccountStore = defineStore('account', () => {
 
 ### 6.4 Components
 
+**Icon convention (W0-4 — 2026-05-19):** every icon rendered by a component in this PRD uses `<KovaIcon name="..." size?="..." />` from Cluster 11 §6.4.2 / Plan 11 Task 4.4. The four retired alternates are forbidden per scope plan §6.2 W0-4 lock: (a) raw `<icon-lucide-*>` tags with dynamic names, (b) `<component :is="\`icon-lucide-${name}\`">` template-literal resolution (the pattern flagged by QA-B CRITICAL-4 in Plan 04 line 2332), (c) `i-lucide-*` UnoCSS class strings, (d) `<Icon name="lucide:...">` Nuxt-style. Wave-2 cluster-04 fix agent migrates residual non-conforming icon bindings during its pass.
+
 #### 6.4.1 Page components
 
 | Component | File | Hi-fi reference |
@@ -1624,7 +1626,7 @@ Separate decision dispatched same day. B12 archived Brands page promoted from Ph
 - `<DangerZoneCard>` modal + cascade + restore page + middleware — Cluster 01
 - Brand Kit sub-tab content (Visuals, Fonts, Tone snippets, Saved blocks, Writing rules, Memories, Knowledge base) — Cluster 05
 - Brand-creation flow + brand-archive + brand-delete — Cluster 03
-- Toast / modal / skeleton / Command-K / `<EmailShell>` / Sentry SDK / `idempotency_keys` table — Cluster 11
+- Toast / modal / skeleton / `<EmailShell>` / Sentry SDK / `idempotency_keys` table — Cluster 11 (Cmd+K palette removed entirely per 00g kill 2026-05-17; W0-7 scrub 2026-05-19)
 - `usePreferencesStore` (consumes `users.preferences` JSONB column) — Cluster 12
 - Onboarding wizard + dashboard chrome (avatar dropdown chrome) — Cluster 02
 - Canvas-side topbar avatar dropdown chrome — Cluster 06

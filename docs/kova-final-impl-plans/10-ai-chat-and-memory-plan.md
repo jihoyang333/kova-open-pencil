@@ -2390,15 +2390,16 @@ git commit -m "feat(prd10): mount ChatPanel in right-panel AI tab; remove ChatPo
 import { useChatProductReferencesStore } from '@/stores/chat-product-references'
 import { useChatStore } from '@/stores/chat'
 // Founder-locked §12.12 item 5 — auto-switch right-panel to AI tab before importing.
-// Cluster 06 owns the right-panel-tab store; this PRD depends on the public API.
-import { useRightPanelTabStore } from '@/stores/right-panel-tab'
+// Cluster 06 owns the right-panel store; this PRD depends on the public API.
+// W0-3 canonical: useRightPanelStore at @/stores/right-panel (per scope plan §6).
+import { useRightPanelStore } from '@/stores/right-panel'
 import { toast } from '@/composables/use-toast'
 
 import type { ChatProductReference } from '@/types/kova/chat'
 
 const productRefsStore = useChatProductReferencesStore()
 const chatStore = useChatStore()
-const rightPanelTab = useRightPanelTabStore()
+const rightPanel = useRightPanelStore()
 
 async function handleImport(): Promise<void> {
   const convId = chatStore.activeConversationId
@@ -2423,7 +2424,7 @@ async function handleImport(): Promise<void> {
   try {
     // Founder-locked §12.12 item 5 — switch BEFORE awaiting import so the chip
     // row is already rendered when the new refs hydrate. User sees chips populate.
-    rightPanelTab.setActiveTab('ai')
+    rightPanel.setActiveTab('ai')
     await productRefsStore.importProducts(convId, refs)
     clearSelection()                              // Cluster 06 store method
     toast.show(`Imported ${refs.length} product${refs.length === 1 ? '' : 's'} to chat`, 'success')
@@ -2433,7 +2434,7 @@ async function handleImport(): Promise<void> {
 }
 ```
 
-> **Cluster 06 dependency:** `useRightPanelTabStore` with `setActiveTab('design' | 'ai')` is owned by Cluster 06 per §11 cross-cuts. If Cluster 06's store has a different API name, adapt the import + call site accordingly. If the store doesn't exist yet, STOP — Cluster 06 must ship the 2-tab framework first.
+> **Cluster 06 dependency (W0-3 canonical):** `useRightPanelStore` at `@/stores/right-panel` with `setActiveTab('design' | 'ai')` is owned by Cluster 06 per §11 cross-cuts and scope plan §6 W0-3 lock. If the store doesn't exist yet, STOP — Cluster 06 must ship the 2-tab framework first matching this canonical name + path. Do NOT shim a local `useRightPanelTabStore` import — that name was retired by W0-3 on 2026-05-19.
 
 - [ ] **Step 3: Test interactively + via E2E (E2E covered in Task 18)**
 

@@ -647,6 +647,84 @@ git commit -m "feat(cluster-11): add writeAudit() helper (W0-1 — founder lock 
 
 ---
 
+### Task 1.3b: `requireEnv()` helper (TDD) — W0-9 / founder lock #10
+
+**Files:**
+- Create: `kova-open-pencil-1/api/_shared/env.ts`
+- Test: `kova-open-pencil-1/tests/unit/api/_shared/env.test.ts`
+
+**Contract:** `requireEnv(name: string): string` reads `process.env[name]` and throws an Error with the missing key name if absent / empty. Callers receive a typed `string` (not `string | undefined`), eliminating the founder-lock-#10-forbidden `process.env.X!` non-null-assertion pattern that QA-B HIGH-1 found in 24 places across the plan corpus. Consumer waves replace every `process.env.X!` callsite with `requireEnv('X')`.
+
+- [ ] **Step 1: Write the failing unit test**
+
+```typescript
+// tests/unit/api/_shared/env.test.ts
+import { describe, it, expect, beforeEach, afterEach } from 'bun:test'
+import { requireEnv } from '@/api/_shared/env'
+
+describe('requireEnv (W0-9)', () => {
+  let original: string | undefined
+
+  beforeEach(() => { original = process.env.KOVA_REQUIREENV_TEST_VAR })
+  afterEach(() => {
+    if (original === undefined) delete process.env.KOVA_REQUIREENV_TEST_VAR
+    else process.env.KOVA_REQUIREENV_TEST_VAR = original
+  })
+
+  it('returns the value when set', () => {
+    process.env.KOVA_REQUIREENV_TEST_VAR = 'value'
+    expect(requireEnv('KOVA_REQUIREENV_TEST_VAR')).toBe('value')
+  })
+
+  it('throws when missing', () => {
+    delete process.env.KOVA_REQUIREENV_TEST_VAR
+    expect(() => requireEnv('KOVA_REQUIREENV_TEST_VAR')).toThrow(/KOVA_REQUIREENV_TEST_VAR/)
+  })
+
+  it('throws when empty string', () => {
+    process.env.KOVA_REQUIREENV_TEST_VAR = ''
+    expect(() => requireEnv('KOVA_REQUIREENV_TEST_VAR')).toThrow(/KOVA_REQUIREENV_TEST_VAR/)
+  })
+
+  it('return type is string (not string | undefined) — compile-time test', () => {
+    process.env.KOVA_REQUIREENV_TEST_VAR = 'x'
+    const v: string = requireEnv('KOVA_REQUIREENV_TEST_VAR')
+    expect(v).toBe('x')
+  })
+})
+```
+
+- [ ] **Step 2: Run → FAIL (no module)**
+
+Run: `cd kova-open-pencil-1 && bun test tests/unit/api/_shared/env.test.ts`
+Expected: FAIL with module-not-found error
+
+- [ ] **Step 3: Write the helper**
+
+```typescript
+// api/_shared/env.ts
+export function requireEnv(name: string): string {
+  const value = process.env[name]
+  if (value === undefined || value === '') {
+    throw new Error(`Missing required environment variable: ${name}`)
+  }
+  return value
+}
+```
+
+- [ ] **Step 4: Run → PASS (4/4)**
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add kova-open-pencil-1/api/_shared/env.ts kova-open-pencil-1/tests/unit/api/_shared/env.test.ts
+git commit -m "feat(cluster-11): add requireEnv() helper (W0-9 — founder lock #10)"
+```
+
+**Consumer-wave usage:** every `process.env.SUPABASE_SERVICE_ROLE_KEY!` becomes `requireEnv('SUPABASE_SERVICE_ROLE_KEY')`. The 24 callsites flagged by QA-B HIGH-1 are migrated by their respective Wave-1/2/3 cluster fix agents.
+
+---
+
 ### Task 1.4: Sentry browser install (STUB — env-guarded)
 
 **Files:**
@@ -2121,6 +2199,167 @@ git commit -am "feat(cluster-11): KovaMenu + KovaTooltip wrappers (Reka Dropdown
 
 ---
 
+### Task 4.4: `<KovaIcon>` primitive (W0-4 — single icon tag for the whole app)
+
+**Files:**
+- Create: `kova-open-pencil-1/src/components/ui/KovaIcon.vue`
+- Create: `kova-open-pencil-1/src/components/ui/kova-icon-registry.ts` (static map)
+- Test: `kova-open-pencil-1/tests/unit/components/KovaIcon.test.ts`
+
+**Contract:** every icon in every cluster renders via `<KovaIcon name="..." size?="..." />`. The four forbidden alternates — `<icon-lucide-*>` raw tags with dynamic names, `<Icon name="lucide:...">` (Nuxt-style), `i-lucide-*` UnoCSS class strings, `<component :is="\`icon-lucide-${name}\`">` template-literal resolution — are scrubbed cluster-by-cluster in Wave 2 / 3 fix passes. See scope plan §6.2 "Icon convention" W0-4 lock.
+
+**Why a static registry vs `<component :is>`:** `unplugin-icons` resolves icons at build time via auto-imports. Dynamic `<component :is="\`icon-lucide-${name}\`">` fails at runtime because the resolved component name is not in scope. A static `Map<string, Component>` populated at module load (`import IconCheck from '~icons/lucide/check'` ... × N) is the only pattern that (a) tree-shakes, (b) survives runtime, (c) lets us throw a useful dev-mode warning on unknown names.
+
+- [ ] **Step 1: Write the failing tests**
+
+```typescript
+// tests/unit/components/KovaIcon.test.ts
+import { describe, it, expect } from 'bun:test'
+import { mount } from '@vue/test-utils'
+import KovaIcon from '@/components/ui/KovaIcon.vue'
+
+describe('<KovaIcon> (W0-4)', () => {
+  it('renders known lucide name', () => {
+    const w = mount(KovaIcon, { props: { name: 'check' } })
+    expect(w.find('svg').exists()).toBe(true)
+    expect(w.attributes('aria-hidden')).toBe('true')
+  })
+
+  it('size prop maps to pixel dimension', () => {
+    const w = mount(KovaIcon, { props: { name: 'check', size: 'lg' } })
+    const svg = w.find('svg')
+    expect(svg.attributes('width')).toBe('20')
+    expect(svg.attributes('height')).toBe('20')
+  })
+
+  it('aria-label flips role from presentation to img', () => {
+    const w = mount(KovaIcon, { props: { name: 'check' }, attrs: { 'aria-label': 'Saved' } })
+    expect(w.attributes('aria-hidden')).toBeUndefined()
+    expect(w.attributes('role')).toBe('img')
+  })
+
+  it('passes class prop through to svg root', () => {
+    const w = mount(KovaIcon, { props: { name: 'check', class: 'text-accent' } })
+    expect(w.find('svg').classes()).toContain('text-accent')
+  })
+
+  it('unknown name renders nothing + dev warn (no throw)', () => {
+    const w = mount(KovaIcon, { props: { name: 'totally-not-real' } })
+    expect(w.find('svg').exists()).toBe(false)
+  })
+})
+```
+
+- [ ] **Step 2: Run → FAIL (no module)**
+
+Run: `cd kova-open-pencil-1 && bun test tests/unit/components/KovaIcon.test.ts`
+Expected: FAIL with module-not-found error
+
+- [ ] **Step 3: Build the static registry**
+
+```typescript
+// src/components/ui/kova-icon-registry.ts
+// Static lucide registry. Add new icons here when a consumer cluster needs one.
+// Tree-shakes per unplugin-icons / vite auto-imports.
+import type { Component } from 'vue'
+
+import IconCheck from '~icons/lucide/check'
+import IconAlertTriangle from '~icons/lucide/alert-triangle'
+import IconInfo from '~icons/lucide/info'
+import IconLoader from '~icons/lucide/loader'
+import IconSparkles from '~icons/lucide/sparkles'
+import IconCloudOff from '~icons/lucide/cloud-off'
+import IconArrowLeft from '~icons/lucide/arrow-left'
+import IconArrowRight from '~icons/lucide/arrow-right'
+import IconChevronDown from '~icons/lucide/chevron-down'
+import IconChevronRight from '~icons/lucide/chevron-right'
+import IconX from '~icons/lucide/x'
+import IconPlus from '~icons/lucide/plus'
+import IconSearch from '~icons/lucide/search'
+import IconCrop from '~icons/lucide/crop'
+import IconRuler from '~icons/lucide/ruler'
+// ... (extended by consumer clusters during Wave 2 / 3)
+
+export const KOVA_ICON_REGISTRY: ReadonlyMap<string, Component> = new Map<string, Component>([
+  ['check', IconCheck],
+  ['alert-triangle', IconAlertTriangle],
+  ['info', IconInfo],
+  ['loader', IconLoader],
+  ['sparkles', IconSparkles],
+  ['cloud-off', IconCloudOff],
+  ['arrow-left', IconArrowLeft],
+  ['arrow-right', IconArrowRight],
+  ['chevron-down', IconChevronDown],
+  ['chevron-right', IconChevronRight],
+  ['x', IconX],
+  ['plus', IconPlus],
+  ['search', IconSearch],
+  ['crop', IconCrop],
+  ['ruler', IconRuler],
+])
+
+export const KOVA_ICON_SIZE_PX: Readonly<Record<'xs' | 'sm' | 'md' | 'lg', number>> = {
+  xs: 12, sm: 14, md: 16, lg: 20,
+}
+```
+
+- [ ] **Step 4: Build the component**
+
+```vue
+<!-- src/components/ui/KovaIcon.vue -->
+<script setup lang="ts">
+import { computed, useAttrs } from 'vue'
+import { KOVA_ICON_REGISTRY, KOVA_ICON_SIZE_PX } from './kova-icon-registry'
+
+interface Props {
+  name: string
+  size?: 'xs' | 'sm' | 'md' | 'lg'
+  class?: string
+}
+
+const props = withDefaults(defineProps<Props>(), { size: 'md' })
+
+const attrs = useAttrs()
+const px = computed(() => KOVA_ICON_SIZE_PX[props.size])
+const component = computed(() => {
+  const c = KOVA_ICON_REGISTRY.get(props.name)
+  if (!c && import.meta.env.DEV) {
+    // eslint-disable-next-line no-console
+    console.warn(`[KovaIcon] unknown lucide name: "${props.name}". Add to kova-icon-registry.ts.`)
+  }
+  return c
+})
+
+const hasAriaLabel = computed(() => 'aria-label' in attrs)
+</script>
+
+<template>
+  <component
+    v-if="component"
+    :is="component"
+    :width="px"
+    :height="px"
+    :class="props.class"
+    :aria-hidden="hasAriaLabel ? undefined : 'true'"
+    :role="hasAriaLabel ? 'img' : undefined"
+  />
+</template>
+```
+
+- [ ] **Step 5: Run + verify pass**
+
+Run: `cd kova-open-pencil-1 && bun test tests/unit/components/KovaIcon.test.ts`
+Expected: PASS (5/5)
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add kova-open-pencil-1/src/components/ui/KovaIcon.vue kova-open-pencil-1/src/components/ui/kova-icon-registry.ts kova-open-pencil-1/tests/unit/components/KovaIcon.test.ts
+git commit -m "feat(cluster-11): <KovaIcon> primitive (W0-4 — sole icon tag for the app)"
+```
+
+---
+
 ## Phase 5 — Confirm System
 
 ### Task 5.1: Confirm types + store
@@ -3042,6 +3281,143 @@ Expected: ≥85% on cluster-11 source files
 - [ ] **Step 2: If <85%, write missing tests; re-run**
 
 - [ ] **Step 3: Commit coverage badge if added**
+
+---
+
+### Task 11.5: SECURITY DEFINER `SET search_path` CI gate (W0-5 — founder lock #15)
+
+**Files:**
+- Modify: `.github/workflows/ci.yml` (or Vercel build hook)
+- Modify: `kova-open-pencil-1/package.json` — add `check:rls` script
+
+**Contract:** every `CREATE FUNCTION ... SECURITY DEFINER` block in `supabase/migrations/` MUST carry `SET search_path = public, pg_temp` (or `SET search_path = 'public'`) within the same function definition. Per founder lock #15: a DEFINER function without an explicit `search_path` is a Postgres role-escalation vector (the calling session's `search_path` can resolve `pg_catalog` / extension schemas in front of `public`, letting an attacker shadow operator functions like `=` and pivot a row-level lookup into arbitrary code execution).
+
+CT-013 evidence from CONSOLIDATED-TRIAGE.md: Plan 03 has 8 DEFINER RPCs missing the lock (0/8), Plan 05 has 1 (0/1), Plan 09 has 3 (0/3). W0-5 wires the CI gate that flags any new occurrence + the PRDs 03 / 05 / 09 §5 each carry a hardening line referencing this gate.
+
+- [ ] **Step 1: Add the CI grep step**
+
+```yaml
+- name: Verify SECURITY DEFINER functions carry SET search_path (W0-5 / founder lock #15)
+  run: |
+    # Match every CREATE FUNCTION ... SECURITY DEFINER block that does NOT include a SET search_path
+    # before the next semicolon (the function-definition terminator).
+    # -z treats the file as null-delimited so the regex spans newlines.
+    # The negative lookahead (?![^;]*SET\s+search_path) catches definitions where the SET clause is absent.
+    if grep -rzPnE "CREATE\s+(OR\s+REPLACE\s+)?FUNCTION[^;]*SECURITY\s+DEFINER(?![^;]*SET\s+search_path)" kova-open-pencil-1/supabase/migrations/; then
+      echo "ERROR: SECURITY DEFINER function found without SET search_path = public, pg_temp (founder lock #15)"
+      exit 1
+    fi
+```
+
+- [ ] **Step 2: Add `bun run check:rls` script**
+
+In `kova-open-pencil-1/package.json` `"scripts"`:
+
+```json
+"check:rls": "! grep -rzPnE 'CREATE\\s+(OR\\s+REPLACE\\s+)?FUNCTION[^;]*SECURITY\\s+DEFINER(?![^;]*SET\\s+search_path)' supabase/migrations/"
+```
+
+- [ ] **Step 3: Smoke-test the gate locally**
+
+Create a temporary failing migration `supabase/migrations/__delete-me.sql` containing a single `CREATE FUNCTION foo() RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$ BEGIN END $$;` (no `SET search_path`). Run `bun run check:rls`. Expect exit code 1. Delete the file. Re-run. Expect exit code 0.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git commit -am "ci(cluster-11): SECURITY DEFINER search_path grep gate (W0-5)"
+```
+
+**Wave-2 follow-up:** cluster-fix agents for 03 / 05 / 09 add `SET search_path = public, pg_temp` to every DEFINER block in their respective migrations during their pass. This gate will block CI green until they do.
+
+---
+
+### Task 11.6: Test-framework drift CI gate (W0-6)
+
+**Files:**
+- Modify: `.github/workflows/ci.yml`
+- Modify: `kova-open-pencil-1/package.json` — `check` script composes the grep step
+
+**Contract:** the project uses `bun:test` exclusively. `jest.mock`, `vi.mock`, `vi.fn`, `vi.spyOn`, `mockImplementationOnce`, `mockClear` etc. are forbidden — these symbols are undefined under `bun:test` runtime and cause silent test failures (mocks no-op, tests false-pass).
+
+CT-010 evidence from CONSOLIDATED-TRIAGE.md: Plan 02 has `jest.mock` (B-CRIT5), Plan 03 has `vi.mock` + `vi.fn` (B-CRIT6), Plans 02 + 03 + 04 use `mockImplementationOnce` / `mockClear` (B-HIGH8).
+
+- [ ] **Step 1: Add the CI grep step**
+
+```yaml
+- name: Verify bun:test only — no jest / vitest API surface (W0-6)
+  run: |
+    if grep -rnE "\b(jest|vi)\.(mock|fn|spyOn)\b|\bmockImplementation(Once)?\b|\bmockClear\b|\bmockReturnValue(Once)?\b" kova-open-pencil-1/tests/; then
+      echo "ERROR: jest/vitest API found in bun:test files (W0-6 lock). Use mock.module(...) + mock(...) instead."
+      exit 1
+    fi
+```
+
+- [ ] **Step 2: Wire into `bun run check`**
+
+In `kova-open-pencil-1/package.json` `"scripts"`:
+
+```json
+"check:test-framework": "! grep -rnE '\\b(jest|vi)\\.(mock|fn|spyOn)\\b|\\bmockImplementation(Once)?\\b|\\bmockClear\\b|\\bmockReturnValue(Once)?\\b' tests/",
+"check": "oxlint --type-aware --type-check && bun run check:rls && bun run check:test-framework"
+```
+
+- [ ] **Step 3: Smoke-test locally**
+
+Create a temporary test file `tests/__delete-me.test.ts` containing `vi.mock('foo')`. Run `bun run check:test-framework`. Expect exit code 1. Delete the file. Re-run. Expect exit code 0.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git commit -am "ci(cluster-11): bun:test framework grep gate (W0-6)"
+```
+
+**Wave-2 follow-up:** cluster-fix agents for 01 / 02 / 03 / 04 replace `jest.mock` / `vi.mock` / `mockImplementationOnce` with the `bun:test` equivalents (`mock.module(...)` at module level, `mock(() => ...)` at call site, manual `mock.mockClear()` if needed) during their pass.
+
+---
+
+### Task 11.7: Founder lock #10 sweep CI gate (W0-9)
+
+**Files:**
+- Modify: `.github/workflows/ci.yml`
+- Modify: `kova-open-pencil-1/package.json` — `check:lock10` script
+
+**Contract:** founder lock #10 forbids `as any` casts and `process.env.X!` non-null assertions in production code (`src/` + `api/` + `supabase/functions/`). QA-B HIGH-2 found ~214 `as any` casts (49 in Plan 03, 41 in Plan 06, 17 in Plan 07b, etc.). QA-B HIGH-1 found 24 `process.env.X!` callsites. W0-9 ships the CI gate that flags any new occurrence; the requireEnv helper (Task 1.3b) replaces the env-var pattern; per-cluster sweep happens in Wave-2/3 fix passes.
+
+- [ ] **Step 1: Add the CI grep step**
+
+```yaml
+- name: Verify founder lock #10 — no `as any` + no `process.env.X!` (W0-9)
+  run: |
+    if grep -rnE "\bas\s+any\b" kova-open-pencil-1/src/ kova-open-pencil-1/api/ kova-open-pencil-1/supabase/functions/ 2>/dev/null; then
+      echo "ERROR: 'as any' cast found (founder lock #10). Type-narrow explicitly or use unknown + valibot parse."
+      exit 1
+    fi
+    if grep -rnE "process\.env\.[A-Z_]+!" kova-open-pencil-1/src/ kova-open-pencil-1/api/ kova-open-pencil-1/supabase/functions/ 2>/dev/null; then
+      echo "ERROR: process.env.X! non-null assertion found (founder lock #10). Use requireEnv('X') from api/_shared/env.ts."
+      exit 1
+    fi
+```
+
+- [ ] **Step 2: Wire into `bun run check`**
+
+In `kova-open-pencil-1/package.json` `"scripts"`:
+
+```json
+"check:lock10": "! grep -rnE '\\bas\\s+any\\b' src/ api/ supabase/functions/ && ! grep -rnE 'process\\.env\\.[A-Z_]+!' src/ api/ supabase/functions/",
+"check": "oxlint --type-aware --type-check && bun run check:rls && bun run check:test-framework && bun run check:lock10"
+```
+
+- [ ] **Step 3: Smoke-test locally**
+
+Create a temporary file `src/__delete-me.ts` containing `const x = {} as any; const y = process.env.FOO!`. Run `bun run check:lock10`. Expect exit code 1 (twice). Delete. Re-run. Expect exit code 0.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git commit -am "ci(cluster-11): founder lock #10 sweep gate — no \`as any\` + no \`process.env.X!\` (W0-9)"
+```
+
+**Wave-2/3 follow-up:** cluster-fix agents for 03 (49 occurrences), 06 (41 occurrences), 07b (17 occurrences), and every other plan replace `as any` with explicit type narrowing (`as MyType`, `unknown` + valibot parse, type predicates) during their pass. Every `process.env.X!` callsite migrates to `requireEnv('X')` (Task 1.3b).
 
 ---
 

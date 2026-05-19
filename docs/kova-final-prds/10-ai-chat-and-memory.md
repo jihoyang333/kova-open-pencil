@@ -11,7 +11,7 @@
 | **Last updated** | 2026-05-15 |
 | **Depends on PRDs** | 05 (Brand Kit ships `tone_snippets` read API); 06 (canvas chrome hosts the chat tab in the right panel); 07a (Slice + Measurement NodeTypes that the AI tool wrappers in this PRD register against); 11 (toast, modal, skeleton primitives). |
 | **Blocks PRDs** | None (closing-wave cluster). |
-| **Source artifacts** | M5 + M5.5 prior implementation (`useChatStore`, `useBrandMemoriesStore`, `buildSystemPrompt`, `createKovaTools`, `ai-proxy/v1/messages`). Audit `00c §2.A` Cluster 10 lines 1946–2007 (lifted as base draft). `00c §1.E.1` Check 5 (no-Shopify-connected error UX gap). Shopify product-reference spec `docs/superpowers/specs/2026-05-14-shopify-product-reference-design.md` Rev 2 (composer-chip architecture D1–D9). Q-decisions: Q3 #14 (Boolean ops engine-ready), Q8 (tone-snippet injection), Q11 (Measurement NodeType), Q24 (saved-blocks payload — owned by 05, not this PRD). 03 doc cross-cuts §2.5 (Brand Kit), §2.7 (AI text suggestions DEFERRED), §2.13 (brand assets). |
+| **Source artifacts** | M5 + M5.5 prior implementation (`useChatStore`, `useBrandMemoriesStore`, `buildSystemPrompt`, `createKovaTools`, `ai-proxy/v1/messages`). Audit `00c §2.A` Cluster 10 lines 1946–2007 (lifted as base draft). `00c §1.E.1` Check 5 (no-Shopify-connected error UX gap). Shopify product-reference spec `docs/superpowers/specs/2026-05-14-shopify-product-reference-design.md` Rev 2 (composer-chip architecture D1–D9). Q-decisions: Q3 #14 (Boolean ops engine-ready), Q8 (tone-snippet injection), Q11 (Measurement — superseded 2026-05-17: measurements are page-level on CANVAS, NOT a NodeType, per PRD 07a §7.1b / §12.10; W0-7 propagation 2026-05-19), Q24 (saved-blocks payload — owned by 05, not this PRD). 03 doc cross-cuts §2.5 (Brand Kit), §2.7 (AI text suggestions DEFERRED), §2.13 (brand assets). |
 
 ---
 
@@ -21,7 +21,7 @@
 
 Kova's editor has an AI chat panel that designs emails for the user. Today that panel lives as a small floating popup in the bottom-left corner of the canvas; M5 + M5.5 already wired Claude (via `@ai-sdk/anthropic` + ToolLoopAgent), per-canvas chat persistence (Supabase tables `chat_conversations` + `chat_messages`), brand memory (Supabase table `brand_memories` + the AI's `saveBrandMemory` tool), and a layered system-prompt builder. This PRD does **four** things on top of that:
 
-1. **Move chat into the right panel as a second tab** ("AI" — sits next to Design; the Figma "Prototype" tab is dropped entirely from Kova's right-panel because Kova exports static images, not clickable prototypes) so chat is a first-class editor surface, not a floating add-on. The floating popup is removed. Default-focused tab = Design (matches Figma's first-tab default).
+1. **Move chat into the right panel as a second tab** ("AI" — sits next to Design; the Figma "Prototype" tab is dropped entirely from Kova's right-panel because Kova exports static images, not clickable prototypes) so chat is a first-class editor surface, not a floating add-on. The floating popup is removed. **Default-focused tab on first canvas open = AI** (per PRD 06 §12.13 founder ratification 2026-05-17 — Kova differentiator surfacing chat-first UX; W0-7 propagation 2026-05-19). Subsequent opens read per-canvas `localStorage[right-panel-tab:${canvasId}]`.
 2. **Wire Shopify product-reference composer chips** above the chat text input. The user multi-selects products in the Shop panel (Cluster 06), clicks "Import N to chat," and those products become removable chips in the composer that persist across every chat turn until the user `×`'s them. The AI sees a lightweight summary inline (title, image URL, price, ID) and tool-calls for depth as needed. This replaces M9's rejected "drag-to-place + live-binding" model.
 3. **Extend the system-prompt builder with two new layers:** a tone-snippet exemplar block (reads `brands.tone_snippets[]` shipped by Cluster 05, capped at 10 entries per prompt, in user-defined order) and a product-reference summary block (renders the active composer chips' hybrid payload).
 4. **Tighten the AI tool layer:** keep the 5 existing Shopify tools (`search_products`, `get_collection`, `get_variant`, `get_active_discounts`, `get_shop_context`) but rip the `bestsellers` sort option (per Shopify spec D6); add a "no Shopify connection" error response shape (per `00c §1.E.1` Check 5); register thin AI-tool wrappers around the Slice and Measurement engine tools that Cluster 07a ships; ensure ToolLoopAgent still routes through `@ai-sdk/anthropic` and the server-side `ai-proxy/v1/messages` Edge Function (so `ANTHROPIC_API_KEY` is never in the browser, per `CLAUDE.md` hard constraint).
@@ -36,7 +36,7 @@ Chat panel move from floating popup to right-panel second tab (next to Design). 
 
 When this PRD ships:
 
-- (1) The right panel has two tabs: **Design** (default-active) and **AI**. The Figma "Prototype" tab is not rendered (Kova exports static email images, not clickable prototypes — Prototype has no use case here; the scope plan §3 Cluster 06 line "Prototype DEFERRED" is now superseded by "Prototype out of scope entirely"). Clicking AI shows the chat surface — empty state, message list, tab strip for chat conversations, composer with text input + attached-image thumbnails + product-reference chips + Send. The floating ChatPopup is removed.
+- (1) The right panel has two tabs: **AI** (default-active on first canvas open per PRD 06 §12.13 founder ratification 2026-05-17; W0-7 propagation 2026-05-19) and **Design**. The Figma "Prototype" tab is not rendered (Kova exports static email images, not clickable prototypes — Prototype has no use case here; the scope plan §3 Cluster 06 line "Prototype DEFERRED" is now superseded by "Prototype out of scope entirely"). Clicking AI shows the chat surface — empty state, message list, tab strip for chat conversations, composer with text input + attached-image thumbnails + product-reference chips + Send. The floating ChatPopup is removed.
 - (2) Users multi-select products in the Shop panel (Cluster 06), click "Import N to chat" → those products land as composer chips in the active chat conversation. Chips persist across reloads (stored on `chat_conversations.product_references` JSONB). Each chip has a thumbnail + name + `×`. Importing again merges by product ID (no dupes). Removing the last chip empties the reference. Chips do NOT clear on Send. Max 20 chips per conversation; importing past 20 keeps the oldest in (FIFO would be confusing — instead the import bar disables with a "Max 20 reached — remove some first" tooltip).
 - (3) `buildSystemPrompt()` includes — in order — the locked `SYSTEM_PROMPT`, email guidelines, section definitions, brand kit (incl. `voice`), **tone-snippet exemplars (NEW, cap 10)**, image handling, campaign layer, brand-memory instructions, brand memories, available media images, ephemeral chat attachments, **active product references (NEW, hybrid payload for the active conversation's chips)**.
 - (4) When the user sends a message, the active conversation's product-reference chips serialize into the message payload (no chip clearing). The AI receives a hybrid payload per chip: `{ product_id, title, primary_image_url, price (or price_range), handle }`. It tool-calls `get_variant` / `get_collection` / `search_products` / `get_active_discounts` / `get_shop_context` for depth.
@@ -53,7 +53,7 @@ When this PRD ships:
 ### 2.1 In scope (this PRD)
 
 **Chat surface — right-panel migration:**
-- Right-panel second tab "AI" — final tab order is `Design` (default-active) + `AI`. Prototype tab dropped entirely (Cluster 06 PRD must wire the 2-tab routing slot; this PRD ships the AI tab content and supersedes scope plan §3 Cluster 06's "Prototype DEFERRED" line with "Prototype out of scope")
+- Right-panel second tab "AI" — final tab order is `Design` + `AI` (visual order matches Figma); **AI is default-active on first canvas open** (per PRD 06 §12.13 founder ratification 2026-05-17; W0-7 propagation 2026-05-19). Prototype tab dropped entirely (Cluster 06 PRD must wire the 2-tab routing slot; this PRD ships the AI tab content and supersedes scope plan §3 Cluster 06's "Prototype DEFERRED" line with "Prototype out of scope")
 - `<ChatPanel>` becomes the canonical chat surface (refactored from the existing floating `<ChatPopup>`; the popup is deleted)
 - Chat header (tab strip for multiple chat conversations per canvas + "New chat" + per-tab menu for rename / delete). **Cap 20 chat tabs per canvas** — new-chat button disables at 20 with tooltip `Max 20 chats per canvas — close one first.` (Founder-locked §12.12 item 3.)
 - Tab strip overflow: **horizontal scroll with arrow buttons at edges** (Figma frame/page-tabs pattern, founder-locked §12.12 item 10). Single-row strip; no wrap, no dropdown.
@@ -85,7 +85,7 @@ When this PRD ships:
 - **REFACTOR (§5.2):** rip `bestsellers` from `search_products.sort` picklist (per Shopify spec D6 + 00c §1.E.1 audit). Tool's `execute` never implemented sort; schema-only fix.
 - **REFACTOR (§5.2):** each of the 5 Shopify tools returns `{ error: 'No Shopify connection for this brand', code: 'no_connection' }` when `shopify_connections` row missing for the active brand. Replaces silent empty-array return per `00c §1.E.1` Check 5.
 - **NEW:** `createSliceFromSelection(args: { name?: string })` — thin AI-tool wrapper that calls Cluster 07a's `figma.createSliceFromSelection()` engine API
-- **NEW:** `addMeasurement(args: { fromNodeId: string, toNodeId: string })` — thin AI-tool wrapper that calls Cluster 07a's `figma.createMeasurement()` engine API
+- **NEW:** `addMeasurement(args: { canvas_id: string; start_node_id: string; start_side: 'TOP'|'RIGHT'|'BOTTOM'|'LEFT'; end_node_id: string; end_side: 'TOP'|'RIGHT'|'BOTTOM'|'LEFT'; offset_type?: 'INNER'|'OUTER'; offset_value?: number; free_text?: string })` — thin AI-tool wrapper that calls Cluster 07a's `figma.currentPage.addMeasurement({ nodeId, side }, { nodeId, side }, options?)` page-level engine API per PRD 07a §2.1 + §7.1b (measurements are NOT a NodeType — W0-7 propagation 2026-05-19)
 - Engine tools (CORE_TOOLS via `@open-pencil/core`) continue to wire in `createAITools` via `toolsToAI(CORE_TOOLS, ...)` — unchanged from M5
 - ToolLoopAgent + `@ai-sdk/anthropic` continue per CLAUDE.md hard constraint
 
@@ -106,7 +106,7 @@ When this PRD ships:
 | Shop panel UI (product grid, multi-select, "Import N to chat" button) | 06 — Canvas Editor Core Chrome (per Shopify spec §4.1) |
 | `brands.tone_snippets` schema + Brand Kit settings UI (tone-snippet CRUD) | 05 — Brand Kit & Drag-Drop |
 | Brand Kit Memory tab UI (view / edit / delete brand memories) | 05 — Brand Kit & Drag-Drop |
-| Slice + Measurement engine NodeTypes + `figma.createSliceFromSelection()` / `figma.createMeasurement()` engine APIs | 07a — Canvas Engine Core + Renderer |
+| Slice NodeType + page-level Measurement methods (CANVAS-scoped: `figma.currentPage.addMeasurement / getMeasurements / getMeasurementsForNode / editMeasurement / deleteMeasurement` per 07a §7.1b — NOT a NodeType, W0-7 propagation 2026-05-19) + `figma.createSliceFromSelection()` engine API | 07a — Canvas Engine Core + Renderer |
 | Shopify OAuth + sync + `shopify_connections` table | M9 (already shipped) + Cluster 04 (Account integrations IA) |
 | `chat_conversations` / `chat_messages` / `brand_memories` schemas (existing) | M5 (already shipped) |
 | `ai-proxy/v1/messages` Edge Function (existing) | M5 (already shipped) |
@@ -130,7 +130,7 @@ When this PRD ships:
 
 - **Cluster 05** ships `brands.tone_snippets JSONB` + Brand Kit Memory tab UI. This PRD **consumes** `tone_snippets` via the existing `useBrandsStore.selectedBrand` reactive read; does not re-spec.
 - **Cluster 06** ships the right-panel tab framework + Shop panel UI + "Import N to chat" button. This PRD owns the AI tab content + the import callback that writes onto `chat_conversations.product_references`.
-- **Cluster 07a** ships Slice + Measurement NodeTypes + the engine-API surface. This PRD owns the AI-tool wrappers only.
+- **Cluster 07a** ships Slice NodeType + page-level Measurement methods (CANVAS-scoped — NOT a NodeType per 07a §7.1b; W0-7 propagation 2026-05-19) + the engine-API surface. This PRD owns the AI-tool wrappers only.
 - **Cluster 01** ships the privacy policy + RoPA. This PRD provides the disclosure copy fragment ("user chat messages and active product-reference summaries sent to Anthropic for AI design generation").
 - **M5 / M5.5** are honored as prior implementation; this PRD **references existing implementation; does not re-spec from scratch** (per dispatch instruction).
 
@@ -144,7 +144,7 @@ Every surface maps to a hi-fi file or composes from documented patterns. The cha
 
 | Surface | Mount point | Hi-fi reference | Notes |
 |---|---|---|---|
-| Right-panel tab strip (Design / **AI**) | `<RightPanelTabs>` in `Kova Canvas - Final.html` chrome (lines 75–1008, the inspector-tab strip block) | `main-main-kova-scope/batch-b/Kova Canvas - Final.html` (right-panel tab strip block — verify exact location in Cluster 06 PRD §3) | Two tabs only: Design (default-active) and AI. Figma's Prototype tab is intentionally dropped (Kova exports static images, not clickable prototypes — Prototype has zero use case here). Founder ratified 2026-05-15 during PRD 10 review. |
+| Right-panel tab strip (Design / **AI**) | `<RightPanelTabs>` in `Kova Canvas - Final.html` chrome (lines 75–1008, the inspector-tab strip block) | `main-main-kova-scope/batch-b/Kova Canvas - Final.html` (right-panel tab strip block — verify exact location in Cluster 06 PRD §3) | Two tabs only: Design and **AI** (default-active on first canvas open per PRD 06 §12.13 founder ratification 2026-05-17; W0-7 propagation 2026-05-19). Figma's Prototype tab is intentionally dropped (Kova exports static images, not clickable prototypes — Prototype has zero use case here). |
 | Empty-state chat surface | inside AI tab when no messages | `Kova Canvas - Final.html` (empty inspector body class `.kc.empty`) | Lifts ChatPanel.vue lines 119–127 chrome: centered `icon-lucide-message-circle` + caption "Describe what you want to create or change." |
 | Message scroll area | inside AI tab when messages exist | `Kova Canvas - Final.html` (inspector scroll-body class) | Reka `ScrollAreaRoot` / `ScrollAreaViewport` / `ScrollAreaScrollbar` / `ScrollAreaThumb` per existing `ChatPanel.vue` |
 | Tab strip header (multiple chats per canvas) | top of AI tab | `Kova Canvas - Final.html` (chip-row pattern) | Lifts `ChatPopup.vue` lines 286–317 chrome: per-chat pill button + "New chat" + minimize is REMOVED (chat is no longer a popup) |
@@ -565,7 +565,7 @@ execute: async (args) => {
 
 File: `src/ai/tools.ts`. Currently composes `toolsToAI(CORE_TOOLS, ...)` + `createKovaTools(store)`.
 
-**EXTEND this PRD:** the existing `createKovaTools(store)` return is extended with two new wrappers — `createSliceFromSelection` + `addMeasurement` — that call into Cluster 07a engine APIs. Both are thin: they call `figma.createSliceFromSelection({ name })` / `figma.createMeasurement({ fromNodeId, toNodeId })` and report success or error. No new mutation logic here; the engine owns the implementation.
+**EXTEND this PRD:** the existing `createKovaTools(store)` return is extended with two new wrappers — `createSliceFromSelection` + `addMeasurement` — that call into Cluster 07a engine APIs. Both are thin: they call `figma.createSliceFromSelection({ name })` / `figma.currentPage.addMeasurement({ nodeId, side }, { nodeId, side }, options?)` (07a §7.1b page-level API — measurements are NOT a NodeType; W0-7 propagation 2026-05-19) and report success or error. No new mutation logic here; the engine owns the implementation.
 
 ```typescript
 // NEW in kova-tools.ts (Cluster 10 PRD adds; Cluster 07a ships the engine API surface)
@@ -582,20 +582,36 @@ const createSliceFromSelection = tool({
 })
 
 const addMeasurement = tool({
-  description: 'Add a persistent Measurement annotation between two nodes (distance + label).',
+  description: 'Add a persistent Measurement annotation anchored to two nodes by side (page-level on CANVAS — 07a §7.1b).',
   inputSchema: valibotSchema(v.object({
-    fromNodeId: v.pipe(v.string(), v.description('Source node ID')),
-    toNodeId: v.pipe(v.string(), v.description('Target node ID'))
+    canvas_id: v.pipe(v.string(), v.description('Target CANVAS-typed SceneNode ID (measurements live on the page, not on a node)')),
+    start_node_id: v.pipe(v.string(), v.description('Source anchor node ID — must descend from canvas_id')),
+    start_side: v.picklist(['TOP', 'RIGHT', 'BOTTOM', 'LEFT'] as const),
+    end_node_id: v.pipe(v.string(), v.description('Target anchor node ID — must descend from canvas_id')),
+    end_side: v.picklist(['TOP', 'RIGHT', 'BOTTOM', 'LEFT'] as const),
+    offset_type: v.optional(v.picklist(['INNER', 'OUTER'] as const)),
+    offset_value: v.optional(v.pipe(v.number(), v.description('Relative for INNER, fixed for OUTER'))),
+    free_text: v.optional(v.pipe(v.string(), v.description('Optional override label; default is the auto-distance string')))
   })),
-  execute: async ({ fromNodeId, toNodeId }) => {
+  execute: async ({ canvas_id, start_node_id, start_side, end_node_id, end_side, offset_type, offset_value, free_text }) => {
     const figma = makeFigmaFromStore(store)
-    const ann = figma.createMeasurement({ fromNodeId, toNodeId })
-    return ann ? { success: true, measurementId: ann.id } : { error: 'Could not create measurement', code: 'invalid_nodes' }
+    const page = figma.getCanvas(canvas_id) // CANVAS-typed SceneNode (07a §7.1b)
+    if (!page) return { error: 'Canvas not found', code: 'canvas_missing' }
+    try {
+      const m = page.addMeasurement(
+        { nodeId: start_node_id, side: start_side },
+        { nodeId: end_node_id, side: end_side },
+        { offset: offset_type ? { type: offset_type, value: offset_value ?? 0 } : undefined, freeText: free_text }
+      )
+      return { success: true, measurementId: m.id }
+    } catch (e) {
+      return { error: e instanceof Error ? e.message : 'Could not create measurement', code: 'invalid_anchors' }
+    }
   }
 })
 ```
 
-**Cluster 07a dependency:** if engine APIs don't ship in time, gate these two tools behind a `figma.createSliceFromSelection` / `figma.createMeasurement` existence check + omit from the registered tool set with a logged warning. Phase A is the right time to verify alignment.
+**Cluster 07a dependency:** if engine APIs don't ship in time, gate these two tools behind a `figma.createSliceFromSelection` / `figma.currentPage.addMeasurement` existence check + omit from the registered tool set with a logged warning. Phase A is the right time to verify alignment.
 
 ### 6.4 Components
 
@@ -703,7 +719,7 @@ export interface ChatConversation {
 
 ### 7.2 Scene-graph extensions
 
-None in this PRD. Cluster 07a owns SLICE + MEASUREMENT NodeType additions per Q1 + Q11.
+None in this PRD. Cluster 07a owns SLICE NodeType (17th NodeType) + page-level Measurement methods on the CANVAS-typed SceneNode (per Q1 + Q11 — Q11's "MEASUREMENT = 18th NodeType" was superseded 2026-05-17; measurements are NOT a NodeType per PRD 07a §7.1b / §12.10; W0-7 propagation 2026-05-19).
 
 ### 7.3 Renderer changes
 
@@ -727,7 +743,7 @@ Per `createKovaTools(store)` extension in §6.3.3 + §6.3.4:
 | `placeMediaImage` | M5 | REUSE | Set Supabase Storage image as fill on a node |
 | `saveBrandMemory` | M5 | REUSE | Persist a `brand_memories` row |
 | `createSliceFromSelection` | Cluster 07a (engine) + this PRD (AI wrapper) | NEW (this PRD) | Wraps `figma.createSliceFromSelection({ name })` |
-| `addMeasurement` | Cluster 07a (engine) + this PRD (AI wrapper) | NEW (this PRD) | Wraps `figma.createMeasurement({ fromNodeId, toNodeId })` |
+| `addMeasurement` | Cluster 07a (engine) + this PRD (AI wrapper) | NEW (this PRD) | Wraps `figma.currentPage.addMeasurement({ nodeId, side }, { nodeId, side }, options?)` (07a §7.1b page-level API — NOT a NodeType factory; W0-7 propagation 2026-05-19) |
 
 Engine tools registered via `toolsToAI(CORE_TOOLS, ...)` in `createAITools(store)` continue per M5 — those expose the CORE engine surface (frame creation, text nodes, layout, etc.) as AI tools. No change to that wiring in this PRD.
 
@@ -737,7 +753,7 @@ Engine tools registered via `toolsToAI(CORE_TOOLS, ...)` in `createAITools(store
 
 ### 8.1 Right-panel migration
 
-- [ ] Right panel has exactly two tabs visible: Design (default-active) and AI. Prototype tab is NOT rendered anywhere in Kova. Tab labels visible at all viewport widths ≥ 1024px.
+- [ ] Right panel has exactly two tabs visible: Design and **AI** (default-active on first canvas open per PRD 06 §12.13 founder ratification 2026-05-17). Prototype tab is NOT rendered anywhere in Kova. Tab labels visible at all viewport widths ≥ 1024px.
 - [ ] Clicking the AI tab activates a `<ChatPanel>` content slot that renders empty-state, message list (if messages exist), per-conversation tab strip, and composer.
 - [ ] Default-active tab on canvas load = Design (matches Figma's first-tab default).
 - [ ] The previous `<ChatPopup>` floating element no longer renders on `/canvas/:canvasId`. Removed from `EditorView.vue`.
@@ -768,7 +784,7 @@ Engine tools registered via `toolsToAI(CORE_TOOLS, ...)` in `createAITools(store
 - [ ] `search_products` schema no longer accepts `bestsellers` as a `sort` value (`v.safeParse` fails for that value).
 - [ ] Each of the 5 Shopify tools returns `{ error, code: 'no_connection' }` (NOT empty arrays / nulls) when invoked for a brand with no `shopify_connections` row.
 - [ ] `createSliceFromSelection` AI tool calls `figma.createSliceFromSelection(...)` from Cluster 07a engine API and returns `{ success: true, sliceId }` on success / `{ error: 'No selection to slice', code: 'no_selection' }` on no-selection.
-- [ ] `addMeasurement` AI tool calls `figma.createMeasurement(...)` from Cluster 07a engine API and returns `{ success: true, measurementId }` or `{ error: 'Could not create measurement', code: 'invalid_nodes' }`.
+- [ ] `addMeasurement` AI tool calls `figma.currentPage.addMeasurement(...)` (07a §7.1b page-level API — NOT a NodeType factory; W0-7 propagation 2026-05-19) and returns `{ success: true, measurementId }` or `{ error: ..., code: 'canvas_missing' | 'invalid_anchors' }`.
 - [ ] All AI tools are valibot-validated via `valibotSchema()` per CLAUDE.md hard constraint (no Zod).
 - [ ] ToolLoopAgent + `@ai-sdk/anthropic` + the 16384 max output token budget + 50 step limit are unchanged from M5.
 
@@ -877,7 +893,7 @@ No runtime feature flags in this PRD. The right-panel tab migration is a structu
 |---|---|---|
 | **05 — Brand Kit & Drag-Drop** | `brands.tone_snippets JSONB` schema (Cluster 05 migration); reactive read of `selectedBrand.tone_snippets[]` via `useBrandsStore`; Brand Kit Memory tab UI (view / edit / delete brand memories surfaced to user); D-3 confirm-before-write guardrail for AI-extracted voice / tone; **NEW (§12.12 item 11):** drag-to-reorder UI on tone-snippet rows + helper copy `AI uses the first 10 — reorder to prioritize.` (because Phase A `formatToneSnippets` uses first-10 JSONB array order — user controls priority via reorder) | `formatToneSnippets` consumer pattern; brand-memory CRUD APIs already exposed via `useBrandMemoriesStore` (M5) |
 | **06 — Canvas Editor Core Chrome** | Right-panel **two-tab** framework (Design + AI — **NO Prototype tab**; scope plan §3 Cluster 06 "Prototype DEFERRED" line is superseded by "Prototype out of scope entirely" per founder ratification 2026-05-15); Shop panel UI (product grid + multi-select + "Import N to chat" button); EditorView refactor to remove `<ChatPopup>` and mount `<ChatPanel>` in the right-panel AI slot; **NEW (§12.12 item 5):** Shop panel's "Import N to chat" callback MUST trigger right-panel tab switch (Design → AI) before returning, so user sees chips populate immediately after click | `<ChatPanel>` component + import callback for the "Import N to chat" button (writes onto `chat_conversations.product_references` via `useChatProductReferencesStore.importProducts`) |
-| **07a — Canvas Engine Core + Renderer** | `figma.createSliceFromSelection({ name })` + `figma.createMeasurement({ fromNodeId, toNodeId })` engine APIs (Cluster 07a ships the NodeTypes per Q1 + Q11) | AI tool wrappers `createSliceFromSelection` + `addMeasurement` (so AI can invoke the engine surface) |
+| **07a — Canvas Engine Core + Renderer** | `figma.createSliceFromSelection({ name })` engine API (SLICE = 17th NodeType per Q1) + `figma.currentPage.addMeasurement({ nodeId, side }, { nodeId, side }, options?)` page-level engine API (Q11 — superseded 2026-05-17: measurements are NOT a NodeType per 07a §7.1b / §12.10; W0-7 propagation 2026-05-19) | AI tool wrappers `createSliceFromSelection` + `addMeasurement` (so AI can invoke the engine surface) |
 | **01 — Auth & Identity** | Privacy policy + RoPA documentation (this PRD contributes a sub-processor disclosure clause naming Anthropic + the chat data flow); `delete-account-cron` cascade includes `db` step that CASCADEs `chat_conversations` + `brand_memories` rows on user delete | Disclosure copy fragment for §11.1; per-user atomic rate limit RPC `try_increment_generation` (already built in M5) |
 | **04 — Account & Stripe** | Future per-plan rate-limit lookup (Free / Pro / Studio plans pass distinct `p_daily_limit` to `try_increment_generation`) | None (per-plan limits a Cluster 04 extension on the existing rate-limit RPC; non-blocking for this PRD) |
 | **11 — Shared UI Infrastructure** | `useToast()`, `<KovaModal>`, skeletons, error boundary (for chat init failures), `idempotency_keys` table (for any future mutation — not used in this PRD) | None at runtime |
@@ -909,7 +925,7 @@ This PRD assumes Cluster 06 ships a **two-tab** framework (Design + AI) in the r
 
 The two new AI-tool wrappers (`createSliceFromSelection` + `addMeasurement`) call into Cluster 07a engine APIs that don't exist yet (Q1 + Q11 ratified the NodeType plan; engine implementation is Cluster 07a's Phase A scope).
 
-**Mitigation:** Gate the two wrappers behind a runtime existence check on `figma.createSliceFromSelection` / `figma.createMeasurement`. If absent at registration time (e.g. Cluster 07a slips into a later Phase), omit the two tools from the registered set with a `console.warn`. AI cannot call them; everything else still works. Phase A of this PRD can ship without them.
+**Mitigation:** Gate the two wrappers behind a runtime existence check on `figma.createSliceFromSelection` / `figma.currentPage.addMeasurement` (07a §7.1b page-level API — W0-7 propagation 2026-05-19). If absent at registration time (e.g. Cluster 07a slips into a later Phase), omit the two tools from the registered set with a `console.warn`. AI cannot call them; everything else still works. Phase A of this PRD can ship without them.
 
 ### 12.3 RISK (Low) — Composer-chip persistence layer interaction with M5 `onFinish` closure
 

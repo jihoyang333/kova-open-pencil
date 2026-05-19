@@ -249,6 +249,8 @@ The `delete_brand` cascade triggers `purgeBrandStorageObjects()` (Edge Function 
 
 All Edge Functions live under `kova-open-pencil-1/api/brands/` (Vercel routing). All accept JSON body; all return JSON. All require `Authorization: Bearer <supabase_jwt>`. All use the `idempotency_keys` helper from Cluster 11 (00c §1.D cross-cut) — clients send `Idempotency-Key` header, server records key + result, replays return cached response.
 
+**Hardening (W0-5 / founder lock #15):** every `CREATE FUNCTION ... SECURITY DEFINER` RPC defined by this PRD MUST include `SET search_path = public, pg_temp` within the same function definition. CI-enforced — `bun run check:rls` (Plan 11 Task 11.5) fails on any DEFINER block missing the clause. CT-013 from CONSOLIDATED-TRIAGE.md flagged 8 RPCs in this cluster missing the lock; the Cluster 03 Wave-2 fix agent adds the clause to every DEFINER block in `supabase/migrations/` during its pass.
+
 **Audit-log cross-cut (W0-1):** create / rename / archive / restore / delete each append one row to `public.audit_log` via the Cluster 11 `writeAudit(supabaseAdmin, { userId, eventType, payload, clusterOwner: '03' })` helper at `api/_shared/audit.ts`. Table DDL + RLS + helper are owned by **PRD 11 §2.1 / §4.1 / §5.5** (founder lock #11). The local `writeAudit()` helper described in §5.5 of this PRD has been retired: §5.5 now documents *what* this cluster writes (event-type catalog + payload examples) but the *helper implementation* lives in Cluster 11.
 
 #### 5.1.1 `POST /api/brands/create`
@@ -705,6 +707,8 @@ function brandLogoClass(color: BrandColor): string {
 **`use-typed-confirm.ts`** — re-used from Cluster 11. Configured by `<DeleteBrandModal>` with `expected={brand.name}`, `case='sensitive'`. Component wraps `<TypedConfirmField>` Cluster 11 ships.
 
 ### 6.4 Components
+
+**Icon convention (W0-4 — 2026-05-19):** every icon rendered by a component in this PRD uses `<KovaIcon name="..." size?="..." />` from Cluster 11 §6.4.2 / Plan 11 Task 4.4. The four retired alternates are forbidden per scope plan §6.2 W0-4 lock: (a) raw `<icon-lucide-*>` tags with dynamic names, (b) `<component :is="\`icon-lucide-${name}\`">` template-literal resolution, (c) `i-lucide-*` UnoCSS class strings, (d) `<Icon name="lucide:...">` Nuxt-style. The 22 `<Icon name="lucide:...">` occurrences flagged by QA-B CRITICAL-3 in Plan 03 are scrubbed during the Cluster 03 Wave-2 fix pass.
 
 | Component | Path | Props | Slots | Emits | Notes |
 |---|---|---|---|---|---|
