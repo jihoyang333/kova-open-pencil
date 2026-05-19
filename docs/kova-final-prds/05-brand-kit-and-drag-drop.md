@@ -744,6 +744,8 @@ CREATE POLICY voice_drafts_service_insert ON public.voice_drafts FOR INSERT TO s
 
 All Edge Functions deploy as Vercel Functions under `kova-open-pencil-1/api/`. Idempotency-key handling per Cluster 11 cross-cut.
 
+**Hardening (W0-5 / founder lock #15):** every `CREATE FUNCTION ... SECURITY DEFINER` RPC defined by this PRD MUST include `SET search_path = public, pg_temp` within the same function definition. CI-enforced — `bun run check:rls` (Plan 11 Task 11.5) fails on any DEFINER block missing the clause. CT-013 from CONSOLIDATED-TRIAGE.md flagged the 1 DEFINER RPC in this cluster as missing the lock; the Cluster 05 Wave-2 fix agent adds the clause during its pass.
+
 **Audit-log cross-cut (W0-1):** the voice-draft confirm flow (and any brand-kit mutation that materially changes brand state) appends a row to `public.audit_log` via the Cluster 11 `writeAudit(supabaseAdmin, { userId, eventType, payload, clusterOwner: '05' })` helper at `api/_shared/audit.ts`. Table DDL + RLS + helper are owned by **PRD 11 §2.1 / §4.1 / §5.5** (founder lock #11). Example event types: `brand_kit.voice_draft_confirmed`, `brand_kit.font_uploaded`, `brand_kit.memory_promoted`.
 
 ---

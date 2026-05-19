@@ -3206,6 +3206,53 @@ Expected: ≥85% on cluster-11 source files
 
 ---
 
+### Task 11.5: SECURITY DEFINER `SET search_path` CI gate (W0-5 — founder lock #15)
+
+**Files:**
+- Modify: `.github/workflows/ci.yml` (or Vercel build hook)
+- Modify: `kova-open-pencil-1/package.json` — add `check:rls` script
+
+**Contract:** every `CREATE FUNCTION ... SECURITY DEFINER` block in `supabase/migrations/` MUST carry `SET search_path = public, pg_temp` (or `SET search_path = 'public'`) within the same function definition. Per founder lock #15: a DEFINER function without an explicit `search_path` is a Postgres role-escalation vector (the calling session's `search_path` can resolve `pg_catalog` / extension schemas in front of `public`, letting an attacker shadow operator functions like `=` and pivot a row-level lookup into arbitrary code execution).
+
+CT-013 evidence from CONSOLIDATED-TRIAGE.md: Plan 03 has 8 DEFINER RPCs missing the lock (0/8), Plan 05 has 1 (0/1), Plan 09 has 3 (0/3). W0-5 wires the CI gate that flags any new occurrence + the PRDs 03 / 05 / 09 §5 each carry a hardening line referencing this gate.
+
+- [ ] **Step 1: Add the CI grep step**
+
+```yaml
+- name: Verify SECURITY DEFINER functions carry SET search_path (W0-5 / founder lock #15)
+  run: |
+    # Match every CREATE FUNCTION ... SECURITY DEFINER block that does NOT include a SET search_path
+    # before the next semicolon (the function-definition terminator).
+    # -z treats the file as null-delimited so the regex spans newlines.
+    # The negative lookahead (?![^;]*SET\s+search_path) catches definitions where the SET clause is absent.
+    if grep -rzPnE "CREATE\s+(OR\s+REPLACE\s+)?FUNCTION[^;]*SECURITY\s+DEFINER(?![^;]*SET\s+search_path)" kova-open-pencil-1/supabase/migrations/; then
+      echo "ERROR: SECURITY DEFINER function found without SET search_path = public, pg_temp (founder lock #15)"
+      exit 1
+    fi
+```
+
+- [ ] **Step 2: Add `bun run check:rls` script**
+
+In `kova-open-pencil-1/package.json` `"scripts"`:
+
+```json
+"check:rls": "! grep -rzPnE 'CREATE\\s+(OR\\s+REPLACE\\s+)?FUNCTION[^;]*SECURITY\\s+DEFINER(?![^;]*SET\\s+search_path)' supabase/migrations/"
+```
+
+- [ ] **Step 3: Smoke-test the gate locally**
+
+Create a temporary failing migration `supabase/migrations/__delete-me.sql` containing a single `CREATE FUNCTION foo() RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$ BEGIN END $$;` (no `SET search_path`). Run `bun run check:rls`. Expect exit code 1. Delete the file. Re-run. Expect exit code 0.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git commit -am "ci(cluster-11): SECURITY DEFINER search_path grep gate (W0-5)"
+```
+
+**Wave-2 follow-up:** cluster-fix agents for 03 / 05 / 09 add `SET search_path = public, pg_temp` to every DEFINER block in their respective migrations during their pass. This gate will block CI green until they do.
+
+---
+
 ## Self-Review
 
 **1. Spec coverage:**
