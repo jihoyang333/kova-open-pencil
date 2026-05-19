@@ -1425,6 +1425,57 @@ git add src/composables/use-canvas-drop.ts tests/unit/composables/use-canvas-dro
 git commit -m "feat(cluster-06): use-canvas-drop — 5 MIME dispatch + modifier-key behavior + valibot validation"
 ```
 
+**Sub-test 8.6: Crash-resistance against malformed drop payload (C-MED18)**
+
+Valibot covers schema-shape validation; this sub-test adds explicit coverage for truncated / non-MIME drops so a malformed paste cannot crash the editor or corrupt scene state.
+
+```ts
+// tests/integration/editor/drop-malformed-payload.test.ts
+import { describe, test, expect } from 'bun:test'
+import { mountEditorHost } from '@/test/mount-editor-host'
+
+describe('use-canvas-drop — malformed payload (C-MED18)', () => {
+  test('truncated saved-block JSON does not crash editor; surfaces error toast', async () => {
+    const host = await mountEditorHost()
+    const dt = new DataTransfer()
+    dt.setData('application/x-kova-saved-block', '{"id":"abc","payl')  // truncated mid-JSON
+    const ev = new DragEvent('drop', { dataTransfer: dt })
+    host.canvas.dispatchEvent(ev)
+    await host.flush()
+    expect(host.toastQueue).toContainEqual(
+      expect.objectContaining({ variant: 'error', code: 'drop_invalid_payload' })
+    )
+    expect(host.editorStateChanged).toBe(false)
+  })
+
+  test('non-MIME plain-text drop is a silent no-op', async () => {
+    const host = await mountEditorHost()
+    const dt = new DataTransfer()
+    dt.setData('text/plain', 'lol')
+    const ev = new DragEvent('drop', { dataTransfer: dt })
+    host.canvas.dispatchEvent(ev)
+    await host.flush()
+    expect(host.editorStateChanged).toBe(false)
+    expect(host.toastQueue).toHaveLength(0)
+  })
+
+  test('empty DataTransfer is a silent no-op', async () => {
+    const host = await mountEditorHost()
+    const ev = new DragEvent('drop', { dataTransfer: new DataTransfer() })
+    host.canvas.dispatchEvent(ev)
+    await host.flush()
+    expect(host.editorStateChanged).toBe(false)
+  })
+})
+```
+
+Commit (separate from Step 5 commit above so the crash-resistance test ships as its own atomic change):
+
+```bash
+git add tests/integration/editor/drop-malformed-payload.test.ts
+git commit -m "test(cluster-06): malformed drop payload crash-resistance (C-MED18)"
+```
+
 ---
 
 ### Task 9: TopChrome + 4 sub-components
