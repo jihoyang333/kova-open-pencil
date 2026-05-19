@@ -835,7 +835,7 @@ If any store hasn't been wired yet at runtime, the loss-list row shows "—" (em
 - [ ] Every RPC re-enforces `user_id = auth.uid()` inside the function body (not just relying on RLS)
 - [ ] `list_active_brands` returns rows ordered by `updated_at DESC`; only `archived_at IS NULL`
 - [ ] `list_archived_brands` returns rows ordered by `archived_at DESC`; only `archived_at IS NOT NULL`
-- [ ] All 6 RPCs error-codes documented and surface to frontend as typed errors
+- [ ] All 7 RPCs error-codes documented and surface to frontend as typed errors
 - [ ] `writeAudit()` helper writes 5 event types (`brand.created`, `brand.renamed`, `brand.archived`, `brand.restored`, `brand.deleted`) to console + Sentry breadcrumb in Wave 2 stopgap mode
 - [ ] Storage sweep deletes all objects under `{brand_id}/**` in: `brand-logos`, `media-assets`, `brand-fonts`, `canvas-snapshots`
 - [ ] Edge Functions reject requests without `Authorization` header (401)
@@ -929,7 +929,7 @@ Coverage target: ≥ 85% line coverage on every new file under `src/views/brands
 ### Phase A — initial deploy (Wave 2 close)
 
 - Migration `20260601_03_brands_lifecycle.sql` applied to local + staging
-- 6 RPCs deployed (`create_brand`, `rename_brand`, `archive_brand`, `restore_brand` **REAL**, `delete_brand`, `list_active_brands`, `list_archived_brands`)
+- 7 RPCs deployed (`create_brand`, `rename_brand`, `archive_brand`, `restore_brand` **REAL**, `delete_brand`, `list_active_brands`, `list_archived_brands`)
 - 5 Edge Functions deployed (`create`, `rename`, `archive`, `restore`, `delete`)
 - All frontend components shipped including B12 (`<BrandsAccountView>`, `<BrandsSegmentedControl>`, `<RestoreBrandModal>`, `<BrandsArchivedFilter>`)
 - `useBrandsStore` extended actions wired (incl. `restoreBrand` REAL + `fetchArchivedBrands`)
