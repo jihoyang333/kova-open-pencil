@@ -1867,6 +1867,29 @@ git commit -m "feat(04): POST /api/account/avatar-upload — signed-URL pattern"
 
 **Founder decision 2026-05-17:** Confirm step runs uploaded file through `sharp` to normalize (resize 256×256 cover fit, convert to PNG) before persisting. Path is fixed `users/{user_id}/avatar.png` — no orphans.
 
+**B-MED13 cross-cluster dependency (Cluster 11 bucket RLS):**
+
+The exact-path enforcement above (`EXPECTED_PATH_RE` + `segments[1] !== ctx.userId` check) ensures the server-side handler rejects any path that doesn't match `users/<authed-uid>/avatar.png`. This is one layer of defense. The second layer is Supabase Storage RLS, which MUST be authored by Cluster 11 (Plan 11 — shared infra). Required Plan 11 deliverable:
+
+```sql
+-- storage.objects policy for media-assets bucket
+CREATE POLICY "users_write_own_avatar" ON storage.objects
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    bucket_id = 'media-assets'
+    AND auth.uid()::text = (storage.foldername(name))[2]  -- users/<uid>/avatar.png → foldername returns ['users', '<uid>']
+    AND (storage.foldername(name))[1] = 'users'
+    AND name LIKE '%/avatar.png'
+  );
+
+CREATE POLICY "users_update_own_avatar" ON storage.objects
+  FOR UPDATE TO authenticated
+  USING (bucket_id = 'media-assets' AND auth.uid()::text = (storage.foldername(name))[2])
+  WITH CHECK (bucket_id = 'media-assets' AND auth.uid()::text = (storage.foldername(name))[2]);
+```
+
+Verify Plan 11 ships these two policies before merging Cluster 04. If Plan 11 has not yet authored them, escalate to the Cluster 11 fix agent (do NOT add the migration in this plan — Plan 11 owns `storage.objects` policies for the whole product).
+
 - [ ] **Step 1: Write test**
 
 ```typescript
