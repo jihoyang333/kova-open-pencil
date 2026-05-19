@@ -1778,6 +1778,45 @@ describe('POST /api/cron/delete-account', () => {
     // (Detailed mock harness — implement per project test infra)
     expect(true).toBe(true) // placeholder; expand during impl
   })
+
+  // B-MED10: claim_deletion_queue_row RETURNS TABLE — supabase-js may surface
+  // the result as a single row OR an array. Both shapes must short-circuit
+  // cleanly without reading .attempts off undefined.
+  test('handles claim RPC returning empty array (no row matched)', async () => {
+    mock.module('../../../../api/_shared/supabase-admin', () => ({
+      getAdminClient: () => ({
+        from: () => ({
+          select: () => ({ lt: () => ({ in: () => Promise.resolve({ data: [{ id: 'u1' }], error: null }) }) }),
+          update: () => ({ match: () => Promise.resolve({ error: null }) })
+        }),
+        rpc: mock(() => Promise.resolve({ data: [], error: null }))
+      })
+    }))
+    const req = new Request('http://x/api/cron/delete-account', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer test-secret' }
+    })
+    const res = await handler(req)
+    expect(res.status).toBe(200) // empty array → continue, no crash
+  })
+
+  test('handles claim RPC returning single row (Array.isArray fallback)', async () => {
+    mock.module('../../../../api/_shared/supabase-admin', () => ({
+      getAdminClient: () => ({
+        from: () => ({
+          select: () => ({ lt: () => ({ in: () => Promise.resolve({ data: [{ id: 'u1' }], error: null }) }) }),
+          update: () => ({ match: () => Promise.resolve({ error: null }) })
+        }),
+        rpc: mock(() => Promise.resolve({ data: [{ id: 'q1', attempts: 2 }], error: null }))
+      })
+    }))
+    const req = new Request('http://x/api/cron/delete-account', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer test-secret' }
+    })
+    const res = await handler(req)
+    expect(res.status).toBe(200)
+  })
 })
 ```
 
@@ -1834,7 +1873,12 @@ export default async function handler(req: Request): Promise<Response> {
       const { data: claim } = await supabase.rpc('claim_deletion_queue_row', {
         p_user_id: userId, p_step: step, p_max_attempts: MAX_ATTEMPTS
       })
-      if (!claim) continue // Already succeeded OR exceeded attempts
+      // RPC declares RETURNS TABLE (id uuid, attempts int) — supabase-js
+      // surfaces TABLE-returning RPCs as an array (or null when no row
+      // matched the FOR UPDATE SKIP LOCKED scan). Normalize before access
+      // so .attempts is not read off undefined.
+      const row = Array.isArray(claim) ? claim[0] : claim
+      if (!row) continue // Already succeeded OR exceeded attempts
 
       const result = await STEP_RUNNERS[step]({ supabase, userId, idempotencyKey })
       if (result.ok) {
@@ -1842,7 +1886,7 @@ export default async function handler(req: Request): Promise<Response> {
           .update({ status: 'succeeded', succeeded_at: new Date().toISOString() })
           .match({ user_id: userId, step })
       } else {
-        const newStatus = result.retriable && claim.attempts < MAX_ATTEMPTS ? 'pending' : 'failed_terminal'
+        const newStatus = result.retriable && row.attempts < MAX_ATTEMPTS ? 'pending' : 'failed_terminal'
         await supabase.from('gdpr_deletion_queue')
           .update({ status: newStatus, error: result.error })
           .match({ user_id: userId, step })
