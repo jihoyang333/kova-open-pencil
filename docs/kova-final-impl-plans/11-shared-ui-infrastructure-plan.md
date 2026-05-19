@@ -2781,13 +2781,27 @@ const { reduced } = useReducedMotion()
 ```vue
 <!-- src/components/ui/EmptyState.vue -->
 <script setup lang="ts">
+import { computed } from 'vue'
+
 interface Props { size?: 'inline-32' | 'panel-40' | 'full-48'; icon: string; headline: string; body?: string; query?: string }
 const props = withDefaults(defineProps<Props>(), { size: 'panel-40' })
 
-function renderHeadline() {
-  if (!props.query) return props.headline
-  return props.headline.replace(`"${props.query}"`, `<span class="q">"${props.query}"</span>`)
-}
+// CT-024 fix: split the headline into safe pre / match / post pieces so the
+// user-supplied query is rendered via Vue text-interpolation rather than
+// v-html. v-html on user input is an XSS sink — strictly forbidden here.
+interface HeadlineParts { pre: string; match: string | null; post: string }
+const parts = computed<HeadlineParts>(() => {
+  const q = props.query
+  if (!q) return { pre: props.headline, match: null, post: '' }
+  const needle = `"${q}"`
+  const idx = props.headline.indexOf(needle)
+  if (idx === -1) return { pre: props.headline, match: null, post: '' }
+  return {
+    pre: props.headline.slice(0, idx),
+    match: needle,
+    post: props.headline.slice(idx + needle.length),
+  }
+})
 </script>
 
 <template>
@@ -2795,12 +2809,19 @@ function renderHeadline() {
     <div class="ic-wrap">
       <icon-lucide-:name="icon" />
     </div>
-    <h5 v-html="renderHeadline()" />
+    <h5>
+      <template v-if="parts.match">
+        <span>{{ parts.pre }}</span><span class="q">{{ parts.match }}</span><span>{{ parts.post }}</span>
+      </template>
+      <template v-else>{{ parts.pre }}</template>
+    </h5>
     <p v-if="body" class="body">{{ body }}</p>
     <div v-if="$slots.cta" class="cta-row"><slot name="cta" /></div>
   </div>
 </template>
 ```
+
+> **CT-024 / B-CRIT14:** `v-html` on a string interpolated from `props.query` (user input) is an XSS sink — strictly forbidden. The `parts` computed splits the headline into safe `pre` / `match` / `post` text pieces rendered via standard Vue text interpolation, preserving the highlight wrapper without ever executing HTML from user input. Reviewers MUST reject any future change that re-introduces `v-html` here or anywhere else this component is used.
 
 ```vue
 <!-- src/components/ui/NetworkStatusIndicator.vue -->
