@@ -1277,16 +1277,32 @@ export async function runStep({ supabase, userId, idempotencyKey }: StepArgs): P
 
   for (const brand of brands) {
     if (!brand.shopify_access_token_id) continue
-    const url = `https://${brand.shopify_shop_domain}/admin/api/2024-01/access_tokens/${brand.shopify_access_token_id}/revoke`
+    // Fetch the per-shop access token from Vault before revoking.
+    const { data: tokenRow, error: tokenErr } = await supabase.rpc('read_shopify_token', {
+      p_secret_id: brand.shopify_access_token_id,
+    })
+    if (tokenErr || !tokenRow) {
+      // Token already gone — treat as revoked
+      await supabase.from('brands')
+        .update({ shopify_shop_domain: null, shopify_access_token_id: null })
+        .eq('id', brand.id)
+      continue
+    }
+    // Per Shopify docs (https://shopify.dev/docs/api/usage/access-scopes#revoking-access),
+    // the canonical revoke endpoint is DELETE /admin/api_permissions/current.json
+    // with the shop's access token in X-Shopify-Access-Token. The previous
+    // POST .../access_tokens/:id/revoke route does NOT exist in the Admin API.
+    const url = `https://${brand.shopify_shop_domain}/admin/api_permissions/current.json`
     try {
       const res = await fetch(url, {
-        method: 'POST',
+        method: 'DELETE',
         headers: {
+          'X-Shopify-Access-Token': tokenRow as string,
           'X-Idempotency-Key': `${idempotencyKey}:${brand.id}`,
           'Content-Type': 'application/json'
         }
       })
-      // 200, 401, 404 → already revoked = OK
+      // 200, 401, 404 → already revoked = OK; 5xx → retriable
       if (res.status >= 500) {
         return { ok: false, retriable: true, error: `Shopify ${res.status}` }
       }

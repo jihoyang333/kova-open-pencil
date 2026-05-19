@@ -587,7 +587,7 @@ Cron-secret authentication header: `Authorization: Bearer ${CRON_SECRET}`. `CRON
 | **Supabase Auth** | `@supabase/supabase-js` (already installed) | `signInWithOtp` (magic-link), `verifyOtp` (6-digit code OR email token), `updateUser({ email })`, `signOut`, `getUser`, `onAuthStateChange`, `admin.deleteUser` (cascade `db` step uses RPC + raw delete, not admin API) | None directly — Auth events bubble through the SDK client |
 | **Resend** | `resend` npm package (NEW dep) | Email send: deletion-scheduled, deletion-completed, deletion-restored, email-change-confirmation-to-old, email-change-confirmation-to-new (Supabase-sent for the verify-link itself — we customize via Supabase email templates) | None |
 | **Stripe** | `stripe` npm package (Cluster 04 installs; this PRD's cron step uses it conditionally — see 5.1.4.1) | `subscriptions.cancel`, `customers.del` | None (Cluster 04 ships `stripe-webhook`) |
-| **Shopify Admin API** | direct fetch (existing M9 pattern) | `POST /admin/api/2024-01/access_tokens/{id}/revoke` | M9 already ships `shop/uninstalled` webhook handler |
+| **Shopify Admin API** | direct fetch (existing M9 pattern) | `DELETE /admin/api_permissions/current.json` with per-shop `X-Shopify-Access-Token` header (per [Shopify access-scopes revoke docs](https://shopify.dev/docs/api/usage/access-scopes#revoking-access)) | M9 already ships `shop/uninstalled` webhook handler |
 | **Anthropic** | DB-side delete + manual-batch operator workflow (see 5.1.4.3) | n/a (DB-only at cron level) | None |
 
 #### 5.4.1 Supabase Auth configuration
