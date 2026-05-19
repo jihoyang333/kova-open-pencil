@@ -2501,6 +2501,8 @@ const emit = defineEmits<{ 'update:modelValue': [v: string]; submit: [] }>()
 const isReadonly = computed(() => props.state !== 'idle')
 
 function onKey(e: KeyboardEvent): void {
+  // B-MED4 verified 2026-05-19: `e.code === 'Enter'` is correct here per founder lock #9
+  // (Mac Option key transforms `e.key` characters). Plan 03 had the outlier — tracked in W2 Cluster 03 brief.
   if (e.code === 'Enter' && (e.metaKey || e.ctrlKey)) {
     e.preventDefault()
     emit('submit')
