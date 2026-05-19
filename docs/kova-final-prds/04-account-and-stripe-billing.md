@@ -23,7 +23,7 @@ A signed-in user needs one canonical place to manage everything that is "theirs 
 
 ### 1.2 Caveman summary (per CLAUDE.md communication style)
 
-User get one big page for everything user-scoped. Five sidebar tabs: Profile, Plan & billing, Brand Kit (per-brand), Integrations (per-brand), Danger zone. Stripe foundation goes here — Checkout new tab, Customer Portal new tab (Stripe blocks iframe), webhook syncs plan state to DB. Brand Kit + Integrations show brand-picker; pick brand, see its kit / its Shopify. M9 integrations code reused but refactored dark + re-routed + history table wired. Danger zone mounts component from Cluster 01 (Cluster 01 owns GDPR cascade — this PRD just ships the button + Stripe SDK its cron needs). Two Stripe return landings: success + cancel. Past-due banner on Plan & billing when payment fails. No iframe ever. No per-brand billing — freelancer pays one subscription, manages many client brands.
+User get one big page for everything user-scoped. Six sidebar tabs (post-B12 reversal 2026-05-17 — Brands added): Profile, Brands, Plan & billing, Brand Kit (per-brand), Integrations (per-brand), Danger zone. Stripe foundation goes here — Checkout new tab, Customer Portal new tab (Stripe blocks iframe), webhook syncs plan state to DB. Brand Kit + Integrations show brand-picker; pick brand, see its kit / its Shopify. M9 integrations code reused but refactored dark + re-routed + history table wired. Brands section mounts PRD 03's `<BrandsArchiveView>` (PRD 03 owns content, this PRD owns the route + sidebar entry). Danger zone mounts component from Cluster 01 (Cluster 01 owns GDPR cascade — this PRD just ships the button + Stripe SDK its cron needs). Two Stripe return landings: success + cancel. Past-due banner on Plan & billing when payment fails. No iframe ever. No per-brand billing — freelancer pays one subscription, manages many client brands.
 
 ### 1.3 Outcome (acceptance gate)
 
@@ -1566,7 +1566,7 @@ Separate decision dispatched same day. B12 archived Brands page promoted from Ph
 
 ### 13.3 Hi-fi files
 
-- `main-main-kova-scope/batch-a/dark/Kova Hi-Fi A7 Account Page - Dark.html` — 12 scenes covering all 5 sidebar sections (Profile, Plan & billing, Brand Kit + 7 sub-tabs, Integrations, Danger zone)
+- `main-main-kova-scope/batch-a/dark/Kova Hi-Fi A7 Account Page - Dark.html` — 12 scenes covering 5 of the 6 sidebar sections (Profile, Plan & billing, Brand Kit + 7 sub-tabs, Integrations, Danger zone). The sixth section (**Brands**) was added post-design via B12 reversal 2026-05-17 — its scene reuses PRD 03's `<BrandsArchiveView>` design from `Kova Hi-Fi B12 Brands page - Dark.html`.
 - `main-main-kova-scope/batch-a-additions/dark/Kova Hi-Fi B10 Stripe Returns - Dark.html` — 2 scenes (B10.1 success, B10.2 cancel) + plan-name annotation
 - `main-main-kova-scope/batch-a/dark/Kova Hi-Fi A4+A9+A10 Modals - Dark.html` — A9.1 delete-account modal + A9.3 deletion-pending landing (both owned by Cluster 01; we mount A9.1 via `<DangerZoneCard>`)
 - `main-main-kova-scope/batch-a-additions/light/Kova Hi-Fi B5 Email Change Landing - Light.html` — cross-cut; B5.1 primary CTA target is `/account/profile` (Cluster 01 ships landing; we provide the destination route)
