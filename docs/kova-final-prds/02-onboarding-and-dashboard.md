@@ -47,7 +47,7 @@ User can: (1) complete the 4-step onboarding wizard from a fresh sign-up — bra
 
 **Dashboard chrome (dark):**
 - Vue Router: `/brand/:brandId` (home), `/brand/:brandId/recents` (alias for home active-nav state), `/brand/:brandId/calendar` (A12 "coming soon" — Phase 2 destination but route exists), `/brand/:brandId/products`, `/brand/:brandId/personalization` (placeholder), `/brand/:brandId/knowledge-base` (placeholder), `/brand/:brandId/memories` (placeholder)
-- Sidebar: brand-switch button (current brand + caret) → opens Reka DropdownMenu listing all active brands + "Manage brands" link (routes to `/account/brands` — B12 page, MVP per 2026-05-17 reversal, owned by PRD 03/04) + "New brand" affordance; search input (no Cmd+K shortcut — palette dropped per 00g 2026-05-17); nav sections (Home, Library, Brand) with "SOON" pill on Phase-2 destinations (Calendar, Swipes, Templates) but **NOT on the Brands item** (Brands ships visible at MVP per §12.11 Part B RESOLVED 2026-05-17); side-footer with avatar + name + plan + more dropdown
+- Sidebar: brand-switch button (current brand + caret) → opens Reka DropdownMenu listing all active brands + "Manage brands" link (routes to `/account/brands` — B12 page, MVP per 2026-05-17 reversal, owned by PRD 03/04) + "New brand" affordance; search input (no Cmd+K shortcut — palette dropped per 00g 2026-05-17); nav sections (Home, Library, Brand) with "SOON" pill on every nav row whose route renders `ComingSoonView` — **Calendar, Swipes, Templates, Products, Personalization, Knowledge Base, Memories** (7 items, matching the 7 ComingSoon route registrations in §6.1) — but **NOT on the Brands item** (Brands ships visible at MVP per §12.11 Part B RESOLVED 2026-05-17 — A-LOW5 reconciles sidebar list with route map); side-footer with avatar + name + plan + more dropdown
 - Topbar: breadcrumb (Brand → current page), "New canvas" button
 - Content pane: greeting ("Good morning/afternoon/evening, {Name}"), composer hero (AI input + 5 preset chips + "Generate on canvas" CTA), Recent files section header (sort dropdown + grid/list view toggle), file grid (4 columns at 1440px, responsive collapse to 2 at <1024 — but viewport guard from Cluster 01 catches <1024 first)
 
@@ -77,10 +77,10 @@ User can: (1) complete the 4-step onboarding wizard from a fresh sign-up — bra
 - A11.7 zero brands (first login, no brands yet — but onboarding catches this so A11.7 appears only if brand list goes empty after archive/delete: routes to `/brands/picker` or back through wizard — confirm in §12)
 - B9-pattern search-empty: "Nothing matches '{query}' here — Clear filters"
 
-**Offline indicator (A13):**
-- Online (A13.1): `.pill.ok.dot` "Online" in topbar actions cluster (quiet)
-- Offline (A13.2): sidebar footer `.net-strip` "Working offline" pill, topbar `.pill.warn.dot` "Offline", per-pane warn banner "You're offline. Changes are saved locally and will sync when you reconnect"
-- Detection: composable `useOfflineState()` — combines `navigator.onLine` + Supabase Realtime channel state (consumed from Cluster 11 cross-cut)
+**Offline indicator — CONSUMER of Cluster 11 `<NetworkStatusIndicator>` (CT-020):**
+- This PRD owns ZERO offline UI surface. Cluster 11 §6.4 ships `<NetworkStatusIndicator>` (Figma-style 14×14 `cloud-off` icon + `KovaTooltip`, renders nothing while online) and Cluster 11 §3.7 mounts it globally in `App.vue` (commit f08fa551 — C-MED-11.5).
+- The legacy A13.1 topbar "Online" pill, A13.2 sidebar `.net-strip`, and per-pane offline banner variants are RETIRED per 2026-05-17 founder decision (recorded in Cluster 11 §6.4).
+- Detection composable: Cluster 11 §2.4 `useOnlineStatus` (combines `navigator.onLine` + Supabase Realtime channel heartbeat). Cluster 02 does NOT call this composable directly — it is encapsulated inside `<NetworkStatusIndicator>`.
 
 **Coming-soon shells (A12):**
 - `/brand/:brandId/calendar`, `/brand/:brandId/swipes`, `/brand/:brandId/templates` — each renders the canonical coming-soon shell (icon-tile + eyebrow + headline + 3-row roadmap + 2-CTA "Notify me" + "Read the roadmap")
@@ -194,12 +194,13 @@ Every surface maps to a hi-fi file + scene ID. Engineers cite the file + scene w
 | Swipes (Phase 2) | `/brand/:brandId/swipes` | same | A12.2 | Same shell, `bookmark` icon |
 | Templates (Phase 2) | `/brand/:brandId/templates` | same | A12.3 | Same shell, `layout-template` icon + 2-tab strip ("Templates" / "Examples") |
 
-### 3.7 Network state (DARK)
+### 3.7 Network state (DARK) — owned by Cluster 11 (CT-020)
 
-| Surface | Hi-fi file | Scene IDs | Notes |
-|---|---|---|---|
-| Online (quiet) | same A11 file | A13.1 | Topbar actions cluster: `.pill.ok.dot` "Online" (~11px). Sidebar footer silent. |
-| Offline (warn) | same | A13.2 | Three reinforcing signals: sidebar footer `.net-strip` "Working offline" + cloud-off icon; per-pane `.offline-banner` "You're offline. Changes are saved locally and will sync when you reconnect"; topbar `.pill.warn.dot` "Offline" swap |
+| Surface | Owner | Notes |
+|---|---|---|
+| Online | Cluster 11 `<NetworkStatusIndicator>` | Renders nothing — the indicator is silent while online (Figma-parity). |
+| Offline | Cluster 11 `<NetworkStatusIndicator>` | Single 14×14 `cloud-off` lucide icon mounted at top-right of the viewport via `App.vue` global mount (Plan 11 §3.7 / commit f08fa551). Hover surfaces `<KovaTooltip>` copy "You're offline. Changes are saved locally and will sync when you reconnect." |
+| Sidebar `.net-strip`, topbar `.pill.warn.dot`, per-pane `.offline-banner` | **RETIRED** | A13.1 / A13.2 three-signal pattern retired 2026-05-17 in favor of the single-icon indicator. Do NOT re-introduce these surfaces in this PRD or Plan 02. |
 
 ### 3.8 Cross-references (not owned by this PRD but cited)
 
@@ -411,6 +412,32 @@ const onboardingRoutes = [
     component: () => import('@/components/onboarding/StoreTypeStep.vue'),
     meta: { theme: 'dark', requiresAuth: true, onboardingOnly: true, viewportGuard: 'desktop' },
   },
+  // C-HIGH2: wizard sub-routes (each step owns its URL for back/forward + deep-link).
+  // Step components mounted inside OnboardingView via <router-view>; guards enforce linear progression.
+  {
+    path: '/onboarding/brand',
+    name: 'onboarding-brand',
+    component: () => import('@/components/onboarding/BrandIdentityStep.vue'),
+    meta: { theme: 'dark', requiresAuth: true, onboardingOnly: true, viewportGuard: 'desktop', wizardStep: 1 },
+  },
+  {
+    path: '/onboarding/shopify',
+    name: 'onboarding-shopify',
+    component: () => import('@/components/onboarding/ShopifyConnectStep.vue'),
+    meta: { theme: 'dark', requiresAuth: true, onboardingOnly: true, viewportGuard: 'desktop', wizardStep: 2 },
+  },
+  {
+    path: '/onboarding/brand-kit',
+    name: 'onboarding-brand-kit',
+    component: () => import('@/components/onboarding/BrandKitStep.vue'),
+    meta: { theme: 'dark', requiresAuth: true, onboardingOnly: true, viewportGuard: 'desktop', wizardStep: 3 },
+  },
+  {
+    path: '/onboarding/done',
+    name: 'onboarding-done',
+    component: () => import('@/components/onboarding/SplashStep.vue'),
+    meta: { theme: 'dark', requiresAuth: true, onboardingOnly: true, viewportGuard: 'desktop', wizardStep: 4 },
+  },
 ]
 
 const dashboardRoutes = [
@@ -540,6 +567,12 @@ export const useDashboardStore = defineStore('dashboard', () => {
     return list  // 'recent' = sortedCanvases default (by updated_at desc)
   }
 
+  // Actions — per B-HIGH14 store mutations only happen via actions
+  function setSearchQuery(q: string): void { searchQuery.value = q }
+  function setSortMode(mode: SortMode): void { sortMode.value = mode }
+  function setViewMode(mode: ViewMode): void { viewMode.value = mode }
+  function setShowTrashed(flag: boolean): void { showTrashed.value = flag }
+
   // Reset on brand-switch
   function resetForBrand(): void {
     searchQuery.value = ''
@@ -548,7 +581,12 @@ export const useDashboardStore = defineStore('dashboard', () => {
     // viewMode preserved across brand switches (per-device pref)
   }
 
-  return { searchQuery, sortMode, viewMode, showTrashed, filteredCanvases, resetForBrand }
+  return {
+    searchQuery, sortMode, viewMode, showTrashed,
+    filteredCanvases,
+    setSearchQuery, setSortMode, setViewMode, setShowTrashed,
+    resetForBrand,
+  }
 })
 ```
 
@@ -568,8 +606,17 @@ export const useUIStateStore = defineStore('ui-state', () => {
   const lastActiveBrandId = useLocalStorage<string | null>('kova:ui:last-brand', null)
   const lastActiveCanvasId = useLocalStorage<string | null>('kova:ui:last-canvas', null)
   const fileGridViewMode = useLocalStorage<'grid' | 'list'>('kova:ui:file-grid-view', 'grid')
+
+  // B-HIGH14: store mutations only via actions
+  function setLastActiveBrandId(id: string | null): void { lastActiveBrandId.value = id }
+  function setLastActiveCanvasId(id: string | null): void { lastActiveCanvasId.value = id }
+  function setFileGridViewMode(mode: 'grid' | 'list'): void { fileGridViewMode.value = mode }
+
   // Cluster 12 will extend.
-  return { lastActiveBrandId, lastActiveCanvasId, fileGridViewMode }
+  return {
+    lastActiveBrandId, lastActiveCanvasId, fileGridViewMode,
+    setLastActiveBrandId, setLastActiveCanvasId, setFileGridViewMode,
+  }
 })
 ```
 
@@ -579,11 +626,11 @@ export const useUIStateStore = defineStore('ui-state', () => {
 
 | Composable | File | Signature | Used by |
 |---|---|---|---|
-| `useOnboarding` | `src/composables/use-onboarding.ts` (NEW — wraps existing `useOnboardingState`) | `{ step: Ref<'brand'\|'shopify'\|'brand-kit'\|'splash'>; next(): void; prev(): void; complete(): Promise<{ brandId: string }>; canProceed: ComputedRef<boolean>; isFinishing: Ref<boolean>; finishError: Ref<string \| null>; persistDraft(): void; restoreDraft(): void }` | `OnboardingView` |
+| `useOnboarding` | `src/composables/use-onboarding.ts` (NEW — module-scope singleton; retires M9 `useOnboardingState` per C-HIGH3) | `{ state: Reactive<{ brandName: string; brandUrl: string; industry: string; tempBrandId: string }>; step: Ref<'brand'\|'shopify'\|'brand-kit'\|'splash'>; next(): void; prev(): void; complete(): Promise<{ brandId: string }>; canProceed: ComputedRef<boolean>; isFinishing: Ref<boolean>; finishError: Ref<string \| null>; persistDraft(): void; restoreDraft(): void }` — templates write `v-model="state.brandName"` (no `.value`) per B-MED15 | `OnboardingView`, `BrandIdentityStep`, `BrandKitStep`, `SplashStep` |
 | `useLogoFetch` | `src/composables/use-logo-fetch.ts` (NEW) | `(urlRef: Ref<string>) => { logoUrl: Ref<string \| null>; isFetching: Ref<boolean>; manualOverride(file: File): Promise<void> }` — 600ms debounce on `urlRef`; calls `fetchFavicon`; allows manual file override (uploads to `brand-logos` bucket) | `BrandUrlStep`, onboarding step 1 |
 | `useGreeting` | `src/composables/use-greeting.ts` (NEW) | `(): ComputedRef<string>` — returns "Good morning/afternoon/evening, {firstName}" based on `new Date().getHours()` + `useAuthStore.profile.name` | `DashboardView` greeting |
 | `useFileGrid` | `src/composables/use-file-grid.ts` (NEW) | `(brandId: Ref<string>) => { canvases: ComputedRef<Canvas[]>; isLoading: Ref<boolean>; isEmpty: ComputedRef<boolean>; hasSearchQuery: ComputedRef<boolean>; search: (q: string) => void (debounced 200ms); setSort: (m: SortMode) => void; setView: (m: ViewMode) => void }` — wraps `useDashboardStore` + `useCanvasesStore.fetchCanvases` | `RecentsView` |
-| `useOfflineState` | `src/composables/use-offline-state.ts` (CROSS-CUT — owned by Cluster 11 per §3.7) | `(): { isOnline: ComputedRef<boolean>; lastChange: Ref<Date \| null> }` | Sidebar footer, topbar pill, per-pane banner |
+| ~~`useOfflineState`~~ — **RETIRED (CT-020 + C-MED4)** | Cluster 11 ships `useOnlineStatus` (`src/composables/use-online-status.ts`). Consumed only inside Plan 11 `<NetworkStatusIndicator>`. | n/a — not called by Cluster 02 components | n/a |
 
 ### 6.4 Components
 
@@ -603,13 +650,13 @@ export const useUIStateStore = defineStore('ui-state', () => {
 
 | Component | File | Hi-fi origin | Status |
 |---|---|---|---|
-| `WelcomeStep` (existing, may retire) | `src/components/onboarding/WelcomeStep.vue` | (M9 era — pre-Cluster-01 auth landing) | RETIRE if Cluster 01 ships its own landing. Pending §12. |
+| ~~`WelcomeStep`~~ — **RETIRED 2026-05-19** | `src/components/onboarding/WelcomeStep.vue` | (M9 era — pre-Cluster-01 auth landing) | Retired in Plan 02 Task T13 per §12.10 RESOLVED + C-LOW02.7. Cluster 01 owns the auth landing. |
 | `BrandNameStep` + `BrandUrlStep` + `NameStep` (existing) | `src/components/onboarding/*.vue` | A1.01.c | CONSOLIDATE into single `<BrandIdentityStep>` that renders A1.01.c's full `.onb-id-row` + 3-field stack — matches hi-fi which is a single screen, not three. |
 | `StoreTypeStep` (existing — M9) | `src/components/onboarding/StoreTypeStep.vue` | A1.01.d | **REFACTOR light → dark** (§5.6 item 1) + access_token security fix (§5.4.1). Keep logic for `normalizeShopDomain` + OAuth start + skip + "Something else" + "No store yet" branches. |
 | `BrandKitStep` (NEW — A1.01.e) | `src/components/onboarding/BrandKitStep.vue` | A1.01.e | NEW. Drop-zone + file-list + textarea + AI extraction promise card. On "Extract and continue" → enqueues uploads + guidelines payload for Cluster 05's extract Edge Function. |
 | `ExtractionStep` (existing) | `src/components/onboarding/ExtractionStep.vue` | (M9 — kept for compat) | RETIRE; `BrandKitStep` replaces. |
 | `SplashStep` (NEW) | `src/components/onboarding/SplashStep.vue` | A1.01.f | NEW. 2×2 next-move grid + primary "Enter {brand} workspace". |
-| `ReviewStep` (existing) | `src/components/onboarding/ReviewStep.vue` | (M9 — confirm before commit) | KEEP for now as final commit gate; merge into `SplashStep` if simpler in implementation. Pending §12. |
+| ~~`ReviewStep`~~ — **RETIRED 2026-05-19** | `src/components/onboarding/ReviewStep.vue` | (M9 — final commit gate) | Retired in Plan 02 Task T13 per §12.10 RESOLVED + C-LOW02.7. Final commit gate folded into `SplashStep`. |
 
 #### 6.4.3 Dashboard chrome components
 
@@ -628,7 +675,7 @@ export const useUIStateStore = defineStore('ui-state', () => {
 | `FileThumbnail` (NEW) | `src/components/dashboard/FileThumbnail.vue` | `canvas: Canvas` | none | none | 03.a `.thumb` + `.thumb-frame` / `.thumb-flow` / `.thumb-ab` (picked by `canvas.frame_count` + heuristic) |
 | `SortDropdown` (NEW) | `src/components/dashboard/SortDropdown.vue` | `modelValue: SortMode` | none | `update:modelValue` | 03.a `.filter` button |
 | `ViewToggle` (NEW) | `src/components/dashboard/ViewToggle.vue` | `modelValue: ViewMode` | none | `update:modelValue` | 03.a `.view-toggle` |
-| `OfflineIndicator` (NEW — composes sidebar pill + banner) | `src/components/dashboard/OfflineIndicator.vue` | `slot: 'sidebar' \| 'topbar' \| 'banner'` | none | none | A13.1 / A13.2 |
+| ~~`OfflineIndicator`~~ — **RETIRED (CT-020)** | n/a | Cluster 02 consumes Cluster 11 `<NetworkStatusIndicator>` mounted globally in `App.vue`. No local offline component. |  |  |
 | `CanvasCreationTransition` (NEW) | `src/components/dashboard/CanvasCreationTransition.vue` | `state: 'idle' \| 'submitting' \| 'review' \| 'splash'`, `prompt: string` | none | none | B11.1–B11.4 |
 | `DashboardSkeleton` (NEW) | `src/components/dashboard/DashboardSkeleton.vue` | none | none | none | B7.1 |
 
@@ -643,6 +690,41 @@ export const useUIStateStore = defineStore('ui-state', () => {
 ### 6.5 Drag-and-drop handlers
 
 **N/A in this PRD.** File-grid does not accept drag-and-drop receivers (no drop-to-import in MVP). Brand-logo upload uses a file picker, not drag. Brand-kit step 3 drop zone is a single browser-level `DataTransfer` file-pick — no MIME-typed Kova payload.
+
+### 6.6 Brand-kit extract queue handoff — consumer of Cluster 05 (C-MED7)
+
+**Owner of the queue + Edge Function:** Cluster 05 (`api/brand-kit/extract.ts` + Postgres job table + worker).
+
+**This PRD's responsibility:** At the end of onboarding step 3, the wizard pushes a payload to Cluster 05's extract queue via the public composable `useBrandKitExtractQueue()` (also owned by Cluster 05). The wizard advances to the splash step immediately after enqueue resolves — the extract worker runs asynchronously; the founder sees results in the Brand Kit page once the worker finishes (out of scope for this PRD).
+
+**Queue contract (frozen 2026-05-19):**
+
+```ts
+// Composable signature — Cluster 05 ships at `src/composables/use-brand-kit-extract-queue.ts`
+export interface BrandKitExtractPayload {
+  /** Target brand the extract results write back to. */
+  brand_id: string
+  /** Uploaded brand-kit assets (PDF / HTML / EML / PNG / JPG, ≤25 MB each). */
+  files: File[]
+  /** Pasted brand-guidelines free text. Trimmed by the caller. */
+  guidelines: string
+  /** Where the payload originated. Cluster 05 uses this to gate analytics + retry policy. */
+  source: 'onboarding' | 'brand-kit-page'
+}
+
+export interface BrandKitExtractHandle {
+  enqueueBrandKitExtract(payload: BrandKitExtractPayload): Promise<{ job_id: string }>
+}
+
+export function useBrandKitExtractQueue(): BrandKitExtractHandle
+```
+
+**Wire-up in this PRD:**
+- `OnboardingView` (T17) calls `enqueueBrandKitExtract({ brand_id, files, guidelines, source: 'onboarding' })` inside an `onBrandKitCommit` handler bound to `<BrandKitStep @commit>`.
+- The `@skip` path on `BrandKitStep` does NOT enqueue.
+- `tempBrandId` (held in the wizard state) is what feeds `brand_id`. If `tempBrandId` is missing, the enqueue is skipped and the wizard surfaces a toast (Cluster 11 `useToast`) — this is an error case, not silent.
+
+**Failure mode:** If Cluster 05 has not yet shipped the queue Edge Function, `useBrandKitExtractQueue` resolves with a stub `job_id` and writes a breadcrumb to `audit_log` (Cluster 11) so the founder can replay later. Stub mode is `import.meta.env.MODE !== 'production'` only — production builds fail loudly if the queue is missing.
 
 ---
 
@@ -686,7 +768,7 @@ Every line testable in code or browser. No "feels right."
 - [ ] Dropdown "Manage brands" item routes to `/account/brands` (Cluster 03/04 owns the page)
 - [ ] Sidebar `.side-search` renders as plain search input (no Cmd+K shortcut binding — palette dropped per 00g 2026-05-17)
 - [ ] Sidebar nav sections (Home / Library / Brand) render with correct items + active highlight per current route
-- [ ] Sidebar nav "Calendar" / "Swipes" / "Templates" items show `SOON` pill (9px font, neutral pill)
+- [ ] Sidebar nav rows whose route renders `ComingSoonView` show `SOON` pill (9px font, neutral pill). 7 items total per §6.1 route map: Calendar, Swipes, Templates, Products, Personalization, Knowledge Base, Memories (A-LOW5 reconciliation 2026-05-19).
 - [ ] Sidebar nav "Brands" item ships visible at MVP with NO `SOON` pill (§12.11 Part B RESOLVED 2026-05-17 — PRD 03 owns the `/account/brands` page content)
 - [ ] Sidebar `.side-footer` shows avatar (user initials), name, plan label ("Free plan" / "Pro plan" — reads `users.plan` if present, else "Free")
 - [ ] Sidebar footer "more" button opens `AccountMenu` (existing) — items: Account · Help · Shortcuts · Sign out (per Q16)
@@ -741,11 +823,12 @@ Every line testable in code or browser. No "feels right."
 - [ ] "Notify me when it's ready" click: posts user email + interest to Resend mailing-list (§12.9 RESOLVED)
 - [ ] Breadcrumb on coming-soon routes adds "Coming soon" inline pill next to page name
 
-### 8.7 Offline indicator (A13)
+### 8.7 Offline indicator — consumer of Cluster 11 (CT-020)
 
-- [ ] When `navigator.onLine === true` AND Supabase Realtime channel state = SUBSCRIBED: topbar shows `.pill.ok.dot` "Online"; sidebar footer silent
-- [ ] When offline (either signal): sidebar footer `.net-strip` "Working offline" + `cloud-off` icon renders; topbar pill swaps to `.pill.warn.dot` "Offline"; per-pane `.offline-banner` "You're offline. Changes are saved locally and will sync when you reconnect" renders at top of main pane
-- [ ] All three offline signals share the same `--warn-soft` / `--warn-edge` / `--warn` tokens
+- [ ] `<NetworkStatusIndicator>` is mounted globally in `App.vue` by Plan 11 §3.7 (commit f08fa551) — Cluster 02 verifies it is present at the App root, NOT re-mounted locally
+- [ ] When `useOnlineStatus().status === 'online'` (`navigator.onLine === true` AND Supabase Realtime channel state = SUBSCRIBED): the indicator renders nothing (silent online state per Figma parity)
+- [ ] When `useOnlineStatus().status === 'offline'` (either signal): the 14×14 `cloud-off` lucide icon renders at the top-right of the viewport; hover surfaces `<KovaTooltip>` "You're offline. Changes are saved locally and will sync when you reconnect."
+- [ ] No A13.1 topbar pill, A13.2 sidebar `.net-strip`, or per-pane `.offline-banner` is rendered by Cluster 02 (those three signals retired 2026-05-17)
 
 ### 8.8 Skeleton state (B7.1)
 
@@ -785,7 +868,7 @@ Target coverage: ≥85% on dashboard composables + store actions + onboarding st
 | `tests/unit/components/dashboard/FileThumbnail.test.ts` | Deterministic abstraction picker (same canvasId → same abstraction); abstraction kind branches |
 | `tests/unit/components/dashboard/CanvasCreationTransition.test.ts` | State transitions B11.1 → B11.2 → B11.3 → B11.4; spinner mount; chrome-dimensions invariance |
 | `tests/unit/components/dashboard/DashboardSkeleton.test.ts` | Renders 4×2 grid; shimmer animation class applied |
-| `tests/unit/components/dashboard/OfflineIndicator.test.ts` | Slot prop renders correct variant (sidebar / topbar / banner) |
+| ~~`tests/unit/components/dashboard/OfflineIndicator.test.ts`~~ — **RETIRED (CT-020)** | Cluster 11 owns the indicator test; Cluster 02 verifies global mount only |
 | `tests/unit/components/onboarding/StoreTypeStep-dark.test.ts` | No light Tailwind classes remain in rendered template (snapshot test); access_token NOT in URL on connect (mock fetch + assert headers) |
 | `tests/unit/components/onboarding/BrandKitStep.test.ts` | File acceptance MIME + size cap; drop-zone events; textarea v-model; AI promise card render |
 
@@ -955,11 +1038,11 @@ Cluster 03 ships `brands.color` (CHECK IN coral/violet/sage/sand/graphite). This
 
 **Decision:** Wire to Resend mailing-list signup in Phase A. Small marginal cost, captures real product-signal data. Resend integration already exists from Cluster 01.
 
-### 12.10 OPEN QUESTION — Existing onboarding components (WelcomeStep, BrandNameStep, BrandUrlStep, NameStep) consolidation
+### 12.10 RESOLVED 2026-05-19 — Existing onboarding components (WelcomeStep, BrandNameStep, BrandUrlStep, NameStep) consolidation
 
 §6.4.2 recommends consolidating BrandNameStep + BrandUrlStep + NameStep into a single `BrandIdentityStep` matching A1.01.c's single-screen layout. Existing M9 split is 3 screens; hi-fi is 1 screen.
 
-**Recommendation:** Consolidate per hi-fi. Existing M9 code retired during refactor. **ESCALATE: founder** — confirm consolidation OK (impacts existing tests + onboarding analytics).
+**Decision (founder ratified 2026-05-19 — C-MED5):** Consolidate per hi-fi. `BrandNameStep`, `BrandUrlStep`, and `NameStep` are retired during the refactor and `BrandIdentityStep` is the single replacement step. `WelcomeStep` and `ReviewStep` are also retired in the same wave (see C-LOW02.7 — Plan 02 Task T13). M9 tests against the retired files are deleted as part of the refactor; onboarding analytics consolidate `name_entered` + `url_entered` events into one `brand_identity_submitted` event.
 
 ### 12.11 Sidebar SOON-tagged nav entries — split into Part A + Part B
 
@@ -967,11 +1050,11 @@ Cluster 03 ships `brands.color` (CHECK IN coral/violet/sage/sand/graphite). This
 
 **Part B — "Brands" sidebar item.** RESOLVED 2026-05-17 via B12 reversal dispatch (00f Prompt C). Brands item ships **visible at MVP with NO `SOON` pill** — it routes to `/account/brands`, the live B12 page owned by PRD 03 (page content) + PRD 04 (route registration + `.acc-rail` host). Promoted from Phase 2 → MVP per founder reversal of the 2026-05-13 lock. See §13.2 Q-decisions cross-ref.
 
-### 12.12 OPEN QUESTION — `/account` sidebar entry
+### 12.12 RESOLVED 2026-05-19 — `/account` sidebar entry
 
 A12 hi-fi shows no "Account" item in sidebar nav — `/account` is reachable only via sidebar-footer `AccountMenu` dropdown. Cluster 04 (Account & Stripe) confirms this routing per Q12 + Q13.
 
-**Recommendation:** No `/account` sidebar item. User reaches Account via sidebar-footer avatar dropdown only. **ESCALATE: founder** — confirm acceptable that "Account" lives only in dropdown.
+**Decision (founder ratified 2026-05-19 — A-MED1):** No `/account` sidebar item. Users reach Account exclusively via the sidebar-footer avatar dropdown (`AccountMenu`). Acceptable because the avatar is always-visible at the bottom of the sidebar and is the canonical destination per A12 hi-fi. Brand-management (`/account/brands`) is reached via the brand-switch dropdown's "Manage brands" link, not a sidebar entry.
 
 ### 12.13 Changelog 2026-05-17
 

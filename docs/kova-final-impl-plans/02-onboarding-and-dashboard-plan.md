@@ -84,8 +84,8 @@ kova-open-pencil-1/
 │   │       ├── SortDropdown.vue                                     (T28)
 │   │       ├── ViewToggle.vue                                       (T28)
 │   │       ├── DashboardSkeleton.vue                                (T30)
-│   │       ├── OfflineIndicator.vue                                 (T31)
 │   │       └── CanvasCreationTransition.vue                         (T32)
+│   │       # OfflineIndicator.vue RETIRED (C-MED4 + CT-020) — see Plan 11 <NetworkStatusIndicator>
 └── tests/
     ├── unit/
     │   ├── stores/{ui-state,dashboard,brands-extension}.test.ts     (T05, T06, T04)
@@ -121,8 +121,8 @@ kova-open-pencil-1/
 │       └── DashboardView.vue                                        (T35 — sidebar + topbar shell)
 ├── api/
 │   └── shopify/auth-start.ts                                        (T03 — read Bearer header)
-└── (deleted in T13)
-    src/components/onboarding/{BrandNameStep,BrandUrlStep,NameStep,ExtractionStep}.vue
+└── (deleted in T13 — C-MED6 + C-LOW02.7)
+    src/components/onboarding/{BrandNameStep,BrandUrlStep,NameStep,ExtractionStep,WelcomeStep,ReviewStep}.vue
 ```
 
 ---
@@ -142,10 +142,13 @@ kova-open-pencil-1/
 import { describe, test, expect, beforeAll } from 'bun:test'
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+// Founder lock #10: no `!` non-null assertion. Validate at the boundary instead.
+const supabaseUrl = process.env.SUPABASE_URL
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+if (!supabaseUrl || !supabaseServiceKey) {
+  throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set for integration tests')
+}
+const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
 describe('20260520_02_dashboard_indices', () => {
   test('idx_canvases_brand_recent exists', async () => {
@@ -538,12 +541,27 @@ Expected: FAIL "cannot find module".
 import { defineStore } from 'pinia'
 import { useLocalStorage } from '@vueuse/core'
 
-export const useUIStateStore = defineStore('ui-state', () => {
-  const lastActiveBrandId = useLocalStorage<string | null>('kova:ui:last-brand', null)
-  const lastActiveCanvasId = useLocalStorage<string | null>('kova:ui:last-canvas', null)
-  const fileGridViewMode = useLocalStorage<'grid' | 'list'>('kova:ui:file-grid-view', 'grid')
+// C-MED8: hoist `kova:ui:last-brand` to a module-scope singleton so `useUIStateStore.lastActiveBrandId`
+// and `useBrandsStore.selectedBrandId` share ONE underlying `useLocalStorage` ref. Two separate
+// useLocalStorage instances on the same key were not synchronized in-tab — fixed by composition.
+export const lastActiveBrandIdRef = useLocalStorage<string | null>('kova:ui:last-brand', null)
+export const lastActiveCanvasIdRef = useLocalStorage<string | null>('kova:ui:last-canvas', null)
+export const fileGridViewModeRef = useLocalStorage<'grid' | 'list'>('kova:ui:file-grid-view', 'grid')
 
-  return { lastActiveBrandId, lastActiveCanvasId, fileGridViewMode }
+export const useUIStateStore = defineStore('ui-state', () => {
+  const lastActiveBrandId = lastActiveBrandIdRef
+  const lastActiveCanvasId = lastActiveCanvasIdRef
+  const fileGridViewMode = fileGridViewModeRef
+
+  // B-HIGH14: store mutations only via actions
+  function setLastActiveBrandId(id: string | null): void { lastActiveBrandId.value = id }
+  function setLastActiveCanvasId(id: string | null): void { lastActiveCanvasId.value = id }
+  function setFileGridViewMode(mode: 'grid' | 'list'): void { fileGridViewMode.value = mode }
+
+  return {
+    lastActiveBrandId, lastActiveCanvasId, fileGridViewMode,
+    setLastActiveBrandId, setLastActiveCanvasId, setFileGridViewMode,
+  }
 })
 ```
 
@@ -613,7 +631,17 @@ describe('useBrandsStore — selectedBrandId persistence + ensureSelectedBrand',
     const store = useBrandsStore()
     // seed brands.value directly:
     // [{ id: 'b1', archived_at: '2026-04-01' }, { id: 'b2', archived_at: null }]
-    expect(store.sortedActiveBrands.map(b => b.id)).toEqual(['b2'])
+    expect(store.sortedActiveBrands.map((b) => b.id)).toEqual(['b2'])
+  })
+
+  test('C-MED8: useBrandsStore.selectedBrandId and useUIStateStore.lastActiveBrandId share one ref', async () => {
+    const brands = useBrandsStore()
+    const { useUIStateStore } = await import('@/stores/ui-state')
+    const ui = useUIStateStore()
+    brands.selectBrand('shared-brand-id')
+    expect(ui.lastActiveBrandId).toBe('shared-brand-id')
+    ui.setLastActiveBrandId('flipped-id')
+    expect(brands.selectedBrandId).toBe('flipped-id')
   })
 })
 ```
@@ -628,12 +656,14 @@ Expected: FAIL (`selectBrand` doesn't persist; `ensureSelectedBrand` doesn't exi
 
 - [ ] **Step 3: Refactor `src/stores/brands.ts`**
 
-Replace the `selectedBrandId` declaration:
+Replace the `selectedBrandId` declaration to consume the singleton ref from `@/stores/ui-state` (C-MED8 — one underlying `useLocalStorage` instance shared between `useBrandsStore` and `useUIStateStore`):
 
 ```ts
-import { useLocalStorage } from '@vueuse/core'
+// C-MED8: do NOT call useLocalStorage('kova:ui:last-brand', ...) here — that would create a second
+// in-memory ref on the same storage key. Consume the module-scope singleton from ui-state.
+import { lastActiveBrandIdRef } from '@/stores/ui-state'
 // ...
-const selectedBrandId = useLocalStorage<string | null>('kova:ui:last-brand', null)
+const selectedBrandId = lastActiveBrandIdRef
 ```
 
 Add the `sortedActiveBrands` getter:
@@ -693,6 +723,7 @@ import { describe, test, expect, beforeEach } from 'bun:test'
 import { setActivePinia, createPinia } from 'pinia'
 import { useDashboardStore } from '@/stores/dashboard'
 import { useCanvasesStore } from '@/stores/canvases'
+import type { Canvas } from '@/types/kova/database'
 
 describe('useDashboardStore', () => {
   beforeEach(() => setActivePinia(createPinia()))
@@ -710,10 +741,10 @@ describe('useDashboardStore', () => {
     canvases.canvases = [
       { id: '1', name: 'Spring Drop', updated_at: '2026-05-10', created_at: '2026-05-01' },
       { id: '2', name: 'Welcome flow', updated_at: '2026-05-09', created_at: '2026-05-01' },
-    ] as any
+    ] as Canvas[]
     const store = useDashboardStore()
-    store.searchQuery = 'spring'
-    expect(store.filteredCanvases.map(c => c.id)).toEqual(['1'])
+    store.setSearchQuery('spring')
+    expect(store.filteredCanvases.map((c) => c.id)).toEqual(['1'])
   })
 
   test('filteredCanvases applies name sort', () => {
@@ -721,19 +752,25 @@ describe('useDashboardStore', () => {
     canvases.canvases = [
       { id: '1', name: 'Zebra', updated_at: '2026-05-10', created_at: '2026-05-01' },
       { id: '2', name: 'Alpha', updated_at: '2026-05-09', created_at: '2026-05-01' },
-    ] as any
+    ] as Canvas[]
     const store = useDashboardStore()
-    store.sortMode = 'name'
-    expect(store.filteredCanvases.map(c => c.name)).toEqual(['Alpha', 'Zebra'])
+    store.setSortMode('name')
+    expect(store.filteredCanvases.map((c) => c.name)).toEqual(['Alpha', 'Zebra'])
   })
 
   test('resetForBrand wipes search but preserves viewMode', () => {
     const store = useDashboardStore()
-    store.searchQuery = 'foo'
-    store.viewMode = 'list'
+    store.setSearchQuery('foo')
+    store.setViewMode('list')
     store.resetForBrand()
     expect(store.searchQuery).toBe('')
     expect(store.viewMode).toBe('list')
+  })
+
+  test('B-HIGH14: setSearchQuery is the only sanctioned mutation path', () => {
+    const store = useDashboardStore()
+    store.setSearchQuery('hello')
+    expect(store.searchQuery).toBe('hello')
   })
 })
 ```
@@ -977,8 +1014,9 @@ git commit -m "feat(composable): useLogoFetch — debounced favicon probe + manu
 // tests/unit/composables/use-greeting.test.ts
 import { describe, test, expect, beforeEach, mock } from 'bun:test'
 import { setActivePinia, createPinia } from 'pinia'
+import type { User as AuthUser } from '@supabase/supabase-js'
 import { useGreeting } from '@/composables/use-greeting'
-import { useAuthStore } from '@/stores/auth'
+import { useAuthStore, type UserProfile } from '@/stores/auth'
 
 const at = (h: number) => new Date(2026, 4, 15, h, 0, 0)
 
@@ -1004,7 +1042,9 @@ describe('useGreeting', () => {
 
   test('fallback to email local-part when name missing', () => {
     const auth = useAuthStore()
-    auth.profile = { email: 'jane@example.com', name: null } as any
+    // B-HIGH4: email is auth-level (Supabase User), not on UserProfile.
+    auth.profile = { name: null } as UserProfile
+    auth.user = { email: 'jane@example.com' } as AuthUser
     expect(useGreeting().value).toContain('jane')
   })
 })
@@ -1028,9 +1068,10 @@ export function useGreeting() {
       : hour >= 12 && hour < 18 ? 'Good afternoon'
       : 'Good evening'
     const fullName = auth.profile?.name?.trim() ?? ''
+    // B-HIGH4: email lives on auth.user (Supabase auth), not on UserProfile.
     const firstName = fullName
       ? fullName.split(/\s+/)[0]
-      : (auth.profile?.email?.split('@')[0] ?? 'there')
+      : (auth.user?.email?.split('@')[0] ?? 'there')
     return `${phase}, ${firstName}`
   })
 }
@@ -1064,23 +1105,32 @@ git commit -m "feat(composable): useGreeting — time-of-day greeting with first
 
 ```ts
 // tests/unit/composables/use-file-grid.test.ts
-import { describe, test, expect, beforeEach } from 'bun:test'
+import { describe, test, expect, beforeEach, mock } from 'bun:test'
 import { setActivePinia, createPinia } from 'pinia'
 import { ref } from 'vue'
 import { useFileGrid } from '@/composables/use-file-grid'
 import { useCanvasesStore } from '@/stores/canvases'
 import { useDashboardStore } from '@/stores/dashboard'
 
+// B-MED7: replace wall-clock setTimeout(220) waits with a deterministic no-debounce stub.
+// VueUse's `useDebounceFn` is non-trivial to fake-time under bun:test; the test contract is
+// "search commits to the store" — debounce timing is verified by VueUse's own test suite.
+mock.module('@vueuse/core', () => {
+  const actual = require('@vueuse/core')
+  return {
+    ...actual,
+    useDebounceFn: <T extends (...args: never[]) => unknown>(fn: T) => fn,
+  }
+})
+
 describe('useFileGrid', () => {
   beforeEach(() => setActivePinia(createPinia()))
 
-  test('search debounces 200ms', async () => {
+  test('search commits to dashboard store (debounce stubbed)', () => {
     const brandId = ref('b1')
     const { search } = useFileGrid(brandId)
     const dash = useDashboardStore()
     search('Spring')
-    expect(dash.searchQuery).toBe('')   // not yet committed
-    await new Promise((r) => setTimeout(r, 220))
     expect(dash.searchQuery).toBe('Spring')
   })
 
@@ -1090,11 +1140,10 @@ describe('useFileGrid', () => {
     expect(isEmpty.value).toBe(true)
   })
 
-  test('hasSearchQuery true when search has value', async () => {
+  test('hasSearchQuery true when search has value', () => {
     const brandId = ref('b1')
     const { search, hasSearchQuery } = useFileGrid(brandId)
     search('foo')
-    await new Promise((r) => setTimeout(r, 220))
     expect(hasSearchQuery.value).toBe(true)
   })
 
@@ -1136,13 +1185,14 @@ export function useFileGrid(brandId: Ref<string>) {
     }
   }, { immediate: true })
 
-  const debouncedSetSearch = useDebounceFn((q: string) => { dash.searchQuery = q }, 200)
+  // B-HIGH14: mutate store state only via actions
+  const debouncedSetSearch = useDebounceFn((q: string) => dash.setSearchQuery(q), 200)
   function search(q: string): void { void debouncedSetSearch(q) }
 
-  function setSort(m: SortMode): void { dash.sortMode = m }
+  function setSort(m: SortMode): void { dash.setSortMode(m) }
   function setView(m: ViewMode): void {
-    dash.viewMode = m
-    ui.fileGridViewMode = m
+    dash.setViewMode(m)
+    ui.setFileGridViewMode(m)
   }
 
   const filtered = computed(() => dash.filteredCanvases)
@@ -1176,12 +1226,14 @@ git commit -m "feat(composable): useFileGrid — debounced search + sort + view-
 // tests/unit/composables/use-onboarding.test.ts
 import { describe, test, expect, beforeEach } from 'bun:test'
 import { setActivePinia, createPinia } from 'pinia'
-import { useOnboarding } from '@/composables/use-onboarding'
+import { useOnboarding, _resetForTesting } from '@/composables/use-onboarding'
 
 describe('useOnboarding', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     sessionStorage.clear()
+    // B-MED15: reset module-scope singleton state between specs.
+    _resetForTesting()
   })
 
   test('starts at brand step', () => {
@@ -1216,7 +1268,28 @@ describe('useOnboarding', () => {
     o.restoreDraft()
     expect(o.step.value).toBe('brand-kit')
   })
+
+  test('B-MED15: state is a Reactive proxy — assign without .value works in script', () => {
+    const o = useOnboarding()
+    o.state.brandName = 'Acme'
+    o.state.brandUrl = 'acme.com'
+    o.state.industry = 'Athletic apparel'
+    expect(o.state.brandName).toBe('Acme')
+    expect(o.state.brandUrl).toBe('acme.com')
+    expect(o.state.industry).toBe('Athletic apparel')
+  })
+
+  test('B-MED15 + C-HIGH3: every useOnboarding() call returns the same singleton state', () => {
+    const a = useOnboarding()
+    const b = useOnboarding()
+    a.state.brandName = 'Singleton check'
+    expect(b.state.brandName).toBe('Singleton check')
+    expect(a.state).toBe(b.state)
+  })
 })
+
+// Note: because state + step + isFinishing are module-scope singletons, tests must reset them
+// in `beforeEach`. The composable exports `_resetForTesting()` (added in Step 3) for that purpose.
 ```
 
 - [ ] **Step 2: Run test — FAIL**
@@ -1225,25 +1298,41 @@ describe('useOnboarding', () => {
 
 ```ts
 // src/composables/use-onboarding.ts
-import { ref, computed } from 'vue'
+// B-MED15 + C-HIGH3: state is a Reactive<OnboardingState> proxy held in a module-scope singleton.
+// Templates use `v-model="state.brandName"` (no `.value`). Scripts use `state.brandName` (no `.value`).
+// Retires the M9-era `useOnboardingState` (Refs-via-inject pattern).
+import { reactive, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useBrandsStore } from '@/stores/brands'
-import { useOnboardingState } from '@/composables/useOnboardingState'
+
+export interface OnboardingState {
+  brandName: string
+  brandUrl: string
+  industry: string
+  tempBrandId: string
+}
 
 const STEP_ORDER = ['brand', 'shopify', 'brand-kit', 'splash'] as const
 type Step = (typeof STEP_ORDER)[number]
 const DRAFT_KEY = 'kova:onboarding:draft'
 
+// Module-scope singletons so every `useOnboarding()` call returns the SAME state + step.
+const state = reactive<OnboardingState>({
+  brandName: '',
+  brandUrl: '',
+  industry: '',
+  tempBrandId: '',
+})
+const step = ref<Step>('brand')
+const isFinishing = ref(false)
+const finishError = ref<string | null>(null)
+
 export function useOnboarding() {
   const router = useRouter()
   const brands = useBrandsStore()
-  const state = useOnboardingState()
-  const step = ref<Step>('brand')
-  const isFinishing = ref(false)
-  const finishError = ref<string | null>(null)
 
   const canProceed = computed(() => {
-    if (step.value === 'brand') return state.brandName.value.trim().length > 0 && !!state.brandUrl.value
+    if (step.value === 'brand') return state.brandName.trim().length > 0 && !!state.brandUrl
     if (step.value === 'shopify') return true
     if (step.value === 'brand-kit') return true
     if (step.value === 'splash') return true
@@ -1266,7 +1355,7 @@ export function useOnboarding() {
     isFinishing.value = true
     finishError.value = null
     try {
-      const brand = await brands.createBrand(state.brandName.value)
+      const brand = await brands.createBrand(state.brandName)
       // (logoUrl + brandUrl + description applied via brands.updateBrand in a follow-up if needed)
       sessionStorage.removeItem(DRAFT_KEY)
       await router.push(`/brand/${brand.id}`)
@@ -1282,8 +1371,8 @@ export function useOnboarding() {
   function persistDraft(): void {
     sessionStorage.setItem(DRAFT_KEY, JSON.stringify({
       step: step.value,
-      brandName: state.brandName.value,
-      brandUrl: state.brandUrl.value,
+      brandName: state.brandName,
+      brandUrl: state.brandUrl,
     }))
   }
 
@@ -1293,17 +1382,30 @@ export function useOnboarding() {
     try {
       const draft = JSON.parse(raw) as { step?: Step; brandName?: string; brandUrl?: string }
       if (draft.step && STEP_ORDER.includes(draft.step)) step.value = draft.step
-      if (typeof draft.brandName === 'string') state.brandName.value = draft.brandName
-      if (typeof draft.brandUrl === 'string') state.brandUrl.value = draft.brandUrl
+      if (typeof draft.brandName === 'string') state.brandName = draft.brandName
+      if (typeof draft.brandUrl === 'string') state.brandUrl = draft.brandUrl
     } catch {
       // corrupt draft — discard
       sessionStorage.removeItem(DRAFT_KEY)
     }
   }
 
-  return { step, next, prev, complete, canProceed, isFinishing, finishError, persistDraft, restoreDraft }
+  return { state, step, next, prev, complete, canProceed, isFinishing, finishError, persistDraft, restoreDraft }
+}
+
+// Test-only escape hatch: reset the module-scope singletons between specs.
+export function _resetForTesting(): void {
+  state.brandName = ''
+  state.brandUrl = ''
+  state.industry = ''
+  state.tempBrandId = ''
+  step.value = 'brand'
+  isFinishing.value = false
+  finishError.value = null
 }
 ```
+
+> **C-HIGH3 + B-MED15 contract note:** `useOnboarding()` is the single entry point for the wizard. `state` is a `Reactive<OnboardingState>` proxy backed by a module-scope singleton. Templates write `v-model="state.brandName"` (no `.value`). Scripts read `state.brandName` (no `.value`). Do NOT introduce `provide('onboardingState', ...)` / `inject('onboardingState')` / `useOnboardingState()` — all retired.
 
 - [ ] **Step 4: Run test — PASS**
 
@@ -1352,6 +1454,19 @@ describe('Cluster 02 routes', () => {
   test('/brands route exists for between-brands picker', () => {
     const route = router.resolve('/brands')
     expect(route.name).toBe('brands-picker')
+  })
+
+  // C-HIGH2 — wizard sub-routes
+  test.each([
+    ['/onboarding/brand', 'onboarding-brand', 1],
+    ['/onboarding/shopify', 'onboarding-shopify', 2],
+    ['/onboarding/brand-kit', 'onboarding-brand-kit', 3],
+    ['/onboarding/done', 'onboarding-done', 4],
+  ])('%s resolves to %s with wizardStep %i', (path, name, step) => {
+    const route = router.resolve(path)
+    expect(route.name).toBe(name)
+    expect(route.meta.wizardStep).toBe(step)
+    expect(route.meta.onboardingOnly).toBe(true)
   })
 })
 ```
@@ -1418,14 +1533,16 @@ describe('BrandIdentityStep', () => {
 
 ```vue
 <script setup lang="ts">
-import { computed, inject } from 'vue'
+import { computed, toRef } from 'vue'
 import { useLogoFetch } from '@/composables/use-logo-fetch'
+import { useOnboarding } from '@/composables/use-onboarding'
 
-const state = inject('onboardingState') as ReturnType<typeof import('@/composables/useOnboardingState').useOnboardingState>
-const { logoUrl, isFetching, manualOverride } = useLogoFetch(state.brandUrl)
+const { state } = useOnboarding()
+// `state` is Reactive<OnboardingState> — pass `toRef(state, 'brandUrl')` for ref-shaped APIs.
+const { logoUrl, isFetching, manualOverride } = useLogoFetch(toRef(state, 'brandUrl'))
 
-const monogram = computed(() => state.brandName.value.trim().charAt(0).toUpperCase() || '?')
-const canContinue = computed(() => state.brandName.value.trim().length > 0 && state.brandUrl.value.trim().length > 0)
+const monogram = computed(() => state.brandName.trim().charAt(0).toUpperCase() || '?')
+const canContinue = computed(() => state.brandName.trim().length > 0 && state.brandUrl.trim().length > 0)
 
 async function onLogoSlotClick() {
   const input = document.createElement('input')
@@ -1461,13 +1578,13 @@ defineEmits<{ next: [] }>()
       <div style="display:flex;flex-direction:column;gap:10px;">
         <div class="onb-field">
           <label class="lbl">Brand name</label>
-          <input name="brandName" class="input" v-model="state.brandName.value" type="text" />
+          <input name="brandName" class="input" v-model="state.brandName" type="text" />
         </div>
         <div class="onb-field">
           <label class="lbl">Website</label>
           <div class="onb-input-affixed">
             <span class="pre">https://</span>
-            <input name="brandUrl" v-model="state.brandUrl.value" type="text" />
+            <input name="brandUrl" v-model="state.brandUrl" type="text" />
           </div>
           <div v-if="logoUrl" class="help ok"><icon-lucide-check class="w-3 h-3 inline" /> Logo found</div>
         </div>
@@ -1479,7 +1596,7 @@ defineEmits<{ next: [] }>()
       <input
         name="brandDescription"
         class="input"
-        v-model="state.industry.value"
+        v-model="state.industry"
         type="text"
         placeholder="e.g. Global athletic footwear and apparel."
       />
@@ -1503,9 +1620,24 @@ defineEmits<{ next: [] }>()
 - [ ] **Step 5: Delete legacy files**
 
 ```bash
+# C-MED6 + C-LOW02.7: retire all M9 onboarding components in T13 (single retirement step).
+# - BrandNameStep / BrandUrlStep / NameStep — consolidated into BrandIdentityStep (C-MED5).
+# - ExtractionStep — M9 mid-wizard "Kova is extracting..." card; replaced by inline AI surface in BrandKitStep.
+# - WelcomeStep — M9 pre-Cluster-01 auth landing; Cluster 01 now owns the landing route.
+# - ReviewStep — M9 final commit gate; merged into SplashStep per §12.10 RESOLVED 2026-05-19.
 git rm src/components/onboarding/BrandNameStep.vue \
        src/components/onboarding/BrandUrlStep.vue \
-       src/components/onboarding/NameStep.vue
+       src/components/onboarding/NameStep.vue \
+       src/components/onboarding/ExtractionStep.vue \
+       src/components/onboarding/WelcomeStep.vue \
+       src/components/onboarding/ReviewStep.vue
+
+# Also strip any router refs to the retired components (T12 already does NOT register them,
+# but verify no stale `import WelcomeStep` / `import ReviewStep` remains).
+if grep -rnE 'WelcomeStep|ReviewStep' src/ tests/; then
+  echo "❌ Stale references to retired Welcome/Review steps remain"
+  exit 1
+fi
 ```
 
 - [ ] **Step 6: Commit**
@@ -1781,7 +1913,7 @@ git commit -m "feat(onboarding): add SplashStep (A1.01.f) with 2x2 starter cards
 
 **Files:**
 - Modify: `kova-open-pencil-1/src/views/OnboardingView.vue`
-- Delete: `src/components/onboarding/ExtractionStep.vue`, `src/components/onboarding/ReviewStep.vue`
+- Delete: (none — all M9 onboarding component retirements moved to T13 per C-MED6 + C-LOW02.7)
 - Test: `kova-open-pencil-1/tests/unit/views/OnboardingView.test.ts`
 
 - [ ] **Step 1: Write failing test**
@@ -1815,18 +1947,32 @@ describe('OnboardingView', () => {
 
 ```vue
 <script setup lang="ts">
-import { computed, onMounted, provide } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useOnboarding } from '@/composables/use-onboarding'
-import { useOnboardingState } from '@/composables/useOnboardingState'
+// C-MED7: Cluster 05 owns the extract queue + the enqueue composable.
+import { useBrandKitExtractQueue } from '@/composables/use-brand-kit-extract-queue'
 
 import BrandIdentityStep from '@/components/onboarding/BrandIdentityStep.vue'
 import StoreTypeStep from '@/components/onboarding/StoreTypeStep.vue'
 import BrandKitStep from '@/components/onboarding/BrandKitStep.vue'
 import SplashStep from '@/components/onboarding/SplashStep.vue'
 
-const state = useOnboardingState()
-provide('onboardingState', state)
 const wizard = useOnboarding()
+const { state } = wizard
+const { enqueueBrandKitExtract } = useBrandKitExtractQueue()
+
+async function onBrandKitCommit(payload: { files: File[]; guidelines: string }): Promise<void> {
+  // C-MED7: hand off to Cluster 05's brand-kit-extract queue.
+  // Contract is documented in PRD §6.4.5; queue Edge Function is `api/brand-kit/extract.ts` (Cluster 05).
+  // BrandKitStep also emits `skip` — in that case we do NOT enqueue.
+  await enqueueBrandKitExtract({
+    brand_id: state.tempBrandId,
+    files: payload.files,
+    guidelines: payload.guidelines.trim(),
+    source: 'onboarding',
+  })
+  wizard.next()
+}
 
 onMounted(() => wizard.restoreDraft())
 
@@ -1855,8 +2001,8 @@ const dotClass = (idx: number) => {
       <BrandIdentityStep v-if="wizard.step.value === 'brand'" @next="wizard.next" />
       <StoreTypeStep
         v-else-if="wizard.step.value === 'shopify'"
-        :brand-name="state.brandName.value"
-        :brand-id="state.tempBrandId?.value ?? ''"
+        :brand-name="state.brandName"
+        :brand-id="state.tempBrandId"
         @skip="wizard.next"
         @connect-shopify="(_: string) => wizard.next()"
         @something-else="wizard.next"
@@ -1864,11 +2010,11 @@ const dotClass = (idx: number) => {
       <BrandKitStep
         v-else-if="wizard.step.value === 'brand-kit'"
         @skip="wizard.next"
-        @commit="wizard.next"
+        @commit="onBrandKitCommit"
       />
       <SplashStep
         v-else-if="wizard.step.value === 'splash'"
-        :brand-name="state.brandName.value"
+        :brand-name="state.brandName"
         @enter="wizard.complete"
       />
     </div>
@@ -1881,11 +2027,10 @@ const dotClass = (idx: number) => {
 - [ ] **Step 5: Delete retired components**
 
 ```bash
-git rm src/components/onboarding/ExtractionStep.vue \
-       src/components/onboarding/ReviewStep.vue
+# ExtractionStep retirement moved to T13 (C-MED6). ReviewStep retirement moved to T13 (C-LOW02.7).
+# Nothing to delete in T17 — see T13 Step 5.
+echo "All retired components removed in T13."
 ```
-
-(Confirm in §12.10 ESCALATE before deleting if concern. If founder says keep ReviewStep as commit gate, skip deletion and wire it between brand-kit and splash.)
 
 - [ ] **Step 6: Commit**
 
@@ -1932,6 +2077,7 @@ describe('DashboardSidebar', () => {
 
 ```vue
 <script setup lang="ts">
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import BrandSwitcher from './BrandSwitcher.vue'
 import SideNav from './SideNav.vue'
@@ -1947,7 +2093,7 @@ const searchQuery = ref('')
   <aside class="sidebar">
     <BrandSwitcher :current-brand="currentBrand"
                    @select="(id) => router.push(`/brand/${id}`)"
-                   @new-brand="() => { /* TODO: opens Cluster 03 modal */ }"
+                   @new-brand="() => { /* TODO(cluster-03): wire BrandModal via useBrandModalStore once Cluster 03 ships */ }"
                    @manage-brands="() => router.push('/account/brands')" />
     <label class="side-search">
       <icon-lucide-search class="w-3 h-3" />
@@ -2241,7 +2387,7 @@ const planLabel = computed(() => {
   <div class="side-footer">
     <div class="avatar">{{ initials }}</div>
     <div class="who">
-      <b>{{ auth.profile?.name ?? auth.profile?.email }}</b>
+      <b>{{ auth.profile?.name ?? auth.user?.email }}</b>
       <span>{{ planLabel }}</span>
     </div>
     <AccountMenu />
@@ -2417,10 +2563,19 @@ const emit = defineEmits<{ 'update:modelValue': [v: string]; submit: [] }>()
 const isReadonly = computed(() => props.state !== 'idle')
 
 function onKey(e: KeyboardEvent): void {
+  // B-MED4 verified 2026-05-19: `e.code === 'Enter'` is correct here per founder lock #9
+  // (Mac Option key transforms `e.key` characters). Plan 03 had the outlier — tracked in W2 Cluster 03 brief.
   if (e.code === 'Enter' && (e.metaKey || e.ctrlKey)) {
     e.preventDefault()
     emit('submit')
   }
+}
+
+// B-MED6: use `textContent` (no `<br>`/`<div>` line-wrapper artifacts) + `instanceof` narrowing
+// instead of `(e.target as HTMLElement).innerText` (which inserts `\n` for visual line breaks).
+function onInput(e: Event): void {
+  const target = e.target instanceof HTMLElement ? e.target : null
+  emit('update:modelValue', target?.textContent ?? '')
 }
 </script>
 
@@ -2431,7 +2586,7 @@ function onKey(e: KeyboardEvent): void {
       :class="{ submitting: state === 'submitting', review: state === 'review' }"
       :contenteditable="!isReadonly"
       :aria-readonly="isReadonly"
-      @input="(e) => emit('update:modelValue', (e.target as HTMLElement).innerText)"
+      @input="onInput"
       @keydown="onKey"
     >
       <span class="typed">{{ modelValue || 'How can I help you today?' }}</span>
@@ -2991,98 +3146,21 @@ git commit -m "feat(dashboard): add B7.1 DashboardSkeleton with shimmer animatio
 
 ---
 
-### Task T31: OfflineIndicator (A13.1 + A13.2 three signals)
+### Task T31: OfflineIndicator — **RETIRED** (C-MED4 + CT-020)
 
-**Files:**
-- Create: `kova-open-pencil-1/src/components/dashboard/OfflineIndicator.vue`
-- Test: `kova-open-pencil-1/tests/unit/components/dashboard/OfflineIndicator.test.ts`
+**Status:** RETIRED 2026-05-19.
 
-- [ ] **Step 1: Test**
+**Why:** Cluster 11 §6.4 ships `<NetworkStatusIndicator>` (Figma-style 14×14 `cloud-off` icon + `KovaTooltip`, renders nothing while online) and Cluster 11 §3.7 mounts it globally in `App.vue` (commit f08fa551 — C-MED-11.5). The legacy A13.1 sidebar `.net-strip`, A13.2 topbar pill, and 28px banner variants were retired per the 2026-05-17 founder decision. Cluster 02 owns zero offline UI surface — it is fully cross-cut to Cluster 11.
 
-```ts
-import { describe, test, expect } from 'bun:test'
-import { mount } from '@vue/test-utils'
-import { ref } from 'vue'
-import OfflineIndicator from '@/components/dashboard/OfflineIndicator.vue'
+**C-MED4 closure:** The replacement composable is Plan 11 §2.4 `useOnlineStatus` (combines `navigator.onLine` + Supabase Realtime channel heartbeat). It is consumed inside `<NetworkStatusIndicator>` — Cluster 02 does NOT call `useOnlineStatus` directly anywhere. Plan 11 owns the heartbeat-loss test (loss of Realtime channel → status `offline` even when `navigator.onLine === true`).
 
-// Mock Cluster 11 useOfflineState
-jest.mock('@/composables/use-offline-state', () => ({
-  useOfflineState: () => ({ isOnline: ref(false) }),
-}))
+**CT-020 closure:** PRD §2.1 (sidebar nav), §3.7 (network-state spec), and §8.7 (acceptance) are rewritten to consume `<NetworkStatusIndicator>` from Cluster 11. No three-signal pattern remains in this PRD.
 
-describe('OfflineIndicator', () => {
-  test('sidebar slot renders net-strip when offline', () => {
-    const w = mount(OfflineIndicator, { props: { slot: 'sidebar' } })
-    expect(w.find('.net-strip').exists()).toBe(true)
-  })
+**Action for the implementing engineer:**
 
-  test('topbar slot renders warn pill when offline', () => {
-    const w = mount(OfflineIndicator, { props: { slot: 'topbar' } })
-    expect(w.find('.pill.warn').exists()).toBe(true)
-  })
-
-  test('banner slot renders offline-banner when offline', () => {
-    const w = mount(OfflineIndicator, { props: { slot: 'banner' } })
-    expect(w.find('.offline-banner').exists()).toBe(true)
-  })
-})
-```
-
-- [ ] **Step 2: FAIL (depends on Cluster 11 `useOfflineState`)**
-
-- [ ] **Step 3: Write component (degrades gracefully pre-Cluster 11)**
-
-```vue
-<script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
-
-// Defensive: if Cluster 11 hasn't shipped useOfflineState, fall back to navigator.onLine
-const isOnline = ref(navigator.onLine)
-function onOnline() { isOnline.value = true }
-function onOffline() { isOnline.value = false }
-onMounted(() => {
-  window.addEventListener('online', onOnline)
-  window.addEventListener('offline', onOffline)
-})
-onUnmounted(() => {
-  window.removeEventListener('online', onOnline)
-  window.removeEventListener('offline', onOffline)
-})
-
-defineProps<{ slot: 'sidebar' | 'topbar' | 'banner' }>()
-const offline = computed(() => !isOnline.value)
-</script>
-
-<template>
-  <!-- sidebar variant -->
-  <div v-if="slot === 'sidebar' && offline" class="net-strip">
-    <span class="dot" />
-    <span class="flex-1">Working offline</span>
-    <icon-lucide-cloud-off class="ic" />
-  </div>
-  <!-- topbar pill (always renders one of online/offline) -->
-  <span v-else-if="slot === 'topbar'" class="pill dot" :class="{ ok: !offline, warn: offline }">
-    {{ offline ? 'Offline' : 'Online' }}
-  </span>
-  <!-- banner -->
-  <div v-else-if="slot === 'banner' && offline" class="offline-banner">
-    <icon-lucide-cloud-off class="ic" />
-    <span>You're offline. Changes are saved locally and will sync when you reconnect.</span>
-  </div>
-</template>
-```
-
-(When Cluster 11 ships `use-offline-state.ts`, refactor to consume it.)
-
-- [ ] **Step 4: PASS**
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add src/components/dashboard/OfflineIndicator.vue \
-        tests/unit/components/dashboard/OfflineIndicator.test.ts
-git commit -m "feat(dashboard): add A13 OfflineIndicator with sidebar/topbar/banner variants"
-```
+- Do NOT create `src/components/dashboard/OfflineIndicator.vue`.
+- Do NOT create `tests/unit/components/dashboard/OfflineIndicator.test.ts`.
+- Confirm during T35 (DashboardView shell) and T18 (DashboardSidebar) implementation that no local offline UI is wired — `<NetworkStatusIndicator />` is already mounted at the App root by Cluster 11.
 
 ---
 
@@ -3206,6 +3284,15 @@ describe('RecentsView', () => {
 
   test('shows file grid when canvases present', async () => { /* full stub of canvases store */ })
 
+  test('SortDropdown reads sortMode from useDashboardStore (not useCanvasesStore)', async () => {
+    const { useDashboardStore } = await import('@/stores/dashboard')
+    const dash = useDashboardStore()
+    dash.sortMode = 'name-asc'
+    const w = mount(RecentsView, { props: { brandId: 'b1' } })
+    await flushPromises()
+    expect(w.findComponent({ name: 'SortDropdown' }).props('modelValue')).toBe('name-asc')
+  })
+
   test('composer submit transitions through B11 states', async () => { /* covered in E2E */ })
 })
 ```
@@ -3220,6 +3307,8 @@ import { ref, watch, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useBrandsStore } from '@/stores/brands'
 import { useCanvasesStore } from '@/stores/canvases'
+import { useDashboardStore } from '@/stores/dashboard'
+import { useUIStateStore } from '@/stores/ui-state'
 import { useFileGrid } from '@/composables/use-file-grid'
 import { useGreeting } from '@/composables/use-greeting'
 
@@ -3234,10 +3323,15 @@ const route = useRoute()
 const router = useRouter()
 const brands = useBrandsStore()
 const canvasesStore = useCanvasesStore()
+const dashboard = useDashboardStore()
+const uiState = useUIStateStore()
 
 const brandIdRef = computed(() => route.params.brandId as string)
 const grid = useFileGrid(brandIdRef)
 const greeting = useGreeting()
+
+const sortMode = computed(() => dashboard.sortMode)
+const fileGridViewMode = computed(() => uiState.fileGridViewMode)
 
 const transitionState = ref<'idle' | 'submitting' | 'review' | 'splash'>('idle')
 const transitionPrompt = ref('')
@@ -3280,14 +3374,14 @@ defineExpose({ onNewCanvas })
           <span class="count">{{ grid.canvases.value.length }} canvases</span>
         </div>
         <div class="r">
-          <SortDropdown :model-value="(canvasesStore as any).sortMode ?? 'recent'" @update:model-value="grid.setSort" />
-          <ViewToggle :model-value="useUIStateStore().fileGridViewMode" @update:model-value="grid.setView" />
+          <SortDropdown :model-value="sortMode" @update:model-value="grid.setSort" />
+          <ViewToggle :model-value="fileGridViewMode" @update:model-value="grid.setView" />
         </div>
       </div>
 
       <FileGrid
         :canvases="grid.canvases.value"
-        :view-mode="useUIStateStore().fileGridViewMode"
+        :view-mode="fileGridViewMode"
         :is-loading="grid.isLoading.value"
         @open="(id) => router.push(`/editor/${id}`)"
       >
@@ -3409,9 +3503,10 @@ import { computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useBrandsStore } from '@/stores/brands'
 
+// CT-020: <NetworkStatusIndicator> is mounted globally in App.vue by Cluster 11.
+// No local offline UI is composed here.
 import DashboardSidebar from '@/components/dashboard/DashboardSidebar.vue'
 import DashboardTopbar from '@/components/dashboard/DashboardTopbar.vue'
-import OfflineIndicator from '@/components/dashboard/OfflineIndicator.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -3457,18 +3552,9 @@ function onNewCanvas() {
 
 <template>
   <div v-if="currentBrand" class="app">
-    <DashboardSidebar :current-brand="currentBrand">
-      <template #footer-extras>
-        <OfflineIndicator slot-name="sidebar" />
-      </template>
-    </DashboardSidebar>
+    <DashboardSidebar :current-brand="currentBrand" />
     <main class="main">
-      <DashboardTopbar :brand-name="currentBrand.name" :current-page="pageLabel" @new-canvas="onNewCanvas">
-        <template #actions>
-          <OfflineIndicator slot-name="topbar" />
-        </template>
-      </DashboardTopbar>
-      <OfflineIndicator slot-name="banner" />
+      <DashboardTopbar :brand-name="currentBrand.name" :current-page="pageLabel" @new-canvas="onNewCanvas" />
       <router-view />
     </main>
   </div>
@@ -3574,8 +3660,29 @@ describe('ComingSoonView', () => {
     expect(w.findAll('.tabs button').length).toBe(2)
   })
 
-  test('emits notify on "Notify me" click (POST to Resend mailing-list endpoint)', async () => {
-    // Mock fetch and assert it's called
+  test('emits notify on "Notify me" click — Authorization is awaited access_token, not Promise', async () => {
+    const { mock } = await import('bun:test')
+    mock.module('@/lib/supabase', () => ({
+      supabase: {
+        auth: {
+          getSession: async () => ({
+            data: { session: { access_token: 'tok-123' } },
+          }),
+        },
+      },
+    }))
+    mock.module('@/stores/auth', () => ({
+      useAuthStore: () => ({ user: { email: 'a@test' } }),
+    }))
+    const fetchSpy = mock(async () => new Response(null, { status: 200 }))
+    globalThis.fetch = fetchSpy as unknown as typeof fetch
+    const w = mount(ComingSoonView, { props: { kind: 'calendar' } })
+    await w.find('button.primary').trigger('click')
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+    const [, init] = fetchSpy.mock.calls[0]
+    expect((init as RequestInit).headers).toMatchObject({
+      Authorization: 'Bearer tok-123',
+    })
   })
 })
 ```
@@ -3590,6 +3697,7 @@ import { computed } from 'vue'
 import { COMING_SOON } from '@/constants/coming-soon'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/use-toast'
+import { supabase } from '@/lib/supabase'
 
 const props = defineProps<{ kind: string }>()
 const spec = computed(() => COMING_SOON[props.kind] ?? COMING_SOON.calendar)
@@ -3598,12 +3706,21 @@ const auth = useAuthStore()
 const { toast } = useToast()
 
 async function onNotifyMe() {
-  if (!auth.profile?.email) return
+  const email = auth.user?.email
+  if (!email) return
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) {
+    toast({ kind: 'error', message: 'Sign in expired. Please sign in again.' })
+    return
+  }
   try {
     await fetch('/api/marketing/notify-me', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${(await import('@/lib/supabase')).supabase.auth.getSession().then(r => r.data.session?.access_token)}` },
-      body: JSON.stringify({ email: auth.profile.email, surface: props.kind }),
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ email, surface: props.kind }),
     })
     toast({ kind: 'success', message: "We'll let you know" })
   } catch {
@@ -3817,6 +3934,14 @@ git commit -m "test(e2e): add E2E specs for onboarding wizard + dashboard intera
       exit 1
     fi
 
+- name: 'Tests: bun:test only (no jest/vitest leakage)'
+  run: |
+    # B-CRIT5 + B-HIGH8 regression guard
+    if grep -rnE '\b(jest|vi)\.(mock|fn|spyOn)\b|\bmockImplementation(Once)?\b|\bmockReturnValue(Once)?\b|\bmockClear\b|\bmockReset\b' tests/ src/; then
+      echo "❌ Vitest/Jest mock API found — use bun:test (mock.module / mock(fn))"
+      exit 1
+    fi
+
 - name: 'Bundle size budget'
   run: |
     bun run build
@@ -3854,10 +3979,12 @@ git commit -m "ci: add grep guards for access_token + light-theme drift; bundle-
 
 **3. Type consistency** — `SortMode` and `ViewMode` defined once in `src/stores/dashboard.ts` (T06); consumed everywhere by re-import. `ComposerPreset` defined in `src/constants/composer-presets.ts` (T23); consumed in T25 + T26. `Brand` type imported from existing `@/types/kova/database`.
 
+**4. B-MED11 verified 2026-05-19** — `useLocalStorage` from VueUse is internally debounced (writes coalesce on reactive change). No additional debounce wrapper is needed in `useUIStateStore` or `useBrandsStore.selectedBrandId`. Reference: `@vueuse/core` `useStorage` writes via `watch(..., { flush: 'pre' })` with throttle.
+
 **Issues found during review:**
 - T28's relative-time util test boundary cases match the implementation conditionals.
-- T35 `useUIStateStore()` is called inside the template — must import at top of `<script setup>`. Fix during implementation.
-- T37 fetch headers for Bearer use nested promise — refactor to await session once. Fix during implementation.
+- T35 ~~`useUIStateStore()` is called inside the template — must import at top of `<script setup>`.~~ **RESOLVED 2026-05-19 by B-CRIT11 fix (commit `0181cefe`)** — T35/T33 import `useUIStateStore` at top of `<script setup>` and expose `fileGridViewMode` via a `computed()` proxy. No template-level store calls remain.
+- T37 ~~fetch headers for Bearer use nested promise — refactor to await session once.~~ **RESOLVED 2026-05-19 by B-CRIT10 fix (commit `29ffc47c`)** — T37's `onNotifyMe` awaits `supabase.auth.getSession()` once before composing the `Bearer` header. Test asserts `Authorization: Bearer <known-token>` literally.
 
 ---
 
