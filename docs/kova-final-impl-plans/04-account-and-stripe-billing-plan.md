@@ -3070,6 +3070,60 @@ describe('StripeReturnLanding', () => {
 
 - [ ] **Step 2 → 5**: implement + verify + commit per PRD §3.7 copy + §6.4.4 structure.
 
+**C-MED14 — Reuses Cluster 01 `<AuthMedal>` + `<AuthIcon>`:**
+
+`<StripeReturnLanding>` MUST compose the Cluster 01 auth-page primitives (`<AuthMedal>` + `<AuthIcon>`) for the success/error medal at the top of the landing — do NOT re-implement the medal/icon styles. These primitives ship from Cluster 01 W1 merge (`f7f2d35c`); see Plan 01 for their API contract. Implementation sketch:
+
+```vue
+<script setup lang="ts">
+import AuthMedal from '@/components/auth/AuthMedal.vue'   // Cluster 01 W1
+import AuthIcon from '@/components/auth/AuthIcon.vue'     // Cluster 01 W1
+import { useBillingStore } from '@/stores/billing'
+import { useStripeReturn } from '@/composables/use-stripe-return'
+
+const props = defineProps<{ mode: 'success' | 'cancel' }>()
+const billing = useBillingStore()
+const { planName, isPolling } = useStripeReturn()
+</script>
+
+<template>
+  <div class="auth-page-shell">
+    <AuthMedal :variant="props.mode === 'success' ? 'success' : props.mode === 'cancel' ? 'warning' : 'neutral'">
+      <AuthIcon :name="props.mode === 'success' ? 'check' : 'x'" />
+    </AuthMedal>
+
+    <template v-if="props.mode === 'success'">
+      <h1>You're on {{ planName ?? '…' }}</h1>
+      <p v-if="isPolling">Confirming your subscription…</p>
+      <p v-else>Your subscription is active. <router-link to="/dashboard">Open Kova</router-link></p>
+    </template>
+
+    <template v-else>
+      <h1>Checkout cancelled</h1>
+      <p>No charge was made. <button @click="billing.restartCheckout()">Try again</button> or <router-link to="/account/billing">return to billing</router-link>.</p>
+    </template>
+  </div>
+</template>
+```
+
+The Cluster 01 medal/icon primitives provide consistent visual treatment across all auth/billing-return landings (`/account/billing/success`, `/account/billing/cancel`, plus the Cluster 01 sign-up + email-change flows). Do NOT introduce a new medal styling here.
+
+**Test additions:** add 2 cases asserting the medal renders with `variant="success"` for `mode='success'` and `variant="warning"` for `mode='cancel'`, AND that `<AuthIcon name>` resolves to `check` vs `x` respectively:
+
+```ts
+it('renders success AuthMedal + check AuthIcon', () => {
+  const w = mount(StripeReturnLanding, { props: { mode: 'success' } })
+  expect(w.findComponent({ name: 'AuthMedal' }).props('variant')).toBe('success')
+  expect(w.findComponent({ name: 'AuthIcon' }).props('name')).toBe('check')
+})
+
+it('renders warning AuthMedal + x AuthIcon on cancel', () => {
+  const w = mount(StripeReturnLanding, { props: { mode: 'cancel' } })
+  expect(w.findComponent({ name: 'AuthMedal' }).props('variant')).toBe('warning')
+  expect(w.findComponent({ name: 'AuthIcon' }).props('name')).toBe('x')
+})
+```
+
 ---
 
 ## Phase 13 — Routes + meta + viewport guard wiring
