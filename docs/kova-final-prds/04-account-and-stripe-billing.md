@@ -1015,6 +1015,8 @@ export const useAccountStore = defineStore('account', () => {
 
 ### 6.4 Components
 
+**Icon convention (W0-4 — 2026-05-19):** every icon rendered by a component in this PRD uses `<KovaIcon name="..." size?="..." />` from Cluster 11 §6.4.2 / Plan 11 Task 4.4. The four retired alternates are forbidden per scope plan §6.2 W0-4 lock: (a) raw `<icon-lucide-*>` tags with dynamic names, (b) `<component :is="\`icon-lucide-${name}\`">` template-literal resolution (the pattern flagged by QA-B CRITICAL-4 in Plan 04 line 2332), (c) `i-lucide-*` UnoCSS class strings, (d) `<Icon name="lucide:...">` Nuxt-style. Wave-2 cluster-04 fix agent migrates residual non-conforming icon bindings during its pass.
+
 #### 6.4.1 Page components
 
 | Component | File | Hi-fi reference |

@@ -706,6 +706,8 @@ function brandLogoClass(color: BrandColor): string {
 
 ### 6.4 Components
 
+**Icon convention (W0-4 — 2026-05-19):** every icon rendered by a component in this PRD uses `<KovaIcon name="..." size?="..." />` from Cluster 11 §6.4.2 / Plan 11 Task 4.4. The four retired alternates are forbidden per scope plan §6.2 W0-4 lock: (a) raw `<icon-lucide-*>` tags with dynamic names, (b) `<component :is="\`icon-lucide-${name}\`">` template-literal resolution, (c) `i-lucide-*` UnoCSS class strings, (d) `<Icon name="lucide:...">` Nuxt-style. The 22 `<Icon name="lucide:...">` occurrences flagged by QA-B CRITICAL-3 in Plan 03 are scrubbed during the Cluster 03 Wave-2 fix pass.
+
 | Component | Path | Props | Slots | Emits | Notes |
 |---|---|---|---|---|---|
 | `<BrandPickerView>` | `src/views/brands/BrandPickerView.vue` | — | — | — | Reads `useBrandsStore`. Renders A2.a populated grid or A2.b empty. Top-of-page actions: Account button (routes to `/account`; falls back to `/account/coming-soon` w/ `<NotShippedYet>` if PRD 04 not ready), "+ New brand" primary CTA. Includes `<BrandsArchivedFilter>` dropdown (Hide/Show/Only — ENABLED per 2026-05-17 reversal). |

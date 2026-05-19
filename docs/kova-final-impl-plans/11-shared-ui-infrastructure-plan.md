@@ -2121,6 +2121,167 @@ git commit -am "feat(cluster-11): KovaMenu + KovaTooltip wrappers (Reka Dropdown
 
 ---
 
+### Task 4.4: `<KovaIcon>` primitive (W0-4 — single icon tag for the whole app)
+
+**Files:**
+- Create: `kova-open-pencil-1/src/components/ui/KovaIcon.vue`
+- Create: `kova-open-pencil-1/src/components/ui/kova-icon-registry.ts` (static map)
+- Test: `kova-open-pencil-1/tests/unit/components/KovaIcon.test.ts`
+
+**Contract:** every icon in every cluster renders via `<KovaIcon name="..." size?="..." />`. The four forbidden alternates — `<icon-lucide-*>` raw tags with dynamic names, `<Icon name="lucide:...">` (Nuxt-style), `i-lucide-*` UnoCSS class strings, `<component :is="\`icon-lucide-${name}\`">` template-literal resolution — are scrubbed cluster-by-cluster in Wave 2 / 3 fix passes. See scope plan §6.2 "Icon convention" W0-4 lock.
+
+**Why a static registry vs `<component :is>`:** `unplugin-icons` resolves icons at build time via auto-imports. Dynamic `<component :is="\`icon-lucide-${name}\`">` fails at runtime because the resolved component name is not in scope. A static `Map<string, Component>` populated at module load (`import IconCheck from '~icons/lucide/check'` ... × N) is the only pattern that (a) tree-shakes, (b) survives runtime, (c) lets us throw a useful dev-mode warning on unknown names.
+
+- [ ] **Step 1: Write the failing tests**
+
+```typescript
+// tests/unit/components/KovaIcon.test.ts
+import { describe, it, expect } from 'bun:test'
+import { mount } from '@vue/test-utils'
+import KovaIcon from '@/components/ui/KovaIcon.vue'
+
+describe('<KovaIcon> (W0-4)', () => {
+  it('renders known lucide name', () => {
+    const w = mount(KovaIcon, { props: { name: 'check' } })
+    expect(w.find('svg').exists()).toBe(true)
+    expect(w.attributes('aria-hidden')).toBe('true')
+  })
+
+  it('size prop maps to pixel dimension', () => {
+    const w = mount(KovaIcon, { props: { name: 'check', size: 'lg' } })
+    const svg = w.find('svg')
+    expect(svg.attributes('width')).toBe('20')
+    expect(svg.attributes('height')).toBe('20')
+  })
+
+  it('aria-label flips role from presentation to img', () => {
+    const w = mount(KovaIcon, { props: { name: 'check' }, attrs: { 'aria-label': 'Saved' } })
+    expect(w.attributes('aria-hidden')).toBeUndefined()
+    expect(w.attributes('role')).toBe('img')
+  })
+
+  it('passes class prop through to svg root', () => {
+    const w = mount(KovaIcon, { props: { name: 'check', class: 'text-accent' } })
+    expect(w.find('svg').classes()).toContain('text-accent')
+  })
+
+  it('unknown name renders nothing + dev warn (no throw)', () => {
+    const w = mount(KovaIcon, { props: { name: 'totally-not-real' } })
+    expect(w.find('svg').exists()).toBe(false)
+  })
+})
+```
+
+- [ ] **Step 2: Run → FAIL (no module)**
+
+Run: `cd kova-open-pencil-1 && bun test tests/unit/components/KovaIcon.test.ts`
+Expected: FAIL with module-not-found error
+
+- [ ] **Step 3: Build the static registry**
+
+```typescript
+// src/components/ui/kova-icon-registry.ts
+// Static lucide registry. Add new icons here when a consumer cluster needs one.
+// Tree-shakes per unplugin-icons / vite auto-imports.
+import type { Component } from 'vue'
+
+import IconCheck from '~icons/lucide/check'
+import IconAlertTriangle from '~icons/lucide/alert-triangle'
+import IconInfo from '~icons/lucide/info'
+import IconLoader from '~icons/lucide/loader'
+import IconSparkles from '~icons/lucide/sparkles'
+import IconCloudOff from '~icons/lucide/cloud-off'
+import IconArrowLeft from '~icons/lucide/arrow-left'
+import IconArrowRight from '~icons/lucide/arrow-right'
+import IconChevronDown from '~icons/lucide/chevron-down'
+import IconChevronRight from '~icons/lucide/chevron-right'
+import IconX from '~icons/lucide/x'
+import IconPlus from '~icons/lucide/plus'
+import IconSearch from '~icons/lucide/search'
+import IconCrop from '~icons/lucide/crop'
+import IconRuler from '~icons/lucide/ruler'
+// ... (extended by consumer clusters during Wave 2 / 3)
+
+export const KOVA_ICON_REGISTRY: ReadonlyMap<string, Component> = new Map<string, Component>([
+  ['check', IconCheck],
+  ['alert-triangle', IconAlertTriangle],
+  ['info', IconInfo],
+  ['loader', IconLoader],
+  ['sparkles', IconSparkles],
+  ['cloud-off', IconCloudOff],
+  ['arrow-left', IconArrowLeft],
+  ['arrow-right', IconArrowRight],
+  ['chevron-down', IconChevronDown],
+  ['chevron-right', IconChevronRight],
+  ['x', IconX],
+  ['plus', IconPlus],
+  ['search', IconSearch],
+  ['crop', IconCrop],
+  ['ruler', IconRuler],
+])
+
+export const KOVA_ICON_SIZE_PX: Readonly<Record<'xs' | 'sm' | 'md' | 'lg', number>> = {
+  xs: 12, sm: 14, md: 16, lg: 20,
+}
+```
+
+- [ ] **Step 4: Build the component**
+
+```vue
+<!-- src/components/ui/KovaIcon.vue -->
+<script setup lang="ts">
+import { computed, useAttrs } from 'vue'
+import { KOVA_ICON_REGISTRY, KOVA_ICON_SIZE_PX } from './kova-icon-registry'
+
+interface Props {
+  name: string
+  size?: 'xs' | 'sm' | 'md' | 'lg'
+  class?: string
+}
+
+const props = withDefaults(defineProps<Props>(), { size: 'md' })
+
+const attrs = useAttrs()
+const px = computed(() => KOVA_ICON_SIZE_PX[props.size])
+const component = computed(() => {
+  const c = KOVA_ICON_REGISTRY.get(props.name)
+  if (!c && import.meta.env.DEV) {
+    // eslint-disable-next-line no-console
+    console.warn(`[KovaIcon] unknown lucide name: "${props.name}". Add to kova-icon-registry.ts.`)
+  }
+  return c
+})
+
+const hasAriaLabel = computed(() => 'aria-label' in attrs)
+</script>
+
+<template>
+  <component
+    v-if="component"
+    :is="component"
+    :width="px"
+    :height="px"
+    :class="props.class"
+    :aria-hidden="hasAriaLabel ? undefined : 'true'"
+    :role="hasAriaLabel ? 'img' : undefined"
+  />
+</template>
+```
+
+- [ ] **Step 5: Run + verify pass**
+
+Run: `cd kova-open-pencil-1 && bun test tests/unit/components/KovaIcon.test.ts`
+Expected: PASS (5/5)
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add kova-open-pencil-1/src/components/ui/KovaIcon.vue kova-open-pencil-1/src/components/ui/kova-icon-registry.ts kova-open-pencil-1/tests/unit/components/KovaIcon.test.ts
+git commit -m "feat(cluster-11): <KovaIcon> primitive (W0-4 — sole icon tag for the app)"
+```
+
+---
+
 ## Phase 5 — Confirm System
 
 ### Task 5.1: Confirm types + store

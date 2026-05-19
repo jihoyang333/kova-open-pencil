@@ -381,6 +381,8 @@ None at the chrome level. (Existing M5 CanvasKit + Yjs runtime continues unchang
 
 ### 6.4 Components
 
+**Icon convention (W0-4 — 2026-05-19):** every icon rendered by a component in this PRD uses `<KovaIcon name="..." size?="..." />` from Cluster 11 §6.4.2 / Plan 11 Task 4.4. The four retired alternates are forbidden per scope plan §6.2 W0-4 lock: (a) raw `<icon-lucide-*>` tags with dynamic names, (b) `<component :is="\`icon-lucide-${name}\`">` template-literal resolution, (c) `i-lucide-*` UnoCSS class strings (the pattern flagged by QA-B HIGH-7 in Plan 06 lines 500-502: `icon: 'i-lucide-crop'` / `'i-lucide-ruler'` etc. on tool defs), (d) `<Icon name="lucide:...">` Nuxt-style. Wave-3 cluster-06 fix agent migrates residual non-conforming icon bindings (ToolDef `icon` field becomes a lucide name passed to `<KovaIcon>`) during its pass.
+
 #### 6.4.1 View shell
 
 | Component | File | Notes |

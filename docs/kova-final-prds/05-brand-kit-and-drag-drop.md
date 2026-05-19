@@ -1017,6 +1017,8 @@ export interface VoiceDraft { id: string; brand_id: string; user_id: string; sou
 
 ### 6.4 Components
 
+**Icon convention (W0-4 — 2026-05-19):** every icon rendered by a component in this PRD uses `<KovaIcon name="..." size?="..." />` from Cluster 11 §6.4.2 / Plan 11 Task 4.4. The four retired alternates are forbidden per scope plan §6.2 W0-4 lock: (a) raw `<icon-lucide-*>` tags with dynamic names, (b) `<component :is="\`icon-lucide-${name}\`">` template-literal resolution, (c) `i-lucide-*` UnoCSS class strings (the pattern flagged by QA-B HIGH-7 / HIGH-17 in Plan 05 lines 2230-2236 + 2253), (d) `<Icon name="lucide:...">` Nuxt-style. Wave-2 cluster-05 fix agent migrates residual non-conforming icon bindings during its pass.
+
 #### 6.4.1 Section + tab shells
 
 | Component | File | Props / slots / emits | Hi-fi reference |

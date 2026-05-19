@@ -709,6 +709,16 @@ Per W0-3 founder ratification (resolves CT-002 from `docs/kova-final-qa/CONSOLID
 
 **Rationale:** RESTful path params (`/brand/:brandId`) are more idiomatic for shareable links, browser history, and back/forward navigation than query params (`/dashboard?brandId=`). The retired query-param form forced double routing logic (route + query-param watcher) in every consumer; the path-param form centralizes route guards on a single param. Store-name canonicalization eliminates the `useRightPanelStore` vs `useRightPanelTabStore` two-name drift surfaced by QA-C HIGH-10.
 
+### 6.2 Icon convention (W0-4 — 2026-05-19)
+
+Per W0-4 founder ratification (resolves CT-003 from `docs/kova-final-qa/CONSOLIDATED-TRIAGE.md` + QA-B CRITICAL-3 / CRITICAL-4 / HIGH-7 / HIGH-17 + QA-C HIGH-12), Cluster 11 ships a single `<KovaIcon name="...">` primitive (PRD 11 §6.4.2 / Plan 11 Task 4.4). **All icons across the app use this primitive.** No raw `<icon-lucide-*>` dynamic-name tags, no Nuxt-style `<Icon name="lucide:...">`, no `i-lucide-*` UnoCSS class strings, and no `<component :is="\`icon-lucide-${name}\`">` template-literal resolution. The primitive uses a static `Map<string, Component>` registry under the hood (avoids `unplugin-icons` dynamic-resolution failures) and tree-shakes per `~icons/lucide/<name>` auto-import.
+
+**Consumer enforcement:**
+
+- PRDs 02 / 03 / 04 / 05 / 06 each carry an "Icon convention (W0-4)" disclaimer at the top of §6.4 Components.
+- Wave-2 / Wave-3 cluster fix agents scrub residual non-conforming icon bindings (per QA-B CRITICAL-3 22 occurrences in Plan 03, QA-B CRITICAL-4 dynamic binding in Plan 04 line 2332, QA-B HIGH-7 + HIGH-17 in Plan 05 + 06).
+- Plan 11 Task 4.4 ships the primitive with TDD coverage; consumers must NOT shim a local icon wrapper.
+
 ---
 
 ## 7. Open questions per cluster
