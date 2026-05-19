@@ -238,6 +238,64 @@ git add kova-open-pencil-1/supabase/migrations/20260520_11_shared_ui_infrastruct
 git commit -m "feat(cluster-11): add idempotency_keys + audit_log table migration"
 ```
 
+**Key-length CHECK audit (B-MED18 / A-MED3 closure, 2026-05-19):**
+
+The CHECK `length(key) >= 16 AND length(key) <= 64` plus the `KEY_PATTERN`
+`/^[a-zA-Z0-9_-]{16,64}$/` in `verifyIdempotency()` (Task 1.3) together gate
+every key. Cross-cluster grep results:
+
+| Plan | Callsite | Key shape | Length | Passes CHECK + pattern |
+|---|---|---|---|---|
+| 01 | `01-plan.md:648` (test) | `crypto.randomUUID()` | 36 | ✅ |
+| 01 | `01-plan.md:766` (handler) | header passthrough | n/a | ✅ (validated at helper) |
+| 01 | `01-plan.md:1285` (concat) | `\`${idempotencyKey}:${brand.id}\`` | 73, includes `:` | ❌ **violates pattern AND length cap — flagged for Cluster 01 follow-up** |
+| 01 | `01-plan.md:2016` (test) | `crypto.randomUUID()` | 36 | ✅ |
+| 04 | `04-plan.md:788` (test) | `crypto.randomUUID()` | 36 | ✅ |
+| 05 | `05-plan.md:1279` (call)/`:1620` (test)/`:1688`/`:1882` (handler) | `crypto.randomUUID()` / passthrough | 36 | ✅ |
+| 09 | `09-plan.md:2356` (handler) | header passthrough | n/a | ✅ |
+| 09 | `09-plan.md:2333` (test note) | "same key + same snapshot_id" | n/a (caller supplies) | ✅ |
+| 10 | n/a | no idempotency callsites in plan | — | ✅ |
+| 11 | self | `KEY_PATTERN` validates | 16–64 | ✅ |
+
+The Plan 01:1285 concat is cross-cluster — Cluster 01+12 own remediation. Cluster
+11 will not edit Plan 01 to fix it; Cluster 11 ships the contract + the test
+that pins the contract. The flagged row is recorded here so the Cluster 01
+next-pass agent finds it without re-grepping.
+
+- [ ] **Step 6: Add the CHECK-exercising regression test** (Task 1.3 test file already covers KEY_PATTERN; this test exercises the DB CHECK directly so a future helper bypass cannot insert an out-of-range key).
+
+```typescript
+// tests/integration/cluster-11/idempotency-check-constraint.test.ts
+import { describe, it, expect } from 'bun:test'
+import { supabaseAdmin } from '../helpers/supabase-local'
+
+describe('idempotency_keys length CHECK (B-MED18)', () => {
+  it('rejects key with length < 16', async () => {
+    const { error } = await supabaseAdmin.from('idempotency_keys').insert({
+      key: 'tooshort',  // 8 chars
+      user_id: '00000000-0000-0000-0000-000000000000',
+      endpoint: 'POST /api/test',
+      request_hash: 'h'.repeat(64),
+      response_status: 200,
+      response_body: { ok: true },
+    })
+    expect(error?.code).toBe('23514')  // check_violation
+  })
+
+  it('rejects key with length > 64', async () => {
+    const { error } = await supabaseAdmin.from('idempotency_keys').insert({
+      key: 'a'.repeat(65),
+      user_id: '00000000-0000-0000-0000-000000000000',
+      endpoint: 'POST /api/test',
+      request_hash: 'h'.repeat(64),
+      response_status: 200,
+      response_body: { ok: true },
+    })
+    expect(error?.code).toBe('23514')
+  })
+})
+```
+
 ---
 
 ### Task 1.2: RLS verification test

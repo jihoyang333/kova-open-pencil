@@ -1102,17 +1102,17 @@ Email clients vary wildly in CSS support. Inlining via `juice` handles most case
 
 **Mitigation:** `replaysOnErrorSampleRate: 1.0` ensures every error gets a session replay. Phase B re-tunes both rates based on incident-investigation hit rate.
 
-### 12.8 OPEN QUESTION — `<KovaSkeleton>` shimmer animation direction (LTR vs locale-aware)
+### 12.8 RESOLVED 2026-05-19 (A-MED3) — `<KovaSkeleton>` shimmer animation direction (LTR vs locale-aware)
 
 Hi-fi B7 demos shimmer animating left-to-right (translateX -100 % → 300 %). For Arabic / Hebrew localization (Phase 2), the natural direction reverses.
 
-**Recommendation:** ship LTR-only at MVP. Wire the gradient direction to `document.dir` in Phase 2 (i18n).
+**Decision (W1 dispatch 2026-05-19):** ship LTR-only at MVP. Wire the gradient direction to `document.dir` in Phase 2 (i18n). No build-time hook required; Phase 2 spec will add a single `:dir`-aware CSS rule.
 
-### 12.9 OPEN QUESTION — Toast positioning per device class
+### 12.9 RESOLVED 2026-05-19 (A-MED3) — Toast positioning per device class
 
 Bottom-right is the canonical position per B1. On a desktop > 2560 px wide, the toasts may appear unreachably-far from the user's focus.
 
-**Recommendation:** ship bottom-right at MVP (matches Figma + Linear); revisit if user research surfaces complaint. Phase 2 could add a `useToast.position()` override.
+**Decision (W1 dispatch 2026-05-19):** ship bottom-right at MVP (matches Figma + Linear). No per-device override at MVP. Phase 2 may add a `useToast.position()` override if user research surfaces a complaint; default stays bottom-right.
 
 ### 12.10 DROPPED 2026-05-17 — Cmd+K command palette
 
