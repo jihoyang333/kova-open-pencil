@@ -250,7 +250,7 @@ Every surface maps to a hi-fi file + scene/line range. Theme: **DARK** (per `fee
 
 | Surface | Hi-fi file | Scene / line | Notes |
 |---|---|---|---|
-| Tab strip (Design + AI) | Final.html | lines 337–359 (CSS), 811–820 (instance shows "Design" tab only in hi-fi; AI tab is the founder amendment 2026-05-15) | TWO tabs only. Default-active = Design. Click AI tab → switches via `useRightPanelStore.setActiveTab('ai')` |
+| Tab strip (Design + AI) | Final.html | lines 337–359 (CSS), 811–820 (instance shows "Design" tab only in hi-fi; AI tab is the founder amendment 2026-05-15) | TWO tabs only. **Default-active = AI** on first canvas open (per §12.13 founder ratification 2026-05-17; W0-7 propagation 2026-05-19). Subsequent opens read per-canvas `localStorage[right-panel-tab:${canvasId}]`. Click AI tab → switches via `useRightPanelStore.setActiveTab('ai')`. |
 | Zoom-r (right side of tab strip) | Final.html | lines 357, 815–818 | Current zoom % + caret (Cluster 08 ships zoom popover) |
 | Frame-head | Final.html | lines 361–378 (CSS), 822–833 (instance) | Frame title + caret + 3 action buttons (Code/Component/Theme — Phase 2 no-op in MVP) |
 | Inspector body scroll | Final.html | lines 380–381 | `.pbody` overflow auto; sections stack |

@@ -1626,7 +1626,7 @@ Separate decision dispatched same day. B12 archived Brands page promoted from Ph
 - `<DangerZoneCard>` modal + cascade + restore page + middleware — Cluster 01
 - Brand Kit sub-tab content (Visuals, Fonts, Tone snippets, Saved blocks, Writing rules, Memories, Knowledge base) — Cluster 05
 - Brand-creation flow + brand-archive + brand-delete — Cluster 03
-- Toast / modal / skeleton / Command-K / `<EmailShell>` / Sentry SDK / `idempotency_keys` table — Cluster 11
+- Toast / modal / skeleton / `<EmailShell>` / Sentry SDK / `idempotency_keys` table — Cluster 11 (Cmd+K palette removed entirely per 00g kill 2026-05-17; W0-7 scrub 2026-05-19)
 - `usePreferencesStore` (consumes `users.preferences` JSONB column) — Cluster 12
 - Onboarding wizard + dashboard chrome (avatar dropdown chrome) — Cluster 02
 - Canvas-side topbar avatar dropdown chrome — Cluster 06

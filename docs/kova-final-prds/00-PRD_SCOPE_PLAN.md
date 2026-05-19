@@ -265,7 +265,7 @@ For each cluster: scope boundary, 03-doc rows covered, hi-fi files referenced, Q
 - Q1: Slice = first-class 17th NodeType in `packages/core/src/scene-graph.ts`. Lift core lock per CLAUDE.md amendment.
 - Q2: Mask compositing in `renderer/scene.ts` (data model already in core — `isMask` + `maskType`). All 3 mask types ship MVP.
 - Q3: 9 features engine-ready (vertical text align, all 4 gradient types, POLYGON, STAR, LINE, stroke align, all 5 effect types, boolean operations, vector network field). 1 partial (OpenType — needs SceneNode wiring). 4 missing (aspectRatio, page-export flag, page-bg-vis, scale tool).
-- Q11: Measurement = first-class 18th NodeType in `scene-graph.ts`. Path 1 (lift core lock).
+- Q11: Measurement (SUPERSEDED 2026-05-17 per founder lock #14 — measurements are page-level on the CANVAS-typed SceneNode via PageNode-equivalent methods (`addMeasurement` / `getMeasurements` / `getMeasurementsForNode` / `editMeasurement` / `deleteMeasurement`), NOT a NodeType. See PRD 07a §7.1b + §12.10. The earlier "Measurement = first-class 18th NodeType" framing has been retired; W0-7 propagation 2026-05-19.).
 - Q20: Eyedropper canvas-only MVP. Phase 2: screen-wide on macOS Tauri.
 - Q21: All 4 image-fill modes (Fill default, Fit, Crop, Tile).
 - Q22: JPG export 3-level dropdown (High 0.92 default / Medium 0.80 / Low 0.65).
@@ -273,7 +273,7 @@ For each cluster: scope boundary, 03-doc rows covered, hi-fi files referenced, Q
 - Q23: Copy/Paste properties full set (better than Figma's stroke-partial).
 
 **Infrastructure scope:**
-- **Core mods** (lift lock): SLICE NodeType, MEASUREMENT NodeType, aspectRatio prop, page-export flag, page-bg-visibility, scale tool, OpenType per-text-run wiring, list/link per-text-run attrs, tool registration in `tools/`
+- **Core mods** (lift lock): SLICE NodeType (17th NodeType); page-level `Measurement` methods on the CANVAS-typed SceneNode — `addMeasurement` / `getMeasurements` / `getMeasurementsForNode` / `editMeasurement` / `deleteMeasurement` (NOT a NodeType per founder lock #14 / PRD 07a §7.1b — W0-7 propagation 2026-05-19); aspectRatio prop, page-export flag, page-bg-visibility, scale tool, OpenType per-text-run wiring, list/link per-text-run attrs, tool registration in `tools/`
 - **Renderer-only:** Mask compositing in `renderer/scene.ts`. Effects already shipped (zero work per Q3 #12).
 - **Inspector wiring:** Vertical text align, stroke align, multiple fills, 4-mode image fill picker, gradient editor UI, Effects inspector (5 effect types), Boolean ops menu+inspector
 - **App-level overlays:** Frame outlines, Mask outlines, Slice region, Snap indicators, Layout guides (default-ON red 10% Q24), Pixel grid, Hover contour, Find highlight, Eyedropper crosshair, Measurement annotations
