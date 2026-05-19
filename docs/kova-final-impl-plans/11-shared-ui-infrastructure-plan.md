@@ -3111,8 +3111,19 @@ const wordmark = computed(
       <div class="container">
         <div class="head"><img :src="wordmark" alt="Kova" width="80" /></div>
         <div class="body"><slot /></div>
-        <div class="foot">
-          Sent to {{ '{{email}}' }}. <a href="{{settings_url}}">Manage preferences</a>.<br />
+        <!--
+          C-MED-11.4 — Resend template variables ({{email}}, {{settings_url}})
+          use the same {{ }} delimiter Vue uses for text interpolation. Without
+          v-pre, Vue parses `{{email}}` as an expression at SSR time, resolves
+          it to `undefined`, and ships an empty string to Resend — never the
+          literal placeholder. `v-pre` tells Vue to skip compilation for this
+          element subtree, so the literal `{{email}}` / `{{settings_url}}`
+          strings survive into the rendered HTML for Resend to substitute
+          server-side. NB: the href is intentionally a literal `{{settings_url}}`
+          string inside v-pre, NOT `:href` — `:href` would force Vue to evaluate.
+        -->
+        <div v-pre class="foot">
+          Sent to {{email}}. <a href="{{settings_url}}">Manage preferences</a>.<br />
           © 2026 Kova
         </div>
       </div>
@@ -3142,6 +3153,30 @@ export async function buildEmail(opts: EmailShellOptions): Promise<{ html: strin
   const text = opts.bodyHtml.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim()  // crude HTML→text fallback
   return { html, text }
 }
+```
+
+- [ ] **C-MED-11.4 regression test:** render the shell + assert literal Resend placeholders survive.
+
+```typescript
+// tests/unit/email/EmailShell.test.ts
+import { describe, expect, test } from 'bun:test'
+import { buildEmail } from '@/composables/use-email-shell'
+
+describe('<EmailShell> Resend placeholder pass-through (C-MED-11.4)', () => {
+  test('renders literal {{email}} + {{settings_url}} (not undefined)', async () => {
+    const { html } = await buildEmail({
+      title: 'Test',
+      bodyHtml: '<p>Hi</p>',
+    })
+    // The v-pre footer must emit the placeholders byte-for-byte so Resend
+    // can substitute them server-side. If Vue accidentally compiles them
+    // away, this assertion fails and CI blocks the regression.
+    expect(html).toContain('{{email}}')
+    expect(html).toContain('href="{{settings_url}}"')
+    expect(html).not.toContain('href="undefined"')
+    expect(html).not.toContain('Sent to undefined')
+  })
+})
 ```
 
 - [ ] **Commit:** `git commit -am "feat(cluster-11): EmailShell + buildEmail with juice CSS inlining"`
