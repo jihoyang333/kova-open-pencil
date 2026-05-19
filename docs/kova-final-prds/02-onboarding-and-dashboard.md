@@ -47,7 +47,7 @@ User can: (1) complete the 4-step onboarding wizard from a fresh sign-up — bra
 
 **Dashboard chrome (dark):**
 - Vue Router: `/brand/:brandId` (home), `/brand/:brandId/recents` (alias for home active-nav state), `/brand/:brandId/calendar` (A12 "coming soon" — Phase 2 destination but route exists), `/brand/:brandId/products`, `/brand/:brandId/personalization` (placeholder), `/brand/:brandId/knowledge-base` (placeholder), `/brand/:brandId/memories` (placeholder)
-- Sidebar: brand-switch button (current brand + caret) → opens Reka DropdownMenu listing all active brands + "Manage brands" link (routes to `/account/brands` — B12 page, MVP per 2026-05-17 reversal, owned by PRD 03/04) + "New brand" affordance; search input (no Cmd+K shortcut — palette dropped per 00g 2026-05-17); nav sections (Home, Library, Brand) with "SOON" pill on Phase-2 destinations (Calendar, Swipes, Templates) but **NOT on the Brands item** (Brands ships visible at MVP per §12.11 Part B RESOLVED 2026-05-17); side-footer with avatar + name + plan + more dropdown
+- Sidebar: brand-switch button (current brand + caret) → opens Reka DropdownMenu listing all active brands + "Manage brands" link (routes to `/account/brands` — B12 page, MVP per 2026-05-17 reversal, owned by PRD 03/04) + "New brand" affordance; search input (no Cmd+K shortcut — palette dropped per 00g 2026-05-17); nav sections (Home, Library, Brand) with "SOON" pill on every nav row whose route renders `ComingSoonView` — **Calendar, Swipes, Templates, Products, Personalization, Knowledge Base, Memories** (7 items, matching the 7 ComingSoon route registrations in §6.1) — but **NOT on the Brands item** (Brands ships visible at MVP per §12.11 Part B RESOLVED 2026-05-17 — A-LOW5 reconciles sidebar list with route map); side-footer with avatar + name + plan + more dropdown
 - Topbar: breadcrumb (Brand → current page), "New canvas" button
 - Content pane: greeting ("Good morning/afternoon/evening, {Name}"), composer hero (AI input + 5 preset chips + "Generate on canvas" CTA), Recent files section header (sort dropdown + grid/list view toggle), file grid (4 columns at 1440px, responsive collapse to 2 at <1024 — but viewport guard from Cluster 01 catches <1024 first)
 
@@ -768,7 +768,7 @@ Every line testable in code or browser. No "feels right."
 - [ ] Dropdown "Manage brands" item routes to `/account/brands` (Cluster 03/04 owns the page)
 - [ ] Sidebar `.side-search` renders as plain search input (no Cmd+K shortcut binding — palette dropped per 00g 2026-05-17)
 - [ ] Sidebar nav sections (Home / Library / Brand) render with correct items + active highlight per current route
-- [ ] Sidebar nav "Calendar" / "Swipes" / "Templates" items show `SOON` pill (9px font, neutral pill)
+- [ ] Sidebar nav rows whose route renders `ComingSoonView` show `SOON` pill (9px font, neutral pill). 7 items total per §6.1 route map: Calendar, Swipes, Templates, Products, Personalization, Knowledge Base, Memories (A-LOW5 reconciliation 2026-05-19).
 - [ ] Sidebar nav "Brands" item ships visible at MVP with NO `SOON` pill (§12.11 Part B RESOLVED 2026-05-17 — PRD 03 owns the `/account/brands` page content)
 - [ ] Sidebar `.side-footer` shows avatar (user initials), name, plan label ("Free plan" / "Pro plan" — reads `users.plan` if present, else "Free")
 - [ ] Sidebar footer "more" button opens `AccountMenu` (existing) — items: Account · Help · Shortcuts · Sign out (per Q16)
