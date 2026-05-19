@@ -648,9 +648,10 @@ describe('usePreferencesStore', () => {
     expect(rpcCalls.length).toBe(0)  // still in debounce window
     await new Promise((r) => setTimeout(r, 1100))
     expect(rpcCalls.length).toBe(1)
+    // C-HIGH13: assert the RPC receives the raw value, NOT a pre-stringified one.
     expect(rpcCalls[0].args).toEqual({
       p_path: ['accessibility'],
-      p_value: JSON.stringify({ textSize: 'large', reduceMotion: false, highContrast: false }),
+      p_value: { textSize: 'large', reduceMotion: false, highContrast: false },
     })
   })
 
@@ -661,10 +662,23 @@ describe('usePreferencesStore', () => {
     await new Promise((r) => setTimeout(r, 1100))
     expect(rpcCalls[0].args).toEqual({
       p_path: ['view', 'showRuler'],
-      p_value: JSON.stringify(true),
+      p_value: true,
     })
     expect(store.prefs.view.showRuler).toBe(true)
     expect(store.prefs.view.showLayoutGuide).toBe(true)  // untouched default
+  })
+
+  // C-HIGH13 regression — round-trip a string preference and assert the
+  // stored value equals the input (NOT the double-quoted '"large"').
+  test('round-trips string preference without double-encoding', async () => {
+    const store = usePreferencesStore()
+    await store.load()
+    store.setPath(['accessibility', 'textSize'], 'large')
+    await new Promise((r) => setTimeout(r, 1100))
+    expect(rpcCalls[0].args.p_value).toBe('large')
+    expect(typeof rpcCalls[0].args.p_value).toBe('string')
+    // NOT '"large"' (would be the double-encoded form supabase-js would
+    // round-trip back as the literal 6-character string '"large"').
   })
 
   test('hasExplicitAccessibilityKey reports server-supplied keys', async () => {
@@ -734,9 +748,12 @@ export const usePreferencesStore = defineStore('preferences', () => {
 
   const debouncedWrite = useDebounceFn(
     async (path: string[], value: unknown): Promise<void> => {
+      // C-HIGH13: supabase-js auto-JSON-encodes RPC args. Pre-stringifying
+      // double-encodes — 'large' would round-trip back as the 7-character
+      // string '"large"' instead of the 5-character 'large'.
       const { error } = await supabase.rpc('update_user_pref', {
         p_path: path,
-        p_value: JSON.stringify(value),
+        p_value: value,
       })
       if (error) loadError.value = error as unknown as Error
     },
@@ -1000,9 +1017,10 @@ beforeEach(async () => {
 
 describe('update_user_pref RPC', () => {
   test('writes a top-level slice', async () => {
+    // C-HIGH13: pass raw object — supabase-js auto-JSON-encodes RPC args.
     const { error } = await userAClient.rpc('update_user_pref', {
       p_path: ['accessibility'],
-      p_value: JSON.stringify({ textSize: 'large', reduceMotion: true, highContrast: false }),
+      p_value: { textSize: 'large', reduceMotion: true, highContrast: false },
     })
     expect(error).toBeNull()
 
@@ -1021,7 +1039,7 @@ describe('update_user_pref RPC', () => {
   test('create_missing := true allows deep first-write', async () => {
     const { error } = await userAClient.rpc('update_user_pref', {
       p_path: ['notifications', 'productUpdates'],
-      p_value: JSON.stringify(false),
+      p_value: false,
     })
     expect(error).toBeNull()
 
@@ -1038,11 +1056,11 @@ describe('update_user_pref RPC', () => {
   test('writes to disjoint paths preserve siblings', async () => {
     await userAClient.rpc('update_user_pref', {
       p_path: ['view', 'showRuler'],
-      p_value: JSON.stringify(true),
+      p_value: true,
     })
     await userAClient.rpc('update_user_pref', {
       p_path: ['view', 'showLayoutGuide'],
-      p_value: JSON.stringify(false),
+      p_value: false,
     })
     const { data } = await serviceClient
       .from('users')
@@ -1059,7 +1077,7 @@ describe('update_user_pref RPC', () => {
     const anonClient = createClient(URL, ANON, { auth: { persistSession: false } })
     const { error } = await anonClient.rpc('update_user_pref', {
       p_path: ['accessibility', 'textSize'],
-      p_value: JSON.stringify('large'),
+      p_value: 'large',
     })
     expect(error).not.toBeNull()
   })

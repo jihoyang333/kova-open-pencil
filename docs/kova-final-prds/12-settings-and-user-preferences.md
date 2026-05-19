@@ -356,9 +356,12 @@ export const usePreferencesStore = defineStore('preferences', () => {
 
   const debouncedWrite = useDebounceFn(
     async (path: string[], value: unknown): Promise<void> => {
+      // C-HIGH13: pass `value` directly — supabase-js auto-encodes RPC args
+      // as JSON. Pre-stringifying double-encodes: e.g. 'large' → '"large"',
+      // which then round-trips back as the string '"large"' instead of 'large'.
       const { error } = await supabase.rpc('update_user_pref', {
         p_path: path,
-        p_value: JSON.stringify(value),
+        p_value: value,
       })
       if (error) {
         loadError.value = error as Error
