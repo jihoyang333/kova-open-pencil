@@ -269,16 +269,17 @@ CREATE INDEX IF NOT EXISTS idx_gdpr_queue_pending
   ON public.gdpr_deletion_queue(status, queued_at)
   WHERE status IN ('pending', 'in_progress');
 
-COMMENT ON TABLE public.gdpr_deletion_queue IS
-  'Step-by-step retry log for the GDPR delete-account cascade. One row per (user_id, step). Cron walks pending+in_progress rows daily; terminal failure caps at attempts >= 5.';
-
 ALTER TABLE public.gdpr_deletion_queue ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY gdpr_queue_service_only
-  ON public.gdpr_deletion_queue
-  FOR ALL
-  TO service_role
-  USING (true) WITH CHECK (true);
+-- No authenticated policy by design — RLS denies the authenticated/anon roles
+-- by default. service_role bypasses RLS at the role level, so a permissive
+-- "FOR ALL TO service_role USING (true)" policy is a no-op; documenting the
+-- access model via COMMENT instead keeps the schema readable without
+-- littering pg_policies with redundant rows.
+COMMENT ON TABLE public.gdpr_deletion_queue IS
+  E'Step-by-step retry log for the GDPR delete-account cascade. '
+  'One row per (user_id, step). Cron walks pending+in_progress rows daily; '
+  'terminal failure caps at attempts >= 5. '
+  'Access: service_role only (RLS bypassed by role); authenticated has no policy → deny by default.';
 
 -- ---- 3. RPCs ----
 
