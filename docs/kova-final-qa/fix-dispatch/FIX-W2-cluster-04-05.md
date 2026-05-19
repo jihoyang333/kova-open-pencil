@@ -1,8 +1,10 @@
 # Wave 2 — Cluster 04 (Account + Stripe Billing) + Cluster 05 (Brand Kit Panel) Bundle Fix Agent
 
 **Status:** READY TO DISPATCH (paste into fresh Claude Code session)
-**Prerequisite:** Wave 1 merged.
-**Working directory:** `/Users/jihoyang/kova-main/kova-open-pencil-1/`
+**Prerequisite:** Wave 1 merged. Verify with `git log --oneline feat/m9-shopify | grep "Merge W1"`.
+**Working directory:** `/Users/jihoyang/kova-main/kova-open-pencil-1/` — the INNER repo. Do NOT work in the outer `~/kova-main/` repo.
+**Base branch:** `feat/m9-shopify` — branch off its CURRENT HEAD. Do NOT branch off `master` or `main`.
+**Worktrees:** FORBIDDEN. Do NOT run `git worktree add`. Work directly in `kova-open-pencil-1/` on a new branch off `feat/m9-shopify`.
 **Branch to create:** `fix/qa-w2-cluster-04-05-stripe-brand-kit`
 **Estimated wall-clock:** 1 day
 **Output PR title:** `fix(qa-w2-cluster-04-05): account/Stripe + brand-kit-panel — 26 findings`

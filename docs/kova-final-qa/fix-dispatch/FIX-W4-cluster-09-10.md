@@ -1,8 +1,10 @@
 # Wave 4 — Cluster 09 (Version History) + Cluster 10 (AI Chat + Memory) Bundle Fix Agent
 
 **Status:** READY TO DISPATCH (paste into fresh Claude Code session)
-**Prerequisite:** Wave 3 merged.
-**Working directory:** `/Users/jihoyang/kova-main/kova-open-pencil-1/`
+**Prerequisite:** Wave 3 merged. Verify with `git log --oneline feat/m9-shopify | grep "Merge W3"`.
+**Working directory:** `/Users/jihoyang/kova-main/kova-open-pencil-1/` — the INNER repo. Do NOT work in the outer `~/kova-main/` repo.
+**Base branch:** `feat/m9-shopify` — branch off its CURRENT HEAD. Do NOT branch off `master` or `main`.
+**Worktrees:** FORBIDDEN. Do NOT run `git worktree add`. Work directly in `kova-open-pencil-1/` on a new branch off `feat/m9-shopify`.
 **Branch to create:** `fix/qa-w4-cluster-09-10-snapshots-ai`
 **Estimated wall-clock:** 1 day
 **Output PR title:** `fix(qa-w4-cluster-09-10): version-history + AI chat — 27 findings`

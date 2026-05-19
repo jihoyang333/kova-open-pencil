@@ -1,8 +1,10 @@
 # Wave 1 — Cluster 01 (Auth/Onboarding/Shopify) + Cluster 12 (Settings/Prefs) Bundle Fix Agent
 
 **Status:** READY TO DISPATCH (paste into fresh Claude Code session)
-**Prerequisite:** Wave 0 contracts merged. Coordinate with Wave 1 Cluster 11 agent (run in parallel; do NOT consume audit_log until Cluster 11 ships the table).
-**Working directory:** `/Users/jihoyang/kova-main/kova-open-pencil-1/`
+**Prerequisite:** Wave 0 contracts merged. Verify with `git log --oneline feat/m9-shopify | grep "Merge W0 contracts"`. Coordinate with Wave 1 Cluster 11 agent (run in parallel; do NOT consume audit_log until Cluster 11 ships the table).
+**Working directory:** `/Users/jihoyang/kova-main/kova-open-pencil-1/` — the INNER repo. Do NOT work in the outer `~/kova-main/` repo.
+**Base branch:** `feat/m9-shopify` — branch off its CURRENT HEAD. Do NOT branch off `master` or `main`.
+**Worktrees:** FORBIDDEN. Do NOT run `git worktree add`. Work directly in `kova-open-pencil-1/` on a new branch off `feat/m9-shopify`.
 **Branch to create:** `fix/qa-w1-cluster-01-12-auth-settings`
 **Estimated wall-clock:** 1 day
 **Output PR title:** `fix(qa-w1-cluster-01-12): auth/onboarding/shopify + settings — 23 findings`

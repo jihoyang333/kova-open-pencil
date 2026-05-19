@@ -1,8 +1,10 @@
 # Wave 3 — Canvas Bundle (Cluster 06 + 07a + 07b + 08) Fix Agent
 
 **Status:** READY TO DISPATCH (paste into fresh Claude Code session)
-**Prerequisite:** Wave 2 merged.
-**Working directory:** `/Users/jihoyang/kova-main/kova-open-pencil-1/`
+**Prerequisite:** Wave 2 merged. Verify with `git log --oneline feat/m9-shopify | grep "Merge W2"`.
+**Working directory:** `/Users/jihoyang/kova-main/kova-open-pencil-1/` — the INNER repo. Do NOT work in the outer `~/kova-main/` repo.
+**Base branch:** `feat/m9-shopify` — branch off its CURRENT HEAD. Do NOT branch off `master` or `main`.
+**Worktrees:** FORBIDDEN. Do NOT run `git worktree add`. Work directly in `kova-open-pencil-1/` on a new branch off `feat/m9-shopify`.
 **Branch to create:** `fix/qa-w3-canvas-bundle`
 **Estimated wall-clock:** 1.5 days
 **Output PR title:** `fix(qa-w3-canvas): canvas chrome + engine + inspector + menus — 31 findings`

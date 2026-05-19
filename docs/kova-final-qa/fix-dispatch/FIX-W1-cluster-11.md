@@ -1,8 +1,10 @@
 # Wave 1 — Cluster 11 (Shared UI Infrastructure) Fix Agent
 
 **Status:** READY TO DISPATCH (paste into fresh Claude Code session)
-**Prerequisite:** Wave 0 contracts must be merged first.
-**Working directory:** `/Users/jihoyang/kova-main/kova-open-pencil-1/`
+**Prerequisite:** Wave 0 contracts must be merged first. Verify with `git log --oneline feat/m9-shopify | grep "Merge W0 contracts"` — must return a hit before you start. Current expected HEAD: `1c6daede` (or later if other waves landed).
+**Working directory:** `/Users/jihoyang/kova-main/kova-open-pencil-1/` — the INNER repo. Do NOT work in the outer `~/kova-main/` repo.
+**Base branch:** `feat/m9-shopify` — branch off its CURRENT HEAD. Do NOT branch off `master` or `main`. The W0 work + all prior PRD/plan authoring lives on `feat/m9-shopify`, not on `master`.
+**Worktrees:** FORBIDDEN. Do NOT run `git worktree add`. Do NOT spawn a worktree to "isolate" your work. Work directly in `kova-open-pencil-1/` on a new branch off `feat/m9-shopify`. The whole point of the cluster-isolation design is that your branch already isolates you.
 **Branch to create:** `fix/qa-w1-cluster-11-shared-infra`
 **Estimated wall-clock:** 1 day
 **Output PR title:** `fix(qa-w1-cluster-11): ship audit_log + KovaIcon + verifyIdempotency hash + 12 other findings`
