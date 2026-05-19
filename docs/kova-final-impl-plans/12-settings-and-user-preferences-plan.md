@@ -1854,52 +1854,21 @@ from any context (Profile, main menu, etc)."
 
 ---
 
-## Task 14: Cluster 04 integration handoff (Profile section mount)
+## Task 14: Cluster 04 mount — forward-pointer (no Plan 12 code; see Plan 04 Task 8.1)
 
-> **Coordination, not implementation.** Cluster 04 mounts `<AccessibilityPanel>` + `<NotificationsPanel>` inside its Profile section component. This task is a stub PR-comment / handoff note when Cluster 04's plan reaches its Profile-section task.
+> **Owned by Cluster 04.** Plan 12 produces the panels (Task 10 `<AccessibilityPanel>` + Task 11 `<NotificationsPanel>`) — Cluster 04 mounts them inside `<ProfileSection>`. The mount itself is documented in `docs/kova-final-impl-plans/04-account-and-stripe-billing-plan.md` Task 8.1 (Cluster 04 dependency block, C-LOW12.6 ratification).
 
-**Files:**
-- (no new files — coordinate via PRD 04 plan)
+**Files:** none in this plan. No commits in Plan 12 for Task 14.
 
-- [ ] **Step 1: Add a handoff note to PRD 04 plan**
+**Verification:** when both clusters have landed, confirm `<ProfileSection>` in
+`src/views/account/sections/ProfileSection.vue` imports both panels from
+`@/components/settings/*` and renders them in Accessibility + Notifications
+section slots.
 
-Open `kova-open-pencil-1/docs/kova-final-impl-plans/04-account-and-stripe-billing-plan.md` and append at the Profile-section task:
-
-```markdown
-**Cluster 12 dependency:** import + slot `<AccessibilityPanel>` and `<NotificationsPanel>`:
-
-\`\`\`vue
-<script setup lang="ts">
-import AccessibilityPanel from '@/components/settings/AccessibilityPanel.vue'
-import NotificationsPanel from '@/components/settings/NotificationsPanel.vue'
-</script>
-
-<template>
-  <!-- existing Identity rows -->
-  <section class="s-section">
-    <h2>Accessibility</h2>
-    <p class="desc">Saved to your user preferences. Same controls also reachable from main menu → Preferences → Accessibility (A8.3).</p>
-    <AccessibilityPanel />
-  </section>
-  <section class="s-section">
-    <h2>Notifications</h2>
-    <NotificationsPanel />
-  </section>
-\`\`\`
-
-The Profile save-bar governs Identity fields only — Accessibility + Notifications rows apply immediately via their own store, bypassing the save-bar.
-```
-
-- [ ] **Step 2: Commit**
-
-```bash
-git add ../kova-open-pencil-1/docs/kova-final-impl-plans/04-account-and-stripe-billing-plan.md
-git commit -m "docs(prefs): hand off AccessibilityPanel + NotificationsPanel mount to PRD 04 plan
-
-Profile section in /account/profile imports both panels. Save-bar
-scopes to Identity fields; Accessibility + Notifications apply
-immediately."
-```
+This task body previously contained the full mount code as an "appended
+handoff" to Plan 04 (C-LOW12.6). The handoff has been promoted into Plan 04
+Task 8.1 verbatim; Plan 12 keeps this stub as a navigational forward-pointer
+so future readers don't search for a real task body that doesn't exist.
 
 ---
 
