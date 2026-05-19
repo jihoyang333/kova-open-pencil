@@ -4,11 +4,11 @@
 
 | Field | Value |
 |---|---|
-| **Status** | `DRAFT` 2026-05-15 |
+| **Status** | `IN-REVIEW` 2026-05-17 |
 | **Wave** | 5 (engine) |
 | **Author** | Claude (Opus 4.7) |
 | **Reviewer** | Jiho Yang (founder) |
-| **Last updated** | 2026-05-15 |
+| **Last updated** | 2026-05-17 |
 | **Depends on PRDs** | 06 (Canvas Editor Core Chrome — hosts the engine), 11 (Shared UI Infrastructure — toast variant taxonomy for engine error surfacing) |
 | **Blocks PRDs** | 07b (Canvas Engine Inspector + Overlays — wires inspector UI + B8.x overlays on top of the engine surface this PRD ships), 08 (Menus + Shortcuts — keyboard registry consumes the new tool slots), 09 (Version History — snapshots depend on the stable serialized scene graph this PRD bumps), 10 (AI Chat + Tools — AI tool registry consumes the new NodeTypes + scaleNode) |
 | **Source artifacts** | Hi-fi: 2 files (Canvas-Final + Hi-Fi 09 Canvas Overlays — visual reference only; 07b owns rendering UI). 03 doc: §2.7 Canvas-engine extensions (33 rows; §3C #1a + #1b only). Q-decisions: Q1, Q2, Q3 (#1, #2, #3, #4, #5, #6, #10 — engine-side), Q11. Audit §2.A Cluster 07 lines 1614–1683 items 1–8 (with #9–#11 re-scoped into 07a per §12.1 — see divergence note). Founder ratifications: Q4 lift-the-lock policy (00c §895), 07 split decision (00d §3.A D-10, 00-PRD_SCOPE_PLAN §5.6 item 10). |
