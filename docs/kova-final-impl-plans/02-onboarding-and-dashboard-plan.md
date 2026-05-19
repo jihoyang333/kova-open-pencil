@@ -1301,9 +1301,11 @@ export function useOnboarding() {
     }
   }
 
-  return { step, next, prev, complete, canProceed, isFinishing, finishError, persistDraft, restoreDraft }
+  return { state, step, next, prev, complete, canProceed, isFinishing, finishError, persistDraft, restoreDraft }
 }
 ```
+
+> **C-HIGH3 contract note:** `useOnboarding()` is the single entry point for the wizard. `state` (brand data refs from the M9-era `useOnboardingState` singleton) is exposed on the return so step components can grab it directly without `inject()`. Do NOT introduce `provide('onboardingState', ...)` or `inject('onboardingState')` anywhere — that path is retired.
 
 - [ ] **Step 4: Run test — PASS**
 
@@ -1431,10 +1433,11 @@ describe('BrandIdentityStep', () => {
 
 ```vue
 <script setup lang="ts">
-import { computed, inject } from 'vue'
+import { computed } from 'vue'
 import { useLogoFetch } from '@/composables/use-logo-fetch'
+import { useOnboarding } from '@/composables/use-onboarding'
 
-const state = inject('onboardingState') as ReturnType<typeof import('@/composables/useOnboardingState').useOnboardingState>
+const { state } = useOnboarding()
 const { logoUrl, isFetching, manualOverride } = useLogoFetch(state.brandUrl)
 
 const monogram = computed(() => state.brandName.value.trim().charAt(0).toUpperCase() || '?')
@@ -1828,18 +1831,16 @@ describe('OnboardingView', () => {
 
 ```vue
 <script setup lang="ts">
-import { computed, onMounted, provide } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useOnboarding } from '@/composables/use-onboarding'
-import { useOnboardingState } from '@/composables/useOnboardingState'
 
 import BrandIdentityStep from '@/components/onboarding/BrandIdentityStep.vue'
 import StoreTypeStep from '@/components/onboarding/StoreTypeStep.vue'
 import BrandKitStep from '@/components/onboarding/BrandKitStep.vue'
 import SplashStep from '@/components/onboarding/SplashStep.vue'
 
-const state = useOnboardingState()
-provide('onboardingState', state)
 const wizard = useOnboarding()
+const { state } = wizard
 
 onMounted(() => wizard.restoreDraft())
 
