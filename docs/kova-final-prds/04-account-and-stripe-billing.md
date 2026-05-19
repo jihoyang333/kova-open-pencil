@@ -1353,6 +1353,7 @@ Per `feedback_browser_smoke_test_before_done` memory — required before claimin
 - **Secret grep:** `grep -rE "VITE_STRIPE_SECRET_KEY|VITE_STRIPE_WEBHOOK_SECRET" .` returns 0 results
 - **Migration check:** `supabase db diff --schema public` returns clean (no untracked schema drift)
 - Stripe webhook latency test: `stripe trigger customer.subscription.created` followed by SELECT from `users` within 10s shows updated `plan` (smoke against staging)
+- **`access_token=` grep (CT-019):** `! grep -rnE "access_token=" kova-open-pencil-1/src/ kova-open-pencil-1/api/` — any literal `access_token=` query-string assignment is a launch-blocker post-M9. Mirrors PRD 02 §9.5. Wired into CI via `.github/workflows/qa-grep.yml` — a non-zero hit blocks merge.
 
 ---
 
