@@ -1229,7 +1229,13 @@ export async function runStep({ supabase, userId, idempotencyKey }: StepArgs): P
       })
     }
     if (user.stripe_customer_id) {
-      await stripe.customers.del(user.stripe_customer_id, { idempotencyKey: `${idempotencyKey}:cus-del` } as any)
+      // stripe-node signature: del(id, params, options). Idempotency lives in
+      // the THIRD arg (RequestOptions), not the second. The previous form
+      // (single-object as `params`) silently dropped the idempotency key and
+      // tripped the founder lock #10 `as any` ban.
+      await stripe.customers.del(user.stripe_customer_id, undefined, {
+        idempotencyKey: `${idempotencyKey}:cus-del`,
+      })
     }
   } catch (err: any) {
     if (err?.code === 'resource_missing') {
