@@ -2090,7 +2090,7 @@ const searchQuery = ref('')
   <aside class="sidebar">
     <BrandSwitcher :current-brand="currentBrand"
                    @select="(id) => router.push(`/brand/${id}`)"
-                   @new-brand="() => { /* TODO: opens Cluster 03 modal */ }"
+                   @new-brand="() => { /* TODO(cluster-03): wire BrandModal via useBrandModalStore once Cluster 03 ships */ }"
                    @manage-brands="() => router.push('/account/brands')" />
     <label class="side-search">
       <icon-lucide-search class="w-3 h-3" />
