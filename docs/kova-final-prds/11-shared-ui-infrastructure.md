@@ -1088,6 +1088,8 @@ Acknowledged + enforced in this PRD:
 
 **Reversibility:** HARD-ish — every consuming cluster encodes the name; migrating would require coordinated PRs. But: ratifying now (before consumers ship) is cheap. The HARD-ish class is *future*, not present.
 
+**Closure (C-MED-11.6, 2026-05-19 W1 dispatch):** RESOLVED. Plan 11 Task 9.5 ships the M9 channel-name migration `sync-progress-${brandId}` → `kova.{userId}.shopify.{brandId}.sync`. Single client-side callsite at `src/composables/use-shopify-connection.ts:155`. No server-side change required — Supabase Realtime `postgres_changes` events are delivered by filter, not by channel name; channel name is a subscriber-side namespace. CI grep gate added under Plan 11 Task 11.x verifies no `sync-progress-` literals remain in `src/` after the migration lands.
+
 ### 12.6 RISK (Low) — `<EmailShell>` rendering drift across email clients
 
 Email clients vary wildly in CSS support. Inlining via `juice` handles most cases, but `<style>` blocks, `@media` queries, and `position` are unreliable across Outlook 2016 / Outlook 365 / Gmail / Apple Mail / Yahoo / mobile clients.

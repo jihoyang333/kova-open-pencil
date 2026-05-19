@@ -3329,6 +3329,75 @@ async function tryDelete() {
 
 ---
 
+### Task 9.5: M9 Shopify Realtime channel migration (C-MED-11.6)
+
+**Files:**
+- Modify: `kova-open-pencil-1/src/composables/use-shopify-connection.ts` (line 155)
+- Modify: any future M9 callsite invoking `supabase.channel('sync-progress-...')` (none known beyond the composable; verify via grep at exec time)
+
+**Background:** M9 shipped `supabase.channel(\`sync-progress-${brandId}\`)` before the
+Cluster 11 Realtime channel convention was ratified. PRD 11 §12.5 KD-5 locks
+the format to `kova.{userId}.{domain}.{topic}`. M9 must rename its channel
+to `kova.{userId}.shopify.{brandId}.sync` so the CI grep gate (Task 11.x)
+passes and Supabase Dashboard inspection follows the namespace convention.
+
+**Why this is safe at the wire:** Supabase Realtime delivers `postgres_changes`
+events by filter (table + filter clause), not by channel name. Channel names
+are subscriber-side namespaces only. Renaming changes nothing about which
+rows trigger which clients — only the string a developer sees in Supabase
+Dashboard / debugger.
+
+- [ ] **Step 1: Resolve userId in the composable.**
+
+```typescript
+// src/composables/use-shopify-connection.ts (around line 49)
+import { supabase } from '@/lib/supabase'
+
+export function useShopifyConnection(brandId: string): UseShopifyConnection {
+  // ...
+  let cachedUserId: string | null = null
+  async function getUserId(): Promise<string | null> {
+    if (cachedUserId) return cachedUserId
+    const { data } = await supabase.auth.getUser()
+    cachedUserId = data.user?.id ?? null
+    return cachedUserId
+  }
+  // ...
+}
+```
+
+- [ ] **Step 2: Make `subscribeToSyncProgress` async + rename channel (C-MED-11.6).**
+
+```typescript
+async function subscribeToSyncProgress(): Promise<void> {
+  syncChannel?.unsubscribe().catch(() => null)
+  const userId = await getUserId()
+  if (!userId) return  // not authed yet; caller should re-invoke after session ready
+  syncChannel = supabase
+    .channel(`kova.${userId}.shopify.${brandId}.sync`)
+    .on('postgres_changes', { /* unchanged filter */ }, (payload) => { /* unchanged handler */ })
+    .subscribe()
+}
+```
+
+- [ ] **Step 3: Update callers to await** (`IntegrationsCard.vue`, `SettingsBrandIntegrationsView.vue`). Both currently call `subscribeToSyncProgress()` fire-and-forget — wrap in an `void promise` or `await` inside an effect. No functional change beyond awaiting.
+
+- [ ] **Step 4: Grep verification.**
+
+```sh
+! grep -rnE "channel\(['\"]sync-progress" kova-open-pencil-1/src/
+```
+
+Must exit zero. CI grep gate (Plan 11 Task 11.x) enforces this thereafter.
+
+- [ ] **Step 5: Commit.**
+
+```sh
+git commit -am "fix(11): C-MED-11.6 rename sync-progress channel to kova.{userId}.shopify.{brandId}.sync"
+```
+
+---
+
 ## Phase 10 — E2E + Manual Smoke
 
 ### Task 10.1: E2E tests
