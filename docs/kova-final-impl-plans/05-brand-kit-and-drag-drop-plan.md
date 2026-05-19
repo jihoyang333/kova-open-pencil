@@ -2171,6 +2171,8 @@ git commit -m "feat(cluster-05): Vue Router — /account/brand-kit/:tab nested r
 
 ### Task 19: Component — BrandKitSection.vue + BrandKitSubNav.vue
 
+**Icon name lock (B-HIGH7 / B-HIGH17):** Do not pass icon names through `<component :is>`. unplugin-icons cannot statically resolve dynamic component names; the icon will fail to register at compile time and render as a literal text node ("i-lucide-palette") in the DOM. Always route icons through `<KovaIcon :name="<string>">` (Cluster 11 primitive). Tab definitions use a string `iconName` field — never an `iconComponent` prop, never an `i-lucide-...` class string. Verified via CI grep gate (see Phase 11 / Task 15.2).
+
 **Files:**
 - Create: `src/views/account/BrandKitSection.vue`
 - Create: `src/components/brand-kit/BrandKitSubNav.vue`
