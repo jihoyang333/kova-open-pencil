@@ -2283,6 +2283,14 @@ const brandKit = useBrandKitStore()
 // B-HIGH7 / B-HIGH17 — `iconName` is a STRING used by `<KovaIcon :name>` (Cluster 11 primitive).
 // Do NOT use `icon` as a class-string or pass it through `<component :is>` — unplugin-icons
 // cannot resolve dynamic icon component names at compile time. See "Icon name lock" below.
+//
+// B-LOW4 audit (2026-05-19) — Each `count: null` field below is annotated with a
+// `TODO(cluster-10)` comment referencing the future `useChatMemoriesStore` integration that
+// will source the count badges. This is acceptable cross-cluster stitch: per-tab badge counts
+// are deferred to Cluster 10's chat-memory rollup, not blocking on Cluster 05. The
+// `tone-snippets` and `saved-blocks` rows already source `count` from `useBrandKitStore` and
+// do not need a TODO marker — only fields that genuinely depend on Cluster 10 carry the
+// placeholder.
 const items = computed(() => [
   { key: 'visuals',        label: 'Visuals',        iconName: 'palette',      count: null /* TODO(cluster-10): wire real count once useChatMemoriesStore is shipped */ },
   { key: 'identity',       label: 'Identity',       iconName: 'user-circle',  count: null /* TODO(cluster-10): wire real count once useChatMemoriesStore is shipped */ },
