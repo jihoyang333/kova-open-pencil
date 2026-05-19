@@ -543,7 +543,15 @@ export const useUIStateStore = defineStore('ui-state', () => {
   const lastActiveCanvasId = useLocalStorage<string | null>('kova:ui:last-canvas', null)
   const fileGridViewMode = useLocalStorage<'grid' | 'list'>('kova:ui:file-grid-view', 'grid')
 
-  return { lastActiveBrandId, lastActiveCanvasId, fileGridViewMode }
+  // B-HIGH14: store mutations only via actions
+  function setLastActiveBrandId(id: string | null): void { lastActiveBrandId.value = id }
+  function setLastActiveCanvasId(id: string | null): void { lastActiveCanvasId.value = id }
+  function setFileGridViewMode(mode: 'grid' | 'list'): void { fileGridViewMode.value = mode }
+
+  return {
+    lastActiveBrandId, lastActiveCanvasId, fileGridViewMode,
+    setLastActiveBrandId, setLastActiveCanvasId, setFileGridViewMode,
+  }
 })
 ```
 
@@ -693,6 +701,7 @@ import { describe, test, expect, beforeEach } from 'bun:test'
 import { setActivePinia, createPinia } from 'pinia'
 import { useDashboardStore } from '@/stores/dashboard'
 import { useCanvasesStore } from '@/stores/canvases'
+import type { Canvas } from '@/types/kova/database'
 
 describe('useDashboardStore', () => {
   beforeEach(() => setActivePinia(createPinia()))
@@ -710,10 +719,10 @@ describe('useDashboardStore', () => {
     canvases.canvases = [
       { id: '1', name: 'Spring Drop', updated_at: '2026-05-10', created_at: '2026-05-01' },
       { id: '2', name: 'Welcome flow', updated_at: '2026-05-09', created_at: '2026-05-01' },
-    ] as any
+    ] as Canvas[]
     const store = useDashboardStore()
-    store.searchQuery = 'spring'
-    expect(store.filteredCanvases.map(c => c.id)).toEqual(['1'])
+    store.setSearchQuery('spring')
+    expect(store.filteredCanvases.map((c) => c.id)).toEqual(['1'])
   })
 
   test('filteredCanvases applies name sort', () => {
@@ -721,19 +730,25 @@ describe('useDashboardStore', () => {
     canvases.canvases = [
       { id: '1', name: 'Zebra', updated_at: '2026-05-10', created_at: '2026-05-01' },
       { id: '2', name: 'Alpha', updated_at: '2026-05-09', created_at: '2026-05-01' },
-    ] as any
+    ] as Canvas[]
     const store = useDashboardStore()
-    store.sortMode = 'name'
-    expect(store.filteredCanvases.map(c => c.name)).toEqual(['Alpha', 'Zebra'])
+    store.setSortMode('name')
+    expect(store.filteredCanvases.map((c) => c.name)).toEqual(['Alpha', 'Zebra'])
   })
 
   test('resetForBrand wipes search but preserves viewMode', () => {
     const store = useDashboardStore()
-    store.searchQuery = 'foo'
-    store.viewMode = 'list'
+    store.setSearchQuery('foo')
+    store.setViewMode('list')
     store.resetForBrand()
     expect(store.searchQuery).toBe('')
     expect(store.viewMode).toBe('list')
+  })
+
+  test('B-HIGH14: setSearchQuery is the only sanctioned mutation path', () => {
+    const store = useDashboardStore()
+    store.setSearchQuery('hello')
+    expect(store.searchQuery).toBe('hello')
   })
 })
 ```
@@ -1140,13 +1155,14 @@ export function useFileGrid(brandId: Ref<string>) {
     }
   }, { immediate: true })
 
-  const debouncedSetSearch = useDebounceFn((q: string) => { dash.searchQuery = q }, 200)
+  // B-HIGH14: mutate store state only via actions
+  const debouncedSetSearch = useDebounceFn((q: string) => dash.setSearchQuery(q), 200)
   function search(q: string): void { void debouncedSetSearch(q) }
 
-  function setSort(m: SortMode): void { dash.sortMode = m }
+  function setSort(m: SortMode): void { dash.setSortMode(m) }
   function setView(m: ViewMode): void {
-    dash.viewMode = m
-    ui.fileGridViewMode = m
+    dash.setViewMode(m)
+    ui.setFileGridViewMode(m)
   }
 
   const filtered = computed(() => dash.filteredCanvases)

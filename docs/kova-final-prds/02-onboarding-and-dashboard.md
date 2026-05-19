@@ -566,6 +566,12 @@ export const useDashboardStore = defineStore('dashboard', () => {
     return list  // 'recent' = sortedCanvases default (by updated_at desc)
   }
 
+  // Actions — per B-HIGH14 store mutations only happen via actions
+  function setSearchQuery(q: string): void { searchQuery.value = q }
+  function setSortMode(mode: SortMode): void { sortMode.value = mode }
+  function setViewMode(mode: ViewMode): void { viewMode.value = mode }
+  function setShowTrashed(flag: boolean): void { showTrashed.value = flag }
+
   // Reset on brand-switch
   function resetForBrand(): void {
     searchQuery.value = ''
@@ -574,7 +580,12 @@ export const useDashboardStore = defineStore('dashboard', () => {
     // viewMode preserved across brand switches (per-device pref)
   }
 
-  return { searchQuery, sortMode, viewMode, showTrashed, filteredCanvases, resetForBrand }
+  return {
+    searchQuery, sortMode, viewMode, showTrashed,
+    filteredCanvases,
+    setSearchQuery, setSortMode, setViewMode, setShowTrashed,
+    resetForBrand,
+  }
 })
 ```
 
@@ -594,8 +605,17 @@ export const useUIStateStore = defineStore('ui-state', () => {
   const lastActiveBrandId = useLocalStorage<string | null>('kova:ui:last-brand', null)
   const lastActiveCanvasId = useLocalStorage<string | null>('kova:ui:last-canvas', null)
   const fileGridViewMode = useLocalStorage<'grid' | 'list'>('kova:ui:file-grid-view', 'grid')
+
+  // B-HIGH14: store mutations only via actions
+  function setLastActiveBrandId(id: string | null): void { lastActiveBrandId.value = id }
+  function setLastActiveCanvasId(id: string | null): void { lastActiveCanvasId.value = id }
+  function setFileGridViewMode(mode: 'grid' | 'list'): void { fileGridViewMode.value = mode }
+
   // Cluster 12 will extend.
-  return { lastActiveBrandId, lastActiveCanvasId, fileGridViewMode }
+  return {
+    lastActiveBrandId, lastActiveCanvasId, fileGridViewMode,
+    setLastActiveBrandId, setLastActiveCanvasId, setFileGridViewMode,
+  }
 })
 ```
 
