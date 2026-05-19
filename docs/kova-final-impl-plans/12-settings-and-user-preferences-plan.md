@@ -1985,9 +1985,53 @@ opt-out persistence."
 **Files:**
 - Create: `supabase/functions/send-sync-alert/index.ts`
 - Create: `supabase/functions/send-sync-alert/index.test.ts`
-- Coordinate (do NOT create from this cluster): `supabase/functions/_shared/resend-client.ts` — owned by Cluster 01. If missing, stub locally then replace when Cluster 01 lands.
+- Coordinate (do NOT create from this cluster): `supabase/functions/_shared/resend-client.ts` — owned by Cluster 01. If missing, ship the Task 16.0 stub below and replace when Cluster 01 lands.
 
 **Reason:** Cluster 06's Yjs sync-retry hook calls `POST /functions/v1/send-sync-alert` after retry 3 fails (1s+5s+15s backoff = ~21s after first failure). This task ships the endpoint with the env-guard pattern (founder ratified 2026-05-17). Resend account setup deferred to pre-launch — endpoint must run without `RESEND_API_KEY` set.
+
+- [ ] **Step 16.0: Ship temporary `_shared/resend-client.ts` stub (C-HIGH14)**
+
+If `supabase/functions/_shared/resend-client.ts` does not exist yet (Cluster 01
+not landed), ship this stub so Task 16 imports compile. **The stub is removed
+the moment Cluster 01 ships the real client** — re-run Task 16 tests after
+swap to confirm wiring is intact.
+
+```typescript
+// supabase/functions/_shared/resend-client.ts (TEMPORARY STUB — C-HIGH14)
+// Remove + replace with Cluster 01's real client once that branch merges.
+// See: kova-open-pencil-1/docs/kova-final-impl-plans/01-auth-and-identity-plan.md Task 2 + Task 21.
+
+export interface SendEmailArgs {
+  to: string
+  subject: string
+  text?: string
+  html?: string
+  idempotencyKey?: string
+}
+
+export interface SendEmailResult {
+  id: string
+  skipped?: boolean
+}
+
+export async function sendEmail(args: SendEmailArgs): Promise<SendEmailResult> {
+  const apiKey = Deno.env.get('RESEND_API_KEY')
+  if (!apiKey) {
+    console.warn('[resend-client stub] RESEND_API_KEY unset — returning skipped:true', args.idempotencyKey)
+    return { id: 'stub-no-api-key', skipped: true }
+  }
+  // Stub never makes a real HTTP call — Cluster 01's client owns the actual
+  // Resend SDK wiring. Failing loudly forces the swap to happen.
+  throw new Error(
+    'resend-client stub invoked with RESEND_API_KEY set. Cluster 01 must ship the real client (Plan 01 Task 2.5) before this code path runs.'
+  )
+}
+```
+
+Coordinate with Cluster 11 CT-015 (Resend env-guard breadcrumb): the same
+stub pattern is used by Cluster 01 if the founder reaches launch with the
+Resend account still unprovisioned. See `project_external_accounts_deferred`
+memory.
 
 - [ ] **Step 1: Write failing test — `supabase/functions/send-sync-alert/index.test.ts`**
 
