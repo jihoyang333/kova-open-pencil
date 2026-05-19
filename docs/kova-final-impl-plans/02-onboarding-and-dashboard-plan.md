@@ -3929,8 +3929,8 @@ git commit -m "ci: add grep guards for access_token + light-theme drift; bundle-
 
 **Issues found during review:**
 - T28's relative-time util test boundary cases match the implementation conditionals.
-- T35 `useUIStateStore()` is called inside the template — must import at top of `<script setup>`. Fix during implementation.
-- T37 fetch headers for Bearer use nested promise — refactor to await session once. Fix during implementation.
+- T35 ~~`useUIStateStore()` is called inside the template — must import at top of `<script setup>`.~~ **RESOLVED 2026-05-19 by B-CRIT11 fix (commit `0181cefe`)** — T35/T33 import `useUIStateStore` at top of `<script setup>` and expose `fileGridViewMode` via a `computed()` proxy. No template-level store calls remain.
+- T37 ~~fetch headers for Bearer use nested promise — refactor to await session once.~~ **RESOLVED 2026-05-19 by B-CRIT10 fix (commit `29ffc47c`)** — T37's `onNotifyMe` awaits `supabase.auth.getSession()` once before composing the `Bearer` header. Test asserts `Authorization: Bearer <known-token>` literally.
 
 ---
 
