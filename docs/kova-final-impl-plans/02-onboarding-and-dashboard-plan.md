@@ -3899,6 +3899,14 @@ git commit -m "test(e2e): add E2E specs for onboarding wizard + dashboard intera
       exit 1
     fi
 
+- name: 'Tests: bun:test only (no jest/vitest leakage)'
+  run: |
+    # B-CRIT5 + B-HIGH8 regression guard
+    if grep -rnE '\b(jest|vi)\.(mock|fn|spyOn)\b|\bmockImplementation(Once)?\b|\bmockReturnValue(Once)?\b|\bmockClear\b|\bmockReset\b' tests/ src/; then
+      echo "❌ Vitest/Jest mock API found — use bun:test (mock.module / mock(fn))"
+      exit 1
+    fi
+
 - name: 'Bundle size budget'
   run: |
     bun run build
