@@ -735,6 +735,23 @@ Per W0-6 founder ratification (resolves CT-010 from `docs/kova-final-qa/CONSOLID
 - Plan 11 Task 11.6 ships a CI grep gate + `bun run check:test-framework` script. The gate is composed into `bun run check`, so any plan author writing a jest/vitest API receives an immediate fail.
 - Wave-2 cluster fix agents for 01 / 02 / 03 / 04 replace `jest.mock` / `vi.mock` / `mockImplementationOnce` with `bun:test` equivalents during their pass.
 
+### 6.4 Founder lock #10 (no `as any`, no `process.env.X!`) (W0-9 — 2026-05-19)
+
+Per W0-9 founder ratification (resolves CT-009 from `docs/kova-final-qa/CONSOLIDATED-TRIAGE.md` + QA-B HIGH-1 + HIGH-2), founder lock #10 is enforced across `src/` + `api/` + `supabase/functions/`:
+
+- **Zero `as any` casts.** QA-B HIGH-2 audit: ~214 occurrences across the plan corpus (49 in Plan 03, 41 in Plan 06, 17 in Plan 07b, balance scattered).
+- **Zero `process.env.X!` non-null assertions.** QA-B HIGH-1 audit: 24 occurrences.
+
+**Replacements:**
+
+- `process.env.X!` → `requireEnv('X')` — typed env-var accessor that throws on missing/empty (Plan 11 Task 1.3b). The helper at `api/_shared/env.ts` returns `string`, not `string | undefined`, so callers receive a non-nullable value without a non-null assertion.
+- `as any` → explicit type narrowing — `as MyType` after runtime check, `unknown` + valibot parse, type predicates (`function isFoo(x: unknown): x is Foo`), or refactor the caller to use the correct narrow type.
+
+**Consumer enforcement:**
+
+- Plan 11 Task 11.7 ships a CI grep gate + `bun run check:lock10` script composed into `bun run check`. Any new `as any` or `process.env.X!` in `src/` / `api/` / `supabase/functions/` immediately fails CI.
+- Wave-2/3 cluster fix agents (03 / 06 / 07b / others) replace existing `as any` casts during their pass; each commits its sweep separately.
+
 ---
 
 ## 7. Open questions per cluster
