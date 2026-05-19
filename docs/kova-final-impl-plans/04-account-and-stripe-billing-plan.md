@@ -3715,11 +3715,11 @@ git commit -m "test(04): 11 E2E specs covering Account page + Stripe + Integrati
 ### Task 15.2: CI grep gates
 
 **Files:**
-- Modify: `.github/workflows/ci.yml` OR `lefthook.yml` — add the 2 grep gates
+- Modify: `.github/workflows/ci.yml` OR `lefthook.yml` — add the 3 grep gates
 
-> Per PRD §9.5. Theme-drift + secret prefix.
+> Per PRD §9.5. Theme-drift + secret prefix + access_token leak (CT-019 / C-LOW04.6).
 
-- [ ] **Step 1**: add CI step
+- [ ] **Step 1**: add CI steps
 
 ```yaml
 - name: Theme-drift gate (Account page)
@@ -3734,13 +3734,19 @@ git commit -m "test(04): 11 E2E specs covering Account page + Stripe + Integrati
       echo "::error::Stripe server-only secret has VITE_ prefix"
       exit 1
     fi
+- name: access_token grep gate (CT-019 / C-LOW04.6)
+  run: |
+    if grep -rnE "access_token=" kova-open-pencil-1/src/ kova-open-pencil-1/api/; then
+      echo "::error::Literal access_token= found in source or API code — post-M9 must use Authorization header (PRD 02 §9.5 + PRD 04 §9.5)"
+      exit 1
+    fi
 ```
 
-- [ ] **Step 2**: commit + push; verify CI runs them green
+- [ ] **Step 2**: commit + push; verify CI runs all three gates green
 
 ```bash
 git add .github/workflows/ci.yml
-git commit -m "ci(04): add theme-drift + Stripe secret-prefix gates"
+git commit -m "ci(04): add theme-drift + Stripe secret-prefix + access_token gates"
 ```
 
 ---
