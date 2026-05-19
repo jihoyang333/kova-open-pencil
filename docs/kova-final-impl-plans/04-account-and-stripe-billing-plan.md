@@ -2469,7 +2469,35 @@ describe('AccountView', () => {
 
 > Per PRD §6.4.1 + §3.2. Renders name + avatar + email + accessibility + notification + timezone rows. Wires `useEmailChange` from Cluster 01.
 
-- [ ] **Step 1: Write tests** for each row: name edit + dirty pill; avatar button → file picker; email "Change…" triggers cluster-01 composable; timezone select renders 440+ IANA strings.
+**Cluster 12 dependency (C-LOW12.6):** mount `<AccessibilityPanel>` and
+`<NotificationsPanel>` inside this section. Cluster 12 owns the panel
+components + store wiring; Cluster 04 owns the section composition.
+
+```vue
+<script setup lang="ts">
+import AccessibilityPanel from '@/components/settings/AccessibilityPanel.vue' // Cluster 12 Task 10
+import NotificationsPanel from '@/components/settings/NotificationsPanel.vue' // Cluster 12 Task 11
+</script>
+
+<template>
+  <!-- Identity rows: name + avatar + email + timezone (this PRD's content) -->
+  <section class="s-section">
+    <h2>Accessibility</h2>
+    <p class="desc">Saved to your user preferences. Same controls also reachable from main menu → Preferences → Accessibility (A8.3).</p>
+    <AccessibilityPanel />
+  </section>
+  <section class="s-section">
+    <h2>Notifications</h2>
+    <NotificationsPanel />
+  </section>
+</template>
+```
+
+The Profile save-bar governs Identity fields only — Accessibility +
+Notifications rows apply immediately via `usePreferencesStore` (Cluster 12),
+bypassing the save-bar.
+
+- [ ] **Step 1: Write tests** for each row: name edit + dirty pill; avatar button → file picker; email "Change…" triggers cluster-01 composable; timezone select renders 440+ IANA strings; AccessibilityPanel + NotificationsPanel render slot.
 
 - [ ] **Step 2 → 5**: TDD per pattern. Implementation cites PRD §3.2 copy strings verbatim.
 

@@ -69,11 +69,11 @@
 - `src/views/legal/PrivacyPolicyView.vue`
 - `src/views/legal/TermsView.vue`
 
-**Email templates (Resend):**
-- `emails/account/account-deletion-scheduled.html`
-- `emails/account/account-deletion-completed.html`
-- `emails/account/account-restored.html`
-- `emails/auth/email-change-notification-to-old.html`
+**Email renderers (compose Cluster 11 `<EmailShell>` via `renderEmail()`):**
+- `api/emails/account-deletion-scheduled.ts`
+- `api/emails/account-deletion-completed.ts`
+- `api/emails/account-restored.ts`
+- `api/emails/email-change-notification-to-old.ts`
 
 **Legal + compliance docs:**
 - `docs/legal/privacy-policy.md`
@@ -140,6 +140,17 @@ Expected: ZERO new errors. If pre-existing errors exist, snapshot the count befo
 git add package.json bun.lockb
 git commit -m "chore(auth): add resend + zod deps for Cluster 01 PRD"
 ```
+
+---
+
+## Conventions
+
+**SECURITY DEFINER search_path (founder lock #15, B-MED1):** every Postgres function declared
+`SECURITY DEFINER` in this plan MUST include `SET search_path = public, pg_temp`. The
+two-schema form is intentionally preferred over the single-quoted `'public'` literal: it
+explicitly denies `pg_temp` schema-shadowing attacks (an attacker creating a function in
+their session-local `pg_temp` schema that masks a `public` function the DEFINER body
+calls). This convention is enforced by the W0-5 CI gate (`scripts/check-search-path.ts`).
 
 ---
 
@@ -233,9 +244,16 @@ CREATE INDEX IF NOT EXISTS idx_users_pending_deletion
   WHERE deleted_at IS NOT NULL;
 
 COMMENT ON COLUMN public.users.deleted_at IS
-  'GDPR soft-delete timestamp. Set by request_account_deletion(); cleared by restore_account() within 30 days; hard-deleted by delete-account-cron after 30 days.';
+  'GDPR soft-delete timestamp. Set by request_account_deletion(); cleared by restore_account() within 30 days; hard-deleted by delete-account-cron after 30 days. Column-level GRANTs deny authenticated read+write — see C-LOW01.5 RLS test.';
 COMMENT ON COLUMN public.users.preferences IS
   'Cross-device user preferences JSONB (Q5 Layer 1). Consumed by Cluster 12 usePreferencesStore.';
+
+-- C-LOW01.5: authenticated role must never SELECT or UPDATE users.deleted_at
+-- directly. The only valid mutation path is via the SECURITY DEFINER RPCs
+-- request_account_deletion() (sets) and restore_account() (clears within window).
+-- service_role retains full access for the cron hard-delete path.
+REVOKE UPDATE (deleted_at) ON public.users FROM authenticated;
+REVOKE SELECT (deleted_at) ON public.users FROM authenticated;
 
 -- ---- 2. gdpr_deletion_queue (cron retry state) ----
 
@@ -258,16 +276,17 @@ CREATE INDEX IF NOT EXISTS idx_gdpr_queue_pending
   ON public.gdpr_deletion_queue(status, queued_at)
   WHERE status IN ('pending', 'in_progress');
 
-COMMENT ON TABLE public.gdpr_deletion_queue IS
-  'Step-by-step retry log for the GDPR delete-account cascade. One row per (user_id, step). Cron walks pending+in_progress rows daily; terminal failure caps at attempts >= 5.';
-
 ALTER TABLE public.gdpr_deletion_queue ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY gdpr_queue_service_only
-  ON public.gdpr_deletion_queue
-  FOR ALL
-  TO service_role
-  USING (true) WITH CHECK (true);
+-- No authenticated policy by design — RLS denies the authenticated/anon roles
+-- by default. service_role bypasses RLS at the role level, so a permissive
+-- "FOR ALL TO service_role USING (true)" policy is a no-op; documenting the
+-- access model via COMMENT instead keeps the schema readable without
+-- littering pg_policies with redundant rows.
+COMMENT ON TABLE public.gdpr_deletion_queue IS
+  E'Step-by-step retry log for the GDPR delete-account cascade. '
+  'One row per (user_id, step). Cron walks pending+in_progress rows daily; '
+  'terminal failure caps at attempts >= 5. '
+  'Access: service_role only (RLS bypassed by role); authenticated has no policy → deny by default.';
 
 -- ---- 3. RPCs ----
 
@@ -343,6 +362,62 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.request_account_deletion() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.restore_account() TO authenticated;
+
+-- ---- 4. rate_limits (per-user-per-endpoint window counter) ----
+--
+-- B-CRIT8 fix: replaces the in-memory `Map` used in early Plan drafts. Serverless
+-- isolates cold-start with empty Maps, so the in-process cap was unenforceable
+-- under realistic invocation patterns. This table persists the counter across
+-- isolates; concurrent requests collapse safely via UPSERT (count = count + 1).
+-- A daily cron prunes rows where window_start < now() - 1 day.
+
+CREATE TABLE IF NOT EXISTS public.rate_limits (
+  user_id      uuid        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  endpoint     text        NOT NULL,
+  window_start timestamptz NOT NULL,
+  count        int         NOT NULL DEFAULT 1,
+  PRIMARY KEY (user_id, endpoint, window_start)
+);
+
+CREATE INDEX IF NOT EXISTS idx_rate_limits_window
+  ON public.rate_limits(window_start);
+
+COMMENT ON TABLE public.rate_limits IS
+  'Per-(user, endpoint, window_start) counter for Edge Function rate limiting. '
+  'Owned by Cluster 01; consumed by Cluster 01 (deletion-request, restore, '
+  'email-change-request) and any other Edge Function that needs a durable '
+  'cross-isolate cap. 1-day TTL via cron prune.';
+
+ALTER TABLE public.rate_limits ENABLE ROW LEVEL SECURITY;
+-- Service-role only. Authenticated has no policy → RLS denies by default.
+COMMENT ON TABLE public.rate_limits IS
+  'Service-role access only (RLS bypassed by role). No authenticated policy by design.';
+
+CREATE OR REPLACE FUNCTION public.bump_rate_limit(
+  p_user_id      uuid,
+  p_endpoint     text,
+  p_window_start timestamptz
+)
+RETURNS int
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_count int;
+BEGIN
+  INSERT INTO public.rate_limits (user_id, endpoint, window_start, count)
+  VALUES (p_user_id, p_endpoint, p_window_start, 1)
+  ON CONFLICT (user_id, endpoint, window_start)
+  DO UPDATE SET count = public.rate_limits.count + 1
+  RETURNING count INTO v_count;
+  RETURN v_count;
+END;
+$$;
+
+-- Service-role only — Edge Functions hit this via the service-role client.
+REVOKE ALL ON FUNCTION public.bump_rate_limit(uuid, text, timestamptz) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.bump_rate_limit(uuid, text, timestamptz) TO service_role;
 
 COMMIT;
 ```
@@ -424,6 +499,76 @@ describe('request_account_deletion + restore_account RPC behavior', () => {
     await admin.auth.admin.deleteUser(userId)
   })
 })
+
+// ============================================================================
+// C-LOW01.5: RLS guard around users.deleted_at
+// ============================================================================
+// The authenticated role must NEVER be able to forge a deletion-restore by
+// nulling its own deleted_at row via supabase-js. Only the SECURITY DEFINER
+// RPC restore_account() (which enforces the 30-day window) and service_role
+// (cron) may write users.deleted_at. The column should also be excluded from
+// the authenticated-role REST payload so client code doesn't accidentally
+// depend on it.
+//
+// File: tests/db/rls-users-deleted-at.test.ts (sibling to migration test).
+//
+// Note: the underlying RLS lives on the users table (existing). The Cluster 01
+// migration adds users.deleted_at as a column, so the existing
+// "users_self_can_update_own_row" policy (per 20260316_users.sql) determines
+// what the authenticated role may write. If the existing policy permits column
+// updates by id-match without column filtering, this test should fail; the
+// resolution is to either (a) restrict the policy via a CHECK on which columns
+// may be touched, or (b) document deleted_at as service-role-only via column
+// GRANT REVOKE. Option (b) is preferred — surgical, no RLS rewrite.
+//
+// Test outline:
+//
+//   describe('users.deleted_at RLS guard (C-LOW01.5)', () => {
+//     test('authenticated user CANNOT update users.deleted_at directly', async () => {
+//       const { user, token } = await createTestUserWithJwt()
+//       const userClient = createClient(adminUrl, anonKey, {
+//         global: { headers: { Authorization: `Bearer ${token}` } }
+//       })
+//       const future = new Date(Date.now() - 31 * 24 * 60 * 60 * 1000).toISOString()
+//       const { error } = await userClient.from('users').update({ deleted_at: future }).eq('id', user.id)
+//       // Either RLS denies (PGRST301) or column GRANT denies (permission denied for column deleted_at)
+//       expect(error?.code === 'PGRST301' || /deleted_at/.test(error?.message ?? '')).toBe(true)
+//
+//       const { data: row } = await admin.from('users').select('deleted_at').eq('id', user.id).single()
+//       expect(row?.deleted_at).toBeNull()
+//     })
+//
+//     test('service_role CAN update users.deleted_at (cron path)', async () => {
+//       const { user } = await createTestUserWithJwt()
+//       const now = new Date().toISOString()
+//       const { error } = await admin.from('users').update({ deleted_at: now }).eq('id', user.id)
+//       expect(error).toBeNull()
+//     })
+//
+//     test('users.deleted_at NOT in authenticated REST select payload', async () => {
+//       const { user, token } = await createTestUserWithJwt()
+//       const userClient = createClient(adminUrl, anonKey, {
+//         global: { headers: { Authorization: `Bearer ${token}` } }
+//       })
+//       // Either explicit select fails, or implicit select * masks the column.
+//       const { data, error } = await userClient.from('users').select('deleted_at').eq('id', user.id).maybeSingle()
+//       // Acceptable outcomes: column hidden (data is { deleted_at: null }) or
+//       // column denied (error.code = '42501').
+//       if (error) {
+//         expect(error.code === '42501' || /deleted_at/.test(error.message ?? '')).toBe(true)
+//       } else {
+//         expect(data?.deleted_at).toBeNull()
+//       }
+//     })
+//   })
+//
+// If the existing users table does NOT yet have a deleted_at-aware policy or
+// GRANT, add the following to the migration:
+//
+//   REVOKE UPDATE (deleted_at) ON public.users FROM authenticated;
+//   REVOKE SELECT (deleted_at) ON public.users FROM authenticated;
+//
+// Then re-run the test (expect PASS).
 ```
 
 Notes: `signTestJwt(userId)` is a test helper to mint a Supabase-compatible JWT signed with the local anon JWT secret. If you don't have one, create `tests/_helpers/sign-test-jwt.ts` using the local `SUPABASE_JWT_SECRET` env var with HS256.
@@ -710,21 +855,34 @@ Expected: FAIL (handler not implemented).
 import { verifyAuth } from '../_shared/auth'
 import { writeAudit } from '../_shared/audit'
 import { sendEmail } from '../_shared/resend-client'
+import { verifyIdempotency } from '../_shared/idempotency' // Cluster 11 Task 1.3
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 const RATE_LIMIT_WINDOW_MS = 60_000
 const RATE_LIMIT_MAX = 5
-const rateLimitMap = new Map<string, { count: number; windowStart: number }>()
+const ENDPOINT = 'deletion-request'
 
-function checkRateLimit(userId: string): boolean {
+// Postgres-backed rate-limit. In-memory Map fails on serverless cold-starts:
+// each invocation may land on a fresh isolate with an empty Map, defeating the
+// cap. The rate_limits table (Task 1 migration) persists a per-(user, endpoint,
+// window) counter; concurrent requests collapse safely via UPSERT.
+async function checkRateLimit(supabase: SupabaseClient, userId: string): Promise<boolean> {
   const now = Date.now()
-  const entry = rateLimitMap.get(userId)
-  if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
-    rateLimitMap.set(userId, { count: 1, windowStart: now })
+  const windowStart = new Date(now - (now % RATE_LIMIT_WINDOW_MS)).toISOString()
+
+  // Atomic INSERT ... ON CONFLICT ... DO UPDATE returning the new count.
+  const { data, error } = await supabase.rpc('bump_rate_limit', {
+    p_user_id: userId,
+    p_endpoint: ENDPOINT,
+    p_window_start: windowStart,
+  })
+  if (error) {
+    // Fail-open on DB error: better to allow a request than 500 the user.
+    // The cap still holds on the next request once the DB recovers.
+    console.error('rate_limit DB error (fail-open):', error)
     return true
   }
-  if (entry.count >= RATE_LIMIT_MAX) return false
-  entry.count++
-  return true
+  return (data as number) <= RATE_LIMIT_MAX
 }
 
 export default async function handler(req: Request): Promise<Response> {
@@ -739,8 +897,24 @@ export default async function handler(req: Request): Promise<Response> {
     return Response.json({ error: 'unauthenticated' }, { status: 401 })
   }
 
-  if (!checkRateLimit(auth.userId)) {
+  if (!(await checkRateLimit(auth.supabase, auth.userId))) {
     return Response.json({ error: 'rate_limited', retry_after_seconds: 60 }, { status: 429 })
+  }
+
+  // Idempotency replay protection (Cluster 11 idempotency_keys table).
+  // If the client supplied X-Idempotency-Key, replay the cached response on
+  // exact body match, or 422 if the same key was reused with a different body.
+  const idempotencyKey = req.headers.get('X-Idempotency-Key')
+  const bodyText = await req.clone().text()
+  if (idempotencyKey) {
+    const { cached, conflict } = await verifyIdempotency(auth.supabase, {
+      key: idempotencyKey,
+      method: req.method,
+      path: new URL(req.url).pathname,
+      bodyText,
+    })
+    if (conflict) return Response.json({ error: 'idempotency_key_reused_with_different_body' }, { status: 422 })
+    if (cached) return Response.json(cached.body, { status: cached.status })
   }
 
   const { data: scheduledAt, error } = await auth.supabase.rpc('request_account_deletion')
@@ -865,6 +1039,7 @@ Expected: FAIL.
 import { verifyAuth } from '../_shared/auth'
 import { writeAudit } from '../_shared/audit'
 import { sendEmail } from '../_shared/resend-client'
+import { verifyIdempotency } from '../_shared/idempotency' // Cluster 11 Task 1.3
 
 export default async function handler(req: Request): Promise<Response> {
   if (req.method !== 'POST') return Response.json({ error: 'method_not_allowed' }, { status: 405 })
@@ -874,6 +1049,20 @@ export default async function handler(req: Request): Promise<Response> {
     auth = await verifyAuth(req)
   } catch {
     return Response.json({ error: 'unauthenticated' }, { status: 401 })
+  }
+
+  // Idempotency replay protection (C-MED2)
+  const idempotencyKey = req.headers.get('X-Idempotency-Key')
+  const bodyText = await req.clone().text()
+  if (idempotencyKey) {
+    const { cached, conflict } = await verifyIdempotency(auth.supabase, {
+      key: idempotencyKey,
+      method: req.method,
+      path: new URL(req.url).pathname,
+      bodyText,
+    })
+    if (conflict) return Response.json({ error: 'idempotency_key_reused_with_different_body' }, { status: 422 })
+    if (cached) return Response.json(cached.body, { status: cached.status })
   }
 
   const { data: restored, error } = await auth.supabase.rpc('restore_account')
@@ -994,10 +1183,14 @@ Expected: FAIL.
 
 ```ts
 // api/auth/email-change-request.ts
+// NOTE: Zod is used in this Edge Function (B-NOTE1) — Edge Functions are
+// permitted to use Zod per founder lock #4. The valibot-only ban applies
+// strictly to the tool layer (src/ai/tools.ts and its dependencies).
 import { z } from 'zod'
 import { verifyAuth, getAdminClient } from '../_shared/auth'
 import { writeAudit } from '../_shared/audit'
 import { sendEmail } from '../_shared/resend-client'
+import { verifyIdempotency } from '../_shared/idempotency' // Cluster 11 Task 1.3
 
 const BodySchema = z.object({ new_email: z.string().email() })
 
@@ -1011,9 +1204,24 @@ export default async function handler(req: Request): Promise<Response> {
     return Response.json({ error: 'unauthenticated' }, { status: 401 })
   }
 
+  // Idempotency replay protection (C-MED2) — read raw bodyText before .json()
+  // so we can hand the same bytes to verifyIdempotency AND the BodySchema.
+  const idempotencyKey = req.headers.get('X-Idempotency-Key')
+  const bodyText = await req.text()
+  if (idempotencyKey) {
+    const { cached, conflict } = await verifyIdempotency(auth.supabase, {
+      key: idempotencyKey,
+      method: req.method,
+      path: new URL(req.url).pathname,
+      bodyText,
+    })
+    if (conflict) return Response.json({ error: 'idempotency_key_reused_with_different_body' }, { status: 422 })
+    if (cached) return Response.json(cached.body, { status: cached.status })
+  }
+
   let body
   try {
-    body = BodySchema.parse(await req.json())
+    body = BodySchema.parse(JSON.parse(bodyText))
   } catch {
     return Response.json({ error: 'invalid_email' }, { status: 400 })
   }
@@ -1194,7 +1402,13 @@ export async function runStep({ supabase, userId, idempotencyKey }: StepArgs): P
       })
     }
     if (user.stripe_customer_id) {
-      await stripe.customers.del(user.stripe_customer_id, { idempotencyKey: `${idempotencyKey}:cus-del` } as any)
+      // stripe-node signature: del(id, params, options). Idempotency lives in
+      // the THIRD arg (RequestOptions), not the second. The previous form
+      // (single-object as `params`) silently dropped the idempotency key and
+      // tripped the founder lock #10 `as any` ban.
+      await stripe.customers.del(user.stripe_customer_id, undefined, {
+        idempotencyKey: `${idempotencyKey}:cus-del`,
+      })
     }
   } catch (err: any) {
     if (err?.code === 'resource_missing') {
@@ -1310,16 +1524,32 @@ export async function runStep({ supabase, userId, idempotencyKey }: StepArgs): P
 
   for (const brand of brands) {
     if (!brand.shopify_access_token_id) continue
-    const url = `https://${brand.shopify_shop_domain}/admin/api/2024-01/access_tokens/${brand.shopify_access_token_id}/revoke`
+    // Fetch the per-shop access token from Vault before revoking.
+    const { data: tokenRow, error: tokenErr } = await supabase.rpc('read_shopify_token', {
+      p_secret_id: brand.shopify_access_token_id,
+    })
+    if (tokenErr || !tokenRow) {
+      // Token already gone — treat as revoked
+      await supabase.from('brands')
+        .update({ shopify_shop_domain: null, shopify_access_token_id: null })
+        .eq('id', brand.id)
+      continue
+    }
+    // Per Shopify docs (https://shopify.dev/docs/api/usage/access-scopes#revoking-access),
+    // the canonical revoke endpoint is DELETE /admin/api_permissions/current.json
+    // with the shop's access token in X-Shopify-Access-Token. The previous
+    // POST .../access_tokens/:id/revoke route does NOT exist in the Admin API.
+    const url = `https://${brand.shopify_shop_domain}/admin/api_permissions/current.json`
     try {
       const res = await fetch(url, {
-        method: 'POST',
+        method: 'DELETE',
         headers: {
+          'X-Shopify-Access-Token': tokenRow as string,
           'X-Idempotency-Key': `${idempotencyKey}:${brand.id}`,
           'Content-Type': 'application/json'
         }
       })
-      // 200, 401, 404 → already revoked = OK
+      // 200, 401, 404 → already revoked = OK; 5xx → retriable
       if (res.status >= 500) {
         return { ok: false, retriable: true, error: `Shopify ${res.status}` }
       }
@@ -1421,8 +1651,11 @@ export async function runStep({ supabase, userId }: StepArgs): Promise<StepResul
   const { error: logErr } = await supabase
     .from('anthropic_deletion_log')
     .insert({ user_id: userId, requested_at: new Date().toISOString(), status: 'queued_for_manual_request' })
-  // Soft-fail on log insert — if anthropic_deletion_log doesn't exist (pre-Cluster-10 dev), don't block
-  if (logErr && !logErr.message.includes('does not exist')) {
+  // Soft-fail on log insert — if anthropic_deletion_log doesn't exist (pre-Cluster-10 dev), don't block.
+  // Match on PostgreSQL SQLSTATE 42P01 (undefined_table) rather than the error
+  // message string: pg locale + supabase-js version differences can mutate the
+  // message text, but the SQLSTATE is stable across both.
+  if (logErr && (logErr as { code?: string }).code !== '42P01') {
     return { ok: false, retriable: true, error: logErr.message }
   }
 
@@ -1720,6 +1953,45 @@ describe('POST /api/cron/delete-account', () => {
     // (Detailed mock harness — implement per project test infra)
     expect(true).toBe(true) // placeholder; expand during impl
   })
+
+  // B-MED10: claim_deletion_queue_row RETURNS TABLE — supabase-js may surface
+  // the result as a single row OR an array. Both shapes must short-circuit
+  // cleanly without reading .attempts off undefined.
+  test('handles claim RPC returning empty array (no row matched)', async () => {
+    mock.module('../../../../api/_shared/supabase-admin', () => ({
+      getAdminClient: () => ({
+        from: () => ({
+          select: () => ({ lt: () => ({ in: () => Promise.resolve({ data: [{ id: 'u1' }], error: null }) }) }),
+          update: () => ({ match: () => Promise.resolve({ error: null }) })
+        }),
+        rpc: mock(() => Promise.resolve({ data: [], error: null }))
+      })
+    }))
+    const req = new Request('http://x/api/cron/delete-account', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer test-secret' }
+    })
+    const res = await handler(req)
+    expect(res.status).toBe(200) // empty array → continue, no crash
+  })
+
+  test('handles claim RPC returning single row (Array.isArray fallback)', async () => {
+    mock.module('../../../../api/_shared/supabase-admin', () => ({
+      getAdminClient: () => ({
+        from: () => ({
+          select: () => ({ lt: () => ({ in: () => Promise.resolve({ data: [{ id: 'u1' }], error: null }) }) }),
+          update: () => ({ match: () => Promise.resolve({ error: null }) })
+        }),
+        rpc: mock(() => Promise.resolve({ data: [{ id: 'q1', attempts: 2 }], error: null }))
+      })
+    }))
+    const req = new Request('http://x/api/cron/delete-account', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer test-secret' }
+    })
+    const res = await handler(req)
+    expect(res.status).toBe(200)
+  })
 })
 ```
 
@@ -1748,24 +2020,17 @@ export default async function handler(req: Request): Promise<Response> {
   const supabase = getAdminClient()
   let processed = 0, succeeded = 0, failed = 0, terminal = 0
 
-  // Find users ready for hard-delete (deleted_at > 30 days ago + has pending queue rows)
+  // Find users ready for hard-delete (deleted_at > 30 days ago + has pending queue rows).
+  // RPC uses FOR UPDATE SKIP LOCKED so concurrent cron runs cannot claim the
+  // same users; the function is defined in Task 1's migration.
   const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
   const { data: queueRows, error: qErr } = await supabase
     .rpc('claim_pending_deletion_users', { p_cutoff: cutoff, p_limit: BATCH_USERS })
-
-  // If RPC doesn't exist, fall back to inline SQL via select
-  let userIds: string[]
   if (qErr) {
-    const { data: rows } = await supabase
-      .from('users')
-      .select('id, gdpr_deletion_queue!inner(status)')
-      .lt('deleted_at', cutoff)
-      .in('gdpr_deletion_queue.status', ['pending', 'in_progress'])
-      .limit(BATCH_USERS)
-    userIds = (rows ?? []).map((r: any) => r.id)
-  } else {
-    userIds = (queueRows ?? []).map((r: any) => r.user_id)
+    console.error('claim_pending_deletion_users RPC failed:', qErr)
+    return Response.json({ error: 'rpc_unavailable' }, { status: 500 })
   }
+  const userIds: string[] = (queueRows ?? []).map((r: { user_id: string }) => r.user_id)
 
   for (const userId of userIds) {
     processed++
@@ -1776,7 +2041,12 @@ export default async function handler(req: Request): Promise<Response> {
       const { data: claim } = await supabase.rpc('claim_deletion_queue_row', {
         p_user_id: userId, p_step: step, p_max_attempts: MAX_ATTEMPTS
       })
-      if (!claim) continue // Already succeeded OR exceeded attempts
+      // RPC declares RETURNS TABLE (id uuid, attempts int) — supabase-js
+      // surfaces TABLE-returning RPCs as an array (or null when no row
+      // matched the FOR UPDATE SKIP LOCKED scan). Normalize before access
+      // so .attempts is not read off undefined.
+      const row = Array.isArray(claim) ? claim[0] : claim
+      if (!row) continue // Already succeeded OR exceeded attempts
 
       const result = await STEP_RUNNERS[step]({ supabase, userId, idempotencyKey })
       if (result.ok) {
@@ -1784,7 +2054,7 @@ export default async function handler(req: Request): Promise<Response> {
           .update({ status: 'succeeded', succeeded_at: new Date().toISOString() })
           .match({ user_id: userId, step })
       } else {
-        const newStatus = result.retriable && claim.attempts < MAX_ATTEMPTS ? 'pending' : 'failed_terminal'
+        const newStatus = result.retriable && row.attempts < MAX_ATTEMPTS ? 'pending' : 'failed_terminal'
         await supabase.from('gdpr_deletion_queue')
           .update({ status: newStatus, error: result.error })
           .match({ user_id: userId, step })
@@ -1848,6 +2118,38 @@ $$;
 -- Service-role-only execution
 REVOKE EXECUTE ON FUNCTION public.claim_deletion_queue_row(uuid, text, int) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.claim_deletion_queue_row(uuid, text, int) TO service_role;
+
+-- C-MED1: claim users whose 30-day soft-delete window has elapsed AND who
+-- still have pending/in_progress cascade steps. FOR UPDATE SKIP LOCKED so
+-- two concurrent cron isolates cannot claim the same users. Replaces the
+-- inline supabase-js fallback in api/cron/delete-account.ts.
+CREATE OR REPLACE FUNCTION public.claim_pending_deletion_users(
+  p_cutoff timestamptz,
+  p_limit  int DEFAULT 100
+)
+RETURNS TABLE (user_id uuid, deletion_requested_at timestamptz)
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT u.id, u.deleted_at
+    FROM public.users u
+   WHERE u.deleted_at IS NOT NULL
+     AND u.deleted_at < p_cutoff
+     AND EXISTS (
+       SELECT 1 FROM public.gdpr_deletion_queue q
+        WHERE q.user_id = u.id
+          AND q.status IN ('pending', 'in_progress')
+     )
+   ORDER BY u.deleted_at ASC
+   LIMIT p_limit
+   FOR UPDATE OF u SKIP LOCKED;
+END;
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.claim_pending_deletion_users(timestamptz, int) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.claim_pending_deletion_users(timestamptz, int) TO service_role;
 ```
 
 Re-apply: `supabase db reset`. Re-run Task 1 tests (still PASS).
@@ -2761,6 +3063,7 @@ describe('DangerZoneCard', () => {
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import KovaModal from '@/components/ui/KovaModal.vue' // Cluster 11 primitive
 
 const emit = defineEmits<{ requested: [] }>()
 const auth = useAuthStore()
@@ -2787,21 +3090,30 @@ async function confirm() {
     <p class="text-ink-2 text-sm mt-1">Permanently delete your account and all associated data. This action cannot be undone after the 30-day grace period.</p>
     <button class="delete-account mt-3 btn-danger" @click="open = true">Delete account</button>
 
-    <!-- Reka Dialog modal — replace with <KovaModal> once Cluster 11 ships -->
-    <div v-if="open" class="modal-shell">
-      <div class="modal-card">
-        <h2>Are you sure?</h2>
-        <p>Type <b>DELETE</b> to confirm. Your account is queued for deletion. You can restore by signing in within 30 days.</p>
-        <input class="typed-confirm" v-model="typed" placeholder="DELETE" autocomplete="off" />
-        <button class="confirm btn-danger" :disabled="!canConfirm" @click="confirm">Delete my account</button>
+    <!-- KovaModal from Cluster 11 — owns overlay, focus trap, ESC handling,
+         a11y attrs. We compose the body slot. -->
+    <KovaModal
+      v-model:open="open"
+      title="Are you sure?"
+      :destructive="true"
+      :close-on-escape="!submitting"
+    >
+      <p>Type <b>DELETE</b> to confirm. Your account is queued for deletion. You can restore by signing in within 30 days.</p>
+      <input class="typed-confirm" v-model="typed" placeholder="DELETE" autocomplete="off" />
+      <template #footer>
         <button class="cancel btn" @click="open = false">Cancel</button>
-      </div>
-    </div>
+        <button class="confirm btn-danger" :disabled="!canConfirm" @click="confirm">Delete my account</button>
+      </template>
+    </KovaModal>
   </div>
 </template>
 ```
 
-Note: replaces the modal-shell stub with `<KovaModal>` from Cluster 11 once shipped. Until then, inline shell is acceptable.
+KovaModal contract (Cluster 11 Task 5.x): `v-model:open` controls visibility,
+`title` renders the modal header, `destructive` flips the accent token to the
+danger palette, `#footer` slot renders the action row right-aligned. Focus trap
+and ESC-to-close are handled by the primitive. Visual parity verified against
+the previous inline modal-shell stub at Task 16 hand-off.
 
 - [ ] **Step 16.3: Run + commit**
 
@@ -2868,58 +3180,74 @@ Test each. Commit each.
 
 ---
 
-## Task 21: Email templates (Resend HTML)
+## Task 21: Email templates (composed from Cluster 11 `<EmailShell>`)
 
-**Files:** create 4 HTML email files under `kova-open-pencil-1/emails/`:
+**Files:** create 4 email-renderer modules under `kova-open-pencil-1/api/emails/`:
 
-- `emails/account/account-deletion-scheduled.html`
-- `emails/account/account-deletion-completed.html`
-- `emails/account/account-restored.html`
-- `emails/auth/email-change-notification-to-old.html`
+- `api/emails/account-deletion-scheduled.ts`
+- `api/emails/account-deletion-completed.ts`
+- `api/emails/account-restored.ts`
+- `api/emails/email-change-notification-to-old.ts`
 
-Each uses simple inline-CSS HTML email markup (Resend handles delivery; templates use Inter font where supported, fallback to sans-serif). Includes:
-- Kova logo (image or text)
-- Headline matching email purpose
-- Body explaining what happened
-- Plain-text fallback section (preheader)
-- List-Unsubscribe header (set in Resend API call, not template)
-- Variable substitution placeholders `{{scheduled_at}}`, `{{restore_url}}`, `{{new_email}}`
+Each module exports a single `renderXxxEmail(args)` function that composes the
+canonical `<EmailShell>` Vue SFC shipped by Cluster 11 Task 8.2 via the
+`renderEmail()` helper (server-side Vue → HTML rendering with inline CSS).
+This replaces the previous approach of hand-authored inline-CSS HTML files,
+which duplicated layout (logo, footer, CTA button styles) across every email.
 
-- [ ] **Step 21.1: Write each HTML template**
+Benefits:
+- Single source of truth for visual chrome (logo, color tokens, CTA styles)
+- Tailwind 4 token reuse — no parallel color palette in raw HTML
+- Plain-text fallback auto-generated by `renderEmail()` (Cluster 11 contract)
+- Inter font + List-Unsubscribe header handled centrally
 
-Example for `account-deletion-scheduled.html`:
+- [ ] **Step 21.1: Implement each renderer**
 
-```html
-<!doctype html>
-<html><head><meta charset="utf-8"><title>Account deletion scheduled</title></head>
-<body style="margin:0;padding:0;background:#f6f7f8;font-family:Inter,system-ui,sans-serif;">
-  <div style="max-width:520px;margin:32px auto;padding:32px;background:#fff;border-radius:8px;border:1px solid #e6e7e9;">
-    <div style="font-size:14px;font-weight:700;color:#111;display:flex;align-items:center;gap:8px;margin-bottom:24px;">
-      <span style="display:inline-block;width:24px;height:24px;background:#111;color:#fff;border-radius:6px;text-align:center;line-height:24px;font-weight:800;">K</span>
-      Kova
-    </div>
-    <h1 style="font-size:22px;font-weight:600;color:#111;margin:0 0 12px;">Your account is queued for deletion</h1>
-    <p style="font-size:14px;color:#444;line-height:1.55;margin:0 0 16px;">
-      We've received your request to delete your Kova account. Your data will be permanently removed on <b>{{scheduled_at}}</b>.
-    </p>
-    <p style="font-size:14px;color:#444;line-height:1.55;margin:0 0 24px;">
-      Changed your mind? You can restore your account any time within the next 30 days by signing in.
-    </p>
-    <a href="{{restore_url}}" style="display:inline-block;padding:10px 16px;background:#111;color:#fff;text-decoration:none;border-radius:6px;font-size:14px;font-weight:500;">Restore account</a>
-    <p style="font-size:12px;color:#888;margin:32px 0 0;line-height:1.55;">
-      If you didn't request this, please reply to this email immediately.
-    </p>
-  </div>
-</body></html>
+Example for `account-deletion-scheduled.ts`:
+
+```ts
+// api/emails/account-deletion-scheduled.ts
+import { renderEmail } from '../_shared/render-email' // Cluster 11 Task 8.2
+import EmailShell from '../../src/components/email/EmailShell.vue' // Cluster 11
+
+export interface DeletionScheduledArgs {
+  scheduledAt: string
+  restoreUrl: string
+}
+
+export async function renderDeletionScheduledEmail(
+  args: DeletionScheduledArgs
+): Promise<{ html: string; text: string; subject: string }> {
+  const { html, text } = await renderEmail(EmailShell, {
+    headline: 'Your account is queued for deletion',
+    body: [
+      `We've received your request to delete your Kova account. Your data will be permanently removed on <b>${args.scheduledAt}</b>.`,
+      'Changed your mind? You can restore your account any time within the next 30 days by signing in.',
+    ],
+    ctaText: 'Restore account',
+    ctaUrl: args.restoreUrl,
+    footer: "If you didn't request this, please reply to this email immediately.",
+  })
+  return { html, text, subject: 'Your Kova account is scheduled for deletion' }
+}
 ```
 
-Repeat for other 3 templates with appropriate copy + variables.
+Repeat for the other 3 renderers with appropriate headline / body / CTA / subject.
+The four Edge Functions (Tasks 3 / 4 / 5 / 7) call the matching renderer and
+hand `{ html, text, subject }` to `sendEmail()` from the shared Resend client.
+
+**Cross-cluster coordination (C-MED-X.3):** Cluster 11 owns the Resend wrapper
+(`api/_shared/resend-client.ts`) and the `EmailShell.vue` template. Do NOT
+duplicate that work here — import from Cluster 11. Until Cluster 11 ships the
+`<EmailShell>`, leave these renderer modules as stubs that throw NotImplemented;
+the Edge Functions' email path is guarded by `RESEND_API_KEY` so the stub never
+fires in dev (see C-HIGH14 Plan 12 Task 16.0).
 
 - [ ] **Step 21.2: Commit**
 
 ```bash
-git add emails/account/*.html emails/auth/*.html
-git commit -m "feat(auth): Resend HTML email templates (deletion-scheduled, deletion-completed, restored, email-change-old-notify)"
+git add api/emails/*.ts
+git commit -m "feat(auth): Resend email renderers — compose <EmailShell> from Cluster 11"
 ```
 
 ---
@@ -3010,6 +3338,7 @@ Refs Cluster 01 PRD §5.5 + §8.8."
 
 **Files:**
 - Create: `kova-open-pencil-1/docs/operations/supabase-auth-config.md` (checklist for ops)
+- Modify: `kova-open-pencil-1/.env.example` — add `EMAIL_CHANGE_LINK_TTL_HOURS=24` (C-LOW01.7)
 
 - [ ] **Step 23.1: Document config + apply manually**
 
@@ -3043,6 +3372,7 @@ Apply each setting via Supabase Studio → Authentication → Providers / Settin
 - [ ] Magic link sign-in template customized
 - [ ] Email change verify template customized
 - [ ] Reset password template customized (for Phase 2)
+- [ ] Email change confirmation token expiry: **86400 seconds (24 hours)** — matches `EMAIL_CHANGE_LINK_TTL_HOURS=24` env var consumed by `api/auth/email-change-request.ts` and surfaced in B5.2 "expired link" copy.
 
 ## Redirect URLs
 

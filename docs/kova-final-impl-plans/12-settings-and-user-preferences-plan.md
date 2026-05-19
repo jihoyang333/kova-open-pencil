@@ -648,9 +648,10 @@ describe('usePreferencesStore', () => {
     expect(rpcCalls.length).toBe(0)  // still in debounce window
     await new Promise((r) => setTimeout(r, 1100))
     expect(rpcCalls.length).toBe(1)
+    // C-HIGH13: assert the RPC receives the raw value, NOT a pre-stringified one.
     expect(rpcCalls[0].args).toEqual({
       p_path: ['accessibility'],
-      p_value: JSON.stringify({ textSize: 'large', reduceMotion: false, highContrast: false }),
+      p_value: { textSize: 'large', reduceMotion: false, highContrast: false },
     })
   })
 
@@ -661,10 +662,23 @@ describe('usePreferencesStore', () => {
     await new Promise((r) => setTimeout(r, 1100))
     expect(rpcCalls[0].args).toEqual({
       p_path: ['view', 'showRuler'],
-      p_value: JSON.stringify(true),
+      p_value: true,
     })
     expect(store.prefs.view.showRuler).toBe(true)
     expect(store.prefs.view.showLayoutGuide).toBe(true)  // untouched default
+  })
+
+  // C-HIGH13 regression — round-trip a string preference and assert the
+  // stored value equals the input (NOT the double-quoted '"large"').
+  test('round-trips string preference without double-encoding', async () => {
+    const store = usePreferencesStore()
+    await store.load()
+    store.setPath(['accessibility', 'textSize'], 'large')
+    await new Promise((r) => setTimeout(r, 1100))
+    expect(rpcCalls[0].args.p_value).toBe('large')
+    expect(typeof rpcCalls[0].args.p_value).toBe('string')
+    // NOT '"large"' (would be the double-encoded form supabase-js would
+    // round-trip back as the literal 6-character string '"large"').
   })
 
   test('hasExplicitAccessibilityKey reports server-supplied keys', async () => {
@@ -734,9 +748,12 @@ export const usePreferencesStore = defineStore('preferences', () => {
 
   const debouncedWrite = useDebounceFn(
     async (path: string[], value: unknown): Promise<void> => {
+      // C-HIGH13: supabase-js auto-JSON-encodes RPC args. Pre-stringifying
+      // double-encodes — 'large' would round-trip back as the 7-character
+      // string '"large"' instead of the 5-character 'large'.
       const { error } = await supabase.rpc('update_user_pref', {
         p_path: path,
-        p_value: JSON.stringify(value),
+        p_value: value,
       })
       if (error) loadError.value = error as unknown as Error
     },
@@ -1000,9 +1017,10 @@ beforeEach(async () => {
 
 describe('update_user_pref RPC', () => {
   test('writes a top-level slice', async () => {
+    // C-HIGH13: pass raw object — supabase-js auto-JSON-encodes RPC args.
     const { error } = await userAClient.rpc('update_user_pref', {
       p_path: ['accessibility'],
-      p_value: JSON.stringify({ textSize: 'large', reduceMotion: true, highContrast: false }),
+      p_value: { textSize: 'large', reduceMotion: true, highContrast: false },
     })
     expect(error).toBeNull()
 
@@ -1021,7 +1039,7 @@ describe('update_user_pref RPC', () => {
   test('create_missing := true allows deep first-write', async () => {
     const { error } = await userAClient.rpc('update_user_pref', {
       p_path: ['notifications', 'productUpdates'],
-      p_value: JSON.stringify(false),
+      p_value: false,
     })
     expect(error).toBeNull()
 
@@ -1038,11 +1056,11 @@ describe('update_user_pref RPC', () => {
   test('writes to disjoint paths preserve siblings', async () => {
     await userAClient.rpc('update_user_pref', {
       p_path: ['view', 'showRuler'],
-      p_value: JSON.stringify(true),
+      p_value: true,
     })
     await userAClient.rpc('update_user_pref', {
       p_path: ['view', 'showLayoutGuide'],
-      p_value: JSON.stringify(false),
+      p_value: false,
     })
     const { data } = await serviceClient
       .from('users')
@@ -1059,7 +1077,7 @@ describe('update_user_pref RPC', () => {
     const anonClient = createClient(URL, ANON, { auth: { persistSession: false } })
     const { error } = await anonClient.rpc('update_user_pref', {
       p_path: ['accessibility', 'textSize'],
-      p_value: JSON.stringify('large'),
+      p_value: 'large',
     })
     expect(error).not.toBeNull()
   })
@@ -1836,52 +1854,21 @@ from any context (Profile, main menu, etc)."
 
 ---
 
-## Task 14: Cluster 04 integration handoff (Profile section mount)
+## Task 14: Cluster 04 mount — forward-pointer (no Plan 12 code; see Plan 04 Task 8.1)
 
-> **Coordination, not implementation.** Cluster 04 mounts `<AccessibilityPanel>` + `<NotificationsPanel>` inside its Profile section component. This task is a stub PR-comment / handoff note when Cluster 04's plan reaches its Profile-section task.
+> **Owned by Cluster 04.** Plan 12 produces the panels (Task 10 `<AccessibilityPanel>` + Task 11 `<NotificationsPanel>`) — Cluster 04 mounts them inside `<ProfileSection>`. The mount itself is documented in `docs/kova-final-impl-plans/04-account-and-stripe-billing-plan.md` Task 8.1 (Cluster 04 dependency block, C-LOW12.6 ratification).
 
-**Files:**
-- (no new files — coordinate via PRD 04 plan)
+**Files:** none in this plan. No commits in Plan 12 for Task 14.
 
-- [ ] **Step 1: Add a handoff note to PRD 04 plan**
+**Verification:** when both clusters have landed, confirm `<ProfileSection>` in
+`src/views/account/sections/ProfileSection.vue` imports both panels from
+`@/components/settings/*` and renders them in Accessibility + Notifications
+section slots.
 
-Open `kova-open-pencil-1/docs/kova-final-impl-plans/04-account-and-stripe-billing-plan.md` and append at the Profile-section task:
-
-```markdown
-**Cluster 12 dependency:** import + slot `<AccessibilityPanel>` and `<NotificationsPanel>`:
-
-\`\`\`vue
-<script setup lang="ts">
-import AccessibilityPanel from '@/components/settings/AccessibilityPanel.vue'
-import NotificationsPanel from '@/components/settings/NotificationsPanel.vue'
-</script>
-
-<template>
-  <!-- existing Identity rows -->
-  <section class="s-section">
-    <h2>Accessibility</h2>
-    <p class="desc">Saved to your user preferences. Same controls also reachable from main menu → Preferences → Accessibility (A8.3).</p>
-    <AccessibilityPanel />
-  </section>
-  <section class="s-section">
-    <h2>Notifications</h2>
-    <NotificationsPanel />
-  </section>
-\`\`\`
-
-The Profile save-bar governs Identity fields only — Accessibility + Notifications rows apply immediately via their own store, bypassing the save-bar.
-```
-
-- [ ] **Step 2: Commit**
-
-```bash
-git add ../kova-open-pencil-1/docs/kova-final-impl-plans/04-account-and-stripe-billing-plan.md
-git commit -m "docs(prefs): hand off AccessibilityPanel + NotificationsPanel mount to PRD 04 plan
-
-Profile section in /account/profile imports both panels. Save-bar
-scopes to Identity fields; Accessibility + Notifications apply
-immediately."
-```
+This task body previously contained the full mount code as an "appended
+handoff" to Plan 04 (C-LOW12.6). The handoff has been promoted into Plan 04
+Task 8.1 verbatim; Plan 12 keeps this stub as a navigational forward-pointer
+so future readers don't search for a real task body that doesn't exist.
 
 ---
 
@@ -1967,9 +1954,53 @@ opt-out persistence."
 **Files:**
 - Create: `supabase/functions/send-sync-alert/index.ts`
 - Create: `supabase/functions/send-sync-alert/index.test.ts`
-- Coordinate (do NOT create from this cluster): `supabase/functions/_shared/resend-client.ts` — owned by Cluster 01. If missing, stub locally then replace when Cluster 01 lands.
+- Coordinate (do NOT create from this cluster): `supabase/functions/_shared/resend-client.ts` — owned by Cluster 01. If missing, ship the Task 16.0 stub below and replace when Cluster 01 lands.
 
 **Reason:** Cluster 06's Yjs sync-retry hook calls `POST /functions/v1/send-sync-alert` after retry 3 fails (1s+5s+15s backoff = ~21s after first failure). This task ships the endpoint with the env-guard pattern (founder ratified 2026-05-17). Resend account setup deferred to pre-launch — endpoint must run without `RESEND_API_KEY` set.
+
+- [ ] **Step 16.0: Ship temporary `_shared/resend-client.ts` stub (C-HIGH14)**
+
+If `supabase/functions/_shared/resend-client.ts` does not exist yet (Cluster 01
+not landed), ship this stub so Task 16 imports compile. **The stub is removed
+the moment Cluster 01 ships the real client** — re-run Task 16 tests after
+swap to confirm wiring is intact.
+
+```typescript
+// supabase/functions/_shared/resend-client.ts (TEMPORARY STUB — C-HIGH14)
+// Remove + replace with Cluster 01's real client once that branch merges.
+// See: kova-open-pencil-1/docs/kova-final-impl-plans/01-auth-and-identity-plan.md Task 2 + Task 21.
+
+export interface SendEmailArgs {
+  to: string
+  subject: string
+  text?: string
+  html?: string
+  idempotencyKey?: string
+}
+
+export interface SendEmailResult {
+  id: string
+  skipped?: boolean
+}
+
+export async function sendEmail(args: SendEmailArgs): Promise<SendEmailResult> {
+  const apiKey = Deno.env.get('RESEND_API_KEY')
+  if (!apiKey) {
+    console.warn('[resend-client stub] RESEND_API_KEY unset — returning skipped:true', args.idempotencyKey)
+    return { id: 'stub-no-api-key', skipped: true }
+  }
+  // Stub never makes a real HTTP call — Cluster 01's client owns the actual
+  // Resend SDK wiring. Failing loudly forces the swap to happen.
+  throw new Error(
+    'resend-client stub invoked with RESEND_API_KEY set. Cluster 01 must ship the real client (Plan 01 Task 2.5) before this code path runs.'
+  )
+}
+```
+
+Coordinate with Cluster 11 CT-015 (Resend env-guard breadcrumb): the same
+stub pattern is used by Cluster 01 if the founder reaches launch with the
+Resend account still unprovisioned. See `project_external_accounts_deferred`
+memory.
 
 - [ ] **Step 1: Write failing test — `supabase/functions/send-sync-alert/index.test.ts`**
 
@@ -2058,6 +2089,21 @@ export default async function handler(req: Request): Promise<Response> {
   const auth = req.headers.get('authorization')
   if (!auth) return new Response('Unauthorized', { status: 401 })
 
+  // C-MED12.4: require both Supabase env vars up-front. The previous form used
+  // `?? ''` fallbacks, which would silently construct a client with an empty
+  // URL/key and surface as a confusing PostgrestError later in the request.
+  // Fail fast at the boundary instead — 500 with a clear error code so ops
+  // sees the misconfiguration in logs immediately.
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')
+  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.error('send-sync-alert: SUPABASE_URL or SUPABASE_ANON_KEY unset')
+    return new Response(JSON.stringify({ ok: false, error: 'supabase_env_unset' }), {
+      status: 500,
+      headers: { 'content-type': 'application/json' },
+    })
+  }
+
   let payload: Payload
   try {
     payload = await req.json()
@@ -2066,8 +2112,8 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   const supabase = createClient(
-    Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+    supabaseUrl,
+    supabaseAnonKey,
     { global: { headers: { authorization: auth } } }, // SECURITY INVOKER via JWT
   )
 

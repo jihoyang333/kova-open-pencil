@@ -24,7 +24,7 @@ Every other cluster has prefs to remember — Accessibility (text size / reduced
 This PRD ships the **two-layer preferences architecture** that Q5 ratified (better than Figma — Figma stores prefs local-only per its own forum, Kova syncs across devices for workflow prefs):
 
 - **Layer 1 — `users.preferences` JSONB** (cross-device sync). Owned by the `usePreferencesStore` Pinia store. Reads on app boot, writes via a debounced `update_user_pref` RPC. Holds: accessibility, AI toggles, View toggles, default zoom + font, snap toggles (deferred-but-ready), notification opt-ins.
-- **Layer 2 — `localStorage` via VueUse `useLocalStorage`** (per-device). Owned by the `useUIStateStore` Pinia store. Holds: panel-collapse states, sidebar widths, recent colors (24-color ring buffer), last-active brand + canvas (session resumption), dismissed-toast acknowledgments.
+- **Layer 2 — `localStorage` via VueUse `useLocalStorage`** (per-device). Owned by the `useUIStateStore` Pinia store. Holds: panel-collapse states, sidebar widths, recent colors (12-color FIFO ring buffer, founder lock 2026-05-17), last-active brand + canvas (session resumption), dismissed-toast acknowledgments.
 
 The same three Accessibility controls (text size, reduce motion, high contrast) render in **two places** using one component shell — embedded inside `/account/profile` (Cluster 04 hosts the route) and as the A8.3 modal reachable from main menu → Preferences → Accessibility (Cluster 08 owns main-menu wiring; this PRD ships the modal body). All toggles apply immediately (debounced server-write); no save-bar.
 
@@ -356,9 +356,12 @@ export const usePreferencesStore = defineStore('preferences', () => {
 
   const debouncedWrite = useDebounceFn(
     async (path: string[], value: unknown): Promise<void> => {
+      // C-HIGH13: pass `value` directly — supabase-js auto-encodes RPC args
+      // as JSON. Pre-stringifying double-encodes: e.g. 'large' → '"large"',
+      // which then round-trips back as the string '"large"' instead of 'large'.
       const { error } = await supabase.rpc('update_user_pref', {
         p_path: path,
-        p_value: JSON.stringify(value),
+        p_value: value,
       })
       if (error) {
         loadError.value = error as Error
@@ -449,7 +452,8 @@ export const useUIStateStore = defineStore('ui-state', () => {
   const sidebarLeftWidth = useLocalStorage<number>('kova:ui:sidebar-left-width', 240)
   const sidebarRightWidth = useLocalStorage<number>('kova:ui:sidebar-right-width', 264)
 
-  // Recent colors (24-color ring buffer, FIFO) — Cluster 08 consumer
+  // Recent colors (12-color ring buffer, FIFO — founder lock 2026-05-17, §2.1)
+  // — Cluster 08 consumer. 4×3 grid in the picker; ~120 bytes localStorage.
   const recentColors = useLocalStorage<string[]>('kova:ui:recent-colors', [])
 
   // Last-active brand + canvas — Cluster 02 + 06 consumers
@@ -462,7 +466,7 @@ export const useUIStateStore = defineStore('ui-state', () => {
   function pushRecentColor(hex: string): void {
     const current = recentColors.value
     const filtered = current.filter((c) => c.toLowerCase() !== hex.toLowerCase())
-    const next = [hex, ...filtered].slice(0, 24)
+    const next = [hex, ...filtered].slice(0, 12) // C-MED12.3: 12 not 24
     recentColors.value = next
   }
 
@@ -825,7 +829,7 @@ This is a pure-frontend cluster. Pinia stores + Vue components + one SQL RPC. No
 - [ ] `usePreferencesStore.setPath(['view', 'showRuler'], true)` writes only the `showRuler` slice, not the entire `view` block
 - [ ] On `set`, `<html>` data attributes (`data-text-size`, `data-reduce-motion`, `data-high-contrast`) reflect new value within the same Vue tick
 - [ ] `mergeWithDefaults` handles missing keys, extra keys, and type-mismatched keys by falling back to defaults for the bad key (defensive parse)
-- [ ] `useUIStateStore.pushRecentColor(hex)` dedupes case-insensitively + caps at 24 + FIFO (oldest evicts)
+- [ ] `useUIStateStore.pushRecentColor(hex)` dedupes case-insensitively + caps at 12 + FIFO (oldest evicts)
 - [ ] `useUIStateStore` keys are all prefixed `kova:ui:` (no collisions with OpenPencil's namespace)
 
 ### 8.3 Accessibility UI
@@ -895,7 +899,7 @@ File: `kova-open-pencil-1/tests/stores/preferences.test.ts`
 File: `kova-open-pencil-1/tests/stores/ui-state.test.ts`
 
 - `pushRecentColor` dedupes case-insensitively (`#FF00AA` vs `#ff00aa`)
-- `pushRecentColor` caps at 24 + evicts oldest FIFO
+- `pushRecentColor` caps at 12 + evicts oldest FIFO
 - `dismissToast` is idempotent (calling twice → array still has one entry)
 - All keys are prefixed `kova:ui:` (assertion against `Object.keys(localStorage)` after store init)
 
