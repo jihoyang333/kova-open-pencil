@@ -3000,51 +3000,101 @@ git commit -m "feat(04): useShopifyConnection — fetchConnectionHistory + Realt
 
 **Files:**
 - Create: `kova-open-pencil-1/src/components/account/SyncProgressBar.vue`
-- Test: mirror.
+- Test: `kova-open-pencil-1/tests/unit/components/account/SyncProgressBar.test.ts`
 
 > Extract from M9; add ARIA progressbar attributes consistently. [PRD §6.4.5 row 10]
 
-- [ ] **Step 1 → 5**: TDD per pattern.
+- [ ] **Step 1: Write failing tests** — each asserts one behavior:
+  - mounts at 0% with `role="progressbar"` + `aria-valuemin=0`, `aria-valuemax=100`, `aria-valuenow=0`
+  - updates `aria-valuenow` when `:percent` prop changes (0 → 47 → 100)
+  - renders label slot text ("Importing products…") visible above the bar
+  - renders no bar (and no `role="progressbar"` in DOM) when `:percent` is `null` (idle state)
+- [ ] **Step 2: Run — expect FAIL** (component does not yet exist).
+- [ ] **Step 3: Implement** the SFC. Use Tailwind classes from `kova-hifi.css` tokens; no raw hex literals; no `<style>` block.
+- [ ] **Step 4: Run — expect PASS** (`bun run test:unit -- tests/unit/components/account/SyncProgressBar.test.ts`).
+- [ ] **Step 5: Commit** (`feat(04): extract <SyncProgressBar> with ARIA progressbar semantics`).
 
 ### Task 11.5: `<ShopifyConnectForm>` extraction
 
 **Files:**
 - Create: `kova-open-pencil-1/src/components/account/ShopifyConnectForm.vue`
-- Test: mirror.
+- Test: `kova-open-pencil-1/tests/unit/components/account/ShopifyConnectForm.test.ts`
 
 > Extract from M9 IntegrationsCard + SettingsBrandIntegrationsView (deduplicate). Domain input → normalizeShopDomain → openOAuthPopup. [PRD §6.4.5 row 7]
 
-- [ ] **Step 1 → 5**: TDD per pattern.
+- [ ] **Step 1: Write failing tests**:
+  - mounts an empty domain input + disabled "Connect" button
+  - "Connect" button enables once input is non-empty AND `normalizeShopDomain` returns a non-null value (e.g., user types `mystore` or `mystore.myshopify.com`)
+  - clicking "Connect" calls `useShopifyConnection.openOAuthPopup(<normalized domain>)` exactly once
+  - rejected domain input (e.g., `https://google.com`) shows the validation error message "Enter your Shopify store domain (e.g., mystore.myshopify.com)" and keeps the button disabled
+  - emits `connect-started` event when popup opens (for parent `<IntegrationCard>` to flip to `connecting` state)
+- [ ] **Step 2: Run — expect FAIL**.
+- [ ] **Step 3: Implement** the SFC. Reuse `normalizeShopDomain` from `@/utils/shopify-domain.ts` (existing M9 helper).
+- [ ] **Step 4: Run — expect PASS**.
+- [ ] **Step 5: Commit** (`feat(04): extract <ShopifyConnectForm> from M9 IntegrationsCard`).
 
 ### Task 11.6: `<IntegrationCard>` (refactored M9 IntegrationsCard)
 
 **Files:**
 - Create: `kova-open-pencil-1/src/components/account/IntegrationCard.vue`
-- Test: mirror.
+- Test: `kova-open-pencil-1/tests/unit/components/account/IntegrationCard.test.ts`
 
 > Per PRD §6.4.2 row 9 + §6.4.5. All states (connected, not_connected, connecting, reauthorize, syncing, coming_soon). Uses `<ShopifyConnectForm>` + `<SyncProgressBar>` internally.
 
-- [ ] **Step 1 → 5**: TDD per pattern. Theme-drift grep gate runs in CI (see Phase 15).
+- [ ] **Step 1: Write failing tests** — one per state (6 tests):
+  - `connected`: renders shop domain + green dot indicator + "Disconnect" button + "Sync now" button
+  - `not_connected`: renders `<ShopifyConnectForm>` slot + integration logo + tagline
+  - `connecting`: renders spinner + "Connecting to {{ domain }}…" copy, no Disconnect button visible
+  - `reauthorize`: renders amber warning icon + "Token expired — reauthorize" CTA + secondary "Disconnect" button
+  - `syncing`: renders `<SyncProgressBar :percent="syncPercent">` + "Syncing {{ count }} of {{ total }}" copy
+  - `coming_soon`: renders muted card with "Coming soon" badge, no interactive controls
+  - **Theme-drift gate:** assert the rendered DOM string contains 0 occurrences of `bg-white`, `text-gray-`, or `border-gray-` Tailwind classes (CI grep gate enforces this in `bun run check`)
+- [ ] **Step 2: Run — expect FAIL**.
+- [ ] **Step 3: Implement** the SFC. Use `kova-hifi.css` semantic tokens via Tailwind `@theme`. Compose `<ShopifyConnectForm>` + `<SyncProgressBar>` for the relevant states.
+- [ ] **Step 4: Run — expect PASS**.
+- [ ] **Step 5: Commit** (`feat(04): <IntegrationCard> dark-theme refactor + 6-state matrix`).
 
 ### Task 11.7: `<SyncHistoryAccordion>`
 
 **Files:**
 - Create: `kova-open-pencil-1/src/components/account/SyncHistoryAccordion.vue`
-- Test: mirror.
+- Test: `kova-open-pencil-1/tests/unit/components/account/SyncHistoryAccordion.test.ts`
 
 > Per PRD §6.4.2 row 10. Reka Accordion; rows from `useShopifyConnection.connection.history`; per-event-type icon + humanized label.
 
-- [ ] **Step 1 → 5**: TDD per pattern. Empty state copy "No sync history yet. Events show here as you connect and sync."
+- [ ] **Step 1: Write failing tests**:
+  - mounts with empty array → shows empty state "No sync history yet. Events show here as you connect and sync."
+  - mounts with array of 3 events → renders 3 Reka Accordion items, collapsed by default
+  - clicking an item expands it (assert via `aria-expanded="true"` after click)
+  - `event.type='connected'` row uses link-icon + label "Connected"
+  - `event.type='disconnected'` row uses unlink-icon + label "Disconnected"
+  - `event.type='sync_started'` row uses refresh-icon + label "Sync started"
+  - `event.type='sync_completed'` row uses check-icon + label "Sync completed ({{ count }} items)"
+  - `event.type='sync_failed'` row uses x-icon + label "Sync failed: {{ error_summary }}"
+  - timestamps render via `humanizeRelative(event.created_at)` (e.g., "2 hours ago")
+- [ ] **Step 2: Run — expect FAIL**.
+- [ ] **Step 3: Implement** the SFC. Use Reka `<Accordion>` primitives. Per-event icons via `<KovaIcon>` (Cluster 11).
+- [ ] **Step 4: Run — expect PASS**.
+- [ ] **Step 5: Commit** (`feat(04): <SyncHistoryAccordion> with 5-event-type icon mapping`).
 
 ### Task 11.8: `<IntegrationsSection>`
 
 **Files:**
 - Create: `kova-open-pencil-1/src/views/account/sections/IntegrationsSection.vue`
-- Test: mirror.
+- Test: `kova-open-pencil-1/tests/unit/views/account/sections/IntegrationsSection.test.ts`
 
 > Per PRD §3.5. Composes `<BrandPicker>` + Shopify `<IntegrationCard>` + 2 "Coming soon" placeholder cards + `<SyncHistoryAccordion>`. Uses `useBrandPicker('integrations')`.
 
-- [ ] **Step 1 → 5**: TDD per pattern.
+- [ ] **Step 1: Write failing tests**:
+  - mounts `<BrandPicker>` + 1 Shopify `<IntegrationCard>` + 2 "Coming soon" placeholders + 1 `<SyncHistoryAccordion>`
+  - when `useBrandPicker('integrations')` returns no brand selected, all interactive controls are disabled and an empty-state card shows "Select a brand to manage integrations"
+  - when a brand is selected with a connected Shopify, the `<IntegrationCard>` renders in `connected` state with the shop domain
+  - switching brands via `<BrandPicker>` re-fetches `useShopifyConnection.fetchConnectionHistory({ brandId })` for the newly selected brand
+  - `<SyncHistoryAccordion>` rows are scoped to the current brand (assert by mounting with 2 brands' worth of history rows and confirming only the active brand's rows render)
+- [ ] **Step 2: Run — expect FAIL**.
+- [ ] **Step 3: Implement** the view per PRD §3.5.
+- [ ] **Step 4: Run — expect PASS**.
+- [ ] **Step 5: Commit** (`feat(04): <IntegrationsSection> composes brand picker + cards + history`).
 
 ### Task 11.9: Delete M9 files now superseded
 
