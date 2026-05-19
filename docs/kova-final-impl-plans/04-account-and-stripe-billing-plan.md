@@ -1887,7 +1887,7 @@ export interface Invoice {
 
 export const useBillingStore = defineStore('billing', () => {
   const plan = ref<'free' | 'solo' | 'agency'>('free')
-  const planStatus = ref<'active' | 'past_due' | 'cancelled' | 'incomplete'>('active')
+  const planStatus = ref<'active' | 'past_due' | 'cancelled' | 'incomplete' | 'trialing'>('active')
   const currentPeriodEnd = ref<Date | null>(null)
   const cancelAtPeriodEnd = ref(false)
   const stripeCustomerId = ref<string | null>(null)
