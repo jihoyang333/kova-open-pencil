@@ -1914,7 +1914,7 @@ function onCta() {
 
 <template>
   <div class="toast" :data-variant="toast.variant" role="status" aria-live="polite">
-    <icon-lucide-:name="iconName" v-if="iconName" class="ic-lead" />
+    <KovaIcon v-if="iconName" :name="iconName" class="ic-lead" />
     <div class="body">
       <div class="msg">{{ toast.message }}</div>
       <div v-if="toast.meta" class="meta">{{ toast.meta }}</div>
@@ -2201,7 +2201,7 @@ function isSec(e: MenuEntry): e is { type: 'section'; label: string } { return '
           <DropdownMenuLabel v-if="isSec(entry)">{{ entry.label }}</DropdownMenuLabel>
           <DropdownMenuSeparator v-else-if="isSep(entry)" />
           <DropdownMenuItem v-else :disabled="entry.disabled" :data-destructive="entry.destructive" @select="emit('select', entry); entry.handler()">
-            <icon-lucide-:name="entry.icon" v-if="entry.icon" />
+            <KovaIcon v-if="entry.icon" :name="entry.icon" />
             <span class="lbl">{{ entry.label }}</span>
             <kbd v-if="entry.shortcut">{{ entry.shortcut }}</kbd>
           </DropdownMenuItem>
@@ -2647,9 +2647,9 @@ const props = withDefaults(defineProps<Props>(), { variant: 'secondary', size: '
     :disabled="disabled || loading"
   >
     <icon-lucide-loader v-if="loading" data-test="spinner" class="spinner" />
-    <icon-lucide-:name="icon" v-else-if="icon && iconPosition === 'leading'" />
+    <KovaIcon v-else-if="icon && iconPosition === 'leading'" :name="icon" />
     <slot />
-    <icon-lucide-:name="icon" v-if="icon && iconPosition === 'trailing' && !loading" />
+    <KovaIcon v-if="icon && iconPosition === 'trailing' && !loading" :name="icon" />
   </button>
 </template>
 ```
@@ -2770,7 +2770,7 @@ const emit = defineEmits<{ 'update:modelValue': [v: string] }>()
       role="radio" :aria-checked="modelValue === o.value"
       @click="emit('update:modelValue', o.value)"
     >
-      <icon-lucide-:name="o.icon" v-if="o.icon" />
+      <KovaIcon v-if="o.icon" :name="o.icon" />
       <span>{{ o.label }}</span>
     </button>
   </div>
@@ -2847,7 +2847,7 @@ const parts = computed<HeadlineParts>(() => {
 <template>
   <div class="empty-pane" :class="size">
     <div class="ic-wrap">
-      <icon-lucide-:name="icon" />
+      <KovaIcon :name="icon" />
     </div>
     <h5>
       <template v-if="parts.match">
