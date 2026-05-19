@@ -705,6 +705,7 @@ export function getStripeClient(): Stripe {
   }
   cached = new Stripe(key, {
     apiVersion: '2024-10-28.acacia',  // Pin to the latest stable Stripe API version at PRD time
+    // B-MED3 audit (2026-05-19): production Stripe construction uses pinned apiVersion. Unit tests mock the entire stripe client object — there is no real Stripe construction in tests — so apiVersion drift cannot regress the test suite. No further mitigation required; finding is verified-no-change.
     typescript: true,
   })
   return cached
