@@ -719,6 +719,21 @@ Per W0-4 founder ratification (resolves CT-003 from `docs/kova-final-qa/CONSOLID
 - Wave-2 / Wave-3 cluster fix agents scrub residual non-conforming icon bindings (per QA-B CRITICAL-3 22 occurrences in Plan 03, QA-B CRITICAL-4 dynamic binding in Plan 04 line 2332, QA-B HIGH-7 + HIGH-17 in Plan 05 + 06).
 - Plan 11 Task 4.4 ships the primitive with TDD coverage; consumers must NOT shim a local icon wrapper.
 
+### 6.3 Test framework (W0-6 — 2026-05-19)
+
+Per W0-6 founder ratification (resolves CT-010 from `docs/kova-final-qa/CONSOLIDATED-TRIAGE.md` + QA-B CRITICAL-5 / CRITICAL-6 / HIGH-8), the project uses **`bun:test` exclusively**. The following APIs are forbidden in `tests/` and any other test file:
+
+- `jest.mock` / `jest.fn` / `jest.spyOn`
+- `vi.mock` / `vi.fn` / `vi.spyOn` (Vitest)
+- `mockImplementation` / `mockImplementationOnce` / `mockClear` / `mockReturnValue` / `mockReturnValueOnce`
+
+**Use the `bun:test` equivalents:** `mock.module(modulePath, factory)` at module level for module mocks; `mock(implementation)` at call site for function mocks; manual `mock.mockClear()` is permitted but the bound symbol must be a `bun:test` `mock` reference, not a `jest`/`vi` reference.
+
+**Consumer enforcement:**
+
+- Plan 11 Task 11.6 ships a CI grep gate + `bun run check:test-framework` script. The gate is composed into `bun run check`, so any plan author writing a jest/vitest API receives an immediate fail.
+- Wave-2 cluster fix agents for 01 / 02 / 03 / 04 replace `jest.mock` / `vi.mock` / `mockImplementationOnce` with `bun:test` equivalents during their pass.
+
 ---
 
 ## 7. Open questions per cluster

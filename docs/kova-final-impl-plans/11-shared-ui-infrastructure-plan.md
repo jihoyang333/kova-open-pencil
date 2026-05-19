@@ -3253,6 +3253,50 @@ git commit -am "ci(cluster-11): SECURITY DEFINER search_path grep gate (W0-5)"
 
 ---
 
+### Task 11.6: Test-framework drift CI gate (W0-6)
+
+**Files:**
+- Modify: `.github/workflows/ci.yml`
+- Modify: `kova-open-pencil-1/package.json` — `check` script composes the grep step
+
+**Contract:** the project uses `bun:test` exclusively. `jest.mock`, `vi.mock`, `vi.fn`, `vi.spyOn`, `mockImplementationOnce`, `mockClear` etc. are forbidden — these symbols are undefined under `bun:test` runtime and cause silent test failures (mocks no-op, tests false-pass).
+
+CT-010 evidence from CONSOLIDATED-TRIAGE.md: Plan 02 has `jest.mock` (B-CRIT5), Plan 03 has `vi.mock` + `vi.fn` (B-CRIT6), Plans 02 + 03 + 04 use `mockImplementationOnce` / `mockClear` (B-HIGH8).
+
+- [ ] **Step 1: Add the CI grep step**
+
+```yaml
+- name: Verify bun:test only — no jest / vitest API surface (W0-6)
+  run: |
+    if grep -rnE "\b(jest|vi)\.(mock|fn|spyOn)\b|\bmockImplementation(Once)?\b|\bmockClear\b|\bmockReturnValue(Once)?\b" kova-open-pencil-1/tests/; then
+      echo "ERROR: jest/vitest API found in bun:test files (W0-6 lock). Use mock.module(...) + mock(...) instead."
+      exit 1
+    fi
+```
+
+- [ ] **Step 2: Wire into `bun run check`**
+
+In `kova-open-pencil-1/package.json` `"scripts"`:
+
+```json
+"check:test-framework": "! grep -rnE '\\b(jest|vi)\\.(mock|fn|spyOn)\\b|\\bmockImplementation(Once)?\\b|\\bmockClear\\b|\\bmockReturnValue(Once)?\\b' tests/",
+"check": "oxlint --type-aware --type-check && bun run check:rls && bun run check:test-framework"
+```
+
+- [ ] **Step 3: Smoke-test locally**
+
+Create a temporary test file `tests/__delete-me.test.ts` containing `vi.mock('foo')`. Run `bun run check:test-framework`. Expect exit code 1. Delete the file. Re-run. Expect exit code 0.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git commit -am "ci(cluster-11): bun:test framework grep gate (W0-6)"
+```
+
+**Wave-2 follow-up:** cluster-fix agents for 01 / 02 / 03 / 04 replace `jest.mock` / `vi.mock` / `mockImplementationOnce` with the `bun:test` equivalents (`mock.module(...)` at module level, `mock(() => ...)` at call site, manual `mock.mockClear()` if needed) during their pass.
+
+---
+
 ## Self-Review
 
 **1. Spec coverage:**
