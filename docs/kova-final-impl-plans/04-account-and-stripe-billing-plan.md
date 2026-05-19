@@ -898,7 +898,7 @@ export async function handler(
 export default async function (req: VercelRequest, res: VercelResponse): Promise<void> {
   const userId = await verifyAuth(req)
   const result = await handler(
-    { method: req.method ?? '', headers: req.headers as any, body: req.body },
+    { method: req.method ?? '', headers: req.headers, body: req.body },
     { stripe: getStripeClient(), supabase: getServiceSupabase(), userId },
   )
   res.status(result.status).json(result.body)
@@ -2198,7 +2198,7 @@ export function useAvatarUpload() {
 
   async function upload(file: File): Promise<{ public_url: string }> {
     error.value = null
-    if (!ALLOWED_MIMES.includes(file.type as any)) {
+    if (!ALLOWED_MIMES.includes(file.type as typeof ALLOWED_MIMES[number])) {
       throw new Error('Unsupported file type. Use PNG or JPG.')
     }
     if (file.size > MAX_BYTES) {
