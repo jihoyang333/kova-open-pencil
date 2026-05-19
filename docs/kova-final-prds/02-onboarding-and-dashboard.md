@@ -77,10 +77,10 @@ User can: (1) complete the 4-step onboarding wizard from a fresh sign-up — bra
 - A11.7 zero brands (first login, no brands yet — but onboarding catches this so A11.7 appears only if brand list goes empty after archive/delete: routes to `/brands/picker` or back through wizard — confirm in §12)
 - B9-pattern search-empty: "Nothing matches '{query}' here — Clear filters"
 
-**Offline indicator (A13):**
-- Online (A13.1): `.pill.ok.dot` "Online" in topbar actions cluster (quiet)
-- Offline (A13.2): sidebar footer `.net-strip` "Working offline" pill, topbar `.pill.warn.dot` "Offline", per-pane warn banner "You're offline. Changes are saved locally and will sync when you reconnect"
-- Detection: composable `useOfflineState()` — combines `navigator.onLine` + Supabase Realtime channel state (consumed from Cluster 11 cross-cut)
+**Offline indicator — CONSUMER of Cluster 11 `<NetworkStatusIndicator>` (CT-020):**
+- This PRD owns ZERO offline UI surface. Cluster 11 §6.4 ships `<NetworkStatusIndicator>` (Figma-style 14×14 `cloud-off` icon + `KovaTooltip`, renders nothing while online) and Cluster 11 §3.7 mounts it globally in `App.vue` (commit f08fa551 — C-MED-11.5).
+- The legacy A13.1 topbar "Online" pill, A13.2 sidebar `.net-strip`, and per-pane offline banner variants are RETIRED per 2026-05-17 founder decision (recorded in Cluster 11 §6.4).
+- Detection composable: Cluster 11 §2.4 `useOnlineStatus` (combines `navigator.onLine` + Supabase Realtime channel heartbeat). Cluster 02 does NOT call this composable directly — it is encapsulated inside `<NetworkStatusIndicator>`.
 
 **Coming-soon shells (A12):**
 - `/brand/:brandId/calendar`, `/brand/:brandId/swipes`, `/brand/:brandId/templates` — each renders the canonical coming-soon shell (icon-tile + eyebrow + headline + 3-row roadmap + 2-CTA "Notify me" + "Read the roadmap")
@@ -194,12 +194,13 @@ Every surface maps to a hi-fi file + scene ID. Engineers cite the file + scene w
 | Swipes (Phase 2) | `/brand/:brandId/swipes` | same | A12.2 | Same shell, `bookmark` icon |
 | Templates (Phase 2) | `/brand/:brandId/templates` | same | A12.3 | Same shell, `layout-template` icon + 2-tab strip ("Templates" / "Examples") |
 
-### 3.7 Network state (DARK)
+### 3.7 Network state (DARK) — owned by Cluster 11 (CT-020)
 
-| Surface | Hi-fi file | Scene IDs | Notes |
-|---|---|---|---|
-| Online (quiet) | same A11 file | A13.1 | Topbar actions cluster: `.pill.ok.dot` "Online" (~11px). Sidebar footer silent. |
-| Offline (warn) | same | A13.2 | Three reinforcing signals: sidebar footer `.net-strip` "Working offline" + cloud-off icon; per-pane `.offline-banner` "You're offline. Changes are saved locally and will sync when you reconnect"; topbar `.pill.warn.dot` "Offline" swap |
+| Surface | Owner | Notes |
+|---|---|---|
+| Online | Cluster 11 `<NetworkStatusIndicator>` | Renders nothing — the indicator is silent while online (Figma-parity). |
+| Offline | Cluster 11 `<NetworkStatusIndicator>` | Single 14×14 `cloud-off` lucide icon mounted at top-right of the viewport via `App.vue` global mount (Plan 11 §3.7 / commit f08fa551). Hover surfaces `<KovaTooltip>` copy "You're offline. Changes are saved locally and will sync when you reconnect." |
+| Sidebar `.net-strip`, topbar `.pill.warn.dot`, per-pane `.offline-banner` | **RETIRED** | A13.1 / A13.2 three-signal pattern retired 2026-05-17 in favor of the single-icon indicator. Do NOT re-introduce these surfaces in this PRD or Plan 02. |
 
 ### 3.8 Cross-references (not owned by this PRD but cited)
 
@@ -674,7 +675,7 @@ export const useUIStateStore = defineStore('ui-state', () => {
 | `FileThumbnail` (NEW) | `src/components/dashboard/FileThumbnail.vue` | `canvas: Canvas` | none | none | 03.a `.thumb` + `.thumb-frame` / `.thumb-flow` / `.thumb-ab` (picked by `canvas.frame_count` + heuristic) |
 | `SortDropdown` (NEW) | `src/components/dashboard/SortDropdown.vue` | `modelValue: SortMode` | none | `update:modelValue` | 03.a `.filter` button |
 | `ViewToggle` (NEW) | `src/components/dashboard/ViewToggle.vue` | `modelValue: ViewMode` | none | `update:modelValue` | 03.a `.view-toggle` |
-| `OfflineIndicator` (NEW — composes sidebar pill + banner) | `src/components/dashboard/OfflineIndicator.vue` | `slot: 'sidebar' \| 'topbar' \| 'banner'` | none | none | A13.1 / A13.2 |
+| ~~`OfflineIndicator`~~ — **RETIRED (CT-020)** | n/a | Cluster 02 consumes Cluster 11 `<NetworkStatusIndicator>` mounted globally in `App.vue`. No local offline component. |  |  |
 | `CanvasCreationTransition` (NEW) | `src/components/dashboard/CanvasCreationTransition.vue` | `state: 'idle' \| 'submitting' \| 'review' \| 'splash'`, `prompt: string` | none | none | B11.1–B11.4 |
 | `DashboardSkeleton` (NEW) | `src/components/dashboard/DashboardSkeleton.vue` | none | none | none | B7.1 |
 
@@ -787,11 +788,12 @@ Every line testable in code or browser. No "feels right."
 - [ ] "Notify me when it's ready" click: posts user email + interest to Resend mailing-list (§12.9 RESOLVED)
 - [ ] Breadcrumb on coming-soon routes adds "Coming soon" inline pill next to page name
 
-### 8.7 Offline indicator (A13)
+### 8.7 Offline indicator — consumer of Cluster 11 (CT-020)
 
-- [ ] When `navigator.onLine === true` AND Supabase Realtime channel state = SUBSCRIBED: topbar shows `.pill.ok.dot` "Online"; sidebar footer silent
-- [ ] When offline (either signal): sidebar footer `.net-strip` "Working offline" + `cloud-off` icon renders; topbar pill swaps to `.pill.warn.dot` "Offline"; per-pane `.offline-banner` "You're offline. Changes are saved locally and will sync when you reconnect" renders at top of main pane
-- [ ] All three offline signals share the same `--warn-soft` / `--warn-edge` / `--warn` tokens
+- [ ] `<NetworkStatusIndicator>` is mounted globally in `App.vue` by Plan 11 §3.7 (commit f08fa551) — Cluster 02 verifies it is present at the App root, NOT re-mounted locally
+- [ ] When `useOnlineStatus().status === 'online'` (`navigator.onLine === true` AND Supabase Realtime channel state = SUBSCRIBED): the indicator renders nothing (silent online state per Figma parity)
+- [ ] When `useOnlineStatus().status === 'offline'` (either signal): the 14×14 `cloud-off` lucide icon renders at the top-right of the viewport; hover surfaces `<KovaTooltip>` "You're offline. Changes are saved locally and will sync when you reconnect."
+- [ ] No A13.1 topbar pill, A13.2 sidebar `.net-strip`, or per-pane `.offline-banner` is rendered by Cluster 02 (those three signals retired 2026-05-17)
 
 ### 8.8 Skeleton state (B7.1)
 
@@ -831,7 +833,7 @@ Target coverage: ≥85% on dashboard composables + store actions + onboarding st
 | `tests/unit/components/dashboard/FileThumbnail.test.ts` | Deterministic abstraction picker (same canvasId → same abstraction); abstraction kind branches |
 | `tests/unit/components/dashboard/CanvasCreationTransition.test.ts` | State transitions B11.1 → B11.2 → B11.3 → B11.4; spinner mount; chrome-dimensions invariance |
 | `tests/unit/components/dashboard/DashboardSkeleton.test.ts` | Renders 4×2 grid; shimmer animation class applied |
-| `tests/unit/components/dashboard/OfflineIndicator.test.ts` | Slot prop renders correct variant (sidebar / topbar / banner) |
+| ~~`tests/unit/components/dashboard/OfflineIndicator.test.ts`~~ — **RETIRED (CT-020)** | Cluster 11 owns the indicator test; Cluster 02 verifies global mount only |
 | `tests/unit/components/onboarding/StoreTypeStep-dark.test.ts` | No light Tailwind classes remain in rendered template (snapshot test); access_token NOT in URL on connect (mock fetch + assert headers) |
 | `tests/unit/components/onboarding/BrandKitStep.test.ts` | File acceptance MIME + size cap; drop-zone events; textarea v-model; AI promise card render |
 
