@@ -708,6 +708,7 @@ Expected: FAIL (handler not implemented).
 ```ts
 // api/account/deletion-request.ts
 import { verifyAuth } from '../_shared/auth'
+import { writeAudit } from '../_shared/audit'
 import { sendEmail } from '../_shared/resend-client'
 
 const RATE_LIMIT_WINDOW_MS = 60_000
@@ -752,8 +753,17 @@ export default async function handler(req: Request): Promise<Response> {
     return Response.json({ error: 'internal_error', request_id: crypto.randomUUID() }, { status: 500 })
   }
 
-  // Audit log + email — best-effort; do not block response
+  // Audit log + email — best-effort; do not block response.
+  // CT-007 — writeAudit is owned by Cluster 11 (api/_shared/audit.ts).
+  // The helper swallows DB errors (including 42P01 table-missing) so an
+  // audit-log write failure can never break this user-facing mutation.
   void (async () => {
+    await writeAudit(auth.supabase, {
+      userId: auth.userId,
+      eventType: 'deletion_requested',
+      payload: { scheduled_purge_at: scheduledAt as string },
+      clusterOwner: '01',
+    })
     try {
       await sendEmail({
         to: auth.email,
@@ -853,6 +863,7 @@ Expected: FAIL.
 ```ts
 // api/account/restore.ts
 import { verifyAuth } from '../_shared/auth'
+import { writeAudit } from '../_shared/audit'
 import { sendEmail } from '../_shared/resend-client'
 
 export default async function handler(req: Request): Promise<Response> {
@@ -875,7 +886,15 @@ export default async function handler(req: Request): Promise<Response> {
     return Response.json({ error: 'no_pending_deletion' }, { status: 409 })
   }
 
+  // CT-007 — Cluster 11 writeAudit() helper. Best-effort; helper swallows
+  // any DB error so audit-log loss never breaks the user-facing restore.
   void (async () => {
+    await writeAudit(auth.supabase, {
+      userId: auth.userId,
+      eventType: 'account_restored',
+      payload: {},
+      clusterOwner: '01',
+    })
     try {
       await sendEmail({
         to: auth.email,
@@ -977,6 +996,7 @@ Expected: FAIL.
 // api/auth/email-change-request.ts
 import { z } from 'zod'
 import { verifyAuth, getAdminClient } from '../_shared/auth'
+import { writeAudit } from '../_shared/audit'
 import { sendEmail } from '../_shared/resend-client'
 
 const BodySchema = z.object({ new_email: z.string().email() })
@@ -1007,6 +1027,19 @@ export default async function handler(req: Request): Promise<Response> {
     console.error('email-change updateUserById failed:', error)
     return Response.json({ error: 'internal_error' }, { status: 500 })
   }
+
+  // CT-007 — Cluster 11 writeAudit() helper. Best-effort; the helper swallows
+  // any DB error so audit-log loss never blocks the user-facing email-change
+  // flow. Old + new email both captured so support can answer "did anyone
+  // tamper with my account" without needing to query auth.audit_log_entries.
+  void (async () => {
+    await writeAudit(admin, {
+      userId: auth.userId,
+      eventType: 'email_change_requested',
+      payload: { old_email: auth.email, new_email: body.new_email },
+      clusterOwner: '01',
+    })
+  })()
 
   // Notify OLD address — Supabase only emails the NEW address
   void (async () => {
@@ -1563,6 +1596,7 @@ describe('cron step: db', () => {
 ```ts
 // api/cron/steps/db.ts
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { writeAudit } from '../../_shared/audit'
 import { sendEmail } from '../../_shared/resend-client'
 
 export interface StepArgs {
@@ -1585,6 +1619,19 @@ export async function runStep({ supabase, userId }: StepArgs): Promise<StepResul
     .update({ status: 'succeeded', succeeded_at: new Date().toISOString() })
     .match({ user_id: userId, step: 'db' })
   if (qErr) return { ok: false, retriable: true, error: qErr.message }
+
+  // CT-007 — Cluster 11 writeAudit() helper. Write the audit row BEFORE the
+  // cascading delete so the row references a userId that still exists in the
+  // FK target table. The helper swallows DB errors so audit-log failure can
+  // never block the hard-delete itself (regulatory: deletion completion
+  // beats audit-log completeness). The `email` capture lets compliance
+  // confirm WHICH account was hard-deleted after the row is gone.
+  await writeAudit(supabase, {
+    userId,
+    eventType: 'account_hard_deleted',
+    payload: { email_at_deletion: email ?? null },
+    clusterOwner: '01',
+  })
 
   const { error: delErr } = await supabase.from('users').delete().eq('id', userId)
   if (delErr) return { ok: false, retriable: true, error: delErr.message }

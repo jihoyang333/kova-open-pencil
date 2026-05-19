@@ -73,7 +73,7 @@
 - `kova-open-pencil-1/src/composables/use-email-shell.ts`
 
 ### Phase 9 — App wiring + showcase
-- `kova-open-pencil-1/src/App.vue` — **MODIFY** (mount ToastStack + ConfirmModal globally)
+- `kova-open-pencil-1/src/App.vue` — **MODIFY** (mount ToastStack + ConfirmModal + `<NetworkStatusIndicator>` globally — C-MED-11.5)
 - `kova-open-pencil-1/src/main.ts` — **MODIFY** (install Sentry, mount useTheme)
 - `kova-open-pencil-1/src/router/routes.ts` — **MODIFY** (add /404, /500, /network-unreachable, /dev/cluster-11)
 - `kova-open-pencil-1/src/views/dev/Cluster11Showcase.vue` — Storybook-replacement smoke page
@@ -89,7 +89,7 @@
 - `kova-open-pencil-1/src/App.vue` — mount global UI containers
 - `kova-open-pencil-1/src/main.ts` — install Sentry stub, mount theme
 - `kova-open-pencil-1/src/router/routes.ts` — register error + showcase routes
-- `kova-open-pencil-1/.env.example` — add `VITE_SENTRY_DSN_BROWSER`, `SENTRY_DSN_SERVER`, `RESEND_API_KEY`, `CRON_SECRET` (all stub-guarded; real values wired pre-launch per 00 §11)
+- `kova-open-pencil-1/.env.example` — add `VITE_SENTRY_DSN_BROWSER`, `SENTRY_DSN_SERVER`, `RESEND_API_KEY`, `CRON_SECRET`, `PUBLIC_APP_URL` (all stub-guarded / fallback-guarded; real values wired pre-launch per 00 §11)
 
 ---
 
@@ -236,6 +236,64 @@ Expected: PASS
 ```bash
 git add kova-open-pencil-1/supabase/migrations/20260520_11_shared_ui_infrastructure.sql kova-open-pencil-1/tests/integration/cluster-11/migration.test.ts
 git commit -m "feat(cluster-11): add idempotency_keys + audit_log table migration"
+```
+
+**Key-length CHECK audit (B-MED18 / A-MED3 closure, 2026-05-19):**
+
+The CHECK `length(key) >= 16 AND length(key) <= 64` plus the `KEY_PATTERN`
+`/^[a-zA-Z0-9_-]{16,64}$/` in `verifyIdempotency()` (Task 1.3) together gate
+every key. Cross-cluster grep results:
+
+| Plan | Callsite | Key shape | Length | Passes CHECK + pattern |
+|---|---|---|---|---|
+| 01 | `01-plan.md:648` (test) | `crypto.randomUUID()` | 36 | ✅ |
+| 01 | `01-plan.md:766` (handler) | header passthrough | n/a | ✅ (validated at helper) |
+| 01 | `01-plan.md:1285` (concat) | `\`${idempotencyKey}:${brand.id}\`` | 73, includes `:` | ❌ **violates pattern AND length cap — flagged for Cluster 01 follow-up** |
+| 01 | `01-plan.md:2016` (test) | `crypto.randomUUID()` | 36 | ✅ |
+| 04 | `04-plan.md:788` (test) | `crypto.randomUUID()` | 36 | ✅ |
+| 05 | `05-plan.md:1279` (call)/`:1620` (test)/`:1688`/`:1882` (handler) | `crypto.randomUUID()` / passthrough | 36 | ✅ |
+| 09 | `09-plan.md:2356` (handler) | header passthrough | n/a | ✅ |
+| 09 | `09-plan.md:2333` (test note) | "same key + same snapshot_id" | n/a (caller supplies) | ✅ |
+| 10 | n/a | no idempotency callsites in plan | — | ✅ |
+| 11 | self | `KEY_PATTERN` validates | 16–64 | ✅ |
+
+The Plan 01:1285 concat is cross-cluster — Cluster 01+12 own remediation. Cluster
+11 will not edit Plan 01 to fix it; Cluster 11 ships the contract + the test
+that pins the contract. The flagged row is recorded here so the Cluster 01
+next-pass agent finds it without re-grepping.
+
+- [ ] **Step 6: Add the CHECK-exercising regression test** (Task 1.3 test file already covers KEY_PATTERN; this test exercises the DB CHECK directly so a future helper bypass cannot insert an out-of-range key).
+
+```typescript
+// tests/integration/cluster-11/idempotency-check-constraint.test.ts
+import { describe, it, expect } from 'bun:test'
+import { supabaseAdmin } from '../helpers/supabase-local'
+
+describe('idempotency_keys length CHECK (B-MED18)', () => {
+  it('rejects key with length < 16', async () => {
+    const { error } = await supabaseAdmin.from('idempotency_keys').insert({
+      key: 'tooshort',  // 8 chars
+      user_id: '00000000-0000-0000-0000-000000000000',
+      endpoint: 'POST /api/test',
+      request_hash: 'h'.repeat(64),
+      response_status: 200,
+      response_body: { ok: true },
+    })
+    expect(error?.code).toBe('23514')  // check_violation
+  })
+
+  it('rejects key with length > 64', async () => {
+    const { error } = await supabaseAdmin.from('idempotency_keys').insert({
+      key: 'a'.repeat(65),
+      user_id: '00000000-0000-0000-0000-000000000000',
+      endpoint: 'POST /api/test',
+      request_hash: 'h'.repeat(64),
+      response_status: 200,
+      response_body: { ok: true },
+    })
+    expect(error?.code).toBe('23514')
+  })
+})
 ```
 
 ---
@@ -428,6 +486,23 @@ describe('verifyIdempotency', () => {
     const promise = verifyIdempotency(makeReq({}, 'a'.repeat(15) + '!'), 'u', 'POST /api/x')
     await expect(promise).rejects.toMatchObject({ status: 400 })
   })
+
+  // C-HIGH11 contract — the helper hashes raw bodyText byte-for-byte. Two
+  // payloads with different key order produce DIFFERENT hashes. The cached
+  // row was seeded with `{x:1,y:2}`; replaying with `{y:2,x:1}` MUST therefore
+  // throw 422, not return the cached response. Callers that need
+  // retry-safety must serialize JSON deterministically.
+  it('order-sensitive hash — same logical body, different key order, throws 422', async () => {
+    const key = 'a'.repeat(20)
+    seedMockRow(key, 200, { ok: true }, computeHashFor({ x: 1, y: 2 }))
+    const reordered = '{"y":2,"x":1}'
+    const req = new Request('https://test.kova/api/x', {
+      method: 'POST',
+      headers: { 'X-Idempotency-Key': key },
+      body: reordered,
+    })
+    await expect(verifyIdempotency(req, 'u', 'POST /api/x')).rejects.toMatchObject({ status: 422 })
+  })
 })
 ```
 
@@ -453,6 +528,29 @@ class HttpError extends Error {
 
 const KEY_PATTERN = /^[a-zA-Z0-9_-]{16,64}$/
 
+/**
+ * Idempotency contract (C-HIGH11 — read before integrating):
+ *
+ *   request_hash = sha256(method + '|' + path + '|' + bodyText)
+ *
+ * The helper hashes the raw bodyText byte-for-byte. It does NOT canonicalize
+ * JSON: two semantically-equivalent payloads with different property order
+ * (e.g. `{"a":1,"b":2}` vs `{"b":2,"a":1}`) produce DIFFERENT hashes and a
+ * replay with the second body will throw 422 "key_reused_with_different_body".
+ *
+ * Callers that retry the same logical request MUST serialize their JSON
+ * deterministically (stable key order, no incidental whitespace) before
+ * sending. The TypeScript/V8 default `JSON.stringify(obj)` is deterministic
+ * for the same input object, so callers that send the literal same object
+ * twice are safe; callers that round-trip through other languages or rebuild
+ * the payload between retries must enforce determinism themselves.
+ *
+ * Rationale: canonicalizing JSON in the helper is expensive (recursive sort,
+ * unicode normalisation) and ambiguous (what about arrays-as-sets?). Pushing
+ * determinism to the caller keeps the helper a pure byte-hasher and matches
+ * the Stripe / GitHub / AWS pattern. See PRD 11 §4.1 column comment + §5.5
+ * for the contract surface.
+ */
 export async function verifyIdempotency(
   req: Request,
   userId: string,
@@ -946,20 +1044,39 @@ export interface EmailPayload {
   html: string
   text: string
 }
+
+export interface EmailSendResult {
+  id: string
+  /**
+   * `true` when the helper short-circuited because RESEND_API_KEY was absent
+   * (stub mode). Callsites that surface "email sent" UX MUST branch on this
+   * flag so production divergence is visible (no silent "stub" success).
+   */
+  skipped: boolean
+}
 ```
 
-- [ ] **Step 3: Write `api/_shared/email.ts` (stub mode)**
+- [ ] **Step 3: Write `api/_shared/email.ts` (stub mode — CT-015 breadcrumb pattern)**
 
 ```typescript
 // api/_shared/email.ts
-import type { EmailPayload } from './types'
+import type { EmailPayload, EmailSendResult } from './types'
 
 const apiKey = process.env.RESEND_API_KEY
 
-export async function sendEmail(payload: EmailPayload): Promise<{ id: string }> {
+// CT-015 / founder lock #19 — stub-guard pattern. Returns a sentinel id +
+// `skipped: true` when RESEND_API_KEY is unset so production divergence is
+// observable (a) in logs via the warn breadcrumb, (b) at Sentry once
+// pre-launch wiring lands, (c) in callsites that surface "email sent" UX.
+// Replace the console.warn with Sentry.captureMessage at pre-launch §11.
+export async function sendEmail(payload: EmailPayload): Promise<EmailSendResult> {
   if (!apiKey) {
-    console.warn('[resend] RESEND_API_KEY missing — email send skipped (stub mode):', payload.to, payload.subject)
-    return { id: `stub_${crypto.randomUUID()}` }
+    console.warn(
+      '[resend] skipped — RESEND_API_KEY not set (stub mode)',
+      { to: payload.to, subject: payload.subject }
+    )
+    // TODO(pre-launch §11): Sentry.captureMessage('resend_skipped_no_api_key', 'warning')
+    return { id: `stub_${crypto.randomUUID()}`, skipped: true }
   }
   // TODO(pre-launch §11): import { Resend } from 'resend' + resend.emails.send(payload)
   throw new Error('Resend live mode not yet wired — stub fallback only')
@@ -1207,6 +1324,12 @@ RESEND_API_KEY=
 
 # Vercel cron — see 00 §11 for setup (Pro plan + secret generation)
 CRON_SECRET=
+
+# Public app origin — used by <EmailShell> wordmark URL + Resend templates
+# linking back into the app. Defaults to https://kova.app when unset (C-MED-11.3).
+# Set per-environment: preview deployments use the per-branch Vercel URL,
+# production sets https://kova.app.
+PUBLIC_APP_URL=
 ```
 
 - [ ] **Step 2: Commit**
@@ -1874,7 +1997,7 @@ function onCta() {
 
 <template>
   <div class="toast" :data-variant="toast.variant" role="status" aria-live="polite">
-    <icon-lucide-:name="iconName" v-if="iconName" class="ic-lead" />
+    <KovaIcon v-if="iconName" :name="iconName" class="ic-lead" />
     <div class="body">
       <div class="msg">{{ toast.message }}</div>
       <div v-if="toast.meta" class="meta">{{ toast.meta }}</div>
@@ -2161,7 +2284,7 @@ function isSec(e: MenuEntry): e is { type: 'section'; label: string } { return '
           <DropdownMenuLabel v-if="isSec(entry)">{{ entry.label }}</DropdownMenuLabel>
           <DropdownMenuSeparator v-else-if="isSep(entry)" />
           <DropdownMenuItem v-else :disabled="entry.disabled" :data-destructive="entry.destructive" @select="emit('select', entry); entry.handler()">
-            <icon-lucide-:name="entry.icon" v-if="entry.icon" />
+            <KovaIcon v-if="entry.icon" :name="entry.icon" />
             <span class="lbl">{{ entry.label }}</span>
             <kbd v-if="entry.shortcut">{{ entry.shortcut }}</kbd>
           </DropdownMenuItem>
@@ -2607,9 +2730,9 @@ const props = withDefaults(defineProps<Props>(), { variant: 'secondary', size: '
     :disabled="disabled || loading"
   >
     <icon-lucide-loader v-if="loading" data-test="spinner" class="spinner" />
-    <icon-lucide-:name="icon" v-else-if="icon && iconPosition === 'leading'" />
+    <KovaIcon v-else-if="icon && iconPosition === 'leading'" :name="icon" />
     <slot />
-    <icon-lucide-:name="icon" v-if="icon && iconPosition === 'trailing' && !loading" />
+    <KovaIcon v-if="icon && iconPosition === 'trailing' && !loading" :name="icon" />
   </button>
 </template>
 ```
@@ -2730,7 +2853,7 @@ const emit = defineEmits<{ 'update:modelValue': [v: string] }>()
       role="radio" :aria-checked="modelValue === o.value"
       @click="emit('update:modelValue', o.value)"
     >
-      <icon-lucide-:name="o.icon" v-if="o.icon" />
+      <KovaIcon v-if="o.icon" :name="o.icon" />
       <span>{{ o.label }}</span>
     </button>
   </div>
@@ -2781,26 +2904,47 @@ const { reduced } = useReducedMotion()
 ```vue
 <!-- src/components/ui/EmptyState.vue -->
 <script setup lang="ts">
+import { computed } from 'vue'
+
 interface Props { size?: 'inline-32' | 'panel-40' | 'full-48'; icon: string; headline: string; body?: string; query?: string }
 const props = withDefaults(defineProps<Props>(), { size: 'panel-40' })
 
-function renderHeadline() {
-  if (!props.query) return props.headline
-  return props.headline.replace(`"${props.query}"`, `<span class="q">"${props.query}"</span>`)
-}
+// CT-024 fix: split the headline into safe pre / match / post pieces so the
+// user-supplied query is rendered via Vue text-interpolation rather than
+// v-html. v-html on user input is an XSS sink — strictly forbidden here.
+interface HeadlineParts { pre: string; match: string | null; post: string }
+const parts = computed<HeadlineParts>(() => {
+  const q = props.query
+  if (!q) return { pre: props.headline, match: null, post: '' }
+  const needle = `"${q}"`
+  const idx = props.headline.indexOf(needle)
+  if (idx === -1) return { pre: props.headline, match: null, post: '' }
+  return {
+    pre: props.headline.slice(0, idx),
+    match: needle,
+    post: props.headline.slice(idx + needle.length),
+  }
+})
 </script>
 
 <template>
   <div class="empty-pane" :class="size">
     <div class="ic-wrap">
-      <icon-lucide-:name="icon" />
+      <KovaIcon :name="icon" />
     </div>
-    <h5 v-html="renderHeadline()" />
+    <h5>
+      <template v-if="parts.match">
+        <span>{{ parts.pre }}</span><span class="q">{{ parts.match }}</span><span>{{ parts.post }}</span>
+      </template>
+      <template v-else>{{ parts.pre }}</template>
+    </h5>
     <p v-if="body" class="body">{{ body }}</p>
     <div v-if="$slots.cta" class="cta-row"><slot name="cta" /></div>
   </div>
 </template>
 ```
+
+> **CT-024 / B-CRIT14:** `v-html` on a string interpolated from `props.query` (user input) is an XSS sink — strictly forbidden. The `parts` computed splits the headline into safe `pre` / `match` / `post` text pieces rendered via standard Vue text interpolation, preserving the highlight wrapper without ever executing HTML from user input. Reviewers MUST reject any future change that re-introduces `v-html` here or anywhere else this component is used.
 
 ```vue
 <!-- src/components/ui/NetworkStatusIndicator.vue -->
@@ -2978,7 +3122,30 @@ defineProps<{ title: string }>()
 ```vue
 <!-- src/components/email/EmailShell.vue -->
 <script setup lang="ts">
-defineProps<{ title: string; preheader?: string }>()
+import { computed } from 'vue'
+
+interface Props {
+  title: string
+  preheader?: string
+  /**
+   * Fully-qualified wordmark URL. Defaults to `${PUBLIC_APP_URL}/email/wordmark-light@2x.png`
+   * with a `https://kova.app` fallback when PUBLIC_APP_URL is unset (C-MED-11.3).
+   * Override only for tests / preview deployments that need a different host.
+   */
+  wordmarkUrl?: string
+}
+
+const props = defineProps<Props>()
+
+// C-MED-11.3 — never hardcode prod host. The fallback keeps prod builds
+// working without env wiring; preview / dev / test deployments override
+// via PUBLIC_APP_URL (vercel.json + .env.example).
+const PUBLIC_APP_URL_FALLBACK = 'https://kova.app'
+const wordmark = computed(
+  () =>
+    props.wordmarkUrl ??
+    `${process.env.PUBLIC_APP_URL ?? PUBLIC_APP_URL_FALLBACK}/email/wordmark-light@2x.png`
+)
 </script>
 
 <template>
@@ -3000,10 +3167,21 @@ defineProps<{ title: string; preheader?: string }>()
     <body>
       <div v-if="preheader" style="display:none;font-size:1px;color:#fff;">{{ preheader }}</div>
       <div class="container">
-        <div class="head"><img src="https://kova.app/email/wordmark-light@2x.png" alt="Kova" width="80" /></div>
+        <div class="head"><img :src="wordmark" alt="Kova" width="80" /></div>
         <div class="body"><slot /></div>
-        <div class="foot">
-          Sent to {{ '{{email}}' }}. <a href="{{settings_url}}">Manage preferences</a>.<br />
+        <!--
+          C-MED-11.4 — Resend template variables ({{email}}, {{settings_url}})
+          use the same {{ }} delimiter Vue uses for text interpolation. Without
+          v-pre, Vue parses `{{email}}` as an expression at SSR time, resolves
+          it to `undefined`, and ships an empty string to Resend — never the
+          literal placeholder. `v-pre` tells Vue to skip compilation for this
+          element subtree, so the literal `{{email}}` / `{{settings_url}}`
+          strings survive into the rendered HTML for Resend to substitute
+          server-side. NB: the href is intentionally a literal `{{settings_url}}`
+          string inside v-pre, NOT `:href` — `:href` would force Vue to evaluate.
+        -->
+        <div v-pre class="foot">
+          Sent to {{email}}. <a href="{{settings_url}}">Manage preferences</a>.<br />
           © 2026 Kova
         </div>
       </div>
@@ -3035,6 +3213,30 @@ export async function buildEmail(opts: EmailShellOptions): Promise<{ html: strin
 }
 ```
 
+- [ ] **C-MED-11.4 regression test:** render the shell + assert literal Resend placeholders survive.
+
+```typescript
+// tests/unit/email/EmailShell.test.ts
+import { describe, expect, test } from 'bun:test'
+import { buildEmail } from '@/composables/use-email-shell'
+
+describe('<EmailShell> Resend placeholder pass-through (C-MED-11.4)', () => {
+  test('renders literal {{email}} + {{settings_url}} (not undefined)', async () => {
+    const { html } = await buildEmail({
+      title: 'Test',
+      bodyHtml: '<p>Hi</p>',
+    })
+    // The v-pre footer must emit the placeholders byte-for-byte so Resend
+    // can substitute them server-side. If Vue accidentally compiles them
+    // away, this assertion fails and CI blocks the regression.
+    expect(html).toContain('{{email}}')
+    expect(html).toContain('href="{{settings_url}}"')
+    expect(html).not.toContain('href="undefined"')
+    expect(html).not.toContain('Sent to undefined')
+  })
+})
+```
+
 - [ ] **Commit:** `git commit -am "feat(cluster-11): EmailShell + buildEmail with juice CSS inlining"`
 
 ---
@@ -3047,13 +3249,27 @@ export async function buildEmail(opts: EmailShellOptions): Promise<{ html: strin
 - Modify: `kova-open-pencil-1/src/App.vue`
 - Modify: `kova-open-pencil-1/src/main.ts`
 
-- [ ] **Step 1: App.vue mount globals**
+- [ ] **Step 1: App.vue mount globals (C-MED-11.5 — includes `<NetworkStatusIndicator>`)**
+
+The single-source-of-truth offline indicator is mounted globally in `App.vue`,
+not inside the dashboard topbar. Founder lock (2026-05-17, recorded in §3.7):
+the retired sidebar `.net-strip` is replaced by a single Figma-style icon-only
+indicator that renders nothing while online and a 14×14 `cloud-off` tooltip
+while offline. Mounting at the `<App>` root keeps the indicator surface-
+agnostic — every authenticated route (dashboard, brand modal, canvas,
+settings) gets the same overlay for free, including pre-login auth pages
+that don't have a topbar.
+
+If a future shared topbar component lands (coordinated with Cluster 02), the
+indicator may move there — but only after the topbar covers every authed
+route. Until then, App.vue is the canonical mount point.
 
 ```vue
 <!-- src/App.vue (add to existing) -->
 <script setup lang="ts">
 import ToastStack from '@/components/ui/ToastStack.vue'
 import ConfirmModal from '@/components/ui/ConfirmModal.vue'
+import NetworkStatusIndicator from '@/components/ui/NetworkStatusIndicator.vue'
 import { useTheme } from '@/composables/use-theme'
 
 useTheme()
@@ -3063,6 +3279,7 @@ useTheme()
   <RouterView />
   <ToastStack />
   <ConfirmModal />
+  <NetworkStatusIndicator />
 </template>
 ```
 
@@ -3074,7 +3291,7 @@ import { installSentry } from './sentry'
 installSentry(app, router)
 ```
 
-- [ ] **Commit:** `git commit -am "feat(cluster-11): mount ToastStack + ConfirmModal globally"`
+- [ ] **Commit:** `git commit -am "feat(cluster-11): mount ToastStack + ConfirmModal + NetworkStatusIndicator globally"`
 
 ---
 
@@ -3167,6 +3384,75 @@ async function tryDelete() {
 ```
 
 - [ ] **Commit:** `git commit -am "feat(cluster-11): /dev/cluster-11 showcase route"`
+
+---
+
+### Task 9.5: M9 Shopify Realtime channel migration (C-MED-11.6)
+
+**Files:**
+- Modify: `kova-open-pencil-1/src/composables/use-shopify-connection.ts` (line 155)
+- Modify: any future M9 callsite invoking `supabase.channel('sync-progress-...')` (none known beyond the composable; verify via grep at exec time)
+
+**Background:** M9 shipped `supabase.channel(\`sync-progress-${brandId}\`)` before the
+Cluster 11 Realtime channel convention was ratified. PRD 11 §12.5 KD-5 locks
+the format to `kova.{userId}.{domain}.{topic}`. M9 must rename its channel
+to `kova.{userId}.shopify.{brandId}.sync` so the CI grep gate (Task 11.x)
+passes and Supabase Dashboard inspection follows the namespace convention.
+
+**Why this is safe at the wire:** Supabase Realtime delivers `postgres_changes`
+events by filter (table + filter clause), not by channel name. Channel names
+are subscriber-side namespaces only. Renaming changes nothing about which
+rows trigger which clients — only the string a developer sees in Supabase
+Dashboard / debugger.
+
+- [ ] **Step 1: Resolve userId in the composable.**
+
+```typescript
+// src/composables/use-shopify-connection.ts (around line 49)
+import { supabase } from '@/lib/supabase'
+
+export function useShopifyConnection(brandId: string): UseShopifyConnection {
+  // ...
+  let cachedUserId: string | null = null
+  async function getUserId(): Promise<string | null> {
+    if (cachedUserId) return cachedUserId
+    const { data } = await supabase.auth.getUser()
+    cachedUserId = data.user?.id ?? null
+    return cachedUserId
+  }
+  // ...
+}
+```
+
+- [ ] **Step 2: Make `subscribeToSyncProgress` async + rename channel (C-MED-11.6).**
+
+```typescript
+async function subscribeToSyncProgress(): Promise<void> {
+  syncChannel?.unsubscribe().catch(() => null)
+  const userId = await getUserId()
+  if (!userId) return  // not authed yet; caller should re-invoke after session ready
+  syncChannel = supabase
+    .channel(`kova.${userId}.shopify.${brandId}.sync`)
+    .on('postgres_changes', { /* unchanged filter */ }, (payload) => { /* unchanged handler */ })
+    .subscribe()
+}
+```
+
+- [ ] **Step 3: Update callers to await** (`IntegrationsCard.vue`, `SettingsBrandIntegrationsView.vue`). Both currently call `subscribeToSyncProgress()` fire-and-forget — wrap in an `void promise` or `await` inside an effect. No functional change beyond awaiting.
+
+- [ ] **Step 4: Grep verification.**
+
+```sh
+! grep -rnE "channel\(['\"]sync-progress" kova-open-pencil-1/src/
+```
+
+Must exit zero. CI grep gate (Plan 11 Task 11.x) enforces this thereafter.
+
+- [ ] **Step 5: Commit.**
+
+```sh
+git commit -am "fix(11): C-MED-11.6 rename sync-progress channel to kova.{userId}.shopify.{brandId}.sync"
+```
 
 ---
 

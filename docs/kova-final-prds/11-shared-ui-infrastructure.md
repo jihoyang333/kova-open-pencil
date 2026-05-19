@@ -306,7 +306,7 @@ CREATE TABLE IF NOT EXISTS public.idempotency_keys (
   key            text PRIMARY KEY,            -- caller-supplied UUID v4
   user_id        uuid NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
   endpoint       text NOT NULL,               -- e.g. 'POST /api/account/deletion-request'
-  request_hash   text NOT NULL,               -- sha256(method + path + sorted body keys + body) — protects against key reuse on different requests
+  request_hash   text NOT NULL,               -- sha256(method + '|' + path + '|' + bodyText). Callers MUST deterministically serialize JSON before sending — the helper hashes raw bytes (see §5.5 / C-HIGH11).
   response_status int  NOT NULL,
   response_body   jsonb NOT NULL,
   created_at     timestamptz NOT NULL DEFAULT now(),
@@ -325,7 +325,7 @@ COMMENT ON TABLE public.idempotency_keys IS
   'Per-request idempotency cache. Cross-cut primitive owned by Cluster 11. Consumed by Cluster 01 (deletion-request, restore, email-change), Cluster 04 (Stripe webhook), Cluster 09 (snapshot create). Retention 24 hours via daily prune cron.';
 
 COMMENT ON COLUMN public.idempotency_keys.request_hash IS
-  'sha256(method + path + sorted-body) — second-call with same key but different body returns 422, not the cached response. Prevents accidental key reuse on different intents.';
+  'sha256(method + ''|'' + path + ''|'' + bodyText). The helper hashes the raw bodyText byte-for-byte — it does NOT canonicalize JSON. Clients that need deterministic replays MUST serialize JSON deterministically (stable key order, no incidental whitespace). Second call with same key but different bodyText returns 422, not the cached response. See PRD 11 §5.5 and C-HIGH11 closure.';
 
 -- RLS: service_role only (only Edge Functions read/write)
 ALTER TABLE public.idempotency_keys ENABLE ROW LEVEL SECURITY;
@@ -609,12 +609,16 @@ export function useChannelName(domain: string, topic: string): string {
 
 Per `00c §1.D` cross-cut row (Cluster 11 documents the convention; Cluster 06 enforces it inside the Tauri menu binding):
 
-**Format:** `kova.{verb}.{noun}` or `kova.{noun}.{verb}` (verb-first preferred).
+**Format:** `kova.{noun}.{verb}` — noun-first preferred (A-LOW3 / B-LOW5 closure 2026-05-19).
+
+Rationale: noun-first groups commands by domain in the Tauri menu binding and in command-palette autocompletion — typing `kova.file.` reveals every file-domain command. Verb-first would group by action (`undo`, `redo`, `copy`) which scatters domain ownership across the surface. All examples and downstream cluster specs already use noun-first; the §5.7 prose previously said "verb-first preferred" inconsistently and is now corrected.
 
 Examples (specced in downstream clusters):
 - `kova.file.open`, `kova.file.save`, `kova.file.export`
 - `kova.edit.undo`, `kova.edit.redo`, `kova.edit.copy`, `kova.edit.paste`
 - `kova.eyedropper.activate` (Phase 2 — Q20)
+
+Verb-first variants like `kova.open.file` are forbidden by the CI grep gate (§9.5) for the same reason raw-icon syntaxes are forbidden in §6.2 — namespace cleanliness beats local convenience.
 
 Cluster 06's Tauri menu registration MUST use this convention. Cluster 11 ships no Tauri commands itself but owns the naming rule (enforced via a CI grep step — see §9.5).
 
@@ -978,6 +982,7 @@ Per `feedback_browser_smoke_test_before_done` — required before claiming the f
 
 **Pre-launch checklist:**
 - Founder wires Sentry projects (browser + server), Resend account + kova.app domain DNS verification, Vercel Pro plan + CRON_SECRET. See `00-PRD_SCOPE_PLAN.md §11`.
+- **Linear activation steps live in `docs/operator-runbook.md`** (B-LOW5 closure 2026-05-19). Every `TODO(pre-launch §11)` marker in the codebase points there; the runbook collects them into a single ordered checklist (Sentry browser → Sentry server → Resend → Vercel Cron → Stripe → M9 channel rename → final gate). Do not delete the runbook once activated — it doubles as disaster-recovery activation script.
 
 ### Feature flags (per `00d §3.B-i` — hard-coded constants for MVP)
 
@@ -1010,6 +1015,29 @@ Per `feedback_browser_smoke_test_before_done` — required before claiming the f
 | **09 — Version History + Trash** | None | `useConfirm` (delete snapshot, empty trash), `<KovaModal>` (manual snapshot), `useToast`, `idempotency_keys` table + helper (snapshot create), Realtime channel name `kova.{userId}.canvas.{canvasId}.snapshot` |
 | **10 — AI Chat + Memory** | None | `useToast` (AI-gen variant), `<KovaSkeleton>` (chat message loading), Realtime channel name `kova.{userId}.chat.{conversationId}.stream` |
 | **12 — Settings & User Prefs** | `usePreferencesStore` (Layer 1 `users.preferences` JSONB consumer) — when "Reduce motion" pref ships, `useReducedMotion()` derives from it instead of OS-only | `<KovaModal>` (settings panel), `<KovaSegmented>` (text-size picker), `useToast` (pref saved) |
+
+### 11.0a Resend two-runtime ownership (CT-015 / C-MED-X.3)
+
+Resend is wrapped twice because Kova has two server runtimes:
+
+- **Cluster 11 — Vercel Functions runtime** ships `api/_shared/email.ts` exporting `sendEmail(payload) → { id, skipped }`. Used by Cluster 04 (Stripe receipts) and any other Vercel Function callsite.
+- **Cluster 01 — Supabase Edge Functions runtime** ships `supabase/functions/_shared/resend-client.ts` (Plan 01 Task 2.4) exporting `sendEmail({ to, subject, templatePath, variables, idempotencyKey }) → { id }`. Used by Cluster 01's deletion / restore / email-change flows and Cluster 12's transactional emails.
+
+**Shared invariants (CT-015):**
+
+1. Both wrappers read `RESEND_API_KEY` from the runtime's own env.
+2. Both wrappers MUST env-guard with the same breadcrumb pattern:
+   ```ts
+   if (!process.env.RESEND_API_KEY) {
+     console.warn('[resend] skipped — RESEND_API_KEY not set')
+     // TODO(pre-launch §11): Sentry.captureMessage('resend_skipped_no_api_key', 'warning')
+     return { id: `stub_…`, skipped: true }
+   }
+   ```
+3. Both wrappers accept an idempotency key and forward it as `X-Idempotency-Key` to Resend (Resend honours it server-side as of 2025; see Plan 01 §2.4).
+4. Live wiring (`import { Resend } from 'resend'`) is gated by founder lock #19 / pre-launch §11. Until then, the helpers stub-return + breadcrumb so production divergence is observable.
+
+If either wrapper drifts from these invariants, the consolidator MUST file a fresh finding rather than land the change.
 
 ### 11.1 Hygiene rules from `00e §6`
 
@@ -1065,6 +1093,8 @@ Acknowledged + enforced in this PRD:
 
 **Reversibility:** HARD-ish — every consuming cluster encodes the name; migrating would require coordinated PRs. But: ratifying now (before consumers ship) is cheap. The HARD-ish class is *future*, not present.
 
+**Closure (C-MED-11.6, 2026-05-19 W1 dispatch):** RESOLVED. Plan 11 Task 9.5 ships the M9 channel-name migration `sync-progress-${brandId}` → `kova.{userId}.shopify.{brandId}.sync`. Single client-side callsite at `src/composables/use-shopify-connection.ts:155`. No server-side change required — Supabase Realtime `postgres_changes` events are delivered by filter, not by channel name; channel name is a subscriber-side namespace. CI grep gate added under Plan 11 Task 11.x verifies no `sync-progress-` literals remain in `src/` after the migration lands.
+
 ### 12.6 RISK (Low) — `<EmailShell>` rendering drift across email clients
 
 Email clients vary wildly in CSS support. Inlining via `juice` handles most cases, but `<style>` blocks, `@media` queries, and `position` are unreliable across Outlook 2016 / Outlook 365 / Gmail / Apple Mail / Yahoo / mobile clients.
@@ -1077,17 +1107,17 @@ Email clients vary wildly in CSS support. Inlining via `juice` handles most case
 
 **Mitigation:** `replaysOnErrorSampleRate: 1.0` ensures every error gets a session replay. Phase B re-tunes both rates based on incident-investigation hit rate.
 
-### 12.8 OPEN QUESTION — `<KovaSkeleton>` shimmer animation direction (LTR vs locale-aware)
+### 12.8 RESOLVED 2026-05-19 (A-MED3) — `<KovaSkeleton>` shimmer animation direction (LTR vs locale-aware)
 
 Hi-fi B7 demos shimmer animating left-to-right (translateX -100 % → 300 %). For Arabic / Hebrew localization (Phase 2), the natural direction reverses.
 
-**Recommendation:** ship LTR-only at MVP. Wire the gradient direction to `document.dir` in Phase 2 (i18n).
+**Decision (W1 dispatch 2026-05-19):** ship LTR-only at MVP. Wire the gradient direction to `document.dir` in Phase 2 (i18n). No build-time hook required; Phase 2 spec will add a single `:dir`-aware CSS rule.
 
-### 12.9 OPEN QUESTION — Toast positioning per device class
+### 12.9 RESOLVED 2026-05-19 (A-MED3) — Toast positioning per device class
 
 Bottom-right is the canonical position per B1. On a desktop > 2560 px wide, the toasts may appear unreachably-far from the user's focus.
 
-**Recommendation:** ship bottom-right at MVP (matches Figma + Linear); revisit if user research surfaces complaint. Phase 2 could add a `useToast.position()` override.
+**Decision (W1 dispatch 2026-05-19):** ship bottom-right at MVP (matches Figma + Linear). No per-device override at MVP. Phase 2 may add a `useToast.position()` override if user research surfaces a complaint; default stays bottom-right.
 
 ### 12.10 DROPPED 2026-05-17 — Cmd+K command palette
 
