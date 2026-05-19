@@ -2508,6 +2508,13 @@ function onKey(e: KeyboardEvent): void {
     emit('submit')
   }
 }
+
+// B-MED6: use `textContent` (no `<br>`/`<div>` line-wrapper artifacts) + `instanceof` narrowing
+// instead of `(e.target as HTMLElement).innerText` (which inserts `\n` for visual line breaks).
+function onInput(e: Event): void {
+  const target = e.target instanceof HTMLElement ? e.target : null
+  emit('update:modelValue', target?.textContent ?? '')
+}
 </script>
 
 <template>
@@ -2517,7 +2524,7 @@ function onKey(e: KeyboardEvent): void {
       :class="{ submitting: state === 'submitting', review: state === 'review' }"
       :contenteditable="!isReadonly"
       :aria-readonly="isReadonly"
-      @input="(e) => emit('update:modelValue', (e.target as HTMLElement).innerText)"
+      @input="onInput"
       @keydown="onKey"
     >
       <span class="typed">{{ modelValue || 'How can I help you today?' }}</span>
