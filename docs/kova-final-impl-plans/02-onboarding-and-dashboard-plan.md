@@ -142,10 +142,13 @@ kova-open-pencil-1/
 import { describe, test, expect, beforeAll } from 'bun:test'
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+// Founder lock #10: no `!` non-null assertion. Validate at the boundary instead.
+const supabaseUrl = process.env.SUPABASE_URL
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+if (!supabaseUrl || !supabaseServiceKey) {
+  throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set for integration tests')
+}
+const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
 describe('20260520_02_dashboard_indices', () => {
   test('idx_canvases_brand_recent exists', async () => {
