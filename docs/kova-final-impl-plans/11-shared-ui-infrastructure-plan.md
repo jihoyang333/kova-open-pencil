@@ -986,20 +986,39 @@ export interface EmailPayload {
   html: string
   text: string
 }
+
+export interface EmailSendResult {
+  id: string
+  /**
+   * `true` when the helper short-circuited because RESEND_API_KEY was absent
+   * (stub mode). Callsites that surface "email sent" UX MUST branch on this
+   * flag so production divergence is visible (no silent "stub" success).
+   */
+  skipped: boolean
+}
 ```
 
-- [ ] **Step 3: Write `api/_shared/email.ts` (stub mode)**
+- [ ] **Step 3: Write `api/_shared/email.ts` (stub mode — CT-015 breadcrumb pattern)**
 
 ```typescript
 // api/_shared/email.ts
-import type { EmailPayload } from './types'
+import type { EmailPayload, EmailSendResult } from './types'
 
 const apiKey = process.env.RESEND_API_KEY
 
-export async function sendEmail(payload: EmailPayload): Promise<{ id: string }> {
+// CT-015 / founder lock #19 — stub-guard pattern. Returns a sentinel id +
+// `skipped: true` when RESEND_API_KEY is unset so production divergence is
+// observable (a) in logs via the warn breadcrumb, (b) at Sentry once
+// pre-launch wiring lands, (c) in callsites that surface "email sent" UX.
+// Replace the console.warn with Sentry.captureMessage at pre-launch §11.
+export async function sendEmail(payload: EmailPayload): Promise<EmailSendResult> {
   if (!apiKey) {
-    console.warn('[resend] RESEND_API_KEY missing — email send skipped (stub mode):', payload.to, payload.subject)
-    return { id: `stub_${crypto.randomUUID()}` }
+    console.warn(
+      '[resend] skipped — RESEND_API_KEY not set (stub mode)',
+      { to: payload.to, subject: payload.subject }
+    )
+    // TODO(pre-launch §11): Sentry.captureMessage('resend_skipped_no_api_key', 'warning')
+    return { id: `stub_${crypto.randomUUID()}`, skipped: true }
   }
   // TODO(pre-launch §11): import { Resend } from 'resend' + resend.emails.send(payload)
   throw new Error('Resend live mode not yet wired — stub fallback only')

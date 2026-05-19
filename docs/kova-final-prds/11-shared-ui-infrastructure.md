@@ -1011,6 +1011,29 @@ Per `feedback_browser_smoke_test_before_done` — required before claiming the f
 | **10 — AI Chat + Memory** | None | `useToast` (AI-gen variant), `<KovaSkeleton>` (chat message loading), Realtime channel name `kova.{userId}.chat.{conversationId}.stream` |
 | **12 — Settings & User Prefs** | `usePreferencesStore` (Layer 1 `users.preferences` JSONB consumer) — when "Reduce motion" pref ships, `useReducedMotion()` derives from it instead of OS-only | `<KovaModal>` (settings panel), `<KovaSegmented>` (text-size picker), `useToast` (pref saved) |
 
+### 11.0a Resend two-runtime ownership (CT-015 / C-MED-X.3)
+
+Resend is wrapped twice because Kova has two server runtimes:
+
+- **Cluster 11 — Vercel Functions runtime** ships `api/_shared/email.ts` exporting `sendEmail(payload) → { id, skipped }`. Used by Cluster 04 (Stripe receipts) and any other Vercel Function callsite.
+- **Cluster 01 — Supabase Edge Functions runtime** ships `supabase/functions/_shared/resend-client.ts` (Plan 01 Task 2.4) exporting `sendEmail({ to, subject, templatePath, variables, idempotencyKey }) → { id }`. Used by Cluster 01's deletion / restore / email-change flows and Cluster 12's transactional emails.
+
+**Shared invariants (CT-015):**
+
+1. Both wrappers read `RESEND_API_KEY` from the runtime's own env.
+2. Both wrappers MUST env-guard with the same breadcrumb pattern:
+   ```ts
+   if (!process.env.RESEND_API_KEY) {
+     console.warn('[resend] skipped — RESEND_API_KEY not set')
+     // TODO(pre-launch §11): Sentry.captureMessage('resend_skipped_no_api_key', 'warning')
+     return { id: `stub_…`, skipped: true }
+   }
+   ```
+3. Both wrappers accept an idempotency key and forward it as `X-Idempotency-Key` to Resend (Resend honours it server-side as of 2025; see Plan 01 §2.4).
+4. Live wiring (`import { Resend } from 'resend'`) is gated by founder lock #19 / pre-launch §11. Until then, the helpers stub-return + breadcrumb so production divergence is observable.
+
+If either wrapper drifts from these invariants, the consolidator MUST file a fresh finding rather than land the change.
+
 ### 11.1 Hygiene rules from `00e §6`
 
 Acknowledged + enforced in this PRD:
