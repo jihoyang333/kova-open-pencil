@@ -2054,6 +2054,26 @@ const VoiceDraftSchema = v.object({
 
 // ... inside handler, after existing color/font/logo extraction succeeds ...
 
+// C-LOW05.3 — Idempotency check (Cluster 11 verifyIdempotency). Edge Function consumes the
+// `X-Idempotency-Key` header sent by the client (or generates one if missing). A duplicate
+// extract call for the same brand within the rate-limit window returns the cached response
+// instead of re-calling Anthropic + Shopify.
+import { verifyIdempotency } from '@cluster-11/idempotency'
+
+const idempotencyKeyHeader = req.headers['x-idempotency-key']
+const idempotencyKey = (Array.isArray(idempotencyKeyHeader) ? idempotencyKeyHeader[0] : idempotencyKeyHeader) ?? crypto.randomUUID()
+
+const bodyText = JSON.stringify(req.body ?? {})
+const { cached } = await verifyIdempotency(supabase, {
+  key: idempotencyKey,
+  method: 'POST',
+  path: `/api/shopify/brand-kit-extract/${brand_id}`,
+  bodyText,
+})
+if (cached) {
+  return res.status(cached.status).json(cached.body)
+}
+
 // 1. Discard any prior open draft
 await supabase.from('voice_drafts')
   .update({ discarded_at: new Date().toISOString() })
