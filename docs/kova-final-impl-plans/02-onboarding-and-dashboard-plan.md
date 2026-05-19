@@ -3574,8 +3574,29 @@ describe('ComingSoonView', () => {
     expect(w.findAll('.tabs button').length).toBe(2)
   })
 
-  test('emits notify on "Notify me" click (POST to Resend mailing-list endpoint)', async () => {
-    // Mock fetch and assert it's called
+  test('emits notify on "Notify me" click — Authorization is awaited access_token, not Promise', async () => {
+    const { mock } = await import('bun:test')
+    mock.module('@/lib/supabase', () => ({
+      supabase: {
+        auth: {
+          getSession: async () => ({
+            data: { session: { access_token: 'tok-123' } },
+          }),
+        },
+      },
+    }))
+    mock.module('@/stores/auth', () => ({
+      useAuthStore: () => ({ user: { email: 'a@test' } }),
+    }))
+    const fetchSpy = mock(async () => new Response(null, { status: 200 }))
+    globalThis.fetch = fetchSpy as unknown as typeof fetch
+    const w = mount(ComingSoonView, { props: { kind: 'calendar' } })
+    await w.find('button.primary').trigger('click')
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+    const [, init] = fetchSpy.mock.calls[0]
+    expect((init as RequestInit).headers).toMatchObject({
+      Authorization: 'Bearer tok-123',
+    })
   })
 })
 ```
@@ -3590,6 +3611,7 @@ import { computed } from 'vue'
 import { COMING_SOON } from '@/constants/coming-soon'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/use-toast'
+import { supabase } from '@/lib/supabase'
 
 const props = defineProps<{ kind: string }>()
 const spec = computed(() => COMING_SOON[props.kind] ?? COMING_SOON.calendar)
@@ -3598,12 +3620,21 @@ const auth = useAuthStore()
 const { toast } = useToast()
 
 async function onNotifyMe() {
-  if (!auth.profile?.email) return
+  const email = auth.user?.email
+  if (!email) return
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) {
+    toast({ kind: 'error', message: 'Sign in expired. Please sign in again.' })
+    return
+  }
   try {
     await fetch('/api/marketing/notify-me', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${(await import('@/lib/supabase')).supabase.auth.getSession().then(r => r.data.session?.access_token)}` },
-      body: JSON.stringify({ email: auth.profile.email, surface: props.kind }),
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ email, surface: props.kind }),
     })
     toast({ kind: 'success', message: "We'll let you know" })
   } catch {
