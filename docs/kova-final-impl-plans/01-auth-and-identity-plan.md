@@ -143,6 +143,17 @@ git commit -m "chore(auth): add resend + zod deps for Cluster 01 PRD"
 
 ---
 
+## Conventions
+
+**SECURITY DEFINER search_path (founder lock #15, B-MED1):** every Postgres function declared
+`SECURITY DEFINER` in this plan MUST include `SET search_path = public, pg_temp`. The
+two-schema form is intentionally preferred over the single-quoted `'public'` literal: it
+explicitly denies `pg_temp` schema-shadowing attacks (an attacker creating a function in
+their session-local `pg_temp` schema that masks a `public` function the DEFINER body
+calls). This convention is enforced by the W0-5 CI gate (`scripts/check-search-path.ts`).
+
+---
+
 ## Task 1: SQL migration — users lifecycle + GDPR queue + RPCs
 
 **Files:**
