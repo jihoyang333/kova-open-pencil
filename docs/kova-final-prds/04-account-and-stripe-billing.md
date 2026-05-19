@@ -23,7 +23,7 @@ A signed-in user needs one canonical place to manage everything that is "theirs 
 
 ### 1.2 Caveman summary (per CLAUDE.md communication style)
 
-User get one big page for everything user-scoped. Five sidebar tabs: Profile, Plan & billing, Brand Kit (per-brand), Integrations (per-brand), Danger zone. Stripe foundation goes here — Checkout new tab, Customer Portal new tab (Stripe blocks iframe), webhook syncs plan state to DB. Brand Kit + Integrations show brand-picker; pick brand, see its kit / its Shopify. M9 integrations code reused but refactored dark + re-routed + history table wired. Danger zone mounts component from Cluster 01 (Cluster 01 owns GDPR cascade — this PRD just ships the button + Stripe SDK its cron needs). Two Stripe return landings: success + cancel. Past-due banner on Plan & billing when payment fails. No iframe ever. No per-brand billing — freelancer pays one subscription, manages many client brands.
+User get one big page for everything user-scoped. Six sidebar tabs (post-B12 reversal 2026-05-17 — Brands added): Profile, Brands, Plan & billing, Brand Kit (per-brand), Integrations (per-brand), Danger zone. Stripe foundation goes here — Checkout new tab, Customer Portal new tab (Stripe blocks iframe), webhook syncs plan state to DB. Brand Kit + Integrations show brand-picker; pick brand, see its kit / its Shopify. M9 integrations code reused but refactored dark + re-routed + history table wired. Brands section mounts PRD 03's `<BrandsArchiveView>` (PRD 03 owns content, this PRD owns the route + sidebar entry). Danger zone mounts component from Cluster 01 (Cluster 01 owns GDPR cascade — this PRD just ships the button + Stripe SDK its cron needs). Two Stripe return landings: success + cancel. Past-due banner on Plan & billing when payment fails. No iframe ever. No per-brand billing — freelancer pays one subscription, manages many client brands.
 
 ### 1.3 Outcome (acceptance gate)
 
@@ -759,7 +759,7 @@ In Stripe Dashboard → Developers → Webhooks → Add endpoint:
 
 #### 5.4.3 Email templates (Resend) — all 4 events ship at MVP (founder decision 2026-05-17)
 
-All templates extend `<EmailShell>` (Cluster 11), use Inter, plain-text fallback, valid `List-Unsubscribe` header (`<mailto:unsubscribe@kova.app>`), `X-Entity-Ref-ID: {{ user_id }}` for thread grouping. Stored at `kova-open-pencil-1/emails/account/*.html`. Each template accepts variables documented per row.
+All templates MUST compose `<EmailShell>` (Cluster 11) via `buildEmail()` from `@/composables/use-email-shell`. Templates use Inter, plain-text fallback, valid `List-Unsubscribe` header (`<mailto:unsubscribe@kova.app>`), `X-Entity-Ref-ID: {{ user_id }}` for thread grouping (all set inside `<EmailShell>` — templates do not configure them directly). Stored at `kova-open-pencil-1/emails/account/*.ts` — TypeScript modules that export an async render function returning `{ html, text, subject }`. Direct `.html` files bypassing the shell are forbidden per C-MED13 (2026-05-19). Each template accepts variables documented per row.
 
 | Template file | Webhook trigger | Subject | Body summary | Variables |
 |---|---|---|---|---|
@@ -1353,6 +1353,7 @@ Per `feedback_browser_smoke_test_before_done` memory — required before claimin
 - **Secret grep:** `grep -rE "VITE_STRIPE_SECRET_KEY|VITE_STRIPE_WEBHOOK_SECRET" .` returns 0 results
 - **Migration check:** `supabase db diff --schema public` returns clean (no untracked schema drift)
 - Stripe webhook latency test: `stripe trigger customer.subscription.created` followed by SELECT from `users` within 10s shows updated `plan` (smoke against staging)
+- **`access_token=` grep (CT-019):** `! grep -rnE "access_token=" kova-open-pencil-1/src/ kova-open-pencil-1/api/` — any literal `access_token=` query-string assignment is a launch-blocker post-M9. Mirrors PRD 02 §9.5. Wired into CI via `.github/workflows/qa-grep.yml` — a non-zero hit blocks merge.
 
 ---
 
@@ -1565,7 +1566,7 @@ Separate decision dispatched same day. B12 archived Brands page promoted from Ph
 
 ### 13.3 Hi-fi files
 
-- `main-main-kova-scope/batch-a/dark/Kova Hi-Fi A7 Account Page - Dark.html` — 12 scenes covering all 5 sidebar sections (Profile, Plan & billing, Brand Kit + 7 sub-tabs, Integrations, Danger zone)
+- `main-main-kova-scope/batch-a/dark/Kova Hi-Fi A7 Account Page - Dark.html` — 12 scenes covering 5 of the 6 sidebar sections (Profile, Plan & billing, Brand Kit + 7 sub-tabs, Integrations, Danger zone). The sixth section (**Brands**) was added post-design via B12 reversal 2026-05-17 — its scene reuses PRD 03's `<BrandsArchiveView>` design from `Kova Hi-Fi B12 Brands page - Dark.html`.
 - `main-main-kova-scope/batch-a-additions/dark/Kova Hi-Fi B10 Stripe Returns - Dark.html` — 2 scenes (B10.1 success, B10.2 cancel) + plan-name annotation
 - `main-main-kova-scope/batch-a/dark/Kova Hi-Fi A4+A9+A10 Modals - Dark.html` — A9.1 delete-account modal + A9.3 deletion-pending landing (both owned by Cluster 01; we mount A9.1 via `<DangerZoneCard>`)
 - `main-main-kova-scope/batch-a-additions/light/Kova Hi-Fi B5 Email Change Landing - Light.html` — cross-cut; B5.1 primary CTA target is `/account/profile` (Cluster 01 ships landing; we provide the destination route)
@@ -1622,6 +1623,8 @@ Separate decision dispatched same day. B12 archived Brands page promoted from Ph
 - `project_pre_prd_audit_ratified` — Wave 3 cleared; local Supabase + CI ephemeral
 
 ### 13.9 What is NOT in this PRD (handed elsewhere)
+
+**Cmd+K dropped 2026-05-17** per `00g-CMDK_KILL_DISPATCH.md` — see PRD 02 §12.13 for full scrub log.
 
 - `<DangerZoneCard>` modal + cascade + restore page + middleware — Cluster 01
 - Brand Kit sub-tab content (Visuals, Fonts, Tone snippets, Saved blocks, Writing rules, Memories, Knowledge base) — Cluster 05

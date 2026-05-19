@@ -42,10 +42,10 @@
 | `api/_shared/price-map.ts` | `priceIdToPlan` + `planToPriceId` maps + helper. |
 | `api/_shared/audit-log.ts` | Cluster 11 wrapper — adapter used by all webhook handlers. (Verify Cluster 11 provides; if not, ship a local stub that writes to `audit_log` table.) |
 | `vercel.json` | Add `/api/stripe/reconcile` cron entry. |
-| `emails/account/subscription-new.html` | Resend template — new paid subscription. [PRD §5.4.3] |
-| `emails/account/subscription-upgraded.html` | Resend template — plan upgraded. [PRD §5.4.3] |
-| `emails/account/subscription-cancelled.html` | Resend template — cancelled (scheduled + final). [PRD §5.4.3] |
-| `emails/account/subscription-payment-failed.html` | Resend template — payment failed dunning. [PRD §5.4.3] |
+| `emails/account/subscription-new.ts` | Resend template — new paid subscription; composes `<EmailShell>` via `buildEmail()`. [PRD §5.4.3] |
+| `emails/account/subscription-upgraded.ts` | Resend template — plan upgraded; composes `<EmailShell>` via `buildEmail()`. [PRD §5.4.3] |
+| `emails/account/subscription-cancelled.ts` | Resend template — cancelled (scheduled + final); composes `<EmailShell>` via `buildEmail()`. [PRD §5.4.3] |
+| `emails/account/subscription-payment-failed.ts` | Resend template — payment failed dunning; composes `<EmailShell>` via `buildEmail()`. [PRD §5.4.3] |
 | `docs/legal/privacy-policy.md` | Extend Stripe sub-processor disclosure. [PRD §5.5] |
 | `docs/legal/ropa.md` | Stripe row addition. [PRD §5.5] |
 | `docs/operations/stripe-setup-runbook.md` | New — operator runbook for Stripe Dashboard config. [PRD §5.5] |
@@ -104,13 +104,192 @@ Co-located: `tests/unit/...` mirrors `src/...`; `tests/integration/...` for DB +
 **Files:**
 - Create: `kova-open-pencil-1/supabase/migrations/20260605_04_account_stripe_billing.sql`
 
-- [ ] **Step 1: Create the migration file**
+- [ ] **Step 1: Create the migration file with inlined SQL**
 
-Copy the full SQL block from PRD §4.1 verbatim into the new file. The block is idempotent (`IF NOT EXISTS` + `CREATE OR REPLACE`) and wrapped in `BEGIN ... COMMIT`.
+Create `kova-open-pencil-1/supabase/migrations/20260605_04_account_stripe_billing.sql` with the following content (sourced verbatim from PRD §4.1; idempotent — wrapped in `BEGIN ... COMMIT`):
+
+```sql
+-- ============================================================
+
+BEGIN;
+
+-- ---- 1. users Stripe + avatar columns ----
+
+ALTER TABLE public.users
+  ADD COLUMN IF NOT EXISTS stripe_customer_id     text UNIQUE,
+  ADD COLUMN IF NOT EXISTS stripe_subscription_id text,
+  ADD COLUMN IF NOT EXISTS plan                   text NOT NULL DEFAULT 'free'
+                            CHECK (plan IN ('free', 'solo', 'agency')),
+  ADD COLUMN IF NOT EXISTS plan_status            text NOT NULL DEFAULT 'active'
+                            CHECK (plan_status IN ('active', 'past_due', 'cancelled', 'incomplete', 'trialing')),
+  ADD COLUMN IF NOT EXISTS current_period_end     timestamptz,
+  ADD COLUMN IF NOT EXISTS cancel_at_period_end   boolean NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS avatar_storage_path    text NULL;
+
+CREATE INDEX IF NOT EXISTS idx_users_stripe_customer
+  ON public.users(stripe_customer_id)
+  WHERE stripe_customer_id IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_users_past_due
+  ON public.users(plan_status, current_period_end)
+  WHERE plan_status = 'past_due';
+
+COMMENT ON COLUMN public.users.stripe_customer_id IS
+  'Stripe Customer ID (cus_…). One-per-user. Deleted from Stripe on account-deletion via Cluster 01 GDPR cron (D-2 amended 2026-05-17). NULL until first Checkout completes.';
+COMMENT ON COLUMN public.users.plan IS
+  'Current plan tier. CHECK in (free, solo, agency); founder activates pricing post-launch. ALTER CHECK if names change.';
+COMMENT ON COLUMN public.users.plan_status IS
+  'Stripe subscription lifecycle. CHECK includes "trialing" (founder decision 2026-05-17 — future-proof for trials). UI scaffold for trial states ships hidden at MVP per PRD 04 §3.4.';
+COMMENT ON COLUMN public.users.avatar_storage_path IS
+  'Storage path within media-assets bucket (e.g., users/{user_id}/avatar.png). NULL = default initials avatar.';
+
+-- ---- 2. stripe_webhook_events (idempotency log) ----
+
+CREATE TABLE IF NOT EXISTS public.stripe_webhook_events (
+  event_id      text PRIMARY KEY,         -- Stripe event.id (evt_…)
+  type          text NOT NULL,
+  processed_at  timestamptz NOT NULL DEFAULT now(),
+  payload_hash  text,                     -- SHA-256 of raw payload for debugging
+  user_id       uuid REFERENCES public.users(id) ON DELETE SET NULL,
+  outcome       text NOT NULL DEFAULT 'processed'
+                  CHECK (outcome IN ('processed', 'duplicate', 'unhandled_type', 'error')),
+  error_message text
+);
+
+CREATE INDEX IF NOT EXISTS idx_stripe_events_recent
+  ON public.stripe_webhook_events(processed_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_stripe_events_user
+  ON public.stripe_webhook_events(user_id)
+  WHERE user_id IS NOT NULL;
+
+COMMENT ON TABLE public.stripe_webhook_events IS
+  'Idempotency log for Stripe webhooks. PRIMARY KEY on event.id prevents double-process. Retained 90 days (manual prune in PRD 04 Phase B).';
+
+ALTER TABLE public.stripe_webhook_events ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY stripe_events_service_only
+  ON public.stripe_webhook_events
+  FOR ALL
+  TO service_role
+  USING (true) WITH CHECK (true);
+
+-- ---- 3. shopify_connection_history (audit D-8 fix) ----
+
+CREATE TABLE IF NOT EXISTS public.shopify_connection_history (
+  id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  brand_id     uuid NOT NULL REFERENCES public.brands(id) ON DELETE CASCADE,
+  event_type   text NOT NULL
+                 CHECK (event_type IN (
+                   'connected',
+                   'disconnected',
+                   'scope_changed',
+                   'sync_started',
+                   'sync_completed',
+                   'sync_failed',
+                   'reauthorize_required'
+                 )),
+  occurred_at  timestamptz NOT NULL DEFAULT now(),
+  source       text NOT NULL
+                 CHECK (source IN ('user', 'system', 'webhook')),
+  metadata     jsonb NOT NULL DEFAULT '{}'::jsonb
+  -- metadata shape (non-enforced; documented for engineers):
+  --   connected:       { shop_domain, scopes: [...], access_token_id }
+  --   disconnected:    { shop_domain, reason: 'user'|'uninstall'|'scope_revoke' }
+  --   scope_changed:   { shop_domain, old_scopes, new_scopes }
+  --   sync_started:    { shop_domain, sync_type: 'bulk'|'incremental', count_total }
+  --   sync_completed:  { shop_domain, count_processed, duration_ms }
+  --   sync_failed:     { shop_domain, error, count_processed }
+  --   reauthorize_required: { shop_domain, reason: 'scope_expansion'|'token_invalid' }
+);
+
+CREATE INDEX IF NOT EXISTS idx_shopify_history_brand_time
+  ON public.shopify_connection_history(brand_id, occurred_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_shopify_history_event_type
+  ON public.shopify_connection_history(event_type, occurred_at DESC);
+
+COMMENT ON TABLE public.shopify_connection_history IS
+  'Per-brand Shopify connection + sync audit trail. Powers the sync-history accordion in /account/integrations (audit D-8 fix). FK CASCADE deletes on brand removal.';
+
+ALTER TABLE public.shopify_connection_history ENABLE ROW LEVEL SECURITY;
+
+-- Users can read history for brands they own.
+CREATE POLICY shopify_history_read_own
+  ON public.shopify_connection_history
+  FOR SELECT
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.brands
+      WHERE brands.id = shopify_connection_history.brand_id
+        AND brands.user_id = auth.uid()
+    )
+  );
+
+-- Writes only via service_role (Edge Functions / cron / disconnect handlers).
+CREATE POLICY shopify_history_write_service
+  ON public.shopify_connection_history
+  FOR INSERT
+  TO service_role
+  WITH CHECK (true);
+
+-- ---- 4. RPCs ----
+
+-- 4a. Plan-gate helper (SECURITY DEFINER, read-only)
+CREATE OR REPLACE FUNCTION public.user_has_active_plan(p_user_id uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+  SELECT plan_status = 'active'
+     AND (current_period_end IS NULL OR current_period_end > now())
+    FROM public.users
+   WHERE id = p_user_id;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.user_has_active_plan(uuid) TO authenticated;
+
+COMMENT ON FUNCTION public.user_has_active_plan(uuid) IS
+  'Returns true if the user has an active subscription whose period is still valid. Used by usePlanGate composable at MVP (stubbed open for everything until founder activates pricing).';
+
+-- 4b. Shopify history-log helper (SECURITY DEFINER; callable by Edge Functions only)
+CREATE OR REPLACE FUNCTION public.log_shopify_connection_event(
+  p_brand_id   uuid,
+  p_event_type text,
+  p_source     text,
+  p_metadata   jsonb DEFAULT '{}'::jsonb
+)
+RETURNS uuid
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_id uuid;
+BEGIN
+  INSERT INTO public.shopify_connection_history(brand_id, event_type, source, metadata)
+       VALUES (p_brand_id, p_event_type, p_source, p_metadata)
+    RETURNING id INTO v_id;
+  RETURN v_id;
+END;
+$$;
+
+-- Callable only by service_role (Edge Functions); no GRANT to authenticated.
+REVOKE EXECUTE ON FUNCTION public.log_shopify_connection_event(uuid, text, text, jsonb) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.log_shopify_connection_event(uuid, text, text, jsonb) TO service_role;
+
+COMMENT ON FUNCTION public.log_shopify_connection_event IS
+  'Edge Functions and cron jobs call this to write a connection-history row. Service-role only; never user-callable.';
+
+COMMIT;
+```
 
 ```bash
 mkdir -p kova-open-pencil-1/supabase/migrations
-# write file content per PRD §4.1
+# Then save the SQL block above to the file path.
 ```
 
 - [ ] **Step 2: Apply locally**
@@ -526,6 +705,7 @@ export function getStripeClient(): Stripe {
   }
   cached = new Stripe(key, {
     apiVersion: '2024-10-28.acacia',  // Pin to the latest stable Stripe API version at PRD time
+    // B-MED3 audit (2026-05-19): production Stripe construction uses pinned apiVersion. Unit tests mock the entire stripe client object — there is no real Stripe construction in tests — so apiVersion drift cannot regress the test suite. No further mitigation required; finding is verified-no-change.
     typescript: true,
   })
   return cached
@@ -608,6 +788,17 @@ export function priceIdToPlan(priceId: string): PlanName | null {
 
 export function isKnownPriceId(priceId: string): boolean {
   return priceIdToPlan(priceId) !== null
+}
+
+// C-LOW04.7 — Whitelist of allowed price IDs sourced from server-only env vars per PRD §5.1.1.
+// `isKnownPriceId(req.body.price_id)` is the env-var whitelist gate enforced in Task 3.1.
+// No inline hardcoded price IDs are permitted; every price must be sourced from STRIPE_PRICE_ID_<plan>.
+// If a new plan is added, append a new STRIPE_PRICE_ID_<plan> env var and extend `priceIdToPlan` above.
+export function getAllowedPriceIds(): readonly string[] {
+  return [
+    process.env.STRIPE_PRICE_ID_SOLO,
+    process.env.STRIPE_PRICE_ID_AGENCY,
+  ].filter((id): id is string => Boolean(id))
 }
 ```
 
@@ -898,7 +1089,7 @@ export async function handler(
 export default async function (req: VercelRequest, res: VercelResponse): Promise<void> {
   const userId = await verifyAuth(req)
   const result = await handler(
-    { method: req.method ?? '', headers: req.headers as any, body: req.body },
+    { method: req.method ?? '', headers: req.headers, body: req.body },
     { stripe: getStripeClient(), supabase: getServiceSupabase(), userId },
   )
   res.status(result.status).json(result.body)
@@ -1143,17 +1334,87 @@ git add api/stripe/webhook-handlers/handle-subscription-created.ts tests/unit/ap
 git commit -m "feat(04): Stripe webhook handler — subscription.created"
 ```
 
-#### Task 3.3.2 through 3.3.6 — handle-subscription-updated / -deleted / -invoice-paid / -invoice-payment-failed / -checkout-completed
+#### Task 3.3.2: `handle-subscription-updated`
 
-For each: write test → run (fail) → implement per PRD §5.1.3 pseudocode → run (pass) → commit. Use the same shape as 3.3.1. Each commit message: `feat(04): Stripe webhook handler — <event-name>`.
+**Files:**
+- Create: `kova-open-pencil-1/api/stripe/webhook-handlers/handle-subscription-updated.ts`
+- Test: `kova-open-pencil-1/tests/unit/api/stripe/webhook-handlers/handle-subscription-updated.test.ts`
 
-Concrete differences:
+- [ ] **Step 1: Write failing tests** — assert each behavior independently:
+  - heals `plan_status`, `current_period_end`, `cancel_at_period_end` from incoming `sub.status` (per B-MED14 — store all three, not just status)
+  - downgrades `past_due → active` when `sub.status === 'active'`
+  - upgrades `incomplete → active` when `sub.status === 'active'` AND `sub.latest_invoice.payment_intent.status === 'succeeded'`
+  - sets `plan` from `sub.items.data[0].price.id` lookup (solo vs agency env vars)
+  - flips `cancel_at_period_end: false → true` triggers the `subscription-cancelled` email via Resend wrapper (assert one call with `wasScheduled: true`)
+  - rejects events for unknown `stripe_customer_id` (throws `NonRetriableError` — handler returns 200 with `error: 'unknown_customer'`)
+- [ ] **Step 2: Run — expect FAIL**.
+- [ ] **Step 3: Implement** per PRD §5.1.3 pseudocode.
+- [ ] **Step 4: Run — expect PASS**.
+- [ ] **Step 5: Commit** (`feat(04): Stripe webhook handler — customer.subscription.updated`).
 
-- **subscription.updated**: identical to .created. Re-use the handler body (factor a `syncSubscriptionToUser` helper if attractive, but DRY only after both are written).
-- **subscription.deleted**: sets `plan='free'`, `plan_status='cancelled'`, `stripe_subscription_id=null`, `cancel_at_period_end=false`.
-- **invoice.paid**: if user is `past_due`, reset to `active`. Audit log.
-- **invoice.payment_failed**: set `plan_status='past_due'`. Audit log. Send Resend email via Cluster 11 wrapper (template name `subscription-payment-failed.html` — created in Task 14).
-- **checkout.completed**: NO DB update (subscription.created fires immediately after and is authoritative); audit-log only.
+#### Task 3.3.3: `handle-subscription-deleted`
+
+**Files:**
+- Create: `kova-open-pencil-1/api/stripe/webhook-handlers/handle-subscription-deleted.ts`
+- Test: `kova-open-pencil-1/tests/unit/api/stripe/webhook-handlers/handle-subscription-deleted.test.ts`
+
+- [ ] **Step 1: Write failing tests**:
+  - sets `plan='free'`, `plan_status='cancelled'`, `stripe_subscription_id=null`, `cancel_at_period_end=false`
+  - writes audit-log row `subscription.deleted` with the removed `stripe_subscription_id` in metadata
+  - sends `subscription-cancelled` email via Resend wrapper with `wasScheduled: false`
+  - is idempotent — calling twice with the same event leaves the user row unchanged after the first call
+- [ ] **Step 2: Run — expect FAIL**.
+- [ ] **Step 3: Implement** per PRD §5.1.3.
+- [ ] **Step 4: Run — expect PASS**.
+- [ ] **Step 5: Commit** (`feat(04): Stripe webhook handler — customer.subscription.deleted`).
+
+#### Task 3.3.4: `handle-invoice-paid`
+
+**Files:**
+- Create: `kova-open-pencil-1/api/stripe/webhook-handlers/handle-invoice-paid.ts`
+- Test: `kova-open-pencil-1/tests/unit/api/stripe/webhook-handlers/handle-invoice-paid.test.ts`
+
+- [ ] **Step 1: Write failing tests**:
+  - heals `past_due → active` when the invoice belongs to a past-due subscription
+  - is a no-op when the user is already `active` (no DB update fired)
+  - writes audit-log row `invoice.paid` with `amount_paid` + `hosted_invoice_url`
+  - sends `subscription-new` email IF `invoice.billing_reason === 'subscription_create'` AND it's the FIRST paid invoice for this customer (otherwise no email)
+- [ ] **Step 2: Run — expect FAIL**.
+- [ ] **Step 3: Implement** per PRD §5.1.3.
+- [ ] **Step 4: Run — expect PASS**.
+- [ ] **Step 5: Commit** (`feat(04): Stripe webhook handler — invoice.paid`).
+
+#### Task 3.3.5: `handle-invoice-payment-failed`
+
+**Files:**
+- Create: `kova-open-pencil-1/api/stripe/webhook-handlers/handle-invoice-payment-failed.ts`
+- Test: `kova-open-pencil-1/tests/unit/api/stripe/webhook-handlers/handle-invoice-payment-failed.test.ts`
+
+- [ ] **Step 1: Write failing tests**:
+  - sets `plan_status='past_due'` (regardless of prior state)
+  - writes audit-log row `invoice.payment_failed` with `attempt_count` + `next_payment_attempt`
+  - sends `subscription-payment-failed` email via Resend wrapper with `amount`, `attemptCount`, `deadline`, `hosted_invoice_url`
+  - dedupes email sends — calling twice with the same `invoice.id` should only fire Resend once (assert via idempotency_keys row)
+- [ ] **Step 2: Run — expect FAIL**.
+- [ ] **Step 3: Implement** per PRD §5.1.3.
+- [ ] **Step 4: Run — expect PASS**.
+- [ ] **Step 5: Commit** (`feat(04): Stripe webhook handler — invoice.payment_failed`).
+
+#### Task 3.3.6: `handle-checkout-completed`
+
+**Files:**
+- Create: `kova-open-pencil-1/api/stripe/webhook-handlers/handle-checkout-completed.ts`
+- Test: `kova-open-pencil-1/tests/unit/api/stripe/webhook-handlers/handle-checkout-completed.test.ts`
+
+- [ ] **Step 1: Write failing tests**:
+  - performs NO `users` UPDATE (subscription.created fires immediately after and is authoritative — checkout.completed is informational only)
+  - writes audit-log row `checkout.session.completed` with `session_id` + `client_reference_id` (which equals our `users.id`) + `customer` (the new `stripe_customer_id`)
+  - returns successfully when `client_reference_id` is null (e.g., guest checkout — not currently supported but the handler must not crash; logs warning instead)
+  - throws `NonRetriableError` when the event payload is missing `customer` (impossible per Stripe contract but defensive)
+- [ ] **Step 2: Run — expect FAIL**.
+- [ ] **Step 3: Implement** per PRD §5.1.3.
+- [ ] **Step 4: Run — expect PASS**.
+- [ ] **Step 5: Commit** (`feat(04): Stripe webhook handler — checkout.session.completed`).
 
 ### Task 3.4: Webhook dispatch + signature verify + idempotency
 
@@ -1234,6 +1495,10 @@ bun run test:unit -- tests/unit/api/stripe/webhook.test.ts
 
 - [ ] **Step 3: Implement**
 
+Vercel Functions deliver `req` as a Node `Readable`; consume it before any framework parses the body. `bodyParser: false` is Pages-Router-only and has no effect in Vercel Functions.
+
+**B-HIGH9 audit (2026-05-19):** All `req.headers` access in this plan uses bracket notation (Vercel returns `IncomingHttpHeaders`, not `Headers`). No `.get(...)` calls remain. The B-CRIT12 rewrite above also satisfies B-HIGH9.
+
 ```typescript
 // api/stripe/webhook.ts
 import type { VercelRequest, VercelResponse } from '@vercel/node'
@@ -1248,7 +1513,13 @@ import { handleSubscriptionDeleted } from './webhook-handlers/handle-subscriptio
 import { handleInvoicePaid } from './webhook-handlers/handle-invoice-paid'
 import { handleInvoicePaymentFailed } from './webhook-handlers/handle-invoice-payment-failed'
 
-export const config = { api: { bodyParser: false } }  // Vercel: read raw body
+async function readRawBody(req: VercelRequest): Promise<Buffer> {
+  const chunks: Buffer[] = []
+  for await (const chunk of req) {
+    chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk)
+  }
+  return Buffer.concat(chunks)
+}
 
 const HANDLED_EVENTS = {
   'checkout.session.completed': handleCheckoutCompleted,
@@ -1259,25 +1530,26 @@ const HANDLED_EVENTS = {
   'invoice.payment_failed': handleInvoicePaymentFailed,
 } as const
 
-export async function handler(
-  req: { method: string; headers: Record<string, string | undefined>; rawBody: string },
-  ctx: { stripe: ReturnType<typeof getStripeClient>; supabase: any },
-): Promise<{ status: number; body: any }> {
-  if (req.method !== 'POST') return { status: 405, body: { error: 'method_not_allowed' } }
+export default async function (req: VercelRequest, res: VercelResponse): Promise<void> {
+  if (req.method !== 'POST') return res.status(405).json({ error: 'method_not_allowed' })
 
-  const sig = req.headers['stripe-signature']
-  if (!sig) return { status: 400, body: { error: 'missing_signature' } }
+  const rawBody = await readRawBody(req)
+  const sigHeader = req.headers['stripe-signature']
+  const sig = Array.isArray(sigHeader) ? sigHeader[0] : sigHeader
+  if (!sig) return res.status(400).json({ error: 'missing_signature' })
 
+  const stripe = getStripeClient()
   let event: Stripe.Event
   try {
-    event = ctx.stripe.webhooks.constructEvent(req.rawBody, sig, process.env.STRIPE_WEBHOOK_SECRET!)
+    event = stripe.webhooks.constructEvent(rawBody, sig, process.env.STRIPE_WEBHOOK_SECRET!)
   } catch (err) {
-    return { status: 400, body: { error: 'invalid_signature' } }
+    return res.status(400).json({ error: 'signature_verification_failed' })
   }
 
-  // Idempotency
-  const payloadHash = crypto.createHash('sha256').update(req.rawBody).digest('hex')
-  const { error: insErr } = await ctx.supabase.from('stripe_webhook_events').insert({
+  // Idempotency check + event dispatch (Task 3.7 handlers)
+  const payloadHash = crypto.createHash('sha256').update(rawBody).digest('hex')
+  const supabase = getServiceSupabase()
+  const { error: insErr } = await supabase.from('stripe_webhook_events').insert({
     event_id: event.id,
     type: event.type,
     payload_hash: payloadHash,
@@ -1285,39 +1557,77 @@ export async function handler(
   })
   if (insErr && insErr.code === '23505') {
     // Duplicate
-    return { status: 200, body: { received: true, duplicate: true } }
+    return res.status(200).json({ received: true, duplicate: true })
   }
 
   // Dispatch
   const eventHandler = (HANDLED_EVENTS as Record<string, (e: Stripe.Event, s: any) => Promise<void>>)[event.type]
   if (!eventHandler) {
-    await ctx.supabase.from('stripe_webhook_events').update({ outcome: 'unhandled_type' }).eq('event_id', event.id)
-    return { status: 200, body: { received: true, unhandled: true } }
+    await supabase.from('stripe_webhook_events').update({ outcome: 'unhandled_type' }).eq('event_id', event.id)
+    return res.status(200).json({ received: true, unhandled: true })
   }
 
   try {
-    await eventHandler(event, ctx.supabase)
-    return { status: 200, body: { received: true } }
+    await eventHandler(event, supabase)
+    return res.status(200).json({ received: true })
   } catch (err) {
     console.error('[stripe-webhook] handler error', event.type, err)
-    await ctx.supabase.from('stripe_webhook_events').update({
-      outcome: 'error',
-      error_message: err instanceof Error ? err.message : 'unknown',
-    }).eq('event_id', event.id)
-    // Still 200 to Stripe; retries handled by Stripe via webhook config + next attempt hits idempotency
-    return { status: 200, body: { received: true, error: 'handler_failed' } }
+    const isNonRetriable = err instanceof NonRetriableError
+    if (isNonRetriable) {
+      // Non-retriable (bad payload, type error) — mark idempotency row 'error' and return 200 so Stripe stops redelivering
+      await supabase.from('stripe_webhook_events').update({
+        outcome: 'error',
+        error_message: err instanceof Error ? err.message : 'unknown',
+      }).eq('event_id', event.id)
+      return res.status(200).json({ received: true, error: 'handler_failed', retriable: false })
+    }
+    // Retriable (DB drop, transient network, Supabase 5xx) — delete the idempotency row so Stripe redelivers and we can retry
+    await supabase.from('stripe_webhook_events').delete().eq('event_id', event.id)
+    return res.status(500).json({ error: 'handler_failed', retriable: true })
   }
 }
 
-export default async function (req: VercelRequest, res: VercelResponse): Promise<void> {
-  const rawBody = await new Promise<string>(resolve => {
-    let data = ''
-    req.on('data', chunk => data += chunk)
-    req.on('end', () => resolve(data))
-  })
-  const result = await handler({ method: req.method ?? '', headers: req.headers as any, rawBody }, { stripe: getStripeClient(), supabase: getServiceSupabase() })
-  res.status(result.status).json(result.body)
+// Define this in `api/stripe/_shared/webhook-errors.ts`. Per-event handlers throw `new NonRetriableError(...)` for unrecoverable conditions (e.g., schema validation failures, missing brand id in metadata). Anything else is treated as retriable.
+class NonRetriableError extends Error {
+  constructor(message: string, public readonly code: string) {
+    super(message)
+    this.name = 'NonRetriableError'
+  }
 }
+```
+
+**B-MED8 retriable semantics:**
+
+- **200 OK** → Stripe acknowledges delivery, stops retrying. Used for: handler success, duplicate event (idempotency hit), unhandled event type, and **non-retriable** handler failures (we've persisted an `outcome='error'` row so the failure is captured but redelivery is suppressed).
+- **500 Internal Server Error** → Stripe retries with exponential backoff. Used for: **retriable** handler failures (DB connection drop, Supabase 5xx, transient network errors). We delete the idempotency row first so the redelivery sees a fresh slot — otherwise it would short-circuit on duplicate detection.
+
+Per-event handler tests must cover BOTH paths:
+
+```ts
+it('returns 500 on retriable error (e.g., Supabase connection drop)', async () => {
+  // mock supabase.from(...).update to throw a TypeError simulating connection failure
+  mockSupabase.from = mock(() => ({ update: mock(() => { throw new TypeError('fetch failed') }) }))
+  const res = await invokeWebhook(/* ... */)
+  expect(res.status).toBe(500)
+  expect(res.body.retriable).toBe(true)
+})
+
+it('returns 200 on non-retriable error (bad payload)', async () => {
+  // mock handler to throw NonRetriableError
+  mockHandler.mockImplementation(() => { throw new NonRetriableError('missing brand_id in metadata', 'bad_payload') })
+  const res = await invokeWebhook(/* ... */)
+  expect(res.status).toBe(200)
+  expect(res.body.retriable).toBe(false)
+  expect(res.body.error).toBe('handler_failed')
+})
+```
+
+- [ ] **Step 3.6: Validate signature**
+
+Validate webhook signature using Stripe CLI before merge — must produce a 200 response from this handler.
+
+```bash
+stripe trigger checkout.session.completed --api-key sk_test_...
 ```
 
 - [ ] **Step 4: Run + verify pass**
@@ -1436,12 +1746,17 @@ describe('POST /api/stripe/reconcile (cron)', () => {
         update,
       })),
     }
-    const stripe = { subscriptions: { retrieve: mock(() => Promise.resolve({ status: 'active' })) } }
+    const stripe = { subscriptions: { retrieve: mock(() => Promise.resolve({ status: 'active', current_period_end: 1735603200, cancel_at_period_end: false })) } }
     const { handler } = await import('@/../api/stripe/reconcile')
     const res = await handler({ headers: { authorization: 'Bearer cron-secret' } }, { stripe: stripe as any, supabase: supabase as any })
     expect(res.status).toBe(200)
     expect(res.body.healed).toBe(1)
-    expect(update).toHaveBeenCalled()
+    // B-MED14 — heal updates BOTH plan_status AND current_period_end + cancel_at_period_end
+    expect(update).toHaveBeenCalledWith(expect.objectContaining({
+      plan_status: 'active',
+      current_period_end: new Date(1735603200 * 1000).toISOString(),
+      cancel_at_period_end: false,
+    }))
   })
 })
 ```
@@ -1462,7 +1777,12 @@ export async function handler(req, ctx) {
     try {
       const sub = await ctx.stripe.subscriptions.retrieve(u.stripe_subscription_id)
       if (sub.status === 'active') {
-        await ctx.supabase.from('users').update({ plan_status: 'active' }).eq('id', u.id)
+        // B-MED14 — heal plan_status AND refresh current_period_end + cancel_at_period_end so the row reflects the live Stripe state, not just the status flag
+        await ctx.supabase.from('users').update({
+          plan_status: 'active',
+          current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
+          cancel_at_period_end: sub.cancel_at_period_end,
+        }).eq('id', u.id)
         healed++
       }
     } catch (err) {
@@ -1638,6 +1958,29 @@ git commit -m "feat(04): POST /api/account/avatar-upload — signed-URL pattern"
 - Test: `kova-open-pencil-1/tests/unit/api/account/avatar-confirm.test.ts`
 
 **Founder decision 2026-05-17:** Confirm step runs uploaded file through `sharp` to normalize (resize 256×256 cover fit, convert to PNG) before persisting. Path is fixed `users/{user_id}/avatar.png` — no orphans.
+
+**B-MED13 cross-cluster dependency (Cluster 11 bucket RLS):**
+
+The exact-path enforcement above (`EXPECTED_PATH_RE` + `segments[1] !== ctx.userId` check) ensures the server-side handler rejects any path that doesn't match `users/<authed-uid>/avatar.png`. This is one layer of defense. The second layer is Supabase Storage RLS, which MUST be authored by Cluster 11 (Plan 11 — shared infra). Required Plan 11 deliverable:
+
+```sql
+-- storage.objects policy for media-assets bucket
+CREATE POLICY "users_write_own_avatar" ON storage.objects
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    bucket_id = 'media-assets'
+    AND auth.uid()::text = (storage.foldername(name))[2]  -- users/<uid>/avatar.png → foldername returns ['users', '<uid>']
+    AND (storage.foldername(name))[1] = 'users'
+    AND name LIKE '%/avatar.png'
+  );
+
+CREATE POLICY "users_update_own_avatar" ON storage.objects
+  FOR UPDATE TO authenticated
+  USING (bucket_id = 'media-assets' AND auth.uid()::text = (storage.foldername(name))[2])
+  WITH CHECK (bucket_id = 'media-assets' AND auth.uid()::text = (storage.foldername(name))[2]);
+```
+
+Verify Plan 11 ships these two policies before merging Cluster 04. If Plan 11 has not yet authored them, escalate to the Cluster 11 fix agent (do NOT add the migration in this plan — Plan 11 owns `storage.objects` policies for the whole product).
 
 - [ ] **Step 1: Write test**
 
@@ -1880,7 +2223,7 @@ export interface Invoice {
 
 export const useBillingStore = defineStore('billing', () => {
   const plan = ref<'free' | 'solo' | 'agency'>('free')
-  const planStatus = ref<'active' | 'past_due' | 'cancelled' | 'incomplete'>('active')
+  const planStatus = ref<'active' | 'past_due' | 'cancelled' | 'incomplete' | 'trialing'>('active')
   const currentPeriodEnd = ref<Date | null>(null)
   const cancelAtPeriodEnd = ref(false)
   const stripeCustomerId = ref<string | null>(null)
@@ -2189,7 +2532,7 @@ export function useAvatarUpload() {
 
   async function upload(file: File): Promise<{ public_url: string }> {
     error.value = null
-    if (!ALLOWED_MIMES.includes(file.type as any)) {
+    if (!ALLOWED_MIMES.includes(file.type as typeof ALLOWED_MIMES[number])) {
       throw new Error('Unsupported file type. Use PNG or JPG.')
     }
     if (file.size > MAX_BYTES) {
@@ -2300,7 +2643,7 @@ describe('AccountSidebar', () => {
 ```vue
 <!-- src/components/account/AccountSidebar.vue -->
 <script setup lang="ts">
-import type { Component } from 'vue'
+import KovaIcon from '@/components/shared/KovaIcon.vue'
 
 interface SidebarItem {
   id: string
@@ -2329,7 +2672,7 @@ const emit = defineEmits<{ (e: 'select', id: string): void }>()
           ]"
           @click="emit('select', item.id)"
         >
-          <component :is="`icon-lucide-${item.icon}`" class="h-4 w-4" />
+          <KovaIcon :name="item.icon" class="h-4 w-4" />
           <span>{{ item.label }}</span>
         </button>
       </li>
@@ -2337,6 +2680,8 @@ const emit = defineEmits<{ (e: 'select', id: string): void }>()
   </nav>
 </template>
 ```
+
+**Note:** Dynamic component name resolution is incompatible with unplugin-icons (compile-time scan). Route all dynamic icon rendering through the Cluster 11 `<KovaIcon :name>` primitive.
 
 - [ ] **Step 4: Verify pass + commit**
 
@@ -2536,11 +2881,87 @@ bypassing the save-bar.
 
 **Files:**
 - Create: `kova-open-pencil-1/src/views/account/sections/BrandKitSection.vue`
-- Test: mirror.
+- Test: `kova-open-pencil-1/tests/unit/views/account/sections/BrandKitSection.test.ts`
 
-> Per PRD §3.4 + §6.4.1. Renders `<BrandPicker>` + sub-tab rail + content slot (Cluster 11 `<Skeleton>` placeholder until Cluster 05 ships).
+> Per PRD §3.4 + §6.4.1. Renders `<BrandPicker>` + sub-tab rail + content slot. Sub-tab rail reads `?tab=:tab` query param and renders the matching Brand Kit pane via Vue Router's `<router-view>` (Cluster 05 ships the individual pane components per Plan 05 Tasks 21-27; until then, panes render Cluster 11 `<Skeleton>` placeholders).
 
-- [ ] **Step 1 → 5**: TDD per pattern. Sub-tab rail uses `?tab=:tab` query param.
+**C-MED15 — `?tab=` sub-route via `<router-view>` (NOT a static `<Skeleton>`):**
+
+The previous draft of this task used a single `<Skeleton>` placeholder. Per C-MED15, the shell must instead use `<router-view>` so each `?tab=...` value (`colors`, `fonts`, `logo`, `saved-blocks`, `tone-snippets`, `voice`, `product-references`) renders a different child component. Implementation:
+
+```vue
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import BrandPicker from '@/components/brand/BrandPicker.vue'
+
+const route = useRoute()
+const router = useRouter()
+
+// 7 panes — Cluster 05 ships the components (Plan 05 Tasks 21-27).
+// Default tab = colors. Unknown tab values fall through to colors.
+const TABS = ['colors', 'fonts', 'logo', 'saved-blocks', 'tone-snippets', 'voice', 'product-references'] as const
+type Tab = typeof TABS[number]
+
+const activeTab = computed<Tab>(() => {
+  const t = route.query.tab as string | undefined
+  return (TABS as readonly string[]).includes(t ?? '') ? (t as Tab) : 'colors'
+})
+
+function setTab(name: Tab) {
+  router.push({ query: { ...route.query, tab: name } })
+}
+</script>
+
+<template>
+  <div class="brand-kit-section">
+    <BrandPicker />
+
+    <nav class="brand-kit-tabs" role="tablist" aria-label="Brand Kit tabs">
+      <button
+        v-for="t in TABS"
+        :key="t"
+        :class="{ active: activeTab === t }"
+        role="tab"
+        :aria-selected="activeTab === t"
+        @click="setTab(t)"
+      >
+        {{ t }}
+      </button>
+    </nav>
+
+    <router-view />
+  </div>
+</template>
+```
+
+**Route config** (extend `src/router/routes.ts`):
+
+```ts
+{
+  path: '/account/brand-kit',
+  name: 'account-brand-kit',
+  component: () => import('@/views/account/sections/BrandKitSection.vue'),
+  children: [
+    // Cluster 05 Tasks 21-27 register pane routes here.
+    // Until then, an empty route renders nothing (panel falls through to <router-view /> with no match).
+    // Example for the colors pane (Plan 05 Task 21):
+    // { path: '', name: 'account-brand-kit-pane', component: () => import('@/components/brand-kit/PaneRouter.vue') },
+  ],
+}
+```
+
+(Alternative pattern: if Cluster 05 prefers query-driven rendering without nested routes, replace `<router-view />` with a `<component :is="paneComponent">` where `paneComponent` is a `computed` that maps `activeTab` to the imported pane component. Either pattern satisfies C-MED15 — the founder requirement is "real wiring, not a `<Skeleton>` placeholder". Coordinate with the Cluster 05 fix agent on which pattern Plan 05 expects.)
+
+- [ ] **Step 1: Write tests** asserting:
+  - mounts `<BrandPicker>`
+  - renders 7 tab buttons with names matching `TABS`
+  - clicking a tab calls `router.push({ query: { tab: <name> } })`
+  - `activeTab` defaults to `colors` when `route.query.tab` is missing or invalid
+- [ ] **Step 2: Implement** per snippet above.
+- [ ] **Step 3: Run + verify pass.**
+- [ ] **Step 4: Update `src/router/routes.ts`** to add the `/account/brand-kit` route (with nested children placeholder until Cluster 05 lands).
+- [ ] **Step 5: Commit** (`feat(04): wire BrandKitSection tab rail + router-view`).
 
 ---
 
@@ -2660,51 +3081,101 @@ git commit -m "feat(04): useShopifyConnection — fetchConnectionHistory + Realt
 
 **Files:**
 - Create: `kova-open-pencil-1/src/components/account/SyncProgressBar.vue`
-- Test: mirror.
+- Test: `kova-open-pencil-1/tests/unit/components/account/SyncProgressBar.test.ts`
 
 > Extract from M9; add ARIA progressbar attributes consistently. [PRD §6.4.5 row 10]
 
-- [ ] **Step 1 → 5**: TDD per pattern.
+- [ ] **Step 1: Write failing tests** — each asserts one behavior:
+  - mounts at 0% with `role="progressbar"` + `aria-valuemin=0`, `aria-valuemax=100`, `aria-valuenow=0`
+  - updates `aria-valuenow` when `:percent` prop changes (0 → 47 → 100)
+  - renders label slot text ("Importing products…") visible above the bar
+  - renders no bar (and no `role="progressbar"` in DOM) when `:percent` is `null` (idle state)
+- [ ] **Step 2: Run — expect FAIL** (component does not yet exist).
+- [ ] **Step 3: Implement** the SFC. Use Tailwind classes from `kova-hifi.css` tokens; no raw hex literals; no `<style>` block.
+- [ ] **Step 4: Run — expect PASS** (`bun run test:unit -- tests/unit/components/account/SyncProgressBar.test.ts`).
+- [ ] **Step 5: Commit** (`feat(04): extract <SyncProgressBar> with ARIA progressbar semantics`).
 
 ### Task 11.5: `<ShopifyConnectForm>` extraction
 
 **Files:**
 - Create: `kova-open-pencil-1/src/components/account/ShopifyConnectForm.vue`
-- Test: mirror.
+- Test: `kova-open-pencil-1/tests/unit/components/account/ShopifyConnectForm.test.ts`
 
 > Extract from M9 IntegrationsCard + SettingsBrandIntegrationsView (deduplicate). Domain input → normalizeShopDomain → openOAuthPopup. [PRD §6.4.5 row 7]
 
-- [ ] **Step 1 → 5**: TDD per pattern.
+- [ ] **Step 1: Write failing tests**:
+  - mounts an empty domain input + disabled "Connect" button
+  - "Connect" button enables once input is non-empty AND `normalizeShopDomain` returns a non-null value (e.g., user types `mystore` or `mystore.myshopify.com`)
+  - clicking "Connect" calls `useShopifyConnection.openOAuthPopup(<normalized domain>)` exactly once
+  - rejected domain input (e.g., `https://google.com`) shows the validation error message "Enter your Shopify store domain (e.g., mystore.myshopify.com)" and keeps the button disabled
+  - emits `connect-started` event when popup opens (for parent `<IntegrationCard>` to flip to `connecting` state)
+- [ ] **Step 2: Run — expect FAIL**.
+- [ ] **Step 3: Implement** the SFC. Reuse `normalizeShopDomain` from `@/utils/shopify-domain.ts` (existing M9 helper).
+- [ ] **Step 4: Run — expect PASS**.
+- [ ] **Step 5: Commit** (`feat(04): extract <ShopifyConnectForm> from M9 IntegrationsCard`).
 
 ### Task 11.6: `<IntegrationCard>` (refactored M9 IntegrationsCard)
 
 **Files:**
 - Create: `kova-open-pencil-1/src/components/account/IntegrationCard.vue`
-- Test: mirror.
+- Test: `kova-open-pencil-1/tests/unit/components/account/IntegrationCard.test.ts`
 
 > Per PRD §6.4.2 row 9 + §6.4.5. All states (connected, not_connected, connecting, reauthorize, syncing, coming_soon). Uses `<ShopifyConnectForm>` + `<SyncProgressBar>` internally.
 
-- [ ] **Step 1 → 5**: TDD per pattern. Theme-drift grep gate runs in CI (see Phase 15).
+- [ ] **Step 1: Write failing tests** — one per state (6 tests):
+  - `connected`: renders shop domain + green dot indicator + "Disconnect" button + "Sync now" button
+  - `not_connected`: renders `<ShopifyConnectForm>` slot + integration logo + tagline
+  - `connecting`: renders spinner + "Connecting to {{ domain }}…" copy, no Disconnect button visible
+  - `reauthorize`: renders amber warning icon + "Token expired — reauthorize" CTA + secondary "Disconnect" button
+  - `syncing`: renders `<SyncProgressBar :percent="syncPercent">` + "Syncing {{ count }} of {{ total }}" copy
+  - `coming_soon`: renders muted card with "Coming soon" badge, no interactive controls
+  - **Theme-drift gate:** assert the rendered DOM string contains 0 occurrences of `bg-white`, `text-gray-`, or `border-gray-` Tailwind classes (CI grep gate enforces this in `bun run check`)
+- [ ] **Step 2: Run — expect FAIL**.
+- [ ] **Step 3: Implement** the SFC. Use `kova-hifi.css` semantic tokens via Tailwind `@theme`. Compose `<ShopifyConnectForm>` + `<SyncProgressBar>` for the relevant states.
+- [ ] **Step 4: Run — expect PASS**.
+- [ ] **Step 5: Commit** (`feat(04): <IntegrationCard> dark-theme refactor + 6-state matrix`).
 
 ### Task 11.7: `<SyncHistoryAccordion>`
 
 **Files:**
 - Create: `kova-open-pencil-1/src/components/account/SyncHistoryAccordion.vue`
-- Test: mirror.
+- Test: `kova-open-pencil-1/tests/unit/components/account/SyncHistoryAccordion.test.ts`
 
 > Per PRD §6.4.2 row 10. Reka Accordion; rows from `useShopifyConnection.connection.history`; per-event-type icon + humanized label.
 
-- [ ] **Step 1 → 5**: TDD per pattern. Empty state copy "No sync history yet. Events show here as you connect and sync."
+- [ ] **Step 1: Write failing tests**:
+  - mounts with empty array → shows empty state "No sync history yet. Events show here as you connect and sync."
+  - mounts with array of 3 events → renders 3 Reka Accordion items, collapsed by default
+  - clicking an item expands it (assert via `aria-expanded="true"` after click)
+  - `event.type='connected'` row uses link-icon + label "Connected"
+  - `event.type='disconnected'` row uses unlink-icon + label "Disconnected"
+  - `event.type='sync_started'` row uses refresh-icon + label "Sync started"
+  - `event.type='sync_completed'` row uses check-icon + label "Sync completed ({{ count }} items)"
+  - `event.type='sync_failed'` row uses x-icon + label "Sync failed: {{ error_summary }}"
+  - timestamps render via `humanizeRelative(event.created_at)` (e.g., "2 hours ago")
+- [ ] **Step 2: Run — expect FAIL**.
+- [ ] **Step 3: Implement** the SFC. Use Reka `<Accordion>` primitives. Per-event icons via `<KovaIcon>` (Cluster 11).
+- [ ] **Step 4: Run — expect PASS**.
+- [ ] **Step 5: Commit** (`feat(04): <SyncHistoryAccordion> with 5-event-type icon mapping`).
 
 ### Task 11.8: `<IntegrationsSection>`
 
 **Files:**
 - Create: `kova-open-pencil-1/src/views/account/sections/IntegrationsSection.vue`
-- Test: mirror.
+- Test: `kova-open-pencil-1/tests/unit/views/account/sections/IntegrationsSection.test.ts`
 
 > Per PRD §3.5. Composes `<BrandPicker>` + Shopify `<IntegrationCard>` + 2 "Coming soon" placeholder cards + `<SyncHistoryAccordion>`. Uses `useBrandPicker('integrations')`.
 
-- [ ] **Step 1 → 5**: TDD per pattern.
+- [ ] **Step 1: Write failing tests**:
+  - mounts `<BrandPicker>` + 1 Shopify `<IntegrationCard>` + 2 "Coming soon" placeholders + 1 `<SyncHistoryAccordion>`
+  - when `useBrandPicker('integrations')` returns no brand selected, all interactive controls are disabled and an empty-state card shows "Select a brand to manage integrations"
+  - when a brand is selected with a connected Shopify, the `<IntegrationCard>` renders in `connected` state with the shop domain
+  - switching brands via `<BrandPicker>` re-fetches `useShopifyConnection.fetchConnectionHistory({ brandId })` for the newly selected brand
+  - `<SyncHistoryAccordion>` rows are scoped to the current brand (assert by mounting with 2 brands' worth of history rows and confirming only the active brand's rows render)
+- [ ] **Step 2: Run — expect FAIL**.
+- [ ] **Step 3: Implement** the view per PRD §3.5.
+- [ ] **Step 4: Run — expect PASS**.
+- [ ] **Step 5: Commit** (`feat(04): <IntegrationsSection> composes brand picker + cards + history`).
 
 ### Task 11.9: Delete M9 files now superseded
 
@@ -2805,6 +3276,60 @@ describe('StripeReturnLanding', () => {
 ```
 
 - [ ] **Step 2 → 5**: implement + verify + commit per PRD §3.7 copy + §6.4.4 structure.
+
+**C-MED14 — Reuses Cluster 01 `<AuthMedal>` + `<AuthIcon>`:**
+
+`<StripeReturnLanding>` MUST compose the Cluster 01 auth-page primitives (`<AuthMedal>` + `<AuthIcon>`) for the success/error medal at the top of the landing — do NOT re-implement the medal/icon styles. These primitives ship from Cluster 01 W1 merge (`f7f2d35c`); see Plan 01 for their API contract. Implementation sketch:
+
+```vue
+<script setup lang="ts">
+import AuthMedal from '@/components/auth/AuthMedal.vue'   // Cluster 01 W1
+import AuthIcon from '@/components/auth/AuthIcon.vue'     // Cluster 01 W1
+import { useBillingStore } from '@/stores/billing'
+import { useStripeReturn } from '@/composables/use-stripe-return'
+
+const props = defineProps<{ mode: 'success' | 'cancel' }>()
+const billing = useBillingStore()
+const { planName, isPolling } = useStripeReturn()
+</script>
+
+<template>
+  <div class="auth-page-shell">
+    <AuthMedal :variant="props.mode === 'success' ? 'success' : props.mode === 'cancel' ? 'warning' : 'neutral'">
+      <AuthIcon :name="props.mode === 'success' ? 'check' : 'x'" />
+    </AuthMedal>
+
+    <template v-if="props.mode === 'success'">
+      <h1>You're on {{ planName ?? '…' }}</h1>
+      <p v-if="isPolling">Confirming your subscription…</p>
+      <p v-else>Your subscription is active. <router-link to="/dashboard">Open Kova</router-link></p>
+    </template>
+
+    <template v-else>
+      <h1>Checkout cancelled</h1>
+      <p>No charge was made. <button @click="billing.restartCheckout()">Try again</button> or <router-link to="/account/billing">return to billing</router-link>.</p>
+    </template>
+  </div>
+</template>
+```
+
+The Cluster 01 medal/icon primitives provide consistent visual treatment across all auth/billing-return landings (`/account/billing/success`, `/account/billing/cancel`, plus the Cluster 01 sign-up + email-change flows). Do NOT introduce a new medal styling here.
+
+**Test additions:** add 2 cases asserting the medal renders with `variant="success"` for `mode='success'` and `variant="warning"` for `mode='cancel'`, AND that `<AuthIcon name>` resolves to `check` vs `x` respectively:
+
+```ts
+it('renders success AuthMedal + check AuthIcon', () => {
+  const w = mount(StripeReturnLanding, { props: { mode: 'success' } })
+  expect(w.findComponent({ name: 'AuthMedal' }).props('variant')).toBe('success')
+  expect(w.findComponent({ name: 'AuthIcon' }).props('name')).toBe('check')
+})
+
+it('renders warning AuthMedal + x AuthIcon on cancel', () => {
+  const w = mount(StripeReturnLanding, { props: { mode: 'cancel' } })
+  expect(w.findComponent({ name: 'AuthMedal' }).props('variant')).toBe('warning')
+  expect(w.findComponent({ name: 'AuthIcon' }).props('name')).toBe('x')
+})
+```
 
 ---
 
@@ -3017,12 +3542,14 @@ git commit -m "docs(04): Stripe Dashboard + webhook setup runbook"
 ### Task 14.4: Resend email templates — 4 events at MVP (founder decision 2026-05-17)
 
 **Files:**
-- Create: `kova-open-pencil-1/emails/account/subscription-new.html`
-- Create: `kova-open-pencil-1/emails/account/subscription-upgraded.html`
-- Create: `kova-open-pencil-1/emails/account/subscription-cancelled.html`
-- Create: `kova-open-pencil-1/emails/account/subscription-payment-failed.html`
+- Create: `kova-open-pencil-1/emails/account/subscription-new.ts`
+- Create: `kova-open-pencil-1/emails/account/subscription-upgraded.ts`
+- Create: `kova-open-pencil-1/emails/account/subscription-cancelled.ts`
+- Create: `kova-open-pencil-1/emails/account/subscription-payment-failed.ts`
 
-> All 4 templates extend Cluster 11's `<EmailShell>`. Inter font. List-Unsubscribe (`<mailto:unsubscribe@kova.app>`) + `X-Entity-Ref-ID: {{ user_id }}` headers set by `<EmailShell>` wrapper. Each `.html` has a paired `.txt` generated at build via `juice` + plain-text extractor; Resend SDK sends both `html:` + `text:` payloads.
+> **C-MED13 — All 4 templates compose Cluster 11's `<EmailShell>` via `buildEmail()`** (from `@/composables/use-email-shell`, shipped by Plan 11 Task 8.2). Each template is a TypeScript module that exports an async function returning `{ html, text }`. Plain HTML files are forbidden — they bypass shell composition (wordmark, Inter font, List-Unsubscribe header, X-Entity-Ref-ID header, juice CSS inlining, automatic plain-text sibling) and are a maintenance liability. Resend SDK consumes both `html` and `text` from the return value.
+
+**Cross-cluster dependency:** `buildEmail()` ships from Plan 11 Task 8.2. Verify the W1 Cluster 11 merge (`70932143`) includes the composable before Cluster 04 merges. The body of each template is plain HTML passed as `bodyHtml` — `<EmailShell>` adds the wordmark, Inter font, and footer. Mustache variables (`{{ var }}`) inside `bodyHtml` are preserved verbatim and substituted by Resend at send time.
 
 **Subject lines (founder-approved 2026-05-17):**
 
@@ -3033,26 +3560,42 @@ git commit -m "docs(04): Stripe Dashboard + webhook setup runbook"
 | `subscription-cancelled.html` | `Your Kova subscription has been cancelled` |
 | `subscription-payment-failed.html` | `Action needed: payment failed for Kova` |
 
-- [ ] **Step 1: Create `subscription-new.html`**
+- [ ] **Step 1: Create `subscription-new.ts` — composes `<EmailShell>` via `buildEmail()`**
 
-```html
-<!-- emails/account/subscription-new.html -->
-<!doctype html>
-<html lang="en">
-<head><meta charset="utf-8" /><title>Welcome to Kova {{ planName }}</title></head>
-<body>
-  <h1>Welcome to Kova {{ planName }} 🎉</h1>
-  <p>Thanks for subscribing — your account now includes <strong>{{ planName }}</strong> features.</p>
-  <p>Your first invoice for <strong>${{ amount }}</strong> is processed and you're all set.</p>
-  <p><a href="https://kova.app/dashboard" class="btn-primary">Open Kova</a></p>
-  <p><a href="{{ hosted_invoice_url }}">View invoice</a></p>
-  <hr />
-  <p class="footer">This subscription is managed via Kova. Billing emails are transactional and cannot be opted out.</p>
-</body>
-</html>
+```typescript
+// emails/account/subscription-new.ts
+import { buildEmail } from '@/composables/use-email-shell'
+
+export interface SubscriptionNewProps {
+  planName: string
+  amount: number          // dollars; render as `${amount.toFixed(2)}` in body
+  currency?: string       // default 'USD'
+  hosted_invoice_url: string
+  user_id: string
+}
+
+export async function renderSubscriptionNew(props: SubscriptionNewProps): Promise<{ html: string; text: string; subject: string }> {
+  const bodyHtml = `
+    <h1>Welcome to Kova ${props.planName} 🎉</h1>
+    <p>Thanks for subscribing — your account now includes <strong>${props.planName}</strong> features.</p>
+    <p>Your first invoice for <strong>$${props.amount.toFixed(2)}</strong> is processed and you're all set.</p>
+    <p><a href="https://kova.app/dashboard" class="btn-primary">Open Kova</a></p>
+    <p><a href="${props.hosted_invoice_url}">View invoice</a></p>
+    <hr />
+    <p class="footer">This subscription is managed via Kova. Billing emails are transactional and cannot be opted out.</p>
+  `
+  const { html, text } = await buildEmail({
+    title: `Welcome to Kova ${props.planName}`,
+    preheader: `Your Kova ${props.planName} subscription is active.`,
+    bodyHtml,
+  })
+  return { html, text, subject: `Welcome to Kova ${props.planName} 🎉` }
+}
 ```
 
 Variables: `planName`, `amount`, `currency` (default USD), `hosted_invoice_url`, `user_id`.
+
+Steps 2-4 (subscription-upgraded.ts, subscription-cancelled.ts, subscription-payment-failed.ts) follow the same `buildEmail()` composition pattern: define a typed props interface, build `bodyHtml` as a template literal with `${prop}` interpolation, pass through `buildEmail({ title, preheader, bodyHtml })`, return `{ html, text, subject }`. Do not author plain `.html` files — `<EmailShell>` composition is mandatory per C-MED13.
 
 - [ ] **Step 2: Create `subscription-upgraded.html`**
 
@@ -3183,11 +3726,11 @@ git commit -m "test(04): 11 E2E specs covering Account page + Stripe + Integrati
 ### Task 15.2: CI grep gates
 
 **Files:**
-- Modify: `.github/workflows/ci.yml` OR `lefthook.yml` — add the 2 grep gates
+- Modify: `.github/workflows/ci.yml` OR `lefthook.yml` — add the 3 grep gates
 
-> Per PRD §9.5. Theme-drift + secret prefix.
+> Per PRD §9.5. Theme-drift + secret prefix + access_token leak (CT-019 / C-LOW04.6).
 
-- [ ] **Step 1**: add CI step
+- [ ] **Step 1**: add CI steps
 
 ```yaml
 - name: Theme-drift gate (Account page)
@@ -3202,13 +3745,19 @@ git commit -m "test(04): 11 E2E specs covering Account page + Stripe + Integrati
       echo "::error::Stripe server-only secret has VITE_ prefix"
       exit 1
     fi
+- name: access_token grep gate (CT-019 / C-LOW04.6)
+  run: |
+    if grep -rnE "access_token=" kova-open-pencil-1/src/ kova-open-pencil-1/api/; then
+      echo "::error::Literal access_token= found in source or API code — post-M9 must use Authorization header (PRD 02 §9.5 + PRD 04 §9.5)"
+      exit 1
+    fi
 ```
 
-- [ ] **Step 2**: commit + push; verify CI runs them green
+- [ ] **Step 2**: commit + push; verify CI runs all three gates green
 
 ```bash
 git add .github/workflows/ci.yml
-git commit -m "ci(04): add theme-drift + Stripe secret-prefix gates"
+git commit -m "ci(04): add theme-drift + Stripe secret-prefix + access_token gates"
 ```
 
 ---
