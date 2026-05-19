@@ -46,16 +46,12 @@
 | 1.2.2 Implement `src/stores/menu.ts` per PRD §6.2.1 | GREEN | |
 | 1.2.3 Refactor: extract submenu / sub-of-sub identity types if reused | Tests green | |
 
-### 1.3 `useFindStore`
+### 1.3 `useFindStore` — DROPPED (W0-2)
 
-| Task | Action | Verification |
-|---|---|---|
-| 1.3.1 Write `tests/stores/find.test.ts` covering open/close/next/previous wrap-around, setHits reset, empty-hits guard | RED | |
-| 1.3.2 Implement `src/stores/find.ts` per PRD §6.2.3 incl. `FindHit` interface | GREEN | |
-| 1.3.3 Refactor: extract `FindHit` to `src/types/find.ts` | Tests green | |
+Find feature dropped from Cluster 08 per 2026-05-17 founder lock; see Cluster 07b Tasks 1.6 / 1.7 / 7.1. This plan does NOT ship `src/stores/find.ts`. Cluster 07b ships `src/stores/use-find-store.ts` with the canvas-focus-mode state shape (`active` / `query` / `matchedNodeIds` / `focusedNodeId`).
 
 **Phase 1 exit gate:**
-- All 3 stores ship with ≥90% line coverage (load-bearing for every downstream cluster)
+- 2 stores ship (`useShortcutsStore` + `useMenuStore`) with ≥90% line coverage (load-bearing for every downstream cluster)
 - `bun run check` green
 - `bun run test:unit` green
 - No new dependencies added
@@ -205,21 +201,11 @@
 
 ---
 
-## Phase 5 — Find overlay + canvas-extension
+## Phase 5 — Find overlay + canvas-extension — DROPPED (W0-2)
 
-| Task | Action | Verification |
-|---|---|---|
-| 5.1 `<FindOverlay>` component per PRD §6.4.3 | All 4 states (empty / populated / no-results / dismissed) render per hi-fi 14.1–14.4 | Snapshot per state |
-| 5.2 Wire `⌘F` (registered into `useShortcutsStore` at Phase 2.6.7) → opens overlay | Manual + E2E | |
-| 5.3 `⇧⌘F` / `⇧⌘D` / Esc bindings | E2E | |
-| 5.4 `find-highlight` canvas-extension at `src/canvas-extensions/find-highlight/index.ts` — DOM-positioned overlay; subscribes to `useFindStore`; per-match `<div>` rect positioned via `editor.canvasToScreen(nodeBbox)` | Visual match rect renders; current match has 2 px `--accent` outline; others `--accent-soft` fill only | E2E visual screenshot |
-| 5.5 Layer-tree selection follows current match (single layer selected via `editor.ts.select`) | E2E | |
-| 5.6 Cross-page cycling: when next match is on different page, call `editor.ts.switchPage(pageId)` first then `flashNodes` | E2E | |
-| 5.7 Performance gate: 5000-node canvas + 100-char query — main thread block < 50 ms; Worker fallback if exceeded (per PRD §12.1) | Profiler output | |
+**Find feature dropped from Cluster 08 per 2026-05-17 founder lock; see Cluster 07b Tasks 1.6 / 1.7 / 7.1.** This phase is intentionally empty in Plan 08. PRD 07b §12.12 documents the canvas-focus-mode design that Cluster 07b ships end-to-end (`SearchPanel`, `DimLayerOverlay`, `FindOverlay`, `useFindStore`, `useFindSearch`, `useCameraPan`, `Cmd+F`/`Esc` bindings). Wave-2 cluster-08 fix agent SHOULD strip remaining find-related references from PRD 08 §3.4 / §6.3 useFind composable row / §7.2 cluster row / §8.4 acceptance / §9 test plan during its pass.
 
-**Phase 5 exit gate:**
-- Find flow ships end-to-end
-- Performance gate passes OR Worker fallback implemented + benchmarked
+**Phase 5 exit gate:** N/A — phase intentionally empty.
 
 ---
 

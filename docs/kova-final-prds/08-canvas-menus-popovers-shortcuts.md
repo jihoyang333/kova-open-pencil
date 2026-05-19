@@ -273,7 +273,9 @@ Recent colors are localStorage-only (per Q5 Layer 2 allocation table). View-togg
 
 ### 6.1 Routes (Vue Router)
 
-**No new routes.** All surfaces live under the existing `/canvas/:canvasId` route (Cluster 06 owns the route registration). The keyboard-shortcuts dialog and find overlay mount inside the canvas route's `<App>` shell as modal/floating overlays.
+**No new routes.** All surfaces live under the existing `/canvas/:canvasId` route (Cluster 06 owns the route registration). The keyboard-shortcuts dialog mounts inside the canvas route's `<App>` shell as a modal overlay.
+
+**Find feature scope note (W0-2 — 2026-05-19):** Cluster 07b owns the find feature end-to-end per the founder lock recorded in PRD 07b §12.12 (RESOLVED 2026-05-17 — *Find canvas focus mode: 07b owns end-to-end*). This PRD does NOT register `Cmd+F`, does NOT mount any find overlay, and does NOT ship a find store. See PRD 07b §12.12 and Plan 07b Tasks 1.6 / 1.7 / 7.1 for the canonical implementation surface.
 
 ### 6.2 Pinia stores
 
@@ -393,55 +395,11 @@ export const useShortcutsStore = defineStore('shortcuts', () => {
 })
 ```
 
-#### 6.2.3 `useFindStore` (NEW — find-overlay state)
+#### 6.2.3 `useFindStore` — RETIRED FROM THIS PRD (W0-2)
 
-```typescript
-// kova-open-pencil-1/src/stores/find.ts
-//
-// Per-canvas find state. Reactive query, hit list, current match.
+**Find feature owned by Cluster 07b sole per founder lock 2026-05-17 — see PRD 07b §6.2.3 + §12.12.** PRD 07b ships `useFindStore` at `src/stores/use-find-store.ts` with the canvas-focus-mode state shape (`active` / `query` / `matchedNodeIds` / `focusedNodeId`). This PRD does NOT ship a parallel find store. Any consumer that needs find state must import from 07b's path.
 
-export interface FindHit {
-  nodeId: string
-  field: 'text-content' | 'layer-name' | 'frame-name' | 'page-name'
-  pageId: string                     // page the hit lives on (for cross-page cycling)
-  matchStart?: number                // for text-content hits — character offset
-  matchEnd?: number
-}
-
-export const useFindStore = defineStore('find', () => {
-  const isOpen = ref(false)
-  const query = ref('')
-  const hits = ref<FindHit[]>([])
-  const currentIndex = ref(0)        // 0-based
-
-  const currentHit = computed<FindHit | null>(() => {
-    if (hits.value.length === 0) return null
-    return hits.value[currentIndex.value] ?? null
-  })
-
-  function open(): void { isOpen.value = true }
-  function close(): void {
-    isOpen.value = false
-    query.value = ''
-    hits.value = []
-    currentIndex.value = 0
-  }
-  function setHits(newHits: FindHit[]): void {
-    hits.value = newHits
-    currentIndex.value = 0
-  }
-  function next(): void {
-    if (hits.value.length === 0) return
-    currentIndex.value = (currentIndex.value + 1) % hits.value.length
-  }
-  function previous(): void {
-    if (hits.value.length === 0) return
-    currentIndex.value = (currentIndex.value - 1 + hits.value.length) % hits.value.length
-  }
-
-  return { isOpen, query, hits, currentIndex, currentHit, open, close, setHits, next, previous }
-})
-```
+Historical note: an earlier draft of this PRD specified `useFindStore` at `src/stores/find.ts` with a hit-list + index state shape. That draft is superseded by the 07b canvas-focus-mode model. The 07b shape is incompatible with the old hit-list shape — consumers MUST refactor to the 07b API.
 
 ### 6.3 Composables
 
@@ -489,12 +447,18 @@ export const useFindStore = defineStore('find', () => {
 | `ContextMenuShell` | `src/components/context-menu/ContextMenuShell.vue` | `surface: 'canvas' \| 'empty-canvas' \| 'layer-row' \| 'page-row' \| 'asset-row' \| 'frame' \| 'overflow-dots'`; `triggerEvent: MouseEvent` (for positioning) | none | `close`, `action` (id) | Reka `DropdownMenu` with `modal=false`; reads items from `useContextMenu(surface).items` |
 | `OverflowDots` | `src/components/context-menu/OverflowDots.vue` | none | none | none | Inspector `•••` button — mounted from Cluster 06; opens `ContextMenuShell` with `surface='overflow-dots'` |
 
-#### 6.4.3 Find overlay
+#### 6.4.3 Find overlay — RETIRED FROM THIS PRD (W0-2)
 
-| Component | File | Props | Slots | Emits | Hi-fi origin |
-|---|---|---|---|---|---|
-| `FindOverlay` | `src/components/overlay/FindOverlay.vue` | none | none | none | 14.1 / .2 / .3 / .4. Mounted in canvas chrome (Cluster 06 mount point). Reactively reads `useFindStore`. Position fixed: `top: 16px; left: 50%; transform: translateX(-50%)`. Esc handler bound globally |
-| `FindHighlightCanvasExtension` | `src/canvas-extensions/find-highlight/index.ts` | (canvas-extension contract per existing `canvas-extensions/` pattern) | n/a | n/a | DOM-positioned overlay above the CanvasKit surface. Draws current-match rect (2 px `--accent` outline + `--accent-soft` fill); other-matches rect (`--accent-soft` fill only). Subscribes to `useFindStore.hits` + `useFindStore.currentIndex` + `editor.graph` bbox lookup. Per Q4 — uses public `FigmaAPI` only, no engine extension hooks |
+**Find feature owned by Cluster 07b sole per founder lock 2026-05-17 — see PRD 07b §6.4 + §12.12.** PRD 07b ships the canvas-focus-mode surfaces:
+
+| Component | File | Owner PRD |
+|---|---|---|
+| `SearchPanel.vue` (left-side slide-in input + result list) | `src/components/find/SearchPanel.vue` | **07b** |
+| `SearchResultRow.vue` | `src/components/find/SearchResultRow.vue` | **07b** |
+| `DimLayerOverlay.vue` (translucent gray over non-matching nodes) | `src/components/canvas-overlays/DimLayerOverlay.vue` | **07b** |
+| `FindOverlay.vue` (composes DimLayerOverlay + clickthrough) | `src/components/canvas-overlays/FindOverlay.vue` | **07b** |
+
+This PRD does NOT ship `FindOverlay.vue` at `src/components/overlay/FindOverlay.vue`, does NOT ship `FindHighlightCanvasExtension`, and does NOT register `Cmd+F` / `⇧⌘F` / `⇧⌘D` bindings. The earlier hit-list overlay design is superseded by the 07b canvas-focus-mode design.
 
 #### 6.4.4 Keyboard shortcuts dialog
 

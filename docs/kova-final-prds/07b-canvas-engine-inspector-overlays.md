@@ -973,6 +973,21 @@ Acceptance §8.8 tests this matrix.
 
 ---
 
+### 12.13 RESOLVED — Cluster 07b owns find feature sole (W0-2 propagation)
+
+**RESOLVED 2026-05-17:** Cluster 07b owns find feature sole. **PROPAGATED 2026-05-19 (W0-2 dispatch):** PRD 08 / Plan 08 updated to drop their parallel find spec.
+
+| Surface | Before W0-2 | After W0-2 |
+|---|---|---|
+| `useFindStore` (Pinia) | PRD 08 §6.2.3 + Plan 08 Task 1.3 spec'd a hit-list store at `src/stores/find.ts` | PRD 08 §6.2.3 retired (cross-refs to 07b); Plan 08 Task 1.3 dropped. 07b sole owner — store at `src/stores/use-find-store.ts` (canvas-focus-mode shape) |
+| `<FindOverlay>` component | PRD 08 §6.4.3 + Plan 08 Task 5.1 spec'd a top-of-canvas overlay | PRD 08 §6.4.3 retired (cross-refs to 07b); Plan 08 Phase 5 dropped. 07b ships `SearchPanel` + `DimLayerOverlay` + `FindOverlay` at `src/components/find/` and `src/components/canvas-overlays/` |
+| `Cmd+F` shortcut binding | PRD 08 §6.1 / Plan 08 Task 5.2 registered binding into `useShortcutsStore` | Removed from PRD 08 / Plan 08. 07b registers its own binding via `src/composables/use-shortcuts.ts` extension |
+| `FindHighlightCanvasExtension` | Plan 08 Task 5.4 spec'd DOM-positioned overlay above CanvasKit | Removed from Plan 08. 07b's `DimLayerOverlay` + selection-box render (07a existing) cover the visual; no separate canvas-extension needed |
+
+**Wave-2 cleanup follow-up:** the cluster-08 Wave-2 fix agent SHOULD scrub the remaining secondary find references in PRD 08 §3.4 (Find overlay visual spec) + §6.3 useFind composable row + §7.2 cluster row + §8.4 acceptance + §9 test plan rows during its Wave-2 pass. W0-2 only ratifies the contract; full PRD 08 cleanup happens in Wave 2.
+
+---
+
 ## 13. References
 
 ### 13.1 03-doc rows covered
