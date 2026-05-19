@@ -175,6 +175,7 @@ ALTER TABLE public.brands
   ADD COLUMN IF NOT EXISTS archived_at timestamptz NULL,
   ADD COLUMN IF NOT EXISTS color text NOT NULL DEFAULT 'coral'
     CHECK (color IN ('coral', 'violet', 'sage', 'sand', 'graphite')),
+  ADD COLUMN IF NOT EXISTS color_assigned_at timestamptz NULL,
   ADD COLUMN IF NOT EXISTS slug text NULL,
   ADD COLUMN IF NOT EXISTS url text NULL,
   ADD COLUMN IF NOT EXISTS description text NULL;
@@ -183,6 +184,8 @@ COMMENT ON COLUMN public.brands.archived_at IS
   'Soft-archive timestamp. Set by archive_brand(); cleared by restore_brand() (REAL — MVP per 2026-05-17 reversal). NOT a soft-delete. Restored from /account/brands (B12).';
 COMMENT ON COLUMN public.brands.color IS
   'Auto-assigned palette tint at create-time. Stable across renames. User-overridable Phase 2.';
+COMMENT ON COLUMN public.brands.color_assigned_at IS
+  'Set to now() when color is deterministically assigned (create_brand RPC or one-shot backfill). NULL only for legacy rows still carrying the literal `coral` default. Backfill MUST filter on `color_assigned_at IS NULL` so re-running it never re-randomizes existing tints.';
 COMMENT ON COLUMN public.brands.slug IS
   'URL-safe derivative of name at create-time. Immutable after creation per A4.1 lock.';
 COMMENT ON COLUMN public.brands.url IS
@@ -264,18 +267,21 @@ test('slug is unique per user', async () => {
   await supabase.from('brands').insert({ user_id: userA, name: 'Brand A', slug: 'brand-a' })
   const dupe = await supabase.from('brands').insert({ user_id: userA, name: 'Brand A Two', slug: 'brand-a' })
   expect(dupe.error).not.toBeNull()
-  expect(dupe.error?.message).toMatch(/idx_brands_slug_per_user|unique/i)
+  // B-HIGH19 — Postgres error messages are not stable across versions / locales.
+  // Match on SQLSTATE 23505 (unique_violation) instead.
+  expect((dupe.error as { code?: string }).code).toBe('23505')
   await cleanupTestUser(userA)
 })
 
 test('active-brands partial index exists', async () => {
-  const { data } = await supabase
-    .from('pg_indexes' as any)
-    .select('indexname')
-    .eq('tablename', 'brands')
-  const names = (data ?? []).map((r: any) => r.indexname)
-  expect(names).toContain('idx_brands_active_per_user')
-  expect(names).toContain('idx_brands_slug_per_user')
+  // B-HIGH10 — pg_catalog is not exposed via PostgREST. Route through the
+  // `pg_indexes_by_name` RPC helper instead of a direct catalog read.
+  const [{ data: activeRows }, { data: slugRows }] = await Promise.all([
+    supabase.rpc('pg_indexes_by_name', { p_name: 'idx_brands_active_per_user' }),
+    supabase.rpc('pg_indexes_by_name', { p_name: 'idx_brands_slug_per_user' }),
+  ])
+  expect((activeRows ?? []).length).toBeGreaterThan(0)
+  expect((slugRows ?? []).length).toBeGreaterThan(0)
 })
 ```
 
@@ -315,6 +321,58 @@ git commit -m "feat(brands): add slug uniqueness + active-brands partial indexes
 
 ---
 
+### Task 2.5: `pg_indexes_by_name` RPC helper (B-HIGH10)
+
+**Why:** PostgREST does not expose the `pg_catalog` schema, so a Supabase client cannot query `pg_indexes` directly. Tests that need to assert the existence of a named index — including Task 2 above — must go through a SECURITY DEFINER RPC. This helper is generic enough to live in `public` and be reused by any cluster.
+
+**Files:**
+- Create: `supabase/migrations/20260601_03_pg_indexes_helper.sql`
+- Modify: `tests/integration/brands-migration.test.ts` (already updated above in Task 2 to call the RPC)
+
+- [ ] **Step 1: Write migration**
+
+Create `supabase/migrations/20260601_03_pg_indexes_helper.sql`:
+
+```sql
+-- ============================================================
+-- pg_indexes_by_name(p_name text) — small read-only catalog helper.
+-- Required by RLS / index-existence tests that cannot reach pg_catalog
+-- through PostgREST. Exposes only one row at a time, filtered by exact name.
+-- ============================================================
+BEGIN;
+
+CREATE OR REPLACE FUNCTION public.pg_indexes_by_name(p_name text)
+RETURNS TABLE (indexname text, tablename text, indexdef text)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public, pg_temp, pg_catalog
+AS $$
+  SELECT indexname::text, tablename::text, indexdef::text
+  FROM pg_indexes
+  WHERE indexname = p_name;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.pg_indexes_by_name TO authenticated, service_role;
+
+COMMIT;
+```
+
+- [ ] **Step 2: Apply migration locally + verify**
+
+```bash
+supabase db push
+bun test ./tests/integration/brands-migration.test.ts
+```
+
+Expected: PASS — both index-existence assertions resolve via the RPC.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add supabase/migrations/20260601_03_pg_indexes_helper.sql
+git commit -m "feat(db): add pg_indexes_by_name RPC helper for index-existence tests"
+```
+
+---
+
 ### Task 3: Backfill existing rows
 
 **Files:**
@@ -349,11 +407,15 @@ test('migration backfills color + slug for legacy rows', async () => {
 Append before `COMMIT;`:
 
 ```sql
+-- B-HIGH11 idempotency guard: only touch rows that still carry the literal
+-- `coral` default AND have never had a deterministic assignment. Re-running
+-- this migration is safe — once color_assigned_at is set, the row is frozen.
 UPDATE public.brands
 SET color = (ARRAY['coral','violet','sage','sand','graphite'])[
               (abs(hashtext(id::text)) % 5) + 1
-            ]
-WHERE color = 'coral';
+            ],
+    color_assigned_at = now()
+WHERE color = 'coral' AND color_assigned_at IS NULL;
 
 UPDATE public.brands
 SET slug = regexp_replace(lower(name), '[^a-z0-9]+', '-', 'g')
@@ -450,7 +512,7 @@ CREATE OR REPLACE FUNCTION public.create_brand(
   p_url         text DEFAULT NULL,
   p_description text DEFAULT NULL
 ) RETURNS public.brands
-LANGUAGE plpgsql SECURITY DEFINER AS $$
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
 DECLARE
   v_user_id      uuid := auth.uid();
   v_palette      text[] := ARRAY['coral','violet','sage','sand','graphite'];
@@ -479,8 +541,8 @@ BEGIN
     v_slug := v_slug_attempt || '-' || v_suffix::text;
   END LOOP;
 
-  INSERT INTO public.brands (user_id, name, slug, url, description, color)
-  VALUES (v_user_id, btrim(p_name), v_slug, p_url, p_description, v_color)
+  INSERT INTO public.brands (user_id, name, slug, url, description, color, color_assigned_at)
+  VALUES (v_user_id, btrim(p_name), v_slug, p_url, p_description, v_color, now())
   RETURNING * INTO v_brand;
 
   RETURN v_brand;
@@ -561,7 +623,7 @@ CREATE OR REPLACE FUNCTION public.rename_brand(
   p_brand_id uuid,
   p_name     text
 ) RETURNS public.brands
-LANGUAGE plpgsql SECURITY DEFINER AS $$
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
 DECLARE
   v_user_id uuid := auth.uid();
   v_brand   public.brands;
@@ -673,7 +735,7 @@ Append to migration:
 ```sql
 CREATE OR REPLACE FUNCTION public.archive_brand(p_brand_id uuid)
 RETURNS public.brands
-LANGUAGE plpgsql SECURITY DEFINER AS $$
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
 DECLARE v_user_id uuid := auth.uid(); v_brand public.brands;
 BEGIN
   IF v_user_id IS NULL THEN RAISE EXCEPTION 'not_authenticated' USING ERRCODE = '28000'; END IF;
@@ -696,7 +758,7 @@ $$;
 -- Distinguishes not_archived vs not_found for caller error mapping.
 CREATE OR REPLACE FUNCTION public.restore_brand(p_brand_id uuid)
 RETURNS public.brands
-LANGUAGE plpgsql SECURITY DEFINER AS $$
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
 DECLARE v_user_id uuid := auth.uid(); v_brand public.brands;
 BEGIN
   IF v_user_id IS NULL THEN RAISE EXCEPTION 'not_authenticated' USING ERRCODE = '28000'; END IF;
@@ -810,7 +872,7 @@ CREATE OR REPLACE FUNCTION public.delete_brand(
   p_brand_id     uuid,
   p_confirm_name text
 ) RETURNS jsonb
-LANGUAGE plpgsql SECURITY DEFINER AS $$
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
 DECLARE
   v_user_id     uuid := auth.uid();
   v_actual_name text;
@@ -832,7 +894,7 @@ $$;
 
 CREATE OR REPLACE FUNCTION public.list_active_brands()
 RETURNS SETOF public.brands
-LANGUAGE sql SECURITY DEFINER STABLE AS $$
+LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public, pg_temp AS $$
   SELECT * FROM public.brands
   WHERE user_id = auth.uid() AND archived_at IS NULL
   ORDER BY updated_at DESC;
@@ -841,7 +903,7 @@ $$;
 -- list_archived_brands: B12 page + A2.a "Archived" filter consumer.
 CREATE OR REPLACE FUNCTION public.list_archived_brands()
 RETURNS SETOF public.brands
-LANGUAGE sql SECURITY DEFINER STABLE AS $$
+LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public, pg_temp AS $$
   SELECT * FROM public.brands
   WHERE user_id = auth.uid() AND archived_at IS NOT NULL
   ORDER BY archived_at DESC;
@@ -881,6 +943,7 @@ test('User B cannot call any RPC on User A brand', async () => {
   for (const op of [
     ['rename_brand', { p_brand_id: brandA!.id, p_name: 'evil' }],
     ['archive_brand', { p_brand_id: brandA!.id }],
+    ['restore_brand', { p_brand_id: brandA!.id }],
     ['delete_brand', { p_brand_id: brandA!.id, p_confirm_name: 'A-only' }],
   ] as const) {
     const { error } = await clientB.rpc(op[0], op[1] as any)
@@ -891,6 +954,47 @@ test('User B cannot call any RPC on User A brand', async () => {
   expect(still).not.toBeNull()
   await cleanupTestUser(userA.id)
   await cleanupTestUser(userB.id)
+})
+
+// C-LOW03.10 — defense-in-depth. Each DEFINER RPC must raise 'not_authenticated'
+// (or equivalent) when auth.uid() is NULL — i.e., when called with the anon key.
+// This guards against RLS being accidentally relaxed in a future migration.
+test('anonymous client cannot call any mutating RPC (auth.uid() defense)', async () => {
+  const anonClient = createClient(
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_ANON_KEY!,
+  )
+  for (const op of [
+    ['create_brand', { p_name: 'x', p_url: null, p_description: null }],
+    ['rename_brand', { p_brand_id: '00000000-0000-0000-0000-000000000001', p_name: 'x' }],
+    ['archive_brand', { p_brand_id: '00000000-0000-0000-0000-000000000001' }],
+    ['restore_brand', { p_brand_id: '00000000-0000-0000-0000-000000000001' }],
+    ['delete_brand', { p_brand_id: '00000000-0000-0000-0000-000000000001', p_confirm_name: 'x' }],
+  ] as const) {
+    const { error } = await anonClient.rpc(op[0], op[1] as any)
+    expect(error).not.toBeNull()
+    expect(error?.message).toMatch(/not_authenticated|permission denied|JWT/i)
+  }
+})
+
+// C-LOW03.10 — list_active_brands / list_archived_brands are SECURITY DEFINER
+// + STABLE and self-filter on auth.uid(); anon client must get an empty set
+// rather than another user's rows.
+test('anonymous client gets empty result from list_* RPCs (not other users\\' brands)', async () => {
+  const anonClient = createClient(
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_ANON_KEY!,
+  )
+  for (const op of ['list_active_brands', 'list_archived_brands'] as const) {
+    const { data, error } = await anonClient.rpc(op)
+    // Either an auth-related error OR an empty set is acceptable; what is NOT
+    // acceptable is returning rows owned by some real user.
+    if (error) {
+      expect(error.message).toMatch(/not_authenticated|permission denied|JWT/i)
+    } else {
+      expect(data ?? []).toEqual([])
+    }
+  }
 })
 ```
 
@@ -1108,6 +1212,114 @@ export async function purgeBrandStorageObjects(
 bun test ./tests/api/_shared/storage-sweep.test.ts
 git add api/_shared/storage-sweep.ts tests/api/_shared/storage-sweep.test.ts
 git commit -m "feat(brands): add storage sweep helper for delete cascade"
+```
+
+---
+
+### Task 10.5: `writeAudit()` helper consumption in 4 brand-CRUD Edge Functions (CT-023(a) / C-MED11)
+
+**Why:** Cluster 11 ships the canonical `writeAudit()` helper at `api/_shared/audit.ts` (W1 Cluster 11 merge — commit on `feat/m9-shopify`). Cluster 03 owns the brand-CRUD Edge Functions that MUST emit `audit_log` rows for `brand.created`, `brand.renamed`, `brand.archived`, `brand.restored`, `brand.deleted`. This task wires the consumer side; the helper itself is owned by Cluster 11.
+
+**Files:**
+- Modify: `api/brands/create.ts` (Task 11)
+- Modify: `api/brands/rename.ts` (Task 12)
+- Modify: `api/brands/archive.ts` (Task 13)
+- Modify: `api/brands/delete.ts` (Task 14)
+- Modify: `api/brands/restore.ts` (Task 13.5)
+- Test: `tests/api/brands/audit-emission.test.ts`
+
+- [ ] **Step 1: Write failing test asserting audit row per CRUD op**
+
+Create `tests/api/brands/audit-emission.test.ts`:
+
+```typescript
+import { test, expect, mock } from 'bun:test'
+import createHandler from '../../../api/brands/create'
+import deleteHandler from '../../../api/brands/delete'
+import { mockRequest, mockResponse, mockSupabaseAuthedAs } from '../helpers'
+
+const auditRows: Array<Record<string, unknown>> = []
+mock.module('@/api/_shared/audit', () => ({
+  writeAudit: mock(async (row: Record<string, unknown>) => { auditRows.push(row) }),
+}))
+
+test('POST /api/brands/create writes brand.created audit row with cluster_owner=03', async () => {
+  auditRows.length = 0
+  const req = mockRequest({ method: 'POST', body: { name: 'Patagonia' }, headers: { authorization: 'Bearer fake' } })
+  const res = mockResponse()
+  mockSupabaseAuthedAs('user-123', {
+    rpc: async () => ({ data: { id: 'b1', name: 'Patagonia' }, error: null }),
+  })
+  await createHandler(req, res)
+  expect(res.statusCode).toBe(200)
+  expect(auditRows).toHaveLength(1)
+  expect(auditRows[0]).toMatchObject({
+    event_type: 'brand.created',
+    cluster_owner: '03',
+    actor_user_id: 'user-123',
+    target_brand_id: 'b1',
+  })
+})
+
+test('DELETE /api/brands/delete writes brand.deleted audit row even when sweep fails', async () => {
+  auditRows.length = 0
+  const req = mockRequest({
+    method: 'DELETE',
+    body: { brand_id: 'b1', confirm_typed: 'Patagonia' },
+    headers: { authorization: 'Bearer fake' },
+  })
+  const res = mockResponse()
+  mockSupabaseAuthedAs('user-123', {
+    rpc: async () => ({ data: { name: 'Patagonia', canvas_count: 3 }, error: null }),
+    storage: { from: () => ({ list: async () => ({ data: [], error: { message: 'boom' } }), remove: async () => ({ error: null }) }) },
+  } as any)
+  await deleteHandler(req, res)
+  expect(res.statusCode).toBe(200)
+  expect(auditRows[0]).toMatchObject({ event_type: 'brand.deleted', cluster_owner: '03' })
+})
+```
+
+- [ ] **Step 2: Wire `writeAudit` into each Edge Function**
+
+Add to the top of each of the 5 handlers (`create.ts`, `rename.ts`, `archive.ts`, `delete.ts`, `restore.ts`):
+
+```typescript
+import { writeAudit } from '../_shared/audit'  // Cluster 11
+```
+
+Immediately AFTER the successful RPC return (and BEFORE `res.status(200).json(...)`), emit:
+
+```typescript
+// create.ts
+await writeAudit({
+  event_type: 'brand.created',
+  cluster_owner: '03',
+  actor_user_id: userId,
+  target_brand_id: (data as { id: string }).id,
+  metadata: { name: (data as { name: string }).name },
+})
+
+// rename.ts  — event_type: 'brand.renamed', metadata: { old_name, new_name }
+// archive.ts — event_type: 'brand.archived'
+// restore.ts — event_type: 'brand.restored'
+// delete.ts  — event_type: 'brand.deleted',  metadata: { name, canvas_count } — written BEFORE storage sweep returns so sweep failure does not lose the audit
+```
+
+`writeAudit` MUST NOT throw — the Cluster 11 contract is fire-and-forget with internal Sentry capture. The CRUD response is independent.
+
+- [ ] **Step 3: Verify W0-9 CI gate (audit_log cluster_owner coverage)**
+
+```bash
+grep -nE "writeAudit\\(\\{" api/brands/*.ts | grep -c "cluster_owner: '03'"
+# Expected: 5 (one per CRUD endpoint).
+bun test ./tests/api/brands/audit-emission.test.ts
+```
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add api/brands/*.ts tests/api/brands/audit-emission.test.ts
+git commit -m "feat(brands): emit audit_log rows from 5 brand-CRUD Edge Functions"
 ```
 
 ---
@@ -1422,6 +1634,131 @@ git commit -m "feat(brands): POST /api/brands/archive endpoint"
 
 ---
 
+### Task 13.5: `POST /api/brands/restore` Edge Function (CT-023(a) / CT-023(c))
+
+**Why:** Addendum B12 reversal promoted `restore_brand` RPC to REAL. The Pinia `restoreBrand` action calls `POST /api/brands/restore`, which did not exist until now (404). This task adds the endpoint. Pattern mirrors `archive.ts` exactly — auth, idempotency, RPC, audit, response.
+
+**Files:**
+- Create: `api/brands/restore.ts`
+- Test: `tests/api/brands/restore.test.ts`
+
+- [ ] **Step 1: Write failing tests**
+
+Create `tests/api/brands/restore.test.ts`:
+
+```typescript
+import { test, expect, mock } from 'bun:test'
+import handler from '../../../api/brands/restore'
+import { mockRequest, mockResponse, mockSupabaseAuthedAs } from '../helpers'
+
+mock.module('@/api/_shared/audit', () => ({ writeAudit: mock(async () => undefined) }))
+
+test('restores archived brand + clears archived_at', async () => {
+  const req = mockRequest({ method: 'POST', body: { brand_id: 'b1' }, headers: { authorization: 'Bearer fake', 'x-idempotency-key': 'restore-1' } })
+  const res = mockResponse()
+  mockSupabaseAuthedAs('user-123', {
+    rpc: async (_name, _args) => ({ data: { id: 'b1', name: 'X', archived_at: null }, error: null }),
+  })
+  await handler(req, res)
+  expect(res.statusCode).toBe(200)
+  expect(res.jsonBody?.brand?.archived_at).toBeNull()
+})
+
+test('not_archived returns 409 (double-restore guard)', async () => {
+  const req = mockRequest({ method: 'POST', body: { brand_id: 'b1' }, headers: { authorization: 'Bearer fake', 'x-idempotency-key': 'restore-2' } })
+  const res = mockResponse()
+  mockSupabaseAuthedAs('user-123', { rpc: async () => ({ data: null, error: { message: 'not_archived' } }) })
+  await handler(req, res)
+  expect(res.statusCode).toBe(409)
+  expect(res.jsonBody?.error).toBe('not_archived')
+})
+
+test('BRANDS_RESTORE_ENABLED=false returns 503 without RPC call', async () => {
+  process.env.BRANDS_RESTORE_ENABLED = 'false'
+  let rpcCalled = false
+  const req = mockRequest({ method: 'POST', body: { brand_id: 'b1' }, headers: { authorization: 'Bearer fake' } })
+  const res = mockResponse()
+  mockSupabaseAuthedAs('user-123', { rpc: async () => { rpcCalled = true; return { data: null, error: null } } })
+  await handler(req, res)
+  expect(res.statusCode).toBe(503)
+  expect(rpcCalled).toBe(false)
+  delete process.env.BRANDS_RESTORE_ENABLED
+})
+```
+
+- [ ] **Step 2: Implement handler**
+
+Create `api/brands/restore.ts`:
+
+```typescript
+import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { createClient } from '@supabase/supabase-js'
+import { verifyIdempotency } from '../_shared/idempotency'  // Cluster 11
+import { writeAudit } from '../_shared/audit'               // Cluster 11
+
+function isUuid(s: unknown): s is string {
+  return typeof s === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s)
+}
+
+export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
+  if (req.method !== 'POST') { res.status(405).json({ error: 'method_not_allowed' }); return }
+
+  // Founder kill-switch (also referenced by W2-C-LOW03.9 idempotency wiring).
+  if (process.env.BRANDS_RESTORE_ENABLED === 'false') {
+    res.status(503).json({ error: 'restore_not_enabled' })
+    return
+  }
+
+  const auth = req.headers.authorization
+  if (!auth?.startsWith('Bearer ')) { res.status(401).json({ error: 'no_auth' }); return }
+  const brandId = (req.body as { brand_id?: unknown })?.brand_id
+  if (!isUuid(brandId)) { res.status(422).json({ error: 'brand_id_required' }); return }
+
+  const supabase = createClient(
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_ANON_KEY!,
+    { global: { headers: { Authorization: auth } } },
+  )
+  const { data: userData, error: userErr } = await supabase.auth.getUser()
+  if (userErr || !userData?.user) { res.status(401).json({ error: 'unauthorized' }); return }
+  const userId = userData.user.id
+
+  const idemKey = req.headers['x-idempotency-key']
+  if (typeof idemKey === 'string') {
+    const cached = await verifyIdempotency(supabase, idemKey, userId, 'brand.restore')
+    if (cached) { res.status(cached.status).json(cached.body); return }
+  }
+
+  const { data, error } = await supabase.rpc('restore_brand', { p_brand_id: brandId })
+  if (error) {
+    const status =
+      error.message === 'not_archived' ? 409 :
+      error.message === 'not_found' ? 404 :
+      error.message === 'not_authenticated' ? 401 : 500
+    res.status(status).json({ error: error.message })
+    return
+  }
+
+  await writeAudit({
+    event_type: 'brand.restored',
+    cluster_owner: '03',
+    actor_user_id: userId,
+    target_brand_id: brandId,
+  })
+  res.status(200).json({ brand: data })
+}
+```
+
+- [ ] **Step 3: Run + commit**
+
+```bash
+bun test ./tests/api/brands/restore.test.ts
+git add api/brands/restore.ts tests/api/brands/restore.test.ts
+git commit -m "feat(brands): POST /api/brands/restore endpoint (B12 reversal)"
+```
+
+---
+
 ### Task 14: `DELETE /api/brands/delete`
 
 **Files:**
@@ -1469,6 +1806,25 @@ test('confirm_mismatch returns 422 without sweep', async () => {
   await handler(req, res)
   expect(res.statusCode).toBe(422)
 })
+
+// B-CRIT9 regression — never bypass JWT resolution before sweep.
+test('returns 401 when auth.getUser() yields no user (delete logic never runs)', async () => {
+  const req = mockRequest({
+    method: 'DELETE',
+    body: { brand_id: 'b1', confirm_typed: 'Brand Name' },
+    headers: { authorization: 'Bearer fake' },
+  })
+  const res = mockResponse()
+  let rpcCalled = false
+  mockSupabaseAuthedAs(null, {
+    auth: { getUser: async () => ({ data: { user: null }, error: { message: 'invalid_jwt' } }) },
+    rpc: async () => { rpcCalled = true; return { data: null, error: null } },
+  } as any)
+  await handler(req, res)
+  expect(res.statusCode).toBe(401)
+  expect(res.jsonBody?.error).toBe('unauthorized')
+  expect(rpcCalled).toBe(false)
+})
 ```
 
 - [ ] **Step 2: Verify fail + implement**
@@ -1499,6 +1855,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     { global: { headers: { Authorization: auth } } },
   )
 
+  // Resolve userId from JWT BEFORE running the RPC. The sweep helper needs a real owner id;
+  // a placeholder literal would silently scope the sweep to a non-existent prefix.
+  const { data: userData, error: userErr } = await supabase.auth.getUser()
+  if (userErr || !userData?.user) { res.status(401).json({ error: 'unauthorized' }); return }
+  const userId = userData.user.id
+
   const { data, error } = await supabase.rpc('delete_brand', {
     p_brand_id: brandId,
     p_confirm_name: typed,
@@ -1513,7 +1875,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   }
 
   // Sweep is best-effort — log failures, don't fail the request (brand already gone via FK cascade).
-  const sweep = await purgeBrandStorageObjects(supabase, brandId, '<from-jwt>')
+  const sweep = await purgeBrandStorageObjects(supabase, brandId, userId)
   res.status(200).json({
     success: true,
     deleted_brand_name: (data as any).name,
@@ -1528,6 +1890,79 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 bun test ./tests/api/brands/delete.test.ts
 git add api/brands/delete.ts tests/api/brands/delete.test.ts
 git commit -m "feat(brands): DELETE /api/brands/delete endpoint with storage sweep"
+```
+
+---
+
+### Task 14.5: Wire `verifyIdempotency` into 5 brand-CRUD Edge Functions (C-LOW03.9)
+
+**Why:** Plan 11 ships the `idempotency_keys` table + `verifyIdempotency()` helper at `api/_shared/idempotency.ts`. Cluster 03 Edge Functions accept the `Idempotency-Key` header (PRD §8.7) but the original Tasks 11-14 didn't actually consult the helper — a network retry would re-execute the RPC. This task closes the gap for all 5 mutating endpoints (`create`, `rename`, `archive`, `restore`, `delete`). The pattern mirrors `restore.ts` from Task 13.5.
+
+**Files:**
+- Modify: `api/brands/create.ts`, `rename.ts`, `archive.ts`, `delete.ts`, `restore.ts`
+- Test: `tests/api/brands/idempotency.test.ts`
+
+- [ ] **Step 1: Add the standard idempotency block to each handler**
+
+Insert AFTER the `auth.getUser()` step (so userId is resolved) and BEFORE the RPC call:
+
+```typescript
+import { verifyIdempotency } from '../_shared/idempotency' // Plan 11
+
+// …after we have userId…
+const idemKey = req.headers['x-idempotency-key']
+if (typeof idemKey === 'string') {
+  const cached = await verifyIdempotency(supabase, idemKey, userId, '<endpoint-name>')
+  if (cached) { res.status(cached.status).json(cached.body); return }
+}
+```
+
+Endpoint names to thread through: `'brand.create'`, `'brand.rename'`, `'brand.archive'`, `'brand.delete'`, `'brand.restore'`. The cached response writes back into `idempotency_keys` is handled inside `verifyIdempotency` — handlers only need to read.
+
+- [ ] **Step 2: Failing test asserting replay returns cached response**
+
+```typescript
+import { test, expect, mock } from 'bun:test'
+import createHandler from '../../../api/brands/create'
+import { mockRequest, mockResponse, mockSupabaseAuthedAs } from '../helpers'
+
+let cachedHit = 0
+mock.module('@/api/_shared/idempotency', () => ({
+  verifyIdempotency: mock(async () => { cachedHit++; return { status: 200, body: { brand: { id: 'b1', name: 'X' } } } }),
+}))
+
+test('idempotent replay returns cached response without re-running RPC', async () => {
+  cachedHit = 0
+  let rpcCalled = false
+  mockSupabaseAuthedAs('user-123', {
+    rpc: async () => { rpcCalled = true; return { data: { id: 'b1' }, error: null } },
+  })
+  const req = mockRequest({
+    method: 'POST',
+    body: { name: 'X' },
+    headers: { authorization: 'Bearer fake', 'x-idempotency-key': 'k1' },
+  })
+  const res = mockResponse()
+  await createHandler(req, res)
+  expect(cachedHit).toBe(1)
+  expect(rpcCalled).toBe(false)
+  expect(res.statusCode).toBe(200)
+})
+```
+
+- [ ] **Step 3: Verify all 5 endpoints wire the helper**
+
+```bash
+grep -lE "verifyIdempotency\\(" api/brands/{create,rename,archive,restore,delete}.ts | wc -l
+# Expected: 5
+bun test ./tests/api/brands/idempotency.test.ts
+```
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add api/brands/*.ts tests/api/brands/idempotency.test.ts
+git commit -m "feat(brands): wire verifyIdempotency into 5 brand-CRUD Edge Functions (C-LOW03.9)"
 ```
 
 ---
@@ -1601,9 +2036,18 @@ git commit -m "feat(brands): extend Brand type with archived_at + color + slug +
 Append to (or create) `tests/stores/brands.test.ts`:
 
 ```typescript
-import { test, expect, beforeEach } from 'bun:test'
+import { test, expect, beforeEach, mock } from 'bun:test'
 import { createPinia, setActivePinia } from 'pinia'
 import { useBrandsStore } from '../../src/stores/brands'
+
+// Module-level stub shared by every test in this file. Override per-test by
+// reassigning the inner `rpc` / `fetch` impl from a helper, not by re-mocking.
+mock.module('@/lib/supabase', () => ({
+  supabase: {
+    rpc: mock(async () => ({ data: [], error: null })),
+    auth: { getUser: mock(async () => ({ data: { user: { id: 'u1' } }, error: null })) },
+  },
+}))
 
 beforeEach(() => setActivePinia(createPinia()))
 
@@ -1629,9 +2073,17 @@ test('archivedBrands inverse', () => {
 
 - [ ] **Step 2: Verify fail + extend store**
 
-In `src/stores/brands.ts`, add getters after `selectedBrand`:
+In `src/stores/brands.ts`, add getters + sort state after `selectedBrand`:
 
 ```typescript
+import { useLocalStorage } from '@vueuse/core'
+
+// C-MED10 — single useLocalStorage instance, shared key with Cluster 02's
+// dashboard store. Keeps both pickers in lockstep and avoids the dual-
+// instance race (C-MED8).
+export type BrandsSortMode = 'last-edited' | 'created' | 'name-asc' | 'name-desc'
+const sortMode = useLocalStorage<BrandsSortMode>('kova:brands:sort-mode', 'last-edited')
+
 const activeBrands = computed(() =>
   brands.value.filter((b) => b.archived_at === null),
 )
@@ -1640,19 +2092,53 @@ const archivedBrands = computed(() =>
   brands.value.filter((b) => b.archived_at !== null),
 )
 
-const sortedActive = computed(() =>
-  [...activeBrands.value].sort((a, b) => (b.updated_at ?? '').localeCompare(a.updated_at ?? '')),
-)
+const sortedActive = computed(() => {
+  const list = [...activeBrands.value]
+  switch (sortMode.value) {
+    case 'created':
+      return list.sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))
+    case 'name-asc':
+      return list.sort((a, b) => a.name.localeCompare(b.name))
+    case 'name-desc':
+      return list.sort((a, b) => b.name.localeCompare(a.name))
+    case 'last-edited':
+    default:
+      return list.sort((a, b) => (b.updated_at ?? '').localeCompare(a.updated_at ?? ''))
+  }
+})
 ```
 
-And add them to the `return` block of `defineStore`.
+And add `activeBrands`, `archivedBrands`, `sortedActive`, **and `sortMode`** to the `return` block of `defineStore`.
 
-- [ ] **Step 3: Run + commit**
+- [ ] **Step 3: Sort-mode regression tests**
+
+Append to `tests/stores/brands.test.ts`:
+
+```typescript
+test('sortedActive respects sortMode (name-asc)', () => {
+  const store = useBrandsStore()
+  store.brands = [
+    { id: '1', name: 'Zeta', archived_at: null } as any,
+    { id: '2', name: 'Alpha', archived_at: null } as any,
+  ]
+  store.sortMode = 'name-asc'
+  expect(store.sortedActive.map((b) => b.name)).toEqual(['Alpha', 'Zeta'])
+})
+
+test('sortMode persists to localStorage under shared key', () => {
+  localStorage.clear()
+  const store = useBrandsStore()
+  store.sortMode = 'created'
+  expect(JSON.parse(localStorage.getItem('kova:brands:sort-mode') ?? '""')).toBe('created')
+})
+```
+
+- [ ] **Step 4: Run + commit**
 
 ```bash
 bun test ./tests/stores/brands.test.ts
 git add src/stores/brands.ts tests/stores/brands.test.ts
-git commit -m "feat(brands): add activeBrands + archivedBrands + sortedActive getters"
+git commit -m "feat(brands): add activeBrands + archivedBrands + sortedActive + sortMode (C-MED10)"
 ```
 
 ---
@@ -1865,12 +2351,11 @@ test('restoreBrand clears archived_at on local row', async () => {
   expect(store.archivedBrands).toHaveLength(0)
 })
 
+// bun:test uses `mock.module()` at file scope, not inside test bodies.
+// See top-of-file `mock.module('@/lib/supabase', ...)` for the shared stub.
 test('fetchArchivedBrands merges archived rows without duplicating active', async () => {
   const store = useBrandsStore()
   store.brands = [{ id: 'active1', name: 'A', archived_at: null } as Brand]
-  vi.mock('@/lib/supabase', () => ({
-    supabase: { rpc: vi.fn(async () => ({ data: [{ id: 'arch1', name: 'X', archived_at: new Date().toISOString() }], error: null })) }
-  }))
   await store.fetchArchivedBrands()
   expect(store.brands).toHaveLength(2)
   expect(store.activeBrands).toHaveLength(1)
@@ -2280,7 +2765,7 @@ withDefaults(defineProps<Props>(), { header: 'WHAT WILL BE PERMANENTLY REMOVED' 
     <div class="mb-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--warn)]">{{ header }}</div>
     <div class="flex flex-col gap-1.5">
       <div v-for="r in rows" :key="r.label" class="flex items-center gap-2 text-[12.5px] text-[var(--ink-2)]">
-        <Icon :name="`lucide:${r.icon}`" class="h-3.5 w-3.5 text-[var(--ink-3)]" />
+        <KovaIcon :name="r.icon" class="h-3.5 w-3.5 text-[var(--ink-3)]" />
         <span class="flex-1">{{ r.label }}</span>
         <span class="text-[11.5px] font-medium text-[var(--ink)]">{{ r.qty }}</span>
       </div>
@@ -2293,22 +2778,37 @@ withDefaults(defineProps<Props>(), { header: 'WHAT WILL BE PERMANENTLY REMOVED' 
 
 ```vue
 <script setup lang="ts">
+import { computed } from 'vue'
+import DOMPurify from 'dompurify'
+
 interface Props {
   icon: string
   title: string
   bullets: string[]
 }
-defineProps<Props>()
+const props = defineProps<Props>()
+
+// B-CRIT14 — bullets MAY contain locked inline markup (`<strong>`, `<em>`, `<a>`).
+// Run every bullet through DOMPurify with a strict allowlist so a future copy
+// edit that introduces an attacker-controlled string cannot escape into XSS.
+const safeBullets = computed(() =>
+  props.bullets.map((b) =>
+    DOMPurify.sanitize(b, {
+      ALLOWED_TAGS: ['strong', 'em', 'a'],
+      ALLOWED_ATTR: ['href', 'rel', 'target'],
+    }),
+  ),
+)
 </script>
 <template>
   <div class="flex gap-3 rounded-[8px] border border-[var(--line)] bg-[var(--rail)] p-3">
     <div class="grid h-7 w-7 shrink-0 place-items-center rounded-[6px] bg-[var(--fill)] text-[var(--ink-2)]">
-      <Icon :name="`lucide:${icon}`" class="h-3.5 w-3.5" />
+      <KovaIcon :name="icon" class="h-3.5 w-3.5" />
     </div>
     <div class="flex flex-col gap-1.5">
       <b class="text-[12.5px] text-[var(--ink)]">{{ title }}</b>
       <div class="flex flex-col gap-1">
-        <div v-for="b in bullets" :key="b" class="flex items-start gap-1.5 text-[12px] leading-relaxed text-[var(--ink-2)]">
+        <div v-for="(b, i) in safeBullets" :key="i" class="flex items-start gap-1.5 text-[12px] leading-relaxed text-[var(--ink-2)]">
           <span class="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-[var(--ink-3)]"></span>
           <span v-html="b"></span>
         </div>
@@ -2318,10 +2818,47 @@ defineProps<Props>()
 </template>
 ```
 
+- [ ] **Step 2.5: XSS regression test**
+
+Create `tests/components/InfoCard.test.ts`:
+
+```typescript
+import { test, expect } from 'bun:test'
+import { mount } from '@vue/test-utils'
+import InfoCard from '@/components/brand/InfoCard.vue'
+
+test('strips <script> from bullets via DOMPurify', () => {
+  const wrapper = mount(InfoCard, {
+    props: {
+      icon: 'check',
+      title: 't',
+      bullets: ['safe <strong>bold</strong><script>alert(1)</script>'],
+    },
+  })
+  const html = wrapper.html()
+  expect(html).toContain('<strong>bold</strong>')
+  expect(html).not.toContain('<script>')
+  expect(html).not.toContain('alert(1)')
+})
+
+test('drops disallowed attributes (e.g. onclick)', () => {
+  const wrapper = mount(InfoCard, {
+    props: {
+      icon: 'check',
+      title: 't',
+      bullets: ['<a href="https://example.com" onclick="x()">link</a>'],
+    },
+  })
+  const html = wrapper.html()
+  expect(html).toContain('href="https://example.com"')
+  expect(html).not.toContain('onclick')
+})
+```
+
 - [ ] **Step 3: Commit**
 
 ```bash
-git add src/components/brand/LossList.vue src/components/brand/InfoCard.vue
+git add src/components/brand/LossList.vue src/components/brand/InfoCard.vue tests/components/InfoCard.test.ts
 git commit -m "feat(brands): add LossList + InfoCard shared chrome components"
 ```
 
@@ -2338,10 +2875,9 @@ git commit -m "feat(brands): add LossList + InfoCard shared chrome components"
 - [ ] **Step 1: Write failing test**
 
 ```typescript
-import { test, expect } from 'bun:test'
+import { test, expect, mock } from 'bun:test'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import { useBrandsStore } from '../../../src/stores/brands'
 import RenameBrandModal from '../../../src/components/brand/RenameBrandModal.vue'
 
 const brand = { id: 'b1', name: 'Nike', slug: 'nike' } as any
@@ -2357,15 +2893,25 @@ test('Save disabled until name changed AND non-empty', async () => {
   expect(save.attributes('disabled')).toBeDefined()
 })
 
+// B-MED17 — Pinia setup-stores cannot intercept reassignments of returned
+// action refs once the consumer has already pulled them off the store proxy.
+// Use `mock.module()` at file scope so EVERY call to `useBrandsStore()` in
+// this file returns the same stub object.
+const renameBrandSpy = mock(async () => undefined)
+mock.module('@/stores/brands', () => ({
+  useBrandsStore: () => ({
+    renameBrand: renameBrandSpy,
+    activeBrands: [], archivedBrands: [], sortedActive: [],
+  }),
+}))
+
 test('Save calls store.renameBrand + emits saved', async () => {
   setActivePinia(createPinia())
-  const store = useBrandsStore()
-  let called = false
-  store.renameBrand = async () => { called = true } 
+  renameBrandSpy.mockClear()
   const wrapper = mount(RenameBrandModal, { props: { brand, open: true } })
   await wrapper.find('input[data-test="rename-name"]').setValue('Nike Inc.')
   await wrapper.find('[data-test="rename-save"]').trigger('click')
-  expect(called).toBe(true)
+  expect(renameBrandSpy).toHaveBeenCalledTimes(1)
   expect(wrapper.emitted('saved')).toBeDefined()
 })
 ```
@@ -2414,8 +2960,10 @@ async function onSave(): Promise<void> {
 }
 
 function onKeyDown(e: KeyboardEvent): void {
-  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') onSave()
-  if (e.key === 'Escape') emit('update:open', false)
+  // Founder lock #9 — always use `e.code` (physical key). `e.key` reports the
+  // *character* and Option key transforms turn that into garbage on macOS.
+  if ((e.metaKey || e.ctrlKey) && e.code === 'Enter') onSave()
+  if (e.code === 'Escape') emit('update:open', false)
 }
 </script>
 <template>
@@ -2472,10 +3020,9 @@ git commit -m "feat(brands): add RenameBrandModal (A4.1)"
 - [ ] **Step 1: Write failing test**
 
 ```typescript
-import { test, expect } from 'bun:test'
+import { test, expect, mock } from 'bun:test'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import { useBrandsStore } from '../../../src/stores/brands'
 import ArchiveBrandModal from '../../../src/components/brand/ArchiveBrandModal.vue'
 
 const brand = { id: 'b1', name: 'Glossier', color: 'sand' } as any
@@ -2493,14 +3040,21 @@ test('CTA is neutral primary, not danger', () => {
   expect(cta.classes()).not.toContain('btn-danger')
 })
 
+// B-MED17 — use module-level mock.module instead of reassigning store.archiveBrand.
+const archiveBrandSpy = mock(async () => undefined)
+mock.module('@/stores/brands', () => ({
+  useBrandsStore: () => ({
+    archiveBrand: archiveBrandSpy,
+    activeBrands: [], archivedBrands: [], sortedActive: [],
+  }),
+}))
+
 test('confirm calls store.archiveBrand + emits archived', async () => {
   setActivePinia(createPinia())
-  const store = useBrandsStore()
-  let called = false
-  store.archiveBrand = async () => { called = true }
+  archiveBrandSpy.mockClear()
   const wrapper = mount(ArchiveBrandModal, { props: { brand, open: true } })
   await wrapper.find('[data-test="archive-confirm"]').trigger('click')
-  expect(called).toBe(true)
+  expect(archiveBrandSpy).toHaveBeenCalledTimes(1)
   expect(wrapper.emitted('archived')).toBeDefined()
 })
 ```
@@ -2557,7 +3111,7 @@ async function onConfirm(): Promise<void> {
           'Hidden from the sidebar brand-switcher and brand picker',
           'All canvases, snapshots, brand-kit data &amp; integrations are kept',
           'Shopify connection stays connected — no re-auth on restore',
-          'Restore any time from <span class=&quot;opacity-50&quot;>Settings → Archive</span> (Phase 2)',
+          'Restore any time from <span class="opacity-50">Settings → Archive</span> (Phase 2)',
         ]"
       />
       <BrandSummaryRow :brand="brand" :meta="`${brand.slug ?? ''} · created ${brand.created_at?.slice(0,10) ?? ''}`" />
@@ -2593,10 +3147,9 @@ git commit -m "feat(brands): add ArchiveBrandModal (A4.2)"
 - [ ] **Step 1: Write failing tests**
 
 ```typescript
-import { test, expect } from 'bun:test'
+import { test, expect, mock } from 'bun:test'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import { useBrandsStore } from '../../../src/stores/brands'
 import DeleteBrandModal from '../../../src/components/brand/DeleteBrandModal.vue'
 
 const brand = { id: 'b1', name: 'Warby Parker', color: 'sand', slug: 'warby-parker' } as any
@@ -2614,16 +3167,24 @@ test('CTA disabled until typed-confirm matches exactly (case-sensitive)', async 
   expect(cta.attributes('disabled')).toBeUndefined()
 })
 
+// B-MED17 — module-level mock.module so the modal's `useBrandsStore()` call
+// resolves to this stub. Spy capture happens via Bun's `mock()` wrapper.
+const deleteBrandSpy = mock(async (_id: string, _t: string) => undefined)
+mock.module('@/stores/brands', () => ({
+  useBrandsStore: () => ({
+    deleteBrand: deleteBrandSpy,
+    activeBrands: [], archivedBrands: [], sortedActive: [],
+  }),
+}))
+
 test('delete CTA calls store.deleteBrand with typed value', async () => {
   setActivePinia(createPinia())
-  const store = useBrandsStore()
-  let callArgs: any = null
-  store.deleteBrand = async (id, t) => { callArgs = { id, t } }
+  deleteBrandSpy.mockClear()
   const wrapper = mount(DeleteBrandModal, { props: { brand, open: true } })
   await wrapper.find('input[data-test="typed-input"]').setValue('Warby Parker')
   await wrapper.find('[data-test="delete-confirm"]').trigger('click')
   await flushPromises()
-  expect(callArgs).toEqual({ id: 'b1', t: 'Warby Parker' })
+  expect(deleteBrandSpy).toHaveBeenCalledWith('b1', 'Warby Parker')
 })
 ```
 
@@ -2710,7 +3271,7 @@ async function onConfirm(): Promise<void> {
       </div>
       <div class="flex items-center justify-between border-t border-[var(--line)] pt-3">
         <div class="flex items-center gap-1 text-[11.5px] text-[var(--warn)]">
-          <Icon name="lucide:alert-triangle" class="h-3 w-3" />
+          <KovaIcon name="alert-triangle" class="h-3 w-3" />
           <span>This action is permanent.</span>
         </div>
         <div class="flex gap-2">
@@ -2731,6 +3292,119 @@ async function onConfirm(): Promise<void> {
 bun test ./tests/components/brand/DeleteBrandModal.test.ts
 git add src/components/brand/DeleteBrandModal.vue tests/components/brand/DeleteBrandModal.test.ts
 git commit -m "feat(brands): add DeleteBrandModal (A4.3) with typed-confirm"
+```
+
+---
+
+### Task 26.5: `RestoreBrandModal.vue` (B12.3 / CT-023(a))
+
+**Why:** Restore is a neutral confirm — no typed-confirm, no destructive copy. Mirrors `DeleteBrandModal` shape but renders the `.dlg.sm` "OK / Cancel" footer. Mounted from `/account/brands` archived `BrandCard` kebab → "Restore".
+
+**Files:**
+- Create: `src/components/brand/RestoreBrandModal.vue`
+- Test: `tests/components/brand/RestoreBrandModal.test.ts`
+
+- [ ] **Step 1: Write failing test**
+
+Create `tests/components/brand/RestoreBrandModal.test.ts`:
+
+```typescript
+import { test, expect, mock } from 'bun:test'
+import { mount } from '@vue/test-utils'
+import RestoreBrandModal from '@/components/brand/RestoreBrandModal.vue'
+
+test('emits restored after store.restoreBrand resolves', async () => {
+  const restoreBrand = mock(async () => ({ ok: true }))
+  mock.module('@/stores/brands', () => ({
+    useBrandsStore: () => ({ restoreBrand }),
+  }))
+  const wrapper = mount(RestoreBrandModal, {
+    props: { open: true, brand: { id: 'b1', name: 'Patagonia', archived_at: '2026-05-01T00:00:00Z' } },
+  })
+  await wrapper.find('[data-test="confirm-restore"]').trigger('click')
+  await new Promise((r) => setTimeout(r, 0))
+  expect(restoreBrand).toHaveBeenCalledWith('b1')
+  expect(wrapper.emitted('restored')).toBeTruthy()
+})
+
+test('Escape closes without calling restoreBrand', async () => {
+  const restoreBrand = mock(async () => ({ ok: true }))
+  mock.module('@/stores/brands', () => ({ useBrandsStore: () => ({ restoreBrand }) }))
+  const wrapper = mount(RestoreBrandModal, {
+    props: { open: true, brand: { id: 'b1', name: 'X', archived_at: '2026-05-01T00:00:00Z' } },
+  })
+  await wrapper.trigger('keydown', { code: 'Escape' })
+  expect(restoreBrand).not.toHaveBeenCalled()
+})
+```
+
+- [ ] **Step 2: Implement component**
+
+Create `src/components/brand/RestoreBrandModal.vue`:
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue'
+import KovaModalAdapter from '@/composables/_adapters/use-modal-adapter'
+import { useToast } from '@/composables/_adapters/use-toast-adapter'
+import { useBrandsStore } from '@/stores/brands'
+import type { Brand } from '@/stores/brands'
+
+interface Props { open: boolean; brand: Brand }
+const props = defineProps<Props>()
+const emit = defineEmits<{
+  (e: 'update:open', value: boolean): void
+  (e: 'restored'): void
+}>()
+
+const store = useBrandsStore()
+const toast = useToast()
+const submitting = ref(false)
+
+async function onConfirm(): Promise<void> {
+  if (submitting.value) return
+  submitting.value = true
+  try {
+    await store.restoreBrand(props.brand.id)
+    toast.success('Brand restored')
+    emit('restored')
+    emit('update:open', false)
+  } catch (e) {
+    toast.error(`Restore failed: ${(e as Error).message}`)
+  } finally {
+    submitting.value = false
+  }
+}
+
+function onKeyDown(e: KeyboardEvent): void {
+  // Founder lock #9 — physical-key matching.
+  if (e.code === 'Escape') emit('update:open', false)
+}
+</script>
+<template>
+  <KovaModalAdapter :open="open" size="sm" @update:open="emit('update:open', $event)">
+    <div class="flex flex-col gap-4 p-5" @keydown="onKeyDown">
+      <div>
+        <h3 class="text-[15px] font-semibold text-[var(--ink)]">Restore "{{ brand.name }}"?</h3>
+        <p class="mt-1 text-[12.5px] text-[var(--ink-2)]">This brand returns to your active list. All canvases, brand kit, and Shopify links resume as they were.</p>
+      </div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button class="dlg-btn" type="button" @click="emit('update:open', false)">Cancel</button>
+        <button class="dlg-btn dlg-btn--primary" type="button" data-test="confirm-restore" :disabled="submitting" @click="onConfirm">
+          {{ submitting ? 'Restoring…' : 'Restore brand' }}
+        </button>
+      </div>
+    </div>
+  </KovaModalAdapter>
+</template>
+```
+
+- [ ] **Step 3: Run + commit**
+
+```bash
+bun test ./tests/components/brand/RestoreBrandModal.test.ts
+git add src/components/brand/RestoreBrandModal.vue tests/components/brand/RestoreBrandModal.test.ts
+git commit -m "feat(brands): add RestoreBrandModal (B12.3) neutral confirm"
 ```
 
 ---
@@ -2876,7 +3550,7 @@ const archived = props.brand.archived_at !== null
       </div>
       <DropdownMenuRoot>
         <DropdownMenuTrigger as="div" data-test="kebab" class="grid h-[26px] w-[26px] cursor-pointer place-items-center rounded-[5px] text-[var(--ink-3)] hover:bg-[var(--line-2)] hover:text-[var(--ink)]" @click.stop>
-          <Icon name="lucide:more-horizontal" class="h-3.5 w-3.5" />
+          <KovaIcon name="more-horizontal" class="h-3.5 w-3.5" />
         </DropdownMenuTrigger>
         <DropdownMenuPortal>
           <DropdownMenuContent align="end" class="rounded-[8px] border border-[var(--line)] bg-[var(--rail)] p-1 shadow-xl">
@@ -2896,7 +3570,7 @@ const archived = props.brand.archived_at !== null
       </DropdownMenuRoot>
     </div>
     <div class="flex flex-wrap gap-1.5">
-      <span v-if="archived" class="pill outline"><Icon name="lucide:archive" class="h-2.5 w-2.5 inline" /> Archived</span>
+      <span v-if="archived" class="pill outline"><KovaIcon name="archive" class="h-2.5 w-2.5 inline" /> Archived</span>
       <span v-else :class="['pill', shopifyPill().tone === 'ok' ? 'ok dot' : shopifyPill().tone === 'warn' ? 'warn dot' : 'outline']">{{ shopifyPill().label }}</span>
     </div>
     <div class="grid grid-cols-2 gap-2.5 border-t border-[var(--line-2)] pt-2.5 text-[11.5px] text-[var(--ink-3)]">
@@ -2941,7 +3615,7 @@ const emit = defineEmits<{ click: [] }>()
     @click="emit('click')"
   >
     <div class="grid h-9 w-9 place-items-center rounded-full bg-[var(--fill)] text-[var(--ink)]">
-      <Icon name="lucide:plus" class="h-4.5 w-4.5" />
+      <KovaIcon name="plus" class="h-4.5 w-4.5" />
     </div>
     <div class="text-[13.5px] font-semibold text-[var(--ink)]">New brand</div>
     <div class="max-w-[200px] text-[11.5px] text-[var(--ink-3)]">Add another client or sub-brand. Takes about 90 seconds.</div>
@@ -2958,7 +3632,7 @@ const emit = defineEmits<{ start: [] }>()
 <template>
   <div class="bp-empty flex flex-col items-center gap-3 rounded-[10px] border border-[var(--line)] bg-[var(--rail)] p-[56px_32px] text-center">
     <div class="grid h-12 w-12 place-items-center rounded-full bg-[var(--fill)] text-[var(--ink-2)]">
-      <Icon name="lucide:layers" class="h-5.5 w-5.5" />
+      <KovaIcon name="layers" class="h-5.5 w-5.5" />
     </div>
     <h3 class="text-[16px] font-semibold text-[var(--ink)]">Start with one brand</h3>
     <p class="max-w-[420px] text-[13px] leading-relaxed text-[var(--ink-2)]">Name it, point it at a website, and Kova pulls in the logo, colors, and product catalog. You'll be designing in two minutes.</p>
@@ -3034,6 +3708,7 @@ test('search input filters by name', async () => {
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useBrandsStore } from '@/stores/brands'
+import { useAuthStore } from '@/stores/auth' // Cluster 01
 import BrandCard from '@/components/brand/BrandCard.vue'
 import NewBrandTile from '@/components/brand/NewBrandTile.vue'
 import BrandPickerEmpty from '@/components/brand/BrandPickerEmpty.vue'
@@ -3045,7 +3720,24 @@ import DeleteBrandModal from '@/components/brand/DeleteBrandModal.vue'
 
 const router = useRouter()
 const store = useBrandsStore()
+const auth = useAuthStore() // Cluster 01
 const query = ref<string>('')
+
+// B-LOW3 — never hardcode user identity. Pull from useAuthStore with a graceful
+// fallback chain: profile.name → email-local-part → "You".
+const displayName = computed(() =>
+  auth.profile?.name
+    ?? auth.user?.email?.split('@')[0]
+    ?? 'You',
+)
+const avatarInitials = computed(() => {
+  const name = displayName.value
+  return name
+    .split(/\s+/)
+    .map((part) => part[0]?.toUpperCase() ?? '')
+    .join('')
+    .slice(0, 2)
+})
 
 const modalState = ref<{ kind: 'rename' | 'archive' | 'delete' | 'restore'; brandId: string } | null>(null)
 const modalBrand = computed(() => modalState.value ? store.brands.find(b => b.id === modalState.value!.brandId) ?? null : null)
@@ -3099,10 +3791,11 @@ onMounted(async () => { if (store.brands.length === 0) await store.fetchBrands()
         <span class="grid h-5 w-5 place-items-center rounded bg-[#ededea] text-[12px] font-extrabold text-[#0d0d0c]">K</span>
         <span>Kova</span>
       </div>
+      <!-- B-LOW3 — pulls real identity from useAuthStore (Cluster 01). Falls back to email-local-part, then "You" — never a hardcoded literal. -->
       <div class="flex cursor-pointer items-center gap-2 rounded-full border border-[var(--line)] bg-[var(--page)] py-[5px] pl-[6px] pr-2 text-[12.5px] text-[var(--ink-2)] hover:border-[var(--ink-3)]">
-        <div class="grid h-[22px] w-[22px] place-items-center rounded-full bg-[var(--warn)] text-[9.5px] font-semibold text-white">JY</div>
-        <span class="font-medium text-[var(--ink)]">{{ /* TODO Cluster 02 inject user name */ 'Jiho Yang' }}</span>
-        <Icon name="lucide:chevron-down" class="h-3 w-3 text-[var(--ink-3)]" />
+        <div class="grid h-[22px] w-[22px] place-items-center rounded-full bg-[var(--warn)] text-[9.5px] font-semibold text-white">{{ avatarInitials }}</div>
+        <span class="font-medium text-[var(--ink)]">{{ displayName }}</span>
+        <KovaIcon name="chevron-down" class="h-3 w-3 text-[var(--ink-3)]" />
       </div>
     </header>
     <div class="bp-stage flex-1 overflow-auto px-8 pt-14 pb-16">
@@ -3126,15 +3819,25 @@ onMounted(async () => { if (store.brands.length === 0) await store.fetchBrands()
         <template v-else>
           <div class="bp-tools grid grid-cols-[1fr_auto_auto] items-center gap-2.5">
             <div class="flex items-center gap-2 rounded-[7px] border border-[var(--line)] bg-[var(--page)] px-3 py-2 text-[13px] text-[var(--ink-3)]">
-              <Icon name="lucide:search" class="h-3 w-3" />
+              <KovaIcon name="search" class="h-3 w-3" />
               <input v-model="query" data-test="search" type="text" placeholder="Search brands by name or URL…" class="flex-1 bg-transparent text-[var(--ink)] outline-none" />
             </div>
-            <button class="flex items-center gap-2 rounded-[7px] border border-[var(--line)] bg-[var(--page)] px-3 py-2 text-[12.5px] text-[var(--ink-2)] hover:border-[var(--ink-3)]">
-              <Icon name="lucide:arrow-up-down" class="h-3 w-3 text-[var(--ink-3)]" />
+            <!-- C-MED10 — sort dropdown wired to useBrandsStore.sortMode (Vueuse useLocalStorage shared with Cluster 02 to avoid C-MED8 dual-instance issue). -->
+            <label class="relative flex items-center gap-2 rounded-[7px] border border-[var(--line)] bg-[var(--page)] px-3 py-2 text-[12.5px] text-[var(--ink-2)] hover:border-[var(--ink-3)]">
+              <KovaIcon name="arrow-up-down" class="h-3 w-3 text-[var(--ink-3)]" />
               <span class="text-[var(--ink-3)]">Sort</span>
-              <span class="font-medium text-[var(--ink)]">Last edited</span>
-              <Icon name="lucide:chevron-down" class="h-3 w-3 text-[var(--ink-3)]" />
-            </button>
+              <select
+                v-model="store.sortMode"
+                data-test="brands-sort"
+                class="appearance-none bg-transparent pr-5 font-medium text-[var(--ink)] outline-none"
+              >
+                <option value="last-edited">Last edited</option>
+                <option value="created">Date created</option>
+                <option value="name-asc">Name (A→Z)</option>
+                <option value="name-desc">Name (Z→A)</option>
+              </select>
+              <KovaIcon name="chevron-down" class="pointer-events-none absolute right-3 h-3 w-3 text-[var(--ink-3)]" />
+            </label>
             <!-- Archived filter — ENABLED MVP per 2026-05-17 reversal (was DISABLED w/ "Coming Phase 2" tooltip). -->
             <BrandsArchivedFilter v-model="archivedFilter" data-test="archived-filter" />
           </div>
@@ -3229,7 +3932,7 @@ function stateOf(s: WizardStep): 'done' | 'active' | 'pending' {
       <span>Kova</span>
     </div>
     <div v-if="contextLabel" class="ml-1 flex items-center gap-1.5 border-l border-[var(--line-2)] pl-3 text-[11.5px] text-[var(--ink-3)]">
-      <Icon name="lucide:plus-square" class="h-3 w-3" />
+      <KovaIcon name="plus-square" class="h-3 w-3" />
       <span>{{ contextLabel }}</span>
     </div>
     <div class="flex flex-1 justify-center gap-2">
@@ -3243,9 +3946,9 @@ function stateOf(s: WizardStep): 'done' | 'active' | 'pending' {
       class="flex items-center gap-1.5 rounded-[5px] px-2 py-1 text-[12px] text-[var(--ink-3)] hover:bg-[var(--line-2)] hover:text-[var(--ink)]"
       @click="emit('cancel')"
     >
-      <Icon name="lucide:x" class="h-3 w-3" />Cancel
+      <KovaIcon name="x" class="h-3 w-3" />Cancel
     </button>
-    <button v-else class="invisible flex items-center gap-1.5 px-2 py-1 text-[12px]"><Icon name="lucide:x" class="h-3 w-3" />Cancel</button>
+    <button v-else class="invisible flex items-center gap-1.5 px-2 py-1 text-[12px]"><KovaIcon name="x" class="h-3 w-3" />Cancel</button>
   </div>
 </template>
 ```
@@ -3323,10 +4026,10 @@ function onContinue(): void {
     </div>
     <div class="flex items-center justify-between pt-2">
       <button class="flex items-center gap-1.5 rounded-[6px] border border-[var(--line)] px-3.5 py-2 text-[13px] text-[var(--ink-2)] hover:bg-[var(--line-2)]" @click="router.push('/brands')">
-        <Icon name="lucide:chevron-left" class="h-3.5 w-3.5" />Back to brands
+        <KovaIcon name="chevron-left" class="h-3.5 w-3.5" />Back to brands
       </button>
       <button :disabled="!canContinue" class="flex items-center gap-1.5 rounded-[6px] bg-[var(--ink)] px-4 py-2 text-[13px] font-medium text-[#111] disabled:opacity-50" @click="onContinue">
-        Continue<Icon name="lucide:arrow-right" class="h-3.5 w-3.5" />
+        Continue<KovaIcon name="arrow-right" class="h-3.5 w-3.5" />
       </button>
     </div>
   </WizardCard>
@@ -3374,16 +4077,16 @@ function onConnect(): void {
           </div>
         </div>
         <div class="mt-1 flex flex-col gap-2 text-[12.5px] text-[var(--ink-2)]">
-          <div class="flex items-center gap-2.5"><Icon name="lucide:check" class="h-3 w-3 text-[var(--ok)]" /><span>Products, collections, variants, pricing, inventory</span></div>
-          <div class="flex items-center gap-2.5"><Icon name="lucide:check" class="h-3 w-3 text-[var(--ok)]" /><span>Product images and media</span></div>
-          <div class="flex items-center gap-2.5"><Icon name="lucide:x" class="h-3 w-3 text-[var(--ink-3)]" /><span class="text-[var(--ink-3)]">Customer data · orders · checkout — never accessed</span></div>
+          <div class="flex items-center gap-2.5"><KovaIcon name="check" class="h-3 w-3 text-[var(--ok)]" /><span>Products, collections, variants, pricing, inventory</span></div>
+          <div class="flex items-center gap-2.5"><KovaIcon name="check" class="h-3 w-3 text-[var(--ok)]" /><span>Product images and media</span></div>
+          <div class="flex items-center gap-2.5"><KovaIcon name="x" class="h-3 w-3 text-[var(--ink-3)]" /><span class="text-[var(--ink-3)]">Customer data · orders · checkout — never accessed</span></div>
         </div>
       </div>
     </div>
     <div class="flex items-center justify-between pt-1">
       <button class="rounded-[6px] border border-[var(--line)] px-3.5 py-2 text-[13px] text-[var(--ink-2)] hover:bg-[var(--line-2)]" @click="onSkip">Skip for now</button>
       <button class="flex items-center gap-1.5 rounded-[6px] bg-[var(--ink)] px-4 py-2 text-[13px] font-medium text-[#111]" @click="onConnect">
-        <Icon name="lucide:external-link" class="h-3.5 w-3.5" />Connect Shopify
+        <KovaIcon name="external-link" class="h-3.5 w-3.5" />Connect Shopify
       </button>
     </div>
   </WizardCard>
@@ -3419,14 +4122,14 @@ async function onSkip(): Promise<void> { await onFinish() }
     <h1 class="text-[26px] font-semibold leading-tight tracking-tight text-[var(--ink)]">Teach Kova your brand.</h1>
     <p class="max-w-[440px] text-[14px] leading-relaxed text-[var(--ink-2)]">Drop in past emails, brand guidelines, or anything that captures voice. Kova extracts colors, fonts, tone, and writing rules. You can refine everything later in Brand Kit.</p>
     <div class="onb-drop flex flex-col items-center gap-2 rounded-[8px] border border-dashed border-[var(--line)] bg-[var(--rail)] p-[26px_20px] text-center">
-      <div class="grid h-9 w-9 place-items-center rounded-full bg-[var(--fill)] text-[var(--ink-2)]"><Icon name="lucide:upload-cloud" class="h-4.5 w-4.5" /></div>
+      <div class="grid h-9 w-9 place-items-center rounded-full bg-[var(--fill)] text-[var(--ink-2)]"><KovaIcon name="upload-cloud" class="h-4.5 w-4.5" /></div>
       <div class="text-[13.5px] font-medium text-[var(--ink)]">Drop files here, or <span class="cursor-pointer underline">browse</span></div>
       <div class="text-[10.5px] text-[var(--ink-3)]">PDF · HTML · .EML · PNG · JPG · up to 25 MB each</div>
     </div>
     <div class="flex items-center justify-between pt-1">
       <button class="rounded-[6px] border border-[var(--line)] px-3.5 py-2 text-[13px] text-[var(--ink-2)] hover:bg-[var(--line-2)]" @click="onSkip">Do this later</button>
       <button class="flex items-center gap-1.5 rounded-[6px] bg-[var(--ink)] px-4 py-2 text-[13px] font-medium text-[#111]" @click="onFinish">
-        <Icon name="lucide:sparkles" class="h-3.5 w-3.5" />Extract and finish
+        <KovaIcon name="sparkles" class="h-3.5 w-3.5" />Extract and finish
       </button>
     </div>
   </WizardCard>
@@ -3460,7 +4163,7 @@ function enter(): void {
   <WizardCard>
     <div class="flex flex-col items-center gap-6 text-center">
       <div class="grid h-14 w-14 place-items-center rounded-full bg-[var(--ok-soft)] text-[var(--ok)] border border-[rgba(94,194,125,0.18)]">
-        <Icon name="lucide:check" class="h-6.5 w-6.5" />
+        <KovaIcon name="check" class="h-6.5 w-6.5" />
       </div>
       <div>
         <div class="mb-2 text-[10.5px] text-[var(--ink-3)]">Brand ready</div>
@@ -3468,7 +4171,7 @@ function enter(): void {
       </div>
       <p class="mx-auto max-w-[440px] text-center text-[14px] leading-relaxed text-[var(--ink-2)]">Brand kit populated. You can switch back to your other brands anytime from the sidebar.</p>
       <button class="flex items-center gap-1.5 rounded-[6px] bg-[var(--ink)] px-4 py-2.5 text-[13.5px] font-medium text-[#111]" @click="enter">
-        Enter {{ brand?.name ?? '' }}<Icon name="lucide:arrow-right" class="h-3.5 w-3.5" />
+        Enter {{ brand?.name ?? '' }}<KovaIcon name="arrow-right" class="h-3.5 w-3.5" />
       </button>
       <div class="mt-1.5 text-[11.5px] text-[var(--ink-3)]">Or <a class="text-[var(--ink-2)] underline cursor-pointer" @click="router.push('/brands')">back to brand picker</a>.</div>
     </div>
@@ -3541,6 +4244,371 @@ async function onCancel(): Promise<void> {
 ```bash
 git add src/views/brands/NewBrandWizardView.vue
 git commit -m "feat(brands): add NewBrandWizardView router host with cancel guard"
+```
+
+---
+
+### Task 33.5: `BrandsArchivedFilter.vue` (A2.a top-right dropdown / CT-023(a))
+
+**Why:** The dashboard brand picker exposes a Hide / Show / Only filter that toggles whether archived brands appear inline. State persists to localStorage via Vueuse `useLocalStorage`. Triggers `fetchArchivedBrands()` on first non-Hide transition.
+
+**Files:**
+- Create: `src/components/brand/BrandsArchivedFilter.vue`
+- Test: `tests/components/brand/BrandsArchivedFilter.test.ts`
+
+- [ ] **Step 1: Write failing test**
+
+```typescript
+import { test, expect, mock } from 'bun:test'
+import { mount } from '@vue/test-utils'
+import BrandsArchivedFilter from '@/components/brand/BrandsArchivedFilter.vue'
+
+const fetchArchivedBrands = mock(async () => undefined)
+mock.module('@/stores/brands', () => ({
+  useBrandsStore: () => ({ fetchArchivedBrands }),
+}))
+
+test('emits the chosen mode + persists to localStorage', async () => {
+  localStorage.clear()
+  const wrapper = mount(BrandsArchivedFilter)
+  await wrapper.find('[data-test="mode-show"]').trigger('click')
+  expect(wrapper.emitted('update:mode')?.[0]).toEqual(['show'])
+  expect(localStorage.getItem('kova:brands:archived-filter')).toContain('show')
+})
+
+test('calls fetchArchivedBrands once on first non-Hide transition', async () => {
+  fetchArchivedBrands.mockClear()
+  localStorage.clear()
+  const wrapper = mount(BrandsArchivedFilter)
+  await wrapper.find('[data-test="mode-show"]').trigger('click')
+  await wrapper.find('[data-test="mode-only"]').trigger('click')
+  expect(fetchArchivedBrands).toHaveBeenCalledTimes(1)
+})
+```
+
+- [ ] **Step 2: Implement component**
+
+```vue
+<script setup lang="ts">
+import { computed, watch } from 'vue'
+import { useLocalStorage } from '@vueuse/core'
+import { useBrandsStore } from '@/stores/brands'
+
+type Mode = 'hide' | 'show' | 'only'
+const emit = defineEmits<{ (e: 'update:mode', value: Mode): void }>()
+
+// Shared key with B12 segmented control so /account/brands and /brands stay coherent.
+const mode = useLocalStorage<Mode>('kova:brands:archived-filter', 'hide')
+const store = useBrandsStore()
+const hasFetched = useLocalStorage<boolean>('kova:brands:archived-fetched-once', false)
+
+const options = computed(() => ([
+  { value: 'hide' as const, label: 'Hide archived' },
+  { value: 'show' as const, label: 'Show archived' },
+  { value: 'only' as const, label: 'Only archived' },
+]))
+
+function set(next: Mode): void {
+  mode.value = next
+  emit('update:mode', next)
+}
+
+watch(mode, async (next) => {
+  if (next !== 'hide' && !hasFetched.value) {
+    await store.fetchArchivedBrands()
+    hasFetched.value = true
+  }
+}, { immediate: true })
+</script>
+<template>
+  <div class="inline-flex items-center gap-1 rounded-[6px] border border-[var(--line)] p-0.5">
+    <button
+      v-for="opt in options"
+      :key="opt.value"
+      :data-test="`mode-${opt.value}`"
+      type="button"
+      class="px-2 py-1 text-[12px] rounded-[4px]"
+      :class="mode === opt.value ? 'bg-[var(--fill)] text-[var(--ink)]' : 'text-[var(--ink-2)]'"
+      @click="set(opt.value)"
+    >
+      {{ opt.label }}
+    </button>
+  </div>
+</template>
+```
+
+- [ ] **Step 3: Commit**
+
+```bash
+bun test ./tests/components/brand/BrandsArchivedFilter.test.ts
+git add src/components/brand/BrandsArchivedFilter.vue tests/components/brand/BrandsArchivedFilter.test.ts
+git commit -m "feat(brands): add BrandsArchivedFilter (A2.a) Hide/Show/Only dropdown"
+```
+
+---
+
+### Task 33.6: `BrandsSegmentedControl.vue` (B12.1 / CT-023(a))
+
+**Why:** The `/account/brands` page uses a 3-segment control — All / Active / Archived. State persists via the URL query (`?filter=`) so deep-links are sharable. Generic enough to land in `src/components/ui/` next to other primitives; Cluster 11 will likely promote it.
+
+**Files:**
+- Create: `src/components/ui/BrandsSegmentedControl.vue`
+- Test: `tests/components/ui/BrandsSegmentedControl.test.ts`
+
+- [ ] **Step 1: Write failing test**
+
+```typescript
+import { test, expect } from 'bun:test'
+import { mount } from '@vue/test-utils'
+import { createRouter, createMemoryHistory } from 'vue-router'
+import BrandsSegmentedControl from '@/components/ui/BrandsSegmentedControl.vue'
+
+const router = createRouter({
+  history: createMemoryHistory(),
+  routes: [{ path: '/account/brands', component: { template: '<div />' } }],
+})
+
+test('reads initial value from ?filter= and writes back on change', async () => {
+  await router.push('/account/brands?filter=archived')
+  const wrapper = mount(BrandsSegmentedControl, { global: { plugins: [router] } })
+  expect(wrapper.find('[data-test="seg-archived"]').classes()).toContain('seg-active')
+  await wrapper.find('[data-test="seg-active"]').trigger('click')
+  expect(router.currentRoute.value.query.filter).toBe('active')
+  expect(wrapper.emitted('update:value')?.[0]).toEqual(['active'])
+})
+```
+
+- [ ] **Step 2: Implement component**
+
+```vue
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+
+type Seg = 'all' | 'active' | 'archived'
+const emit = defineEmits<{ (e: 'update:value', value: Seg): void }>()
+
+const route = useRoute()
+const router = useRouter()
+const value = computed<Seg>(() => {
+  const v = route.query.filter
+  return v === 'active' || v === 'archived' ? v : 'all'
+})
+
+const options: Array<{ value: Seg; label: string }> = [
+  { value: 'all', label: 'All' },
+  { value: 'active', label: 'Active' },
+  { value: 'archived', label: 'Archived' },
+]
+
+async function set(next: Seg): Promise<void> {
+  await router.replace({ query: { ...route.query, filter: next === 'all' ? undefined : next } })
+  emit('update:value', next)
+}
+</script>
+<template>
+  <div class="inline-flex items-center rounded-[8px] border border-[var(--line)] p-0.5">
+    <button
+      v-for="opt in options"
+      :key="opt.value"
+      :data-test="`seg-${opt.value}`"
+      type="button"
+      class="px-3 py-1.5 text-[12.5px] rounded-[6px]"
+      :class="value === opt.value ? 'seg-active bg-[var(--fill)] text-[var(--ink)]' : 'text-[var(--ink-2)]'"
+      @click="set(opt.value)"
+    >
+      {{ opt.label }}
+    </button>
+  </div>
+</template>
+```
+
+- [ ] **Step 3: Commit**
+
+```bash
+bun test ./tests/components/ui/BrandsSegmentedControl.test.ts
+git add src/components/ui/BrandsSegmentedControl.vue tests/components/ui/BrandsSegmentedControl.test.ts
+git commit -m "feat(ui): add BrandsSegmentedControl (B12.1) URL-persisted segmented control"
+```
+
+---
+
+### Task 33.7: `BrandsAccountView.vue` (B12 / CT-023(a) / CT-023(b))
+
+**Why:** The `/account/brands` page. Hero ("Brands" title + "+ New brand" CTA, **NO Import CTA**) + segmented control + grid of `BrandCard` filtered by segment + B12.2 zero-state copy. Consumes `useBrandsStore.activeBrands` and `archivedBrands`. Route registered by Cluster 04 PRD 04; this plan ships the component itself.
+
+**Files:**
+- Create: `src/views/account/BrandsAccountView.vue`
+- Test: `tests/views/account/BrandsAccountView.test.ts`
+
+- [ ] **Step 1: Write failing test**
+
+```typescript
+import { test, expect, mock } from 'bun:test'
+import { mount } from '@vue/test-utils'
+import { createRouter, createMemoryHistory } from 'vue-router'
+import BrandsAccountView from '@/views/account/BrandsAccountView.vue'
+
+mock.module('@/stores/brands', () => ({
+  useBrandsStore: () => ({
+    activeBrands: [{ id: 'b1', name: 'A', archived_at: null, color: 'coral' }],
+    archivedBrands: [{ id: 'b2', name: 'Old', archived_at: '2026-05-01T00:00:00Z', color: 'sage' }],
+    fetchArchivedBrands: mock(async () => undefined),
+  }),
+}))
+
+const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/account/brands', component: { template: '<div />' } }] })
+
+test('shows only active brands by default', async () => {
+  await router.push('/account/brands')
+  const wrapper = mount(BrandsAccountView, { global: { plugins: [router] } })
+  expect(wrapper.text()).toContain('A')
+  expect(wrapper.text()).not.toContain('Old')
+})
+
+test('?filter=archived shows only archived brands + B12.2 zero-state when empty', async () => {
+  await router.push('/account/brands?filter=archived')
+  const wrapper = mount(BrandsAccountView, { global: { plugins: [router] } })
+  expect(wrapper.text()).toContain('Old')
+  expect(wrapper.text()).not.toContain('A')
+})
+```
+
+- [ ] **Step 2: Implement component**
+
+```vue
+<script setup lang="ts">
+import { computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
+import { useBrandsStore } from '@/stores/brands'
+import BrandsSegmentedControl from '@/components/ui/BrandsSegmentedControl.vue'
+import BrandCard from '@/components/brand/BrandCard.vue'
+import NewBrandTile from '@/components/brand/NewBrandTile.vue'
+
+const route = useRoute()
+const store = useBrandsStore()
+
+onMounted(async () => {
+  await store.fetchArchivedBrands()
+})
+
+const segment = computed(() => {
+  const v = route.query.filter
+  return v === 'active' || v === 'archived' ? v : 'all'
+})
+
+const visible = computed(() => {
+  if (segment.value === 'active') return store.activeBrands
+  if (segment.value === 'archived') return store.archivedBrands
+  return [...store.activeBrands, ...store.archivedBrands]
+})
+
+const isEmpty = computed(() => visible.value.length === 0)
+</script>
+<template>
+  <div class="flex flex-col gap-6 p-6">
+    <header class="flex items-center justify-between">
+      <h1 class="text-[22px] font-semibold text-[var(--ink)]">Brands</h1>
+      <router-link to="/brands/new" class="dlg-btn dlg-btn--primary">+ New brand</router-link>
+    </header>
+
+    <BrandsSegmentedControl />
+
+    <div v-if="isEmpty" class="rounded-[10px] border border-[var(--line)] bg-[var(--rail)] p-8 text-center">
+      <p class="text-[13px] text-[var(--ink-2)]">
+        <template v-if="segment === 'archived'">No archived brands. Archive a brand to see it here.</template>
+        <template v-else>You don't have any brands yet.</template>
+      </p>
+    </div>
+
+    <div v-else class="grid grid-cols-3 gap-4">
+      <BrandCard v-for="b in visible" :key="b.id" :brand="b" />
+      <NewBrandTile v-if="segment !== 'archived'" />
+    </div>
+  </div>
+</template>
+```
+
+- [ ] **Step 3: Commit**
+
+```bash
+bun test ./tests/views/account/BrandsAccountView.test.ts
+git add src/views/account/BrandsAccountView.vue tests/views/account/BrandsAccountView.test.ts
+git commit -m "feat(brands): add BrandsAccountView (B12) account-page brand list"
+```
+
+---
+
+### Task 33.8: `NotShippedYet.vue` adapter shim + `/account/coming-soon` fallback (CT-023(a) / C-MED12)
+
+**Why:** Cluster 11 ships the real `<NotShippedYet>`; until then, Cluster 03 needs a local shim so the Account button (Task 30) and any feature-flagged route can fall back to a polite placeholder without crashing. Adapter exposes the same API as the eventual Cluster 11 primitive so Task 37 swap is one import change.
+
+**Files:**
+- Create: `src/components/_adapters/NotShippedYet.vue`
+- Test: `tests/components/_adapters/NotShippedYet.test.ts`
+
+- [ ] **Step 1: Write failing test**
+
+```typescript
+import { test, expect } from 'bun:test'
+import { mount } from '@vue/test-utils'
+import NotShippedYet from '@/components/_adapters/NotShippedYet.vue'
+
+test('renders title + body + back link', () => {
+  const wrapper = mount(NotShippedYet, {
+    props: { title: 'Coming soon', body: 'This page is not shipped yet.', backTo: '/' },
+  })
+  expect(wrapper.text()).toContain('Coming soon')
+  expect(wrapper.text()).toContain('not shipped yet')
+  expect(wrapper.find('[data-test="back-link"]').attributes('href')).toBe('/')
+})
+```
+
+- [ ] **Step 2: Implement component**
+
+```vue
+<script setup lang="ts">
+interface Props {
+  title?: string
+  body?: string
+  backTo?: string
+}
+withDefaults(defineProps<Props>(), {
+  title: 'Coming soon',
+  body: "We're still building this page. Check back later.",
+  backTo: '/',
+})
+</script>
+<template>
+  <div class="grid min-h-[60vh] place-items-center p-6">
+    <div class="max-w-[420px] text-center">
+      <h2 class="text-[18px] font-semibold text-[var(--ink)]">{{ title }}</h2>
+      <p class="mt-2 text-[13px] text-[var(--ink-2)]">{{ body }}</p>
+      <a :href="backTo" data-test="back-link" class="mt-4 inline-block text-[12.5px] text-[var(--ink-2)] underline">Back</a>
+    </div>
+  </div>
+</template>
+```
+
+- [ ] **Step 3: Register `/account/coming-soon` fallback route**
+
+In `src/router/routes/brands.ts` (created by Task 34), add:
+
+```typescript
+{
+  path: '/account/coming-soon',
+  name: 'account-coming-soon',
+  component: () => import('@/components/_adapters/NotShippedYet.vue'),
+  props: { title: 'Account', body: "We're still building your account page. Brands are ready below." },
+}
+```
+
+- [ ] **Step 4: Commit**
+
+```bash
+bun test ./tests/components/_adapters/NotShippedYet.test.ts
+git add src/components/_adapters/NotShippedYet.vue tests/components/_adapters/NotShippedYet.test.ts src/router/routes/brands.ts
+git commit -m "feat(brands): add NotShippedYet adapter shim + /account/coming-soon fallback"
 ```
 
 ---
@@ -4085,7 +5153,7 @@ EOF
 | §11 Cross-cuts | Adapters (Task 21) + Task 35 (loss-list) + Task 36 (Shopify) + Task 37 (Cluster-11 swap) |
 | §12 Open questions | §12.1 audit_log stopgap covered in Task 11; §12.5 loss-list `—` fallback covered in Task 26; §12.7 Account button (Task 30); §12.9 Shopify pre-flight (Task 36 lets OAuth fail) |
 
-**Placeholder scan:** searched plan for `TODO`, `TBD`, `implement later`, `add appropriate`, `similar to`. Zero matches outside intentional comment-context. Stopgaps explicitly named with their replacement tasks.
+**Placeholder scan:** searched plan for `TODO`, `TBD`, `implement later`, `add appropriate`, `similar to`. Post-W2-QA, zero matches outside intentional comment-context (the previous `'Jiho Yang'` literal at the BrandPickerView avatar was replaced with `useAuthStore` lookup per B-LOW3, eliminating the TODO that contradicted this self-review). Stopgaps explicitly named with their replacement tasks.
 
 **Type consistency:** `BrandColor`, `Brand`, `WizardStep`, `useBrandsStore` method signatures, Edge Function request bodies all match across tasks. Adapter component prop names match (`open`, `size`, `expected`, `case`).
 
