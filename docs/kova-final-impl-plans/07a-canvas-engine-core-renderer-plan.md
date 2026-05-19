@@ -2702,6 +2702,92 @@ git commit -m "test(engine): mask-compositing perf benchmark — 100/200/300 nod
 
 Wire into CI gate: extend `bun run test:bench` script in package.json to include `tests/bench/`. Add `bun run test:bench` to the `bun run check` chain or gate it behind a separate `bun run check:perf` step.
 
+- [ ] **Step 9.14: `node:errored` event surface (C-LOW07a.4 — Cluster 11 ToastStack dep)**
+
+Files:
+- Modify: `packages/core/src/scene-graph.ts` (extend `SceneGraphEvents` union; add emit sites)
+- Modify: `packages/core/src/renderer/renderer.ts` (catch render exceptions; emit `node:errored`)
+- Create: `tests/engine/scene-graph/node-errored.test.ts`
+
+Event surface:
+
+```ts
+// packages/core/src/scene-graph.ts (EXTEND SceneGraphEvents)
+export interface NodeErroredEvent {
+  type: 'node:errored'
+  nodeId: string
+  errorCode: 'render_failed' | 'invalid_state'
+  message: string
+}
+```
+
+Emit triggers (engine-side):
+- `render_failed` — Renderer catches an exception thrown inside a node's draw function; emits `node:errored` with the error message; SKIPS the node + continues rendering siblings (defensive renderer — never let one bad node halt the frame).
+- `invalid_state` — Scene-graph invariant violated (orphan parent ref, cycle detected, leaf-node received `appendChild` against the guard). Emitted from inside `appendChild`, `reparent`, and the leaf-guard check.
+
+Subscriber (NOT in this PRD — Cluster 11 owns):
+- `<ToastStack>` (Cluster 11) subscribes via `editorBus.on('node:errored', ...)`; surfaces a toast with `variant: 'error'` + `code: errorCode` + the message body. Founder ratification 2026-05-17 §12.x: per-node render failures should be a recoverable in-app surface, NOT a global crash.
+
+Tests:
+
+```ts
+// tests/engine/scene-graph/node-errored.test.ts
+import { describe, test, expect, beforeEach } from 'bun:test'
+import { SceneGraph } from '@/packages/core/src/scene-graph'
+import { Renderer } from '@/packages/core/src/renderer/renderer'
+
+describe('node:errored event surface (C-LOW07a.4)', () => {
+  let graph: SceneGraph
+  beforeEach(() => { graph = new SceneGraph() })
+
+  test('renderer catches draw exception; emits node:errored with render_failed; sibling renders complete', () => {
+    const canvas = graph.createNode('CANVAS', graph.rootId)
+    const good = graph.createNode('RECTANGLE', canvas.id, { fills: [{ type: 'SOLID', color: { r: 1, g: 0, b: 0, a: 1 } }] })
+    const bad = graph.createNode('RECTANGLE', canvas.id)
+    // Inject a draw failure on `bad`:
+    graph.patchNode(bad.id, { __drawHook: () => { throw new Error('boom') } })
+
+    const events: any[] = []
+    graph.emitter.on('node:errored', (e) => events.push(e))
+
+    const renderer = new Renderer({ canvas: document.createElement('canvas') })
+    renderer.renderNode(graph.getNodeById(canvas.id)!)
+
+    expect(events).toHaveLength(1)
+    expect(events[0]).toMatchObject({
+      type: 'node:errored',
+      nodeId: bad.id,
+      errorCode: 'render_failed',
+      message: 'boom',
+    })
+    // sibling `good` still rendered — pixel-check or call-count assertion
+    expect(renderer.lastFrameDrawnNodeIds).toContain(good.id)
+  })
+
+  test('appendChild on a leaf node emits node:errored with invalid_state and throws', () => {
+    const canvas = graph.createNode('CANVAS', graph.rootId)
+    const text = graph.createNode('TEXT', canvas.id)  // leaf
+    const events: any[] = []
+    graph.emitter.on('node:errored', (e) => events.push(e))
+    expect(() => graph.appendChild(text.id, graph.createNode('RECTANGLE', canvas.id).id)).toThrow()
+    expect(events).toHaveLength(1)
+    expect(events[0]).toMatchObject({
+      type: 'node:errored',
+      nodeId: text.id,
+      errorCode: 'invalid_state',
+    })
+    expect(events[0].message).toMatch(/leaf/i)
+  })
+})
+```
+
+Commit:
+
+```bash
+git add packages/core/src/scene-graph.ts packages/core/src/renderer/renderer.ts tests/engine/scene-graph/node-errored.test.ts
+git commit -m "feat(engine): node:errored event surface for renderer + scene-graph invariant violations (C-LOW07a.4)"
+```
+
 ---
 
 ## Task 10: CLAUDE.md amendment text
