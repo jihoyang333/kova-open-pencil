@@ -1050,11 +1050,11 @@ Cluster 03 ships `brands.color` (CHECK IN coral/violet/sage/sand/graphite). This
 
 **Part B — "Brands" sidebar item.** RESOLVED 2026-05-17 via B12 reversal dispatch (00f Prompt C). Brands item ships **visible at MVP with NO `SOON` pill** — it routes to `/account/brands`, the live B12 page owned by PRD 03 (page content) + PRD 04 (route registration + `.acc-rail` host). Promoted from Phase 2 → MVP per founder reversal of the 2026-05-13 lock. See §13.2 Q-decisions cross-ref.
 
-### 12.12 OPEN QUESTION — `/account` sidebar entry
+### 12.12 RESOLVED 2026-05-19 — `/account` sidebar entry
 
 A12 hi-fi shows no "Account" item in sidebar nav — `/account` is reachable only via sidebar-footer `AccountMenu` dropdown. Cluster 04 (Account & Stripe) confirms this routing per Q12 + Q13.
 
-**Recommendation:** No `/account` sidebar item. User reaches Account via sidebar-footer avatar dropdown only. **ESCALATE: founder** — confirm acceptable that "Account" lives only in dropdown.
+**Decision (founder ratified 2026-05-19 — A-MED1):** No `/account` sidebar item. Users reach Account exclusively via the sidebar-footer avatar dropdown (`AccountMenu`). Acceptable because the avatar is always-visible at the bottom of the sidebar and is the canonical destination per A12 hi-fi. Brand-management (`/account/brands`) is reached via the brand-switch dropdown's "Manage brands" link, not a sidebar entry.
 
 ### 12.13 Changelog 2026-05-17
 
