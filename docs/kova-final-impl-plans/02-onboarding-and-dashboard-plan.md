@@ -84,8 +84,8 @@ kova-open-pencil-1/
 │   │       ├── SortDropdown.vue                                     (T28)
 │   │       ├── ViewToggle.vue                                       (T28)
 │   │       ├── DashboardSkeleton.vue                                (T30)
-│   │       ├── OfflineIndicator.vue                                 (T31)
 │   │       └── CanvasCreationTransition.vue                         (T32)
+│   │       # OfflineIndicator.vue RETIRED (C-MED4 + CT-020) — see Plan 11 <NetworkStatusIndicator>
 └── tests/
     ├── unit/
     │   ├── stores/{ui-state,dashboard,brands-extension}.test.ts     (T05, T06, T04)
@@ -3026,98 +3026,21 @@ git commit -m "feat(dashboard): add B7.1 DashboardSkeleton with shimmer animatio
 
 ---
 
-### Task T31: OfflineIndicator (A13.1 + A13.2 three signals)
+### Task T31: OfflineIndicator — **RETIRED** (C-MED4 + CT-020)
 
-**Files:**
-- Create: `kova-open-pencil-1/src/components/dashboard/OfflineIndicator.vue`
-- Test: `kova-open-pencil-1/tests/unit/components/dashboard/OfflineIndicator.test.ts`
+**Status:** RETIRED 2026-05-19.
 
-- [ ] **Step 1: Test**
+**Why:** Cluster 11 §6.4 ships `<NetworkStatusIndicator>` (Figma-style 14×14 `cloud-off` icon + `KovaTooltip`, renders nothing while online) and Cluster 11 §3.7 mounts it globally in `App.vue` (commit f08fa551 — C-MED-11.5). The legacy A13.1 sidebar `.net-strip`, A13.2 topbar pill, and 28px banner variants were retired per the 2026-05-17 founder decision. Cluster 02 owns zero offline UI surface — it is fully cross-cut to Cluster 11.
 
-```ts
-import { describe, test, expect, mock } from 'bun:test'
-import { mount } from '@vue/test-utils'
-import { ref } from 'vue'
-import OfflineIndicator from '@/components/dashboard/OfflineIndicator.vue'
+**C-MED4 closure:** The replacement composable is Plan 11 §2.4 `useOnlineStatus` (combines `navigator.onLine` + Supabase Realtime channel heartbeat). It is consumed inside `<NetworkStatusIndicator>` — Cluster 02 does NOT call `useOnlineStatus` directly anywhere. Plan 11 owns the heartbeat-loss test (loss of Realtime channel → status `offline` even when `navigator.onLine === true`).
 
-// Mock Cluster 11 useOnlineStatus (bun:test pattern)
-mock.module('@/composables/use-online-status', () => ({
-  useOnlineStatus: () => ({ status: ref<'online' | 'offline'>('offline') }),
-}))
+**CT-020 closure:** PRD §2.1 (sidebar nav), §3.7 (network-state spec), and §8.7 (acceptance) are rewritten to consume `<NetworkStatusIndicator>` from Cluster 11. No three-signal pattern remains in this PRD.
 
-describe('OfflineIndicator', () => {
-  test('sidebar slot renders net-strip when offline', () => {
-    const w = mount(OfflineIndicator, { props: { slot: 'sidebar' } })
-    expect(w.find('.net-strip').exists()).toBe(true)
-  })
+**Action for the implementing engineer:**
 
-  test('topbar slot renders warn pill when offline', () => {
-    const w = mount(OfflineIndicator, { props: { slot: 'topbar' } })
-    expect(w.find('.pill.warn').exists()).toBe(true)
-  })
-
-  test('banner slot renders offline-banner when offline', () => {
-    const w = mount(OfflineIndicator, { props: { slot: 'banner' } })
-    expect(w.find('.offline-banner').exists()).toBe(true)
-  })
-})
-```
-
-- [ ] **Step 2: FAIL (depends on Cluster 11 `useOfflineState`)**
-
-- [ ] **Step 3: Write component (degrades gracefully pre-Cluster 11)**
-
-```vue
-<script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
-
-// Defensive: if Cluster 11 hasn't shipped useOfflineState, fall back to navigator.onLine
-const isOnline = ref(navigator.onLine)
-function onOnline() { isOnline.value = true }
-function onOffline() { isOnline.value = false }
-onMounted(() => {
-  window.addEventListener('online', onOnline)
-  window.addEventListener('offline', onOffline)
-})
-onUnmounted(() => {
-  window.removeEventListener('online', onOnline)
-  window.removeEventListener('offline', onOffline)
-})
-
-defineProps<{ slot: 'sidebar' | 'topbar' | 'banner' }>()
-const offline = computed(() => !isOnline.value)
-</script>
-
-<template>
-  <!-- sidebar variant -->
-  <div v-if="slot === 'sidebar' && offline" class="net-strip">
-    <span class="dot" />
-    <span class="flex-1">Working offline</span>
-    <icon-lucide-cloud-off class="ic" />
-  </div>
-  <!-- topbar pill (always renders one of online/offline) -->
-  <span v-else-if="slot === 'topbar'" class="pill dot" :class="{ ok: !offline, warn: offline }">
-    {{ offline ? 'Offline' : 'Online' }}
-  </span>
-  <!-- banner -->
-  <div v-else-if="slot === 'banner' && offline" class="offline-banner">
-    <icon-lucide-cloud-off class="ic" />
-    <span>You're offline. Changes are saved locally and will sync when you reconnect.</span>
-  </div>
-</template>
-```
-
-(When Cluster 11 ships `use-offline-state.ts`, refactor to consume it.)
-
-- [ ] **Step 4: PASS**
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add src/components/dashboard/OfflineIndicator.vue \
-        tests/unit/components/dashboard/OfflineIndicator.test.ts
-git commit -m "feat(dashboard): add A13 OfflineIndicator with sidebar/topbar/banner variants"
-```
+- Do NOT create `src/components/dashboard/OfflineIndicator.vue`.
+- Do NOT create `tests/unit/components/dashboard/OfflineIndicator.test.ts`.
+- Confirm during T35 (DashboardView shell) and T18 (DashboardSidebar) implementation that no local offline UI is wired — `<NetworkStatusIndicator />` is already mounted at the App root by Cluster 11.
 
 ---
 
@@ -3460,9 +3383,10 @@ import { computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useBrandsStore } from '@/stores/brands'
 
+// CT-020: <NetworkStatusIndicator> is mounted globally in App.vue by Cluster 11.
+// No local offline UI is composed here.
 import DashboardSidebar from '@/components/dashboard/DashboardSidebar.vue'
 import DashboardTopbar from '@/components/dashboard/DashboardTopbar.vue'
-import OfflineIndicator from '@/components/dashboard/OfflineIndicator.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -3508,18 +3432,9 @@ function onNewCanvas() {
 
 <template>
   <div v-if="currentBrand" class="app">
-    <DashboardSidebar :current-brand="currentBrand">
-      <template #footer-extras>
-        <OfflineIndicator slot-name="sidebar" />
-      </template>
-    </DashboardSidebar>
+    <DashboardSidebar :current-brand="currentBrand" />
     <main class="main">
-      <DashboardTopbar :brand-name="currentBrand.name" :current-page="pageLabel" @new-canvas="onNewCanvas">
-        <template #actions>
-          <OfflineIndicator slot-name="topbar" />
-        </template>
-      </DashboardTopbar>
-      <OfflineIndicator slot-name="banner" />
+      <DashboardTopbar :brand-name="currentBrand.name" :current-page="pageLabel" @new-canvas="onNewCanvas" />
       <router-view />
     </main>
   </div>
