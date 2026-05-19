@@ -650,13 +650,13 @@ export const useUIStateStore = defineStore('ui-state', () => {
 
 | Component | File | Hi-fi origin | Status |
 |---|---|---|---|
-| `WelcomeStep` (existing, may retire) | `src/components/onboarding/WelcomeStep.vue` | (M9 era — pre-Cluster-01 auth landing) | RETIRE if Cluster 01 ships its own landing. Pending §12. |
+| ~~`WelcomeStep`~~ — **RETIRED 2026-05-19** | `src/components/onboarding/WelcomeStep.vue` | (M9 era — pre-Cluster-01 auth landing) | Retired in Plan 02 Task T13 per §12.10 RESOLVED + C-LOW02.7. Cluster 01 owns the auth landing. |
 | `BrandNameStep` + `BrandUrlStep` + `NameStep` (existing) | `src/components/onboarding/*.vue` | A1.01.c | CONSOLIDATE into single `<BrandIdentityStep>` that renders A1.01.c's full `.onb-id-row` + 3-field stack — matches hi-fi which is a single screen, not three. |
 | `StoreTypeStep` (existing — M9) | `src/components/onboarding/StoreTypeStep.vue` | A1.01.d | **REFACTOR light → dark** (§5.6 item 1) + access_token security fix (§5.4.1). Keep logic for `normalizeShopDomain` + OAuth start + skip + "Something else" + "No store yet" branches. |
 | `BrandKitStep` (NEW — A1.01.e) | `src/components/onboarding/BrandKitStep.vue` | A1.01.e | NEW. Drop-zone + file-list + textarea + AI extraction promise card. On "Extract and continue" → enqueues uploads + guidelines payload for Cluster 05's extract Edge Function. |
 | `ExtractionStep` (existing) | `src/components/onboarding/ExtractionStep.vue` | (M9 — kept for compat) | RETIRE; `BrandKitStep` replaces. |
 | `SplashStep` (NEW) | `src/components/onboarding/SplashStep.vue` | A1.01.f | NEW. 2×2 next-move grid + primary "Enter {brand} workspace". |
-| `ReviewStep` (existing) | `src/components/onboarding/ReviewStep.vue` | (M9 — confirm before commit) | KEEP for now as final commit gate; merge into `SplashStep` if simpler in implementation. Pending §12. |
+| ~~`ReviewStep`~~ — **RETIRED 2026-05-19** | `src/components/onboarding/ReviewStep.vue` | (M9 — final commit gate) | Retired in Plan 02 Task T13 per §12.10 RESOLVED + C-LOW02.7. Final commit gate folded into `SplashStep`. |
 
 #### 6.4.3 Dashboard chrome components
 

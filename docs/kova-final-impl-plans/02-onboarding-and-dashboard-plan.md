@@ -121,8 +121,8 @@ kova-open-pencil-1/
 │       └── DashboardView.vue                                        (T35 — sidebar + topbar shell)
 ├── api/
 │   └── shopify/auth-start.ts                                        (T03 — read Bearer header)
-└── (deleted in T13)
-    src/components/onboarding/{BrandNameStep,BrandUrlStep,NameStep,ExtractionStep}.vue
+└── (deleted in T13 — C-MED6 + C-LOW02.7)
+    src/components/onboarding/{BrandNameStep,BrandUrlStep,NameStep,ExtractionStep,WelcomeStep,ReviewStep}.vue
 ```
 
 ---
@@ -1539,12 +1539,24 @@ defineEmits<{ next: [] }>()
 - [ ] **Step 5: Delete legacy files**
 
 ```bash
-# C-MED6: retire all 4 M9 onboarding components consolidated by BrandIdentityStep + downstream cuts.
-# ExtractionStep is the M9 mid-wizard "Kova is extracting..." card; replaced by inline AI surface in BrandKitStep.
+# C-MED6 + C-LOW02.7: retire all M9 onboarding components in T13 (single retirement step).
+# - BrandNameStep / BrandUrlStep / NameStep — consolidated into BrandIdentityStep (C-MED5).
+# - ExtractionStep — M9 mid-wizard "Kova is extracting..." card; replaced by inline AI surface in BrandKitStep.
+# - WelcomeStep — M9 pre-Cluster-01 auth landing; Cluster 01 now owns the landing route.
+# - ReviewStep — M9 final commit gate; merged into SplashStep per §12.10 RESOLVED 2026-05-19.
 git rm src/components/onboarding/BrandNameStep.vue \
        src/components/onboarding/BrandUrlStep.vue \
        src/components/onboarding/NameStep.vue \
-       src/components/onboarding/ExtractionStep.vue
+       src/components/onboarding/ExtractionStep.vue \
+       src/components/onboarding/WelcomeStep.vue \
+       src/components/onboarding/ReviewStep.vue
+
+# Also strip any router refs to the retired components (T12 already does NOT register them,
+# but verify no stale `import WelcomeStep` / `import ReviewStep` remains).
+if grep -rnE 'WelcomeStep|ReviewStep' src/ tests/; then
+  echo "❌ Stale references to retired Welcome/Review steps remain"
+  exit 1
+fi
 ```
 
 - [ ] **Step 6: Commit**
@@ -1820,7 +1832,7 @@ git commit -m "feat(onboarding): add SplashStep (A1.01.f) with 2x2 starter cards
 
 **Files:**
 - Modify: `kova-open-pencil-1/src/views/OnboardingView.vue`
-- Delete: `src/components/onboarding/ExtractionStep.vue`, `src/components/onboarding/ReviewStep.vue`
+- Delete: (none — all M9 onboarding component retirements moved to T13 per C-MED6 + C-LOW02.7)
 - Test: `kova-open-pencil-1/tests/unit/views/OnboardingView.test.ts`
 
 - [ ] **Step 1: Write failing test**
