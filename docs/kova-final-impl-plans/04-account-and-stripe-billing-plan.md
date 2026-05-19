@@ -789,6 +789,17 @@ export function priceIdToPlan(priceId: string): PlanName | null {
 export function isKnownPriceId(priceId: string): boolean {
   return priceIdToPlan(priceId) !== null
 }
+
+// C-LOW04.7 — Whitelist of allowed price IDs sourced from server-only env vars per PRD §5.1.1.
+// `isKnownPriceId(req.body.price_id)` is the env-var whitelist gate enforced in Task 3.1.
+// No inline hardcoded price IDs are permitted; every price must be sourced from STRIPE_PRICE_ID_<plan>.
+// If a new plan is added, append a new STRIPE_PRICE_ID_<plan> env var and extend `priceIdToPlan` above.
+export function getAllowedPriceIds(): readonly string[] {
+  return [
+    process.env.STRIPE_PRICE_ID_SOLO,
+    process.env.STRIPE_PRICE_ID_AGENCY,
+  ].filter((id): id is string => Boolean(id))
+}
 ```
 
 ```typescript
