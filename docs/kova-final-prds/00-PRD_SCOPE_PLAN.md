@@ -691,6 +691,24 @@ These primitives + integrations touch 3+ PRDs and need consistent treatment:
 
 **Implication:** Cluster 11 + 08 + 12 ship foundational primitives. Downstream clusters reference them by API, don't re-spec. The four cross-cuts added 2026-05-14 (per the comprehensive audit §1.D "hidden dependencies" finding) are owned by Cluster 11 + Cluster 06 and must be specced as named conventions, not re-invented per consuming PRD.
 
+### 6.1 Routing + store canonical (W0-3 — 2026-05-19)
+
+Per W0-3 founder ratification (resolves CT-002 from `docs/kova-final-qa/CONSOLIDATED-TRIAGE.md`), the canonical names for two load-bearing cross-cluster surfaces are locked:
+
+| Surface | Canonical name | Canonical path | Owner | Forbidden aliases |
+|---|---|---|---|---|
+| Brand dashboard route | `/brand/:brandId` (RESTful path param) | Vue Router definition in PRD 02 §6.1 | **02** (Onboarding & Dashboard) | `/dashboard?brandId=...` (query-param form) — retired |
+| Right-panel tab store (canvas) | `useRightPanelStore` | `src/stores/right-panel.ts` | **06** (Canvas Editor Core Chrome) | `useRightPanelTabStore`, `src/stores/right-panel-tab.ts` — retired |
+
+**Consumer enforcement:**
+
+- Every `router.push('/dashboard?brandId=...')` in Plan 03 has been rewritten to `router.push('/brand/${brandId}')` (W0-3).
+- Plan 06 E2E spec `brand-label-navigates.spec.ts` asserts `/brand/:brandId` (W0-3).
+- Plan 10 Task 17 imports `useRightPanelStore` from `@/stores/right-panel` (W0-3). The earlier `useRightPanelTabStore` name + `@/stores/right-panel-tab` path are retired.
+- Wave 2 / 3 cluster fix agents (02, 06) MUST update their PRDs to match these canonical names where their PRD body still cites the retired forms. PRD 06 §0 / §1 / §3.2 / §3.5 / §6.4 (brand-click handler) references to `/dashboard?brandId=` are scrubbed during Cluster 06 Wave-3 fix; this W0 commit does not touch PRD 06 prose to keep the W0 surface minimal.
+
+**Rationale:** RESTful path params (`/brand/:brandId`) are more idiomatic for shareable links, browser history, and back/forward navigation than query params (`/dashboard?brandId=`). The retired query-param form forced double routing logic (route + query-param watcher) in every consumer; the path-param form centralizes route guards on a single param. Store-name canonicalization eliminates the `useRightPanelStore` vs `useRightPanelTabStore` two-name drift surfaced by QA-C HIGH-10.
+
 ---
 
 ## 7. Open questions per cluster

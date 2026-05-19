@@ -98,7 +98,7 @@
 | `tests/integration/editor/shop-panel-import-to-chat.test.ts` | Multi-select + Import → chat refs populated |
 | `tests/e2e/editor/load-and-render.spec.ts` | All chrome elements visible; no Prototype tab; no ChatPopup |
 | `tests/e2e/editor/avatar-dropdown.spec.ts` | 5 items + routing |
-| `tests/e2e/editor/brand-label-navigates.spec.ts` | Click → /dashboard?brandId=... |
+| `tests/e2e/editor/brand-label-navigates.spec.ts` | Click → `/brand/:brandId` (W0-3 canonical route per scope plan §6) |
 | `tests/e2e/editor/right-panel-tab-switch.spec.ts` | Click AI → ChatPanel; reload → persists |
 | `tests/e2e/editor/ai-tool-button.spec.ts` | Click → AI tab + focus |
 | `tests/e2e/editor/layer-tree-interactions.spec.ts` | Hover + click + drag-reorder + right-click |
