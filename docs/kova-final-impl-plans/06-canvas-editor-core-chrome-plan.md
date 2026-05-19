@@ -1482,7 +1482,7 @@ git commit -m "test(cluster-06): malformed drop payload crash-resistance (C-MED1
 
 **Files:**
 - Create: `src/components/editor/TopChrome.vue`, `TopChromeLogo.vue`, `FileBreadcrumb.vue`, `TopChromeActions.vue`, `AvatarDropdown.vue`, `MissingFontsPill.vue`
-- Test: `tests/unit/components/editor/TopChrome.test.ts`, `AvatarDropdown.test.ts`, `FileBreadcrumb.test.ts`
+- Test: `tests/unit/components/editor/TopChrome.test.ts`, `AvatarDropdown.test.ts`, `FileBreadcrumb.test.ts`, `MissingFontsPill.test.ts`
 
 - [ ] **Step 1: Write failing tests** (4 component tests covering: 5-item avatar dropdown per Q16; brand-click emit; topbar renders all children; **TopChromeActions renders NO Comments slot — RATIFIED HIDE 2026-05-17 §12.3**)
 
@@ -1515,6 +1515,40 @@ describe('TopChromeActions — RATIFIED 2026-05-17 §12.3 (Comments HIDDEN)', ()
 ```bash
 git add src/components/editor/TopChrome.vue src/components/editor/TopChromeLogo.vue src/components/editor/FileBreadcrumb.vue src/components/editor/TopChromeActions.vue src/components/editor/AvatarDropdown.vue src/components/editor/MissingFontsPill.vue tests/unit/components/editor/TopChrome.test.ts tests/unit/components/editor/TopChromeActions.test.ts tests/unit/components/editor/AvatarDropdown.test.ts tests/unit/components/editor/FileBreadcrumb.test.ts
 git commit -m "feat(cluster-06): top chrome — logo + file breadcrumb (Q17 navigate) + actions (Comments hidden per §12.3 2026-05-17) + 5-item avatar dropdown (Q16)"
+```
+
+**Sub-test 9.x: `<MissingFontsPill>` mount + click handler (C-LOW06.4)**
+
+```ts
+// tests/unit/components/editor/MissingFontsPill.test.ts
+import { describe, test, expect } from 'bun:test'
+import { mount } from '@vue/test-utils'
+import MissingFontsPill from '@/components/editor/MissingFontsPill.vue'
+
+describe('<MissingFontsPill> (C-LOW06.4)', () => {
+  test('renders count text when missingCount > 0', () => {
+    const w = mount(MissingFontsPill, { props: { missingCount: 2 } })
+    expect(w.text()).toContain('2')
+    expect(w.text()).toMatch(/missing/i)
+  })
+
+  test('does not render when missingCount = 0', () => {
+    const w = mount(MissingFontsPill, { props: { missingCount: 0 } })
+    expect(w.find('[data-testid="missing-fonts-pill"]').exists()).toBe(false)
+  })
+
+  test('click emits open-font-manager event', async () => {
+    const w = mount(MissingFontsPill, { props: { missingCount: 1 } })
+    await w.find('[data-testid="missing-fonts-pill"]').trigger('click')
+    expect(w.emitted('open-font-manager')).toBeTruthy()
+  })
+
+  test('aria-label includes count for screen readers', () => {
+    const w = mount(MissingFontsPill, { props: { missingCount: 3 } })
+    expect(w.find('[data-testid="missing-fonts-pill"]').attributes('aria-label'))
+      .toMatch(/3.*missing fonts/i)
+  })
+})
 ```
 
 **Version history event contract (C-MED26 — ratified W3 fix dispatch):**
