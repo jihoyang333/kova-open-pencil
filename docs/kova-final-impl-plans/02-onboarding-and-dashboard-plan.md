@@ -1223,12 +1223,14 @@ git commit -m "feat(composable): useFileGrid — debounced search + sort + view-
 // tests/unit/composables/use-onboarding.test.ts
 import { describe, test, expect, beforeEach } from 'bun:test'
 import { setActivePinia, createPinia } from 'pinia'
-import { useOnboarding } from '@/composables/use-onboarding'
+import { useOnboarding, _resetForTesting } from '@/composables/use-onboarding'
 
 describe('useOnboarding', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     sessionStorage.clear()
+    // B-MED15: reset module-scope singleton state between specs.
+    _resetForTesting()
   })
 
   test('starts at brand step', () => {
@@ -1263,7 +1265,28 @@ describe('useOnboarding', () => {
     o.restoreDraft()
     expect(o.step.value).toBe('brand-kit')
   })
+
+  test('B-MED15: state is a Reactive proxy — assign without .value works in script', () => {
+    const o = useOnboarding()
+    o.state.brandName = 'Acme'
+    o.state.brandUrl = 'acme.com'
+    o.state.industry = 'Athletic apparel'
+    expect(o.state.brandName).toBe('Acme')
+    expect(o.state.brandUrl).toBe('acme.com')
+    expect(o.state.industry).toBe('Athletic apparel')
+  })
+
+  test('B-MED15 + C-HIGH3: every useOnboarding() call returns the same singleton state', () => {
+    const a = useOnboarding()
+    const b = useOnboarding()
+    a.state.brandName = 'Singleton check'
+    expect(b.state.brandName).toBe('Singleton check')
+    expect(a.state).toBe(b.state)
+  })
 })
+
+// Note: because state + step + isFinishing are module-scope singletons, tests must reset them
+// in `beforeEach`. The composable exports `_resetForTesting()` (added in Step 3) for that purpose.
 ```
 
 - [ ] **Step 2: Run test — FAIL**
@@ -1272,25 +1295,41 @@ describe('useOnboarding', () => {
 
 ```ts
 // src/composables/use-onboarding.ts
-import { ref, computed } from 'vue'
+// B-MED15 + C-HIGH3: state is a Reactive<OnboardingState> proxy held in a module-scope singleton.
+// Templates use `v-model="state.brandName"` (no `.value`). Scripts use `state.brandName` (no `.value`).
+// Retires the M9-era `useOnboardingState` (Refs-via-inject pattern).
+import { reactive, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useBrandsStore } from '@/stores/brands'
-import { useOnboardingState } from '@/composables/useOnboardingState'
+
+export interface OnboardingState {
+  brandName: string
+  brandUrl: string
+  industry: string
+  tempBrandId: string
+}
 
 const STEP_ORDER = ['brand', 'shopify', 'brand-kit', 'splash'] as const
 type Step = (typeof STEP_ORDER)[number]
 const DRAFT_KEY = 'kova:onboarding:draft'
 
+// Module-scope singletons so every `useOnboarding()` call returns the SAME state + step.
+const state = reactive<OnboardingState>({
+  brandName: '',
+  brandUrl: '',
+  industry: '',
+  tempBrandId: '',
+})
+const step = ref<Step>('brand')
+const isFinishing = ref(false)
+const finishError = ref<string | null>(null)
+
 export function useOnboarding() {
   const router = useRouter()
   const brands = useBrandsStore()
-  const state = useOnboardingState()
-  const step = ref<Step>('brand')
-  const isFinishing = ref(false)
-  const finishError = ref<string | null>(null)
 
   const canProceed = computed(() => {
-    if (step.value === 'brand') return state.brandName.value.trim().length > 0 && !!state.brandUrl.value
+    if (step.value === 'brand') return state.brandName.trim().length > 0 && !!state.brandUrl
     if (step.value === 'shopify') return true
     if (step.value === 'brand-kit') return true
     if (step.value === 'splash') return true
@@ -1313,7 +1352,7 @@ export function useOnboarding() {
     isFinishing.value = true
     finishError.value = null
     try {
-      const brand = await brands.createBrand(state.brandName.value)
+      const brand = await brands.createBrand(state.brandName)
       // (logoUrl + brandUrl + description applied via brands.updateBrand in a follow-up if needed)
       sessionStorage.removeItem(DRAFT_KEY)
       await router.push(`/brand/${brand.id}`)
@@ -1329,8 +1368,8 @@ export function useOnboarding() {
   function persistDraft(): void {
     sessionStorage.setItem(DRAFT_KEY, JSON.stringify({
       step: step.value,
-      brandName: state.brandName.value,
-      brandUrl: state.brandUrl.value,
+      brandName: state.brandName,
+      brandUrl: state.brandUrl,
     }))
   }
 
@@ -1340,8 +1379,8 @@ export function useOnboarding() {
     try {
       const draft = JSON.parse(raw) as { step?: Step; brandName?: string; brandUrl?: string }
       if (draft.step && STEP_ORDER.includes(draft.step)) step.value = draft.step
-      if (typeof draft.brandName === 'string') state.brandName.value = draft.brandName
-      if (typeof draft.brandUrl === 'string') state.brandUrl.value = draft.brandUrl
+      if (typeof draft.brandName === 'string') state.brandName = draft.brandName
+      if (typeof draft.brandUrl === 'string') state.brandUrl = draft.brandUrl
     } catch {
       // corrupt draft — discard
       sessionStorage.removeItem(DRAFT_KEY)
@@ -1350,9 +1389,20 @@ export function useOnboarding() {
 
   return { state, step, next, prev, complete, canProceed, isFinishing, finishError, persistDraft, restoreDraft }
 }
+
+// Test-only escape hatch: reset the module-scope singletons between specs.
+export function _resetForTesting(): void {
+  state.brandName = ''
+  state.brandUrl = ''
+  state.industry = ''
+  state.tempBrandId = ''
+  step.value = 'brand'
+  isFinishing.value = false
+  finishError.value = null
+}
 ```
 
-> **C-HIGH3 contract note:** `useOnboarding()` is the single entry point for the wizard. `state` (brand data refs from the M9-era `useOnboardingState` singleton) is exposed on the return so step components can grab it directly without `inject()`. Do NOT introduce `provide('onboardingState', ...)` or `inject('onboardingState')` anywhere — that path is retired.
+> **C-HIGH3 + B-MED15 contract note:** `useOnboarding()` is the single entry point for the wizard. `state` is a `Reactive<OnboardingState>` proxy backed by a module-scope singleton. Templates write `v-model="state.brandName"` (no `.value`). Scripts read `state.brandName` (no `.value`). Do NOT introduce `provide('onboardingState', ...)` / `inject('onboardingState')` / `useOnboardingState()` — all retired.
 
 - [ ] **Step 4: Run test — PASS**
 
@@ -1480,15 +1530,16 @@ describe('BrandIdentityStep', () => {
 
 ```vue
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, toRef } from 'vue'
 import { useLogoFetch } from '@/composables/use-logo-fetch'
 import { useOnboarding } from '@/composables/use-onboarding'
 
 const { state } = useOnboarding()
-const { logoUrl, isFetching, manualOverride } = useLogoFetch(state.brandUrl)
+// `state` is Reactive<OnboardingState> — pass `toRef(state, 'brandUrl')` for ref-shaped APIs.
+const { logoUrl, isFetching, manualOverride } = useLogoFetch(toRef(state, 'brandUrl'))
 
-const monogram = computed(() => state.brandName.value.trim().charAt(0).toUpperCase() || '?')
-const canContinue = computed(() => state.brandName.value.trim().length > 0 && state.brandUrl.value.trim().length > 0)
+const monogram = computed(() => state.brandName.trim().charAt(0).toUpperCase() || '?')
+const canContinue = computed(() => state.brandName.trim().length > 0 && state.brandUrl.trim().length > 0)
 
 async function onLogoSlotClick() {
   const input = document.createElement('input')
@@ -1524,13 +1575,13 @@ defineEmits<{ next: [] }>()
       <div style="display:flex;flex-direction:column;gap:10px;">
         <div class="onb-field">
           <label class="lbl">Brand name</label>
-          <input name="brandName" class="input" v-model="state.brandName.value" type="text" />
+          <input name="brandName" class="input" v-model="state.brandName" type="text" />
         </div>
         <div class="onb-field">
           <label class="lbl">Website</label>
           <div class="onb-input-affixed">
             <span class="pre">https://</span>
-            <input name="brandUrl" v-model="state.brandUrl.value" type="text" />
+            <input name="brandUrl" v-model="state.brandUrl" type="text" />
           </div>
           <div v-if="logoUrl" class="help ok"><icon-lucide-check class="w-3 h-3 inline" /> Logo found</div>
         </div>
@@ -1542,7 +1593,7 @@ defineEmits<{ next: [] }>()
       <input
         name="brandDescription"
         class="input"
-        v-model="state.industry.value"
+        v-model="state.industry"
         type="text"
         placeholder="e.g. Global athletic footwear and apparel."
       />
@@ -1912,7 +1963,7 @@ async function onBrandKitCommit(payload: { files: File[]; guidelines: string }):
   // Contract is documented in PRD §6.4.5; queue Edge Function is `api/brand-kit/extract.ts` (Cluster 05).
   // BrandKitStep also emits `skip` — in that case we do NOT enqueue.
   await enqueueBrandKitExtract({
-    brand_id: state.tempBrandId.value ?? '',
+    brand_id: state.tempBrandId,
     files: payload.files,
     guidelines: payload.guidelines.trim(),
     source: 'onboarding',
@@ -1947,8 +1998,8 @@ const dotClass = (idx: number) => {
       <BrandIdentityStep v-if="wizard.step.value === 'brand'" @next="wizard.next" />
       <StoreTypeStep
         v-else-if="wizard.step.value === 'shopify'"
-        :brand-name="state.brandName.value"
-        :brand-id="state.tempBrandId?.value ?? ''"
+        :brand-name="state.brandName"
+        :brand-id="state.tempBrandId"
         @skip="wizard.next"
         @connect-shopify="(_: string) => wizard.next()"
         @something-else="wizard.next"
@@ -1960,7 +2011,7 @@ const dotClass = (idx: number) => {
       />
       <SplashStep
         v-else-if="wizard.step.value === 'splash'"
-        :brand-name="state.brandName.value"
+        :brand-name="state.brandName"
         @enter="wizard.complete"
       />
     </div>

@@ -626,11 +626,11 @@ export const useUIStateStore = defineStore('ui-state', () => {
 
 | Composable | File | Signature | Used by |
 |---|---|---|---|
-| `useOnboarding` | `src/composables/use-onboarding.ts` (NEW — wraps existing `useOnboardingState`) | `{ step: Ref<'brand'\|'shopify'\|'brand-kit'\|'splash'>; next(): void; prev(): void; complete(): Promise<{ brandId: string }>; canProceed: ComputedRef<boolean>; isFinishing: Ref<boolean>; finishError: Ref<string \| null>; persistDraft(): void; restoreDraft(): void }` | `OnboardingView` |
+| `useOnboarding` | `src/composables/use-onboarding.ts` (NEW — module-scope singleton; retires M9 `useOnboardingState` per C-HIGH3) | `{ state: Reactive<{ brandName: string; brandUrl: string; industry: string; tempBrandId: string }>; step: Ref<'brand'\|'shopify'\|'brand-kit'\|'splash'>; next(): void; prev(): void; complete(): Promise<{ brandId: string }>; canProceed: ComputedRef<boolean>; isFinishing: Ref<boolean>; finishError: Ref<string \| null>; persistDraft(): void; restoreDraft(): void }` — templates write `v-model="state.brandName"` (no `.value`) per B-MED15 | `OnboardingView`, `BrandIdentityStep`, `BrandKitStep`, `SplashStep` |
 | `useLogoFetch` | `src/composables/use-logo-fetch.ts` (NEW) | `(urlRef: Ref<string>) => { logoUrl: Ref<string \| null>; isFetching: Ref<boolean>; manualOverride(file: File): Promise<void> }` — 600ms debounce on `urlRef`; calls `fetchFavicon`; allows manual file override (uploads to `brand-logos` bucket) | `BrandUrlStep`, onboarding step 1 |
 | `useGreeting` | `src/composables/use-greeting.ts` (NEW) | `(): ComputedRef<string>` — returns "Good morning/afternoon/evening, {firstName}" based on `new Date().getHours()` + `useAuthStore.profile.name` | `DashboardView` greeting |
 | `useFileGrid` | `src/composables/use-file-grid.ts` (NEW) | `(brandId: Ref<string>) => { canvases: ComputedRef<Canvas[]>; isLoading: Ref<boolean>; isEmpty: ComputedRef<boolean>; hasSearchQuery: ComputedRef<boolean>; search: (q: string) => void (debounced 200ms); setSort: (m: SortMode) => void; setView: (m: ViewMode) => void }` — wraps `useDashboardStore` + `useCanvasesStore.fetchCanvases` | `RecentsView` |
-| `useOfflineState` | `src/composables/use-offline-state.ts` (CROSS-CUT — owned by Cluster 11 per §3.7) | `(): { isOnline: ComputedRef<boolean>; lastChange: Ref<Date \| null> }` | Sidebar footer, topbar pill, per-pane banner |
+| ~~`useOfflineState`~~ — **RETIRED (CT-020 + C-MED4)** | Cluster 11 ships `useOnlineStatus` (`src/composables/use-online-status.ts`). Consumed only inside Plan 11 `<NetworkStatusIndicator>`. | n/a — not called by Cluster 02 components | n/a |
 
 ### 6.4 Components
 
