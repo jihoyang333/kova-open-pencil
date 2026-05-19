@@ -2120,6 +2120,21 @@ export default async function handler(req: Request): Promise<Response> {
   const auth = req.headers.get('authorization')
   if (!auth) return new Response('Unauthorized', { status: 401 })
 
+  // C-MED12.4: require both Supabase env vars up-front. The previous form used
+  // `?? ''` fallbacks, which would silently construct a client with an empty
+  // URL/key and surface as a confusing PostgrestError later in the request.
+  // Fail fast at the boundary instead — 500 with a clear error code so ops
+  // sees the misconfiguration in logs immediately.
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')
+  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.error('send-sync-alert: SUPABASE_URL or SUPABASE_ANON_KEY unset')
+    return new Response(JSON.stringify({ ok: false, error: 'supabase_env_unset' }), {
+      status: 500,
+      headers: { 'content-type': 'application/json' },
+    })
+  }
+
   let payload: Payload
   try {
     payload = await req.json()
@@ -2128,8 +2143,8 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   const supabase = createClient(
-    Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+    supabaseUrl,
+    supabaseAnonKey,
     { global: { headers: { authorization: auth } } }, // SECURITY INVOKER via JWT
   )
 
