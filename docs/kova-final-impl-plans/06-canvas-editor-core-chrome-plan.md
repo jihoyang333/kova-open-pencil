@@ -1680,6 +1680,130 @@ export const useLeftPanelStore = defineStore('left-panel', () => {
 git commit -m "feat(cluster-06): left panel — 3 stacked sections (Pages + Layers + Shop) per §12.1 2026-05-17 + virtual scroll + mask/slice glyphs + useLeftPanelStore persisted collapse state"
 ```
 
+**Sub-spec 11.x: Inter-section ResizeHandle (C-LOW06.3)**
+
+Between the three stacked sections (Pages ↔ Layers ↔ Shop) render a 4px-tall draggable `<ResizeHandle>` row. Dragging adjusts the height of the section ABOVE the handle (Pages or Layers); the lower section flexes to consume remaining space. Persist heights per-user.
+
+Files:
+- Create: `src/components/editor/ResizeHandle.vue`
+- Modify: `src/components/editor/LeftPanel.vue` (insert handles between sections)
+- Modify: `src/stores/left-panel.ts` (add `sectionHeights` state)
+
+Store extension:
+
+```ts
+// src/stores/left-panel.ts (EXTEND)
+interface SectionHeights {
+  pages: number   // px — min 80, max 600, default 160
+  layers: number  // px — min 120, max 800, default 360
+  // shop flexes to fill remaining
+}
+const STORAGE_HEIGHTS_KEY = 'left-panel-section-heights'
+
+// inside defineStore:
+const sectionHeights = reactive<SectionHeights>(loadInitialHeights())
+function setSectionHeight(section: keyof SectionHeights, px: number) {
+  const clamped = clampHeight(section, px)
+  sectionHeights[section] = clamped
+}
+watch(sectionHeights, (next) => {
+  try { localStorage.setItem(STORAGE_HEIGHTS_KEY, JSON.stringify(next)) } catch {}
+}, { deep: true })
+```
+
+Component:
+
+```vue
+<!-- src/components/editor/ResizeHandle.vue -->
+<script setup lang="ts">
+import { ref } from 'vue'
+
+const props = defineProps<{
+  /** which section's height this handle controls */
+  section: 'pages' | 'layers'
+  /** current height in px */
+  modelValue: number
+  min: number
+  max: number
+}>()
+const emit = defineEmits<{ 'update:modelValue': [px: number] }>()
+
+const dragging = ref(false)
+const startY = ref(0)
+const startH = ref(0)
+
+function onDown(e: PointerEvent) {
+  dragging.value = true
+  startY.value = e.clientY
+  startH.value = props.modelValue
+  ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+}
+function onMove(e: PointerEvent) {
+  if (!dragging.value) return
+  const delta = e.clientY - startY.value
+  const next = Math.min(props.max, Math.max(props.min, startH.value + delta))
+  emit('update:modelValue', next)
+}
+function onUp(e: PointerEvent) {
+  dragging.value = false
+  ;(e.target as HTMLElement).releasePointerCapture(e.pointerId)
+}
+</script>
+<template>
+  <div
+    class="rh"
+    :class="{ dragging }"
+    role="separator"
+    aria-orientation="horizontal"
+    :aria-label="`Resize ${section} section`"
+    @pointerdown="onDown"
+    @pointermove="onMove"
+    @pointerup="onUp"
+    @pointercancel="onUp"
+  />
+</template>
+<style scoped>
+.rh { height: 4px; cursor: row-resize; }
+.rh:hover, .rh.dragging { background: var(--kc-border-focus); }
+</style>
+```
+
+Tests:
+
+```ts
+// tests/unit/components/editor/ResizeHandle.test.ts
+import { describe, test, expect } from 'bun:test'
+import { mount } from '@vue/test-utils'
+import ResizeHandle from '@/components/editor/ResizeHandle.vue'
+
+describe('<ResizeHandle> (C-LOW06.3)', () => {
+  test('emits update:modelValue clamped to min/max while dragging', async () => {
+    const w = mount(ResizeHandle, { props: { section: 'pages', modelValue: 200, min: 80, max: 600 } })
+    await w.trigger('pointerdown', { clientY: 100 })
+    await w.trigger('pointermove', { clientY: 150 })  // +50 → 250
+    expect(w.emitted('update:modelValue')?.[0]).toEqual([250])
+    await w.trigger('pointermove', { clientY: 800 })  // would be 900 → clamped 600
+    expect(w.emitted('update:modelValue')?.at(-1)).toEqual([600])
+  })
+
+  test('setSectionHeight clamps and persists to localStorage', () => {
+    const store = useLeftPanelStore()
+    store.setSectionHeight('pages', 50)   // below min 80
+    expect(store.sectionHeights.pages).toBe(80)
+    store.setSectionHeight('pages', 1000) // above max 600
+    expect(store.sectionHeights.pages).toBe(600)
+    expect(JSON.parse(localStorage.getItem('left-panel-section-heights')!).pages).toBe(600)
+  })
+})
+```
+
+Commit (separate from Task 11 Step 3):
+
+```bash
+git add src/components/editor/ResizeHandle.vue src/components/editor/LeftPanel.vue src/stores/left-panel.ts tests/unit/components/editor/ResizeHandle.test.ts tests/unit/stores/left-panel.test.ts
+git commit -m "feat(cluster-06): LeftPanel ResizeHandle between sections + persisted sectionHeights (C-LOW06.3)"
+```
+
 ---
 
 ### Task 12: Shop panel REWORK per Shopify spec §4.1 + §5.2
