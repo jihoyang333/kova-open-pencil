@@ -1478,8 +1478,11 @@ export async function runStep({ supabase, userId }: StepArgs): Promise<StepResul
   const { error: logErr } = await supabase
     .from('anthropic_deletion_log')
     .insert({ user_id: userId, requested_at: new Date().toISOString(), status: 'queued_for_manual_request' })
-  // Soft-fail on log insert — if anthropic_deletion_log doesn't exist (pre-Cluster-10 dev), don't block
-  if (logErr && !logErr.message.includes('does not exist')) {
+  // Soft-fail on log insert — if anthropic_deletion_log doesn't exist (pre-Cluster-10 dev), don't block.
+  // Match on PostgreSQL SQLSTATE 42P01 (undefined_table) rather than the error
+  // message string: pg locale + supabase-js version differences can mutate the
+  // message text, but the SQLSTATE is stable across both.
+  if (logErr && (logErr as { code?: string }).code !== '42P01') {
     return { ok: false, retriable: true, error: logErr.message }
   }
 
