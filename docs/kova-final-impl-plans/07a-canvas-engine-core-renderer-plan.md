@@ -2217,6 +2217,46 @@ git add packages/core/src/kiwi/ tests/engine/kiwi/
 git commit -m "feat(engine): bump Kiwi schema to v2.0.0; add SLICE enum + page-level Measurement structs + new SceneNode + CharacterStyleOverride fields (Cluster 07a)"
 ```
 
+- [ ] **Step 8.11: format_version coordination with Cluster 09 snapshot migration (C-LOW07a.3)**
+
+Files:
+- Modify: `packages/core/src/kiwi/protocol.ts` (exports `FORMAT_VERSION` const matching the Kiwi schema bump from Step 8.6)
+- Modify: `docs/kova-final-impl-plans/09-version-history-and-trash-plan.md` (cross-link to snapshot-migration registry; Cluster 09 W4 fix agent applies this)
+
+Contract:
+- Every Kiwi schema bump in `packages/core/src/kiwi/` MUST bump the exported `FORMAT_VERSION` const (semver — additive = minor, breaking = major).
+- Every bump REQUIRES a registered migration in Cluster 09's `snapshot-migration-registry.ts` (keyed by previous `formatVersion`).
+- `loadSnapshot(snap)` in Cluster 09 reads `snap.formatVersion`, looks up the registered migration chain, and applies migrations in order until `snap.formatVersion === FORMAT_VERSION`.
+- Loading a snapshot with `formatVersion > FORMAT_VERSION` (newer client wrote it; current client cannot read) MUST surface `error_code: 'snapshot_format_too_new'` toast and refuse to load.
+
+```ts
+// packages/core/src/kiwi/protocol.ts (EXTEND — exported alongside schema)
+export const FORMAT_VERSION = '2.0.0' as const  // bump in lockstep with Step 8.6 Kiwi schema version
+```
+
+Test (engine-side guard against silent bump drift):
+
+```ts
+// tests/engine/kiwi/format-version-coordination.test.ts
+import { describe, test, expect } from 'bun:test'
+import { FORMAT_VERSION, KIWI_SCHEMA_VERSION } from '@/packages/core/src/kiwi/protocol'
+
+describe('format_version ↔ Kiwi schema lockstep (C-LOW07a.3)', () => {
+  test('FORMAT_VERSION matches KIWI_SCHEMA_VERSION exactly', () => {
+    expect(FORMAT_VERSION).toBe(KIWI_SCHEMA_VERSION)
+  })
+})
+```
+
+Commit (separate from Step 8.10):
+
+```bash
+git add packages/core/src/kiwi/protocol.ts tests/engine/kiwi/format-version-coordination.test.ts
+git commit -m "feat(engine): export FORMAT_VERSION lockstep with Kiwi schema; Plan 09 snapshot migration coord (C-LOW07a.3)"
+```
+
+Cross-cluster handoff: Wave 4 Cluster 09 fix agent MUST add to Plan 09 a `snapshot-migration-registry.ts` task that includes a `'1.0.0' → '2.0.0'` migration entry for the SLICE + page-level Measurement schema additions. Reference: PR title in Plan 09 SHOULD include `(coord: Cluster 07a FORMAT_VERSION 2.0.0)`.
+
 ---
 
 ## Task 9: Renderer mask compositing (renderChildren refactor)
