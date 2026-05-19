@@ -2560,12 +2560,48 @@ git commit -m "feat(cluster-05): VoiceDraftConfirmModal — GUARDRAIL implementa
 
 ---
 
-### Tasks 21–27: Per-tab components
+### Task 21: VisualsTab + visuals primitives
 
-For each tab, follow the same TDD cycle. Each task: test + component + commit.
+**Files:**
+- Create: `src/components/brand-kit/VisualsTab.vue`
+- Create: `src/components/brand-kit/visuals/BrandColorSwatch.vue` (with drag-source)
+- Create: `src/components/brand-kit/visuals/BrandColorAddTile.vue`
+- Create: `src/components/brand-kit/visuals/BrandFontRow.vue` (with drag-source)
+- Create: `src/components/brand-kit/visuals/FontUploadDropzone.vue` (B8 states)
+- Create: `src/components/brand-kit/visuals/BrandLogoRow.vue` (with drag-source)
+- Test: `tests/unit/components/brand-kit/VisualsTab.test.ts`
 
-- **Task 21: VisualsTab + visuals primitives** (BrandColorSwatch with drag-source, BrandColorAddTile, BrandFontRow with drag-source, FontUploadDropzone with B8 states, BrandLogoRow with drag-source)
-- **Task 22: IdentityTab + IdentityCard** (inline editor with `update_brand_identity` RPC + empty state + Phase-2 "Draft via interview" CTA renders **DISABLED with "Coming soon" Reka tooltip** per RATIFICATION 2026-05-17 §12.3). Add `export const BRAND_KIT_AI_INTERVIEW_ENABLED = false` to `src/constants.ts`. IdentityCard.vue template:
+- [ ] **Step 1: Write failing unit tests** — one per primitive + one orchestrator test:
+  - `<VisualsTab>` mounts with the Colors / Fonts / Logo grids, in that order
+  - `<BrandColorSwatch>` renders a 40×40 swatch with `aria-label="{{ color.hex }}"` and emits a `dragstart` event with `dataTransfer.types` including `application/x-kova-color`
+  - `<BrandColorAddTile>` opens a color-picker popover on click (use Cluster 07b `<ColorPickerPopover>` — see C-LOW05.2 dependency note below)
+  - `<BrandFontRow>` mounts with the font family name + foundry label + a 13-char "Aa Bb Cc" preview using the font, with drag-source carrying `application/x-kova-font`
+  - `<FontUploadDropzone>` cycles through 4 states matching PRD §B8: `idle` → `uploading` (progress %) → `success` (dismissable) → `error` (dismissable). 5 MB cap rejection per RATIFICATION 2026-05-17.
+  - `<BrandLogoRow>` mounts with logo URL + ALT text input + drag-source for `application/x-kova-logo`. Empty state shows "No logo yet — upload one to get started."
+- [ ] **Step 2: Run — expect FAIL** (`bun run test:unit -- tests/unit/components/brand-kit/VisualsTab.test.ts`).
+- [ ] **Step 3: Implement** all 6 SFCs per PRD §6 + §B8. Use `<KovaIcon name>` for any icons; no `i-lucide-` class strings.
+- [ ] **Step 4: Run — expect PASS**.
+- [ ] **Step 5: Commit** (`feat(cluster-05): VisualsTab + colors/fonts/logo primitives with drag-source`).
+
+---
+
+### Task 22: IdentityTab + IdentityCard
+
+**Files:**
+- Create: `src/components/brand-kit/IdentityTab.vue`
+- Create: `src/components/brand-kit/identity/IdentityCard.vue`
+- Modify: `src/constants.ts` — add `export const BRAND_KIT_AI_INTERVIEW_ENABLED = false`
+- Test: `tests/unit/components/brand-kit/IdentityTab.test.ts`
+
+- [ ] **Step 1: Write failing unit tests**:
+  - `<IdentityCard>` mounts the inline editor (mission, voice, tone, audience fields)
+  - on field change → blur (or explicit Save click) calls `update_brand_identity` RPC with `{ p_brand_id, p_field, p_value }`
+  - empty-state copy "Capture your brand's identity to shape every email" renders when all fields are null
+  - "Draft via interview" CTA renders with `[disabled]` attribute AND wrapped in `<Tooltip>` whose content reads exactly `Brand voice interview — coming soon` (RATIFICATION 2026-05-17 §12.3)
+  - clicking the disabled CTA is a no-op (assert no RPC call fires)
+- [ ] **Step 2: Run — expect FAIL**.
+- [ ] **Step 3: Implement**. Template snippet for the CTA:
+
   ```vue
   <Tooltip :disabled="BRAND_KIT_AI_INTERVIEW_ENABLED">
     <TooltipTrigger as-child>
@@ -2578,14 +2614,118 @@ For each tab, follow the same TDD cycle. Each task: test + component + commit.
     <TooltipContent>Brand voice interview — coming soon</TooltipContent>
   </Tooltip>
   ```
-  Unit test asserts: button rendered, `disabled` attribute present, tooltip text reads "Brand voice interview — coming soon".
-- **Task 23: ToneSnippetsTab + BrandKitListRow + ToneSnippetAddModal + ToneSnippetEditModal** (drag-reorder via @vueuse/integrations sortable or HTML5 native drag with order calc; modals use `<KovaModal>`)
-- **Task 24: SavedBlocksTab + SavedBlockAddModal + SavedBlockEditModal** (parallel + grip-handle as drag-source for `application/x-kova-saved-block`)
-- **Task 25: WritingRulesTab + WritingRuleToggle** (each toggle calls `setWritingRule` RPC)
-- **Task 26: MemoriesTab + MemoryRow** (read from Cluster 10's `useBrandMemoryStore` — stub for now: render empty state "Memories appear here as Kova captures them during chat" if store is unavailable)
-- **Task 27: KbSourcesTab + KbSourceRow + KbSourceDropzone** (multi-file queue with per-row state per B8.7/B8.8)
 
-Each task: per-tab unit test (mount + assert renders correctly + actions wire to store), commit.
+- [ ] **Step 4: Run — expect PASS**.
+- [ ] **Step 5: Commit** (`feat(cluster-05): IdentityTab + IdentityCard with disabled interview CTA`).
+
+---
+
+### Task 23: ToneSnippetsTab + row + add/edit modals
+
+**Files:**
+- Create: `src/components/brand-kit/ToneSnippetsTab.vue`
+- Create: `src/components/brand-kit/list/BrandKitListRow.vue` (shared row component)
+- Create: `src/components/brand-kit/modals/ToneSnippetAddModal.vue`
+- Create: `src/components/brand-kit/modals/ToneSnippetEditModal.vue`
+- Test: `tests/unit/components/brand-kit/ToneSnippetsTab.test.ts`
+
+- [ ] **Step 1: Write failing unit tests**:
+  - mounts the list of tone snippets sourced from `useBrandKitStore.toneSnippets`
+  - empty state: "Add tone snippets to guide AI-generated copy"
+  - clicking "+ Add" opens `<ToneSnippetAddModal>` (wrapped in `<KovaModal>` — Cluster 11 primitive)
+  - submitting the add modal calls `add_tone_snippet` RPC with `{ p_brand_id, p_text, p_position }`
+  - clicking the row's edit icon opens `<ToneSnippetEditModal>` pre-filled with row data
+  - drag-reorder (HTML5 native drag with order-calc helper) calls `reorder_tone_snippets` RPC with the new order array
+  - delete confirmation calls `delete_tone_snippet`
+  - cap enforced at 10 entries per founder lock — adding an 11th shows error toast "Tone snippet cap reached (10 max)"
+- [ ] **Step 2: Run — expect FAIL**.
+- [ ] **Step 3: Implement** all 4 SFCs.
+- [ ] **Step 4: Run — expect PASS**.
+- [ ] **Step 5: Commit** (`feat(cluster-05): ToneSnippetsTab with CRUD + drag-reorder + 10-cap`).
+
+---
+
+### Task 24: SavedBlocksTab + add/edit modals
+
+**Files:**
+- Create: `src/components/brand-kit/SavedBlocksTab.vue`
+- Create: `src/components/brand-kit/modals/SavedBlockAddModal.vue`
+- Create: `src/components/brand-kit/modals/SavedBlockEditModal.vue`
+- Test: `tests/unit/components/brand-kit/SavedBlocksTab.test.ts`
+
+- [ ] **Step 1: Write failing unit tests**:
+  - mounts the list of saved blocks from `useBrandKitStore.savedBlocks`
+  - empty state copy renders
+  - "+ Add" modal accepts `{ name, type, body }` where `type` ∈ `('text', 'cta', 'footer')`
+  - row renders a grip-handle as drag-source carrying `application/x-kova-saved-block` with the block JSON in dataTransfer
+  - submitting the add modal calls `add_saved_block` RPC
+  - cap enforced at 100 entries (founder lock from PRD 10 decision set)
+- [ ] **Step 2: Run — expect FAIL**.
+- [ ] **Step 3: Implement** all 3 SFCs. Grip-handle uses `<KovaIcon name="grip-vertical">`.
+- [ ] **Step 4: Run — expect PASS**.
+- [ ] **Step 5: Commit** (`feat(cluster-05): SavedBlocksTab with CRUD + drag-source`).
+
+---
+
+### Task 25: WritingRulesTab + WritingRuleToggle
+
+**Files:**
+- Create: `src/components/brand-kit/WritingRulesTab.vue`
+- Create: `src/components/brand-kit/writing/WritingRuleToggle.vue`
+- Test: `tests/unit/components/brand-kit/WritingRulesTab.test.ts`
+
+- [ ] **Step 1: Write failing unit tests**:
+  - mounts a list of writing-rule toggles (rule names from the static rule catalog in PRD §6)
+  - each toggle shows the rule label + a Reka `<Switch>` reflecting the current value from `useBrandKitStore.writingRules`
+  - flipping a toggle calls `set_writing_rule` RPC with `{ p_brand_id, p_rule_key, p_enabled }`
+  - on RPC error, toggle reverts to previous state and shows error toast
+- [ ] **Step 2: Run — expect FAIL**.
+- [ ] **Step 3: Implement** both SFCs.
+- [ ] **Step 4: Run — expect PASS**.
+- [ ] **Step 5: Commit** (`feat(cluster-05): WritingRulesTab with per-rule toggle`).
+
+---
+
+### Task 26: MemoriesTab + MemoryRow (Cluster 10 dep, stubbed)
+
+**Files:**
+- Create: `src/components/brand-kit/MemoriesTab.vue`
+- Create: `src/components/brand-kit/memories/MemoryRow.vue`
+- Test: `tests/unit/components/brand-kit/MemoriesTab.test.ts`
+
+- [ ] **Step 1: Write failing unit tests**:
+  - mounts the list of memories from Cluster 10's `useBrandMemoryStore` (use a test double until Cluster 10 ships)
+  - when store is unavailable OR list is empty, renders empty-state "Memories appear here as Kova captures them during chat"
+  - each `<MemoryRow>` shows the memory text + captured-at timestamp + a delete icon
+  - delete calls `useBrandMemoryStore.deleteMemory(id)`
+  - cap enforced at 50 (founder lock from PRD 10)
+- [ ] **Step 2: Run — expect FAIL**.
+- [ ] **Step 3: Implement** both SFCs. Use a temporary `useBrandMemoryStore` shim that returns `{ memories: [], deleteMemory: () => {} }` until Cluster 10 lands.
+- [ ] **Step 4: Run — expect PASS**.
+- [ ] **Step 5: Commit** (`feat(cluster-05): MemoriesTab with Cluster 10 store shim`).
+
+---
+
+### Task 27: KbSourcesTab + row + dropzone
+
+**Files:**
+- Create: `src/components/brand-kit/KbSourcesTab.vue`
+- Create: `src/components/brand-kit/kb-sources/KbSourceRow.vue`
+- Create: `src/components/brand-kit/kb-sources/KbSourceDropzone.vue`
+- Test: `tests/unit/components/brand-kit/KbSourcesTab.test.ts`
+
+- [ ] **Step 1: Write failing unit tests**:
+  - mounts the list of KB sources from `useBrandKbSourcesStore.sources`
+  - empty state copy renders
+  - `<KbSourceDropzone>` accepts PDF, plain text, markdown (per Task 6 bucket allowlist) — drops other types show inline error
+  - multi-file drag → queue → progress per row (B8.7 / B8.8 states)
+  - each file enforces 10 MB max — over-cap files reject with "File too large (max 10 MB)" inline error
+  - no count cap (founder ratification 2026-05-17 §12.15)
+  - delete row calls `DELETE /api/brand-kb-sources/[id]`
+- [ ] **Step 2: Run — expect FAIL**.
+- [ ] **Step 3: Implement** all 3 SFCs.
+- [ ] **Step 4: Run — expect PASS**.
+- [ ] **Step 5: Commit** (`feat(cluster-05): KbSourcesTab with multi-file dropzone + 10 MB cap`).
 
 ---
 
