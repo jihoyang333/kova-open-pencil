@@ -2222,18 +2222,22 @@ describe('BrandKitSubNav', () => {
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useBrandKitStore } from '@/stores/brand-kit'
+import KovaIcon from '@/components/shared/KovaIcon.vue'   // Cluster 11 primitive (B-HIGH7 / B-HIGH17 — no dynamic <component :is> for icons)
 
 const route = useRoute()
 const brandKit = useBrandKitStore()
 
+// B-HIGH7 / B-HIGH17 — `iconName` is a STRING used by `<KovaIcon :name>` (Cluster 11 primitive).
+// Do NOT use `icon` as a class-string or pass it through `<component :is>` — unplugin-icons
+// cannot resolve dynamic icon component names at compile time. See "Icon name lock" below.
 const items = computed(() => [
-  { key: 'visuals',        label: 'Visuals',        icon: 'i-lucide-palette',     count: null },
-  { key: 'identity',       label: 'Identity',       icon: 'i-lucide-user-circle', count: null },
-  { key: 'tone-snippets',  label: 'Tone snippets',  icon: 'i-lucide-quote',       count: brandKit.toneSnippets.length },
-  { key: 'saved-blocks',   label: 'Saved blocks',   icon: 'i-lucide-layers',      count: brandKit.savedBlocks.length },
-  { key: 'writing-rules',  label: 'Writing rules',  icon: 'i-lucide-check-square',count: null },
-  { key: 'memories',       label: 'Memories',       icon: 'i-lucide-brain',       count: null /* TODO Cluster 10 store */ },
-  { key: 'kb-sources',     label: 'Knowledge base', icon: 'i-lucide-book-open',   count: null },
+  { key: 'visuals',        label: 'Visuals',        iconName: 'palette',      count: null /* TODO(cluster-10): wire real count once useChatMemoriesStore is shipped */ },
+  { key: 'identity',       label: 'Identity',       iconName: 'user-circle',  count: null /* TODO(cluster-10): wire real count once useChatMemoriesStore is shipped */ },
+  { key: 'tone-snippets',  label: 'Tone snippets',  iconName: 'quote',        count: brandKit.toneSnippets.length },
+  { key: 'saved-blocks',   label: 'Saved blocks',   iconName: 'layers',       count: brandKit.savedBlocks.length },
+  { key: 'writing-rules',  label: 'Writing rules',  iconName: 'check-square', count: null /* TODO(cluster-10): wire real count once useChatMemoriesStore is shipped */ },
+  { key: 'memories',       label: 'Memories',       iconName: 'brain',        count: null /* TODO(cluster-10): wire real count once useChatMemoriesStore is shipped */ },
+  { key: 'kb-sources',     label: 'Knowledge base', iconName: 'book-open',    count: null /* TODO(cluster-10): wire real count once useChatMemoriesStore is shipped */ },
 ])
 
 const isActive = (key: string) => route.name === `brand-kit-${key}`
@@ -2249,7 +2253,7 @@ const isActive = (key: string) => route.name === `brand-kit-${key}`
       class="it flex items-center gap-2 px-3 py-1.5 rounded-md text-sm"
       :class="isActive(item.key) ? 'bg-fill text-ink font-medium' : 'text-ink-2 hover:bg-line-2 hover:text-ink'"
     >
-      <component :is="item.icon" class="ic w-[13px] h-[13px] opacity-80" />
+      <KovaIcon :name="item.iconName" class="ic w-[13px] h-[13px] opacity-80" />
       <span>{{ item.label }}</span>
       <span v-if="item.count !== null" class="ml-auto text-[10px] text-ink-3">{{ item.count }}</span>
     </router-link>
