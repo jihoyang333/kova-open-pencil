@@ -609,12 +609,16 @@ export function useChannelName(domain: string, topic: string): string {
 
 Per `00c §1.D` cross-cut row (Cluster 11 documents the convention; Cluster 06 enforces it inside the Tauri menu binding):
 
-**Format:** `kova.{verb}.{noun}` or `kova.{noun}.{verb}` (verb-first preferred).
+**Format:** `kova.{noun}.{verb}` — noun-first preferred (A-LOW3 / B-LOW5 closure 2026-05-19).
+
+Rationale: noun-first groups commands by domain in the Tauri menu binding and in command-palette autocompletion — typing `kova.file.` reveals every file-domain command. Verb-first would group by action (`undo`, `redo`, `copy`) which scatters domain ownership across the surface. All examples and downstream cluster specs already use noun-first; the §5.7 prose previously said "verb-first preferred" inconsistently and is now corrected.
 
 Examples (specced in downstream clusters):
 - `kova.file.open`, `kova.file.save`, `kova.file.export`
 - `kova.edit.undo`, `kova.edit.redo`, `kova.edit.copy`, `kova.edit.paste`
 - `kova.eyedropper.activate` (Phase 2 — Q20)
+
+Verb-first variants like `kova.open.file` are forbidden by the CI grep gate (§9.5) for the same reason raw-icon syntaxes are forbidden in §6.2 — namespace cleanliness beats local convenience.
 
 Cluster 06's Tauri menu registration MUST use this convention. Cluster 11 ships no Tauri commands itself but owns the naming rule (enforced via a CI grep step — see §9.5).
 
@@ -978,6 +982,7 @@ Per `feedback_browser_smoke_test_before_done` — required before claiming the f
 
 **Pre-launch checklist:**
 - Founder wires Sentry projects (browser + server), Resend account + kova.app domain DNS verification, Vercel Pro plan + CRON_SECRET. See `00-PRD_SCOPE_PLAN.md §11`.
+- **Linear activation steps live in `docs/operator-runbook.md`** (B-LOW5 closure 2026-05-19). Every `TODO(pre-launch §11)` marker in the codebase points there; the runbook collects them into a single ordered checklist (Sentry browser → Sentry server → Resend → Vercel Cron → Stripe → M9 channel rename → final gate). Do not delete the runbook once activated — it doubles as disaster-recovery activation script.
 
 ### Feature flags (per `00d §3.B-i` — hard-coded constants for MVP)
 
