@@ -4,11 +4,11 @@
 
 | Field | Value |
 |---|---|
-| **Status** | `DRAFT` 2026-05-15 (awaiting founder review) |
+| **Status** | `REVIEW` 2026-05-17 (all 4 open questions ratified by founder; ready for final read-through before Wave-4 implementation) |
 | **Wave** | 4 |
 | **Author** | Claude (Opus 4.7) |
 | **Reviewer** | Jiho Yang (founder) |
-| **Last updated** | 2026-05-15 |
+| **Last updated** | 2026-05-17 (founder ratifications applied: §12.3 disable+tooltip CTA, §12.4 inline-skippable confirm, §12.12 all 7 sub-tabs, §12.13 re-scrape replaces, §12.14 banner persists forever, §12.15 KB unlimited count, font cap = 5 MB) |
 | **Depends on PRDs** | 01 (Auth & Identity — `users` + auth middleware), 03 (Brand Management — `brands` row CRUD + brand picker), 04 (Account & Stripe — `/account` shell route + `IntegrationsCard` wired with `shopify_connection_history`), 11 (Shared UI Infrastructure — `<KovaModal>`, `useToast`, `useConfirm`, skeletons, idempotency-key helper) |
 | **Blocks PRDs** | 06 (drop receivers in canvas), 10 (AI chat reads `tone_snippets`, `voice`, `writing_rules`, `memories` for prompt) |
 | **Source artifacts** | Hi-fi: `A7` (Brand Kit sub-tabs, 7 scenes), `B3` (CRUD modals, 7 scenes), `B8` (upload states, 8 scenes). 03 doc: §2.5 (16 rows) + §2.13 (1 row + cross-cuts) + §3C #4. Q-decisions: Q6 (brand_fonts NEW table), Q8 (tone_snippets + saved_blocks JSONB on brands), Q9 (media.brand_id FK confirmed), Q24 (drag-drop semantics + MIME types). Audit §2.A Cluster 05 (lines 1404–1550) + §5.6 item 3 (extend brand-kit-extract). External verification §6 #4 + #5 (Anthropic sub-processor disclosure + voice-draft guardrail). Shopify spec §4.4 + §6 (M9 reuse + guardrail). |
@@ -125,7 +125,7 @@ User can: (1) navigate to `/account/brand-kit` and see 7 sub-tabs scoped by the 
 
 ### 2.3 Deferred to Phase 2
 
-- **"Draft via interview" AI flow** — the AI-led Q&A that drafts an Identity narrative card. Identity tab ships in MVP with manual-edit only; the "Draft via interview" CTA renders as a Phase 2 affordance (visible but disabled with "Coming soon" tooltip) OR is hidden until built. **Recommendation: hide entirely in MVP** to avoid teasing a missing feature. Founder confirms in §12.
+- **"Draft via interview" AI flow** — the AI-led Q&A that drafts an Identity narrative card. Identity tab ships in MVP with manual-edit only; the "Draft via interview" CTA is **HIDDEN in MVP** (gated by `BRAND_KIT_AI_INTERVIEW_ENABLED = false` in `src/constants.ts`). RATIFIED 2026-05-17 per §12.3.
 - **OpenType / advanced typography exposure** (Q3 #2 partial) — defer per scope plan
 - **License-attestation audit trail** beyond a boolean — Phase 2 could store the attestation timestamp + IP + which TOS version was acknowledged. MVP: just the boolean
 - **Brand-color groups / palettes** (Primary/Accent/Neutrals semantic slots beyond append) — MVP: flat ordered list
@@ -165,7 +165,7 @@ Every surface maps to a hi-fi file + scene ID. Theme: **DARK** (per `feedback_ap
 
 | Surface | Route | Hi-fi file | Scene IDs | Notes |
 |---|---|---|---|---|
-| Identity tab — narrative cards | `/account/brand-kit/identity` | A7 | A7.3.2 | Three cards: About the brand · Voice & tone · Story & origin. Each card: title + "Draft via interview" CTA (AI accent vocabulary — Phase 2 or hidden — see §12) + "Edit" CTA + body text + footer (last edited / word count). Empty cards show italic muted prompt "Not drafted yet — start an interview…" |
+| Identity tab — narrative cards | `/account/brand-kit/identity` | A7 | A7.3.2 | Three cards: About the brand · Voice & tone · Story & origin. Each card: title + "Edit" CTA + body text + footer (last edited / word count). **"Draft via interview" CTA is HIDDEN in MVP per §12.3 ratified 2026-05-17** — gated by `BRAND_KIT_AI_INTERVIEW_ENABLED = false`. Empty cards show italic muted prompt "Not drafted yet — write your story." (rewritten from "…start an interview…" since interview is hidden). |
 
 ### 3.4 Tone snippets sub-tab
 
@@ -209,7 +209,7 @@ Every surface maps to a hi-fi file + scene ID. Theme: **DARK** (per `feedback_ap
 
 | Surface | Route | Hi-fi file | Scene IDs | Notes |
 |---|---|---|---|---|
-| Confirm brand voice draft modal | triggered post-Shopify-connect on `/onboarding` (Cluster 02) OR `/account/brand-kit` (when user re-runs extract) | NEW — composes B3.1 modal shell + form fields | n/a — net-new | Modal title: **"Confirm brand voice draft"**. Sub-line: "We analyzed your storefront and drafted a brand voice and a few tone snippets. Review and confirm before saving." Three editable sections: (1) Voice description (multiline textarea, prefilled from Anthropic inference); (2) Tone snippets — list of 3–8 candidate snippets (each editable label/content, removable); (3) Footer disclosure: "Storefront content was analyzed via Anthropic (Claude). See [privacy policy](/privacy) for our sub-processor disclosure." CTAs: **Confirm & save** (primary) and **Discard draft** (secondary). Until clicked, nothing writes to DB. Closing the modal without action discards the draft |
+| Confirm brand voice draft modal | triggered post-Shopify-connect on `/onboarding` (Cluster 02) OR `/account/brand-kit` (when user re-runs extract OR has open draft) | NEW — composes B3.1 modal shell + form fields | n/a — net-new | Modal title: **"Confirm brand voice draft"**. Sub-line: "We analyzed your storefront and drafted a brand voice and a few tone snippets. Review and confirm before saving." Three editable sections: (1) Voice description (multiline textarea, prefilled from Anthropic inference); (2) Tone snippets — list of 3–8 candidate snippets (each editable label/content, removable); (3) Footer disclosure: "Storefront content was analyzed via Anthropic (Claude). See [privacy policy](/privacy) for our sub-processor disclosure." CTAs: **Confirm & save** (primary), **Discard draft** (secondary), **Skip for now** (tertiary text-link, onboarding context only). Until Confirm clicked, nothing writes to `brands.identity`/`brands.tone_snippets`. **RATIFIED 2026-05-17:** Skip closes modal, leaves `voice_drafts` row open (`confirmed_at IS NULL`). Next visit to `/account/brand-kit` re-opens modal automatically; persistent banner "Brand voice draft ready — review" displays in section header when open draft exists. Closing modal without any CTA = Skip behavior (does NOT auto-discard). |
 
 ### 3.10 Design system references
 
@@ -267,7 +267,7 @@ CREATE TABLE IF NOT EXISTS public.brand_fonts (
   brand_id          uuid NOT NULL REFERENCES public.brands(id) ON DELETE CASCADE,
   family_name       text NOT NULL,
   file_path         text NOT NULL,                                  -- Storage path: brand-fonts/{brand_id}/{font_id}.{ext}
-  file_size_bytes   bigint NOT NULL CHECK (file_size_bytes > 0 AND file_size_bytes <= 5242880),  -- 5 MB cap per §2.1 recommendation
+  file_size_bytes   bigint NOT NULL CHECK (file_size_bytes > 0 AND file_size_bytes <= 5242880),   -- 5 MB cap per founder ratification 2026-05-17 (covers variable fonts up to 5 MB; rejects bloated display fonts)
   mime_type         text NOT NULL CHECK (mime_type IN ('font/woff2', 'font/ttf', 'font/otf')),
   license_attested  boolean NOT NULL DEFAULT false,
   uploaded_at       timestamptz NOT NULL DEFAULT now(),
@@ -279,7 +279,7 @@ CREATE INDEX IF NOT EXISTS idx_brand_fonts_brand ON public.brand_fonts(brand_id)
 CREATE UNIQUE INDEX IF NOT EXISTS idx_brand_fonts_unique_family ON public.brand_fonts(brand_id, family_name);
 
 COMMENT ON TABLE public.brand_fonts IS
-  'Per-brand uploaded font files. Distinct lifecycle from public.media (Q6): CanvasKit registration + AI prompt awareness + license attestation. Max 5 MB per file.';
+  'Per-brand uploaded font files. Distinct lifecycle from public.media (Q6): CanvasKit registration + AI prompt awareness + license attestation. Max 5 MB per file (founder ratification 2026-05-17).';
 COMMENT ON COLUMN public.brand_fonts.license_attested IS
   'User MUST attest commercial-use rights at upload time. CHECK constraint enforces true at INSERT.';
 
@@ -744,6 +744,8 @@ CREATE POLICY voice_drafts_service_insert ON public.voice_drafts FOR INSERT TO s
 
 All Edge Functions deploy as Vercel Functions under `kova-open-pencil-1/api/`. Idempotency-key handling per Cluster 11 cross-cut.
 
+**Audit-log cross-cut (W0-1):** the voice-draft confirm flow (and any brand-kit mutation that materially changes brand state) appends a row to `public.audit_log` via the Cluster 11 `writeAudit(supabaseAdmin, { userId, eventType, payload, clusterOwner: '05' })` helper at `api/_shared/audit.ts`. Table DDL + RLS + helper are owned by **PRD 11 §2.1 / §4.1 / §5.5** (founder lock #11). Example event types: `brand_kit.voice_draft_confirmed`, `brand_kit.font_uploaded`, `brand_kit.memory_promoted`.
+
 ---
 
 #### 5.1.1 `POST /api/brand-fonts/upload`
@@ -1151,7 +1153,7 @@ Every line is testable in code or browser. No "feels right." Engineers verify be
 - [ ] Three narrative cards render: About / Voice / Story
 - [ ] Each card empty state renders italic prompt "Not drafted yet…"
 - [ ] Each card "Edit" CTA opens inline editor (multiline textarea); Save calls `update_brand_identity` RPC; card refreshes with new content + last-edited timestamp + word count
-- [ ] "Draft via interview" CTA is **hidden** in MVP (or renders disabled with "Coming soon" — see §12.3)
+- [ ] "Draft via interview" CTA is **hidden** in MVP per §12.3 ratified — `v-if="BRAND_KIT_AI_INTERVIEW_ENABLED"` gates the button; flag is hard-coded `false` in `src/constants.ts`
 
 ### 8.4 Tone snippets tab
 
@@ -1199,7 +1201,9 @@ Every line is testable in code or browser. No "feels right." Engineers verify be
 - [ ] Voice textarea is editable; tone-snippet rows are editable; each snippet has × remove
 - [ ] **Confirm & save** calls `/api/brands/:id/voice-draft/confirm` with `edited_payload` if user changed the draft → server writes `brands.identity.voice` + appends to `brands.tone_snippets` + marks draft confirmed → modal closes → toast "Brand voice saved"
 - [ ] **Discard draft** calls `/api/brands/:id/voice-draft/discard` → server marks draft discarded → no DB writes to `brands.*` → modal closes → toast "Draft discarded"
-- [ ] Closing the modal without confirming or discarding leaves the draft open (next visit re-opens the modal)
+- [ ] **Skip for now** (onboarding only): closes modal, leaves draft open, advances onboarding to next step. No DB writes to `brands.*`. No `discarded_at` set on draft row.
+- [ ] Closing the modal without confirming or discarding leaves the draft open (next visit re-opens the modal) — equivalent to Skip
+- [ ] When user with an open `voice_drafts` row lands on `/account/brand-kit`, a persistent banner "Brand voice draft ready — review" renders above the sub-tabs; clicking it re-opens `<VoiceDraftConfirmModal>`
 - [ ] Re-running `/api/shopify/brand-kit-extract` while a draft is open discards the prior draft (UPDATE … SET discarded_at = now()) before inserting the new one
 - [ ] Disclosure footer renders link to `/privacy` with the exact text per §3.9
 
@@ -1312,7 +1316,7 @@ Founder runs the following in a browser pre-launch:
 | **Phase A (this PRD)** | All 7 sub-tabs (CRUD) + brand_fonts upload + brand_kb_sources upload + voice-draft confirm-step + 5 drag MIME types + AI prompt cross-cuts (Tone snippets + Identity + Writing rules consumed by Cluster 10) | none (always on) | n/a |
 | **Phase B (deferred — Phase 2)** | "Draft via interview" AI flow for Identity cards · OpenType / advanced typography exposure · KB source text extraction worker (currently `extracted_text` stays null at MVP) · Custom tone-snippet category management | `BRAND_KIT_AI_INTERVIEW_ENABLED`, `KB_EXTRACTION_ENABLED` hard-coded `false` per D-5 feature flags (per 2.B.6 + 2.B.7) | OFF |
 
-Feature flags live in `kova-open-pencil-1/src/constants.ts` per D-5 (`usePlanGate()` style). Hide "Draft via interview" CTA when flag is false; do not render disabled button per `feedback_no_hide_without_permission` — wait, that memory is about editor UI not feature flags. Per founder direction, "Draft via interview" is **hidden** at MVP, not disabled — see §12.3.
+Feature flags live in `kova-open-pencil-1/src/constants.ts` per D-5. "Draft via interview" CTA is hidden via `v-if="BRAND_KIT_AI_INTERVIEW_ENABLED"`. Flag is hard-coded `false` in MVP — ratified 2026-05-17 per §12.3 (Figma parity: hide coming-soon, don't tease).
 
 ---
 
@@ -1336,8 +1340,8 @@ Feature flags live in `kova-open-pencil-1/src/constants.ts` per D-5 (`usePlanGat
 |---|---|---|---|
 | **12.1** | **`brands.voice` (TEXT, existing M9) vs `brands.identity.voice.content` (JSONB, this PRD)** — two fields holding the same concept. M9 extract writes `brands.voice` directly. Cluster 10 prompt-builder must know which to read. | MEDIUM | **Decision in §4.1**: keep both. M9 path continues to write `brands.voice` (single-line summary, no UI write surface — only API write from M9 extract). Cluster 10 reads `brands.identity.voice.content` when populated, else falls back to `brands.voice`. Migration plan post-launch: deprecate `brands.voice` once the Identity card is universally populated. Founder confirms acceptable. |
 | **12.2** | **Memories tab cross-cut with Cluster 10** — the memory store + capture flow live in Cluster 10; this PRD only ships the **view + edit + delete UI**. If Cluster 10 PRD (Wave 6) is delayed, this tab renders empty. | LOW | **Acceptable**. MemoriesTab.vue reads `useBrandMemoryStore` — when Cluster 10 ships the store, the tab populates. Until then, tab shows empty state "Memories appear here as Kova captures them during chat." No blocker. |
-| **12.3** | **"Draft via interview" CTA on Identity cards** — Phase 2 feature. Render disabled with tooltip, or hide entirely? | LOW | **Recommendation: HIDE in MVP** to avoid teasing a missing feature. Founder confirms in §0 approval. If founder says "render disabled w/ tooltip", switch hard-coded `BRAND_KIT_AI_INTERVIEW_ENABLED` flag to render-disabled rather than render-hidden. |
-| **12.4** | **Voice-draft confirm modal vs onboarding step (Cluster 02)** — Cluster 02 owns the onboarding flow. After Shopify connect in onboarding, should the user (a) confirm-draft inline in onboarding, or (b) skip past and confirm later in `/account/brand-kit`? | MEDIUM | **Recommendation: confirm inline during onboarding.** Onboarding is the magic moment per the Shopify spec — the user sees Kova auto-populated the kit, including a draft voice they review and lock in. Cluster 02 PRD must mount `<VoiceDraftConfirmModal>` after the StoreTypeStep success and before advancing to the next onboarding step. If user closes the modal (skip), they can confirm later in /account/brand-kit. **ESCALATE: founder confirms inline-during-onboarding vs deferred-to-account is the right UX.** |
+| **12.3** | **"Draft via interview" CTA on Identity cards** — Phase 2 feature. Render disabled with tooltip, or hide entirely? | LOW | **RATIFIED 2026-05-17 (founder): render DISABLED with "Coming soon" tooltip.** Hard-coded `BRAND_KIT_AI_INTERVIEW_ENABLED = false` in `src/constants.ts`: when false, CTA renders with `disabled` attribute + Reka `<Tooltip>Brand voice interview — coming soon</Tooltip>` wrapper. When flag flips true in Phase 2, `disabled` lifts + tooltip swaps to action hint. Rationale: matches Figma "disable, don't hide" pattern (promotes feature discovery); consistent with PRD 06 §12.3 topbar Comments decision below. |
+| **12.4** | **Voice-draft confirm modal vs onboarding step (Cluster 02)** — Cluster 02 owns the onboarding flow. After Shopify connect in onboarding, should the user (a) confirm-draft inline in onboarding, or (b) skip past and confirm later in `/account/brand-kit`? | MEDIUM | **RATIFIED 2026-05-17 (founder): inline-during-onboarding, skippable.** Cluster 02 PRD must mount `<VoiceDraftConfirmModal>` after StoreTypeStep success. Modal has `Confirm & save` (primary), `Discard draft` (secondary), and `Skip for now` (tertiary text-link). Skip closes modal without DB write, advances onboarding, leaves `voice_drafts` row open. Whenever user later lands on `/account/brand-kit` with an open draft (`confirmed_at IS NULL AND discarded_at IS NULL`), the modal re-opens automatically (per §3.9). Optional: brand-kit shell renders a persistent banner "Brand voice draft ready — review" linking to modal trigger. Matches Figma library-import pattern (inline preview + confirm at moment of import). |
 | **12.5** | **B4.6 inline error (user-not-found) — enumeration safety** — N/A for this PRD (auth concern owned by Cluster 01) | n/a | Cross-referenced only. |
 | **12.6** | **Anthropic voice-scrape token budget** — what if storefront text is very long? (>10k chars) | LOW | **Mitigation**: truncate input to first 5k chars of About page + first 5 product descriptions (~200 chars each ≈ 1k chars). Total ≤ 6k chars → ≤ 2k tokens — well under per-request budget. |
 | **12.7** | **Drag-drop in Safari** — `draggable=true` + `setData` works cross-browser, but Safari has historic quirks with custom MIME types | LOW | E2E tests in §9.3 cover Safari via Playwright; verify pre-launch. If Safari fails, fallback to `application/x-vnd.kova.brand-color` etc. (more conservative naming) |
@@ -1345,12 +1349,22 @@ Feature flags live in `kova-open-pencil-1/src/constants.ts` per D-5 (`usePlanGat
 | **12.9** | **Brand fonts file format support** — woff2/ttf/otf only. What about variable fonts (TTF with variations)? | LOW | Variable fonts are TTF with extra tables — they pass the mime/extension check and CanvasKit handles them. Tested in Wave-4 unit tests. No special handling needed. |
 | **12.10** | **Knowledge base text extraction** — extracted_text column is null at MVP. AI prompt-builder (Cluster 10) cannot use KB content until extraction worker ships. | MEDIUM | **Acceptable**. Phase 2 ships extraction worker (`pdf-parse` for PDFs, raw for MD/TXT). MVP UX: user uploads sources; sources are listed; AI can reference them by filename but not content. Cluster 10 PRD must document this gap. |
 | **12.11** | **Anthropic 30-day retention vs voice-draft data flow** | LOW | The Anthropic API call sends ≤ 2k input tokens of merchant storefront content. Anthropic retains 30 days by default. This is covered by Cluster 01's privacy policy disclosure + `anthropic_deletion_log` operator-manual workflow. No incremental risk vs existing AI chat flow. |
-| **12.12** | **PRD scope expansion vs original user prompt** — user prompt listed 6 sub-tabs (Visuals, Fonts, Tone snippets, Saved blocks, Memory, KB sources); hi-fi A7 shows 7 (adds Identity + Writing rules; "Fonts" is part of Visuals). This PRD ships all 7. | LOW | Hi-fi reflects founder-locked design (A7.3.x scenes exist in canonical hi-fi). Per 00a §2.6 precedence, hi-fi authority is below Q-decisions but above design system — and no Q-decision contradicts. Decision: ship 7 sub-tabs. Founder confirms in §0 review. |
+| **12.12** | **PRD scope expansion vs original user prompt** — user prompt listed 6 sub-tabs (Visuals, Fonts, Tone snippets, Saved blocks, Memory, KB sources); hi-fi A7 shows 7 (adds Identity + Writing rules; "Fonts" is part of Visuals). This PRD ships all 7. | LOW | **RATIFIED 2026-05-17 (founder): ship all 7 sub-tabs.** Visuals, Identity, Tone snippets, Saved blocks, Writing rules, Memories, KB sources. Hi-fi reflects founder-locked design (A7.3.x scenes). Identity narrative cards + Writing rules toggles feed AI prompt builder (Cluster 10), improving generated email quality. Figma parity: comprehensive sub-categorization (Variables: 4 types, Settings: 7+ sections). |
 
-**Open questions awaiting founder review (must resolve before Wave-4 implementation start):**
-- **§12.3** — "Draft via interview" CTA: HIDE or DISABLED-WITH-TOOLTIP?
-- **§12.4** — Voice-draft confirm: inline-during-onboarding vs deferred-to-account?
-- **§12.12** — Scope expansion from 6 → 7 sub-tabs: ratify.
+| **12.13** | **Voice draft re-scrape behavior** — user dismisses draft #1 (banner pending); later re-connects Shopify or hits "Re-scrape voice" → does a new scrape replace draft #1 or queue? | LOW | **RATIFIED 2026-05-17 (founder): REPLACE.** Each new scrape DELETEs prior unconfirmed draft row (via partial unique index `idx_voice_drafts_brand_unconfirmed` violation) then INSERTs the new one. brand-kit-extract Edge Function uses `INSERT ... ON CONFLICT (brand_id) WHERE confirmed_at IS NULL AND discarded_at IS NULL DO UPDATE SET draft_payload = EXCLUDED.draft_payload, created_at = now()` semantics. User's in-progress edits on dismissed draft #1 are intentionally discarded (only confirmed edits persist). Matches Figma library re-link pattern + Linear/Notion AI-regenerate pattern. |
+| **12.14** | **Skip-for-now banner persistence** — after Skip during onboarding, banner appears in `/account/brand-kit > Tone snippets`. Forever or auto-expire? | LOW | **RATIFIED 2026-05-17 (founder): persist FOREVER until user confirms or discards.** No cron expiry. Banner reads `voice_drafts WHERE confirmed_at IS NULL AND discarded_at IS NULL LIMIT 1`. Zero data loss risk. Mitigates "I'll do it later" abandonment by ensuring draft never silently vanishes. |
+| **12.15** | **KB total file count cap** — per-file cap is 10 MB. Should there also be a per-brand file count cap? | LOW | **RATIFIED 2026-05-17 (founder): UNLIMITED count.** Only per-file 10 MB CHECK applies. No `count(*)` enforcement in `add_kb_source` RPC. List UX uses virtualized scroll if count grows large (Cluster 11 owns shared list primitives). |
+
+**All open questions RATIFIED 2026-05-17 (founder):**
+- ✅ **§12.3** — "Draft via interview" CTA: render **DISABLED with "Coming soon" tooltip** (`BRAND_KIT_AI_INTERVIEW_ENABLED = false`).
+- ✅ **§12.4** — Voice-draft confirm: **inline-during-onboarding with Skip-for-now**; persistent banner in `/account/brand-kit` if draft remains open.
+- ✅ **§12.12** — Scope: **all 7 sub-tabs** ship in MVP.
+- ✅ **§12.13** — Voice re-scrape: **REPLACE** unconfirmed draft (idempotent upsert).
+- ✅ **§12.14** — Skip-banner persistence: **FOREVER** until user acts.
+- ✅ **§12.15** — KB file count: **UNLIMITED** (only per-file 10 MB applies).
+- ✅ **Font cap** — `brand_fonts.file_size_bytes` capped at **5 MB** (5242880 bytes). Schema CHECK + UI gating + Edge Function pre-flight all enforce. Founder picked 5 MB (Figma image cap is 10 MB; brand fonts smaller — woff2 50–300 KB, variable fonts up to 5 MB) over earlier 10 MB recommendation.
+
+No remaining open questions. Cluster 05 PRD is ready for implementation (Wave 4).
 
 ---
 

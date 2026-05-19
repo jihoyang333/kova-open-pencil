@@ -55,7 +55,9 @@ When this PRD ships:
 **Chat surface — right-panel migration:**
 - Right-panel second tab "AI" — final tab order is `Design` (default-active) + `AI`. Prototype tab dropped entirely (Cluster 06 PRD must wire the 2-tab routing slot; this PRD ships the AI tab content and supersedes scope plan §3 Cluster 06's "Prototype DEFERRED" line with "Prototype out of scope")
 - `<ChatPanel>` becomes the canonical chat surface (refactored from the existing floating `<ChatPopup>`; the popup is deleted)
-- Chat header (tab strip for multiple chat conversations per canvas + "New chat" + per-tab menu for rename / delete)
+- Chat header (tab strip for multiple chat conversations per canvas + "New chat" + per-tab menu for rename / delete). **Cap 20 chat tabs per canvas** — new-chat button disables at 20 with tooltip `Max 20 chats per canvas — close one first.` (Founder-locked §12.12 item 3.)
+- Tab strip overflow: **horizontal scroll with arrow buttons at edges** (Figma frame/page-tabs pattern, founder-locked §12.12 item 10). Single-row strip; no wrap, no dropdown.
+- **New chat default state**: empty chips. Product chips do not carry over between chat tabs (founder-locked §12.12 item 9).
 - Message scroll area (renders `<ChatMessage>` per stored + streamed message; reuses existing `ChatMessage.vue`)
 - Composer footer: image-attach button, paste-image listener, product-reference chip row (NEW), text input, Stop / Send buttons (reuses existing `ChatInput.vue` patterns)
 - Empty state, thinking indicator, step-limit "Continue" prompt, init error banner, dev-only debug copy / ACP log copy / Clear actions — all carry forward from `ChatPopup.vue`
@@ -70,12 +72,13 @@ When this PRD ships:
 - Reload-survival — chips hydrate from `chat_conversations.product_references` on conversation load
 
 **System-prompt builder extension:**
-- Two new layers in `buildSystemPrompt()`:
-  - `formatToneSnippets(brand.toneSnippets)` — reads from `selectedBrand.tone_snippets[]` (Cluster 05 schema), cap 10 entries (first 10 by user-defined order, i.e. JSONB array order), renders as numbered exemplar list with brief instruction header
+- Two new layers in `buildSystemPrompt()` + one extension of existing Layer 7b:
+  - `formatToneSnippets(brand.toneSnippets)` — reads from `selectedBrand.tone_snippets[]` (Cluster 05 schema), **cap 10 entries by first-10 JSONB-array order (user-defined)**, renders as numbered exemplar list with brief instruction header
   - `formatProductReferences(refs)` — reads active conversation's chips, renders hybrid payload (one block per chip: `product_id`, `title`, `primary_image_url`, `price` or `price_range`, `handle`)
+  - **`formatBrandMemories` extension (Layer 7b)** — existing M5 function gets a NEW cap: sort `brandMemories` by `created_at DESC`, take first 50. Auto-prunes stale memories from prompt. (Founder-locked §12.12 item 2.)
 - Order of layers documented in §6.3
 - `SYSTEM_PROMPT` constant (Layer 1) remains immutable per CLAUDE.md hard constraint
-- Token-budget guardrail: tone snippets capped at 10; product references capped at 20; both fit within the existing 16384 `maxOutputTokens` budget with comfortable headroom (Anthropic 200k input window — under 5% of budget at max)
+- Token-budget guardrail: tone snippets capped at 10; brand memories capped at 50; product references capped at 20; all fit within the existing 16384 `maxOutputTokens` budget with comfortable headroom (Anthropic 200k input window — under 5% of budget at max)
 
 **AI tool layer:**
 - `createKovaTools(store)` continues to return the 5 Shopify tools (`search_products`, `get_collection`, `get_variant`, `get_active_discounts`, `get_shop_context`) + `placeMediaImage` + `saveBrandMemory`
@@ -151,15 +154,16 @@ Every surface maps to a hi-fi file or composes from documented patterns. The cha
 
 | Surface | Hi-fi reference | Notes |
 |---|---|---|
-| Active product-reference chips above text input | Composed pattern — no dedicated hi-fi. Anchored to the design spec `docs/superpowers/specs/2026-05-14-shopify-product-reference-design.md` §4.2 + the existing chat-attachment thumbnail row in `ChatInput.vue` lines 96–118 | One chip per active reference. Chip layout: 48×48 square product image (or fallback monogram if image missing), product name truncated to ~14 chars, `×` button top-right. Chip background `bg-surface` border `border-border` rounded `rounded-lg`. `×` only visible on hover OR always for accessibility — recommend always-visible at `opacity-60` → `opacity-100` on hover for keyboard / screen-reader accessibility. |
+| Active product-reference chips above text input | Composed pattern — no dedicated hi-fi. Anchored to the design spec `docs/superpowers/specs/2026-05-14-shopify-product-reference-design.md` §4.2 + the existing chat-attachment thumbnail row in `ChatInput.vue` lines 96–118 | One chip per active reference. Chip layout: 48×48 square product image (or fallback monogram if image missing), product name truncated to ~14 chars, `×` button top-right. Chip background `bg-surface` border `border-border` rounded `rounded-lg`. **Chip `×` always visible at `opacity-60`, full opacity on hover/focus** (founder-locked §12.12 item 6, accessibility-first). **Chip body click = no-op** (display-only; only `×` removes — founder-locked §12.12 item 4). |
+| Composer-footer vertical stack order | derived | Top→bottom: `image attachment thumbnails → product chip row → textarea → send/stop buttons` (founder-locked §12.12 item 7). Image attachments and product chips are separate rows; they do NOT merge. |
 | Max-chips disabled state | derived | When 20 chips active, "Import N to chat" button in Shop panel (Cluster 06) disables with tooltip "Max 20 references — remove some first" |
 | Empty-chip-row state | derived | When no chips, chip row collapses to height 0. Composer reflows to its M5 height. |
 
-### 3.3 Brand-memory + tone-snippet indicators (OPTIONAL — Phase A polish)
+### 3.3 Brand-memory + tone-snippet indicators (Phase B polish — DEFERRED per §12.9)
 
 | Surface | Hi-fi reference | Notes |
 |---|---|---|
-| "AI is using N voice references" status indicator | `Kova Canvas - Final.html` chip pattern | Optional indicator below the tab strip header inside the AI tab. Shows `N` = count of injected tone-snippet exemplars + brand-memory entries. **Phase B polish — defer if it costs more than 15 min in Phase A.** Founder confirmed value-add in Q8 doc (line 217). |
+| "AI is using N voice references" status indicator | `Kova Canvas - Final.html` chip pattern | **DEFERRED to Phase B** (founder-locked 2026-05-17 §12.12 item 1 / §12.9). When activated: below tab strip header, content `AI is using N voice references` where `N = min(toneSnippets, 10) + min(brandMemories, 50)`. Pill style `.chip.subtle`. Not in Phase A scope. |
 | Brand-memory edit affordance | N/A here | Lives in Cluster 05 Brand Kit Memory tab; ChatPanel does not surface edit UI directly. |
 
 ### 3.4 No standalone hi-fi exists
@@ -451,7 +455,7 @@ Layer  4b: formatToneSnippets(brand)          (NEW — cap 10 entries, JSONB arr
 Layer  5: IMAGE_HANDLING                      (existing)
 Layer  6: campaignLayer                       (existing — campaign-type-specific)
 Layer  7a: MEMORY_INSTRUCTIONS                (existing)
-Layer  7b: formatBrandMemories(memories)      (existing — no cap; flat list)
+Layer  7b: formatBrandMemories(memories)      (existing — EXTEND: cap 50 newest by created_at DESC)  ← extended by this PRD
 Layer  8: formatAvailableImages(images)       (existing — cap 20)
 Layer  8b: formatChatAttachments(attachments) (existing — ephemeral, current turn)
 Layer  9: formatProductReferences(refs)       (NEW — cap 20 hybrid payloads)              ← added by this PRD
@@ -481,7 +485,31 @@ ${lines}${overflow}`
 }
 ```
 
-##### 6.3.2.3 `formatProductReferences(refs)` (NEW)
+##### 6.3.2.3 `formatBrandMemories(memories)` (EXTEND — cap 50 newest)
+
+Existing M5 `formatBrandMemories` is uncapped (line 105 in `build-system-prompt.ts`). Founder-locked §12.12 item 2 adds a cap.
+
+```typescript
+const MAX_BRAND_MEMORIES = 50
+
+function formatBrandMemories(memories: readonly BrandMemory[]): string {
+  // Sort newest-first by created_at DESC, then take first MAX_BRAND_MEMORIES.
+  // Auto-prunes stale memories from prompt; user takes no action.
+  const sorted = [...memories].sort((a, b) => b.created_at.localeCompare(a.created_at))
+  const limited = sorted.slice(0, MAX_BRAND_MEMORIES)
+  const memoryLines = limited.map((m) => `- ${m.content}`).join('\n')
+  const overflow = sorted.length > MAX_BRAND_MEMORIES
+    ? `\n\n(${sorted.length - MAX_BRAND_MEMORIES} older memories exist; using the most recent ${MAX_BRAND_MEMORIES} per the configured cap.)`
+    : ''
+  return `## Brand Memories
+The following are things you've learned about this brand from previous conversations.
+Apply these in all your design decisions for this brand.
+
+${memoryLines}${overflow}`
+}
+```
+
+##### 6.3.2.4 `formatProductReferences(refs)` (NEW)
 
 ```typescript
 function formatProductReferences(refs: readonly ChatProductReference[]): string | null {
@@ -847,8 +875,8 @@ No runtime feature flags in this PRD. The right-panel tab migration is a structu
 
 | Other PRD | What we depend on (from them) | What they depend on us for |
 |---|---|---|
-| **05 — Brand Kit & Drag-Drop** | `brands.tone_snippets JSONB` schema (Cluster 05 migration); reactive read of `selectedBrand.tone_snippets[]` via `useBrandsStore`; Brand Kit Memory tab UI (view / edit / delete brand memories surfaced to user); D-3 confirm-before-write guardrail for AI-extracted voice / tone | `formatToneSnippets` consumer pattern; brand-memory CRUD APIs already exposed via `useBrandMemoriesStore` (M5) |
-| **06 — Canvas Editor Core Chrome** | Right-panel **two-tab** framework (Design + AI — **NO Prototype tab**; scope plan §3 Cluster 06 "Prototype DEFERRED" line is superseded by "Prototype out of scope entirely" per founder ratification 2026-05-15); Shop panel UI (product grid + multi-select + "Import N to chat" button); EditorView refactor to remove `<ChatPopup>` and mount `<ChatPanel>` in the right-panel AI slot | `<ChatPanel>` component + import callback for the "Import N to chat" button (writes onto `chat_conversations.product_references` via `useChatProductReferencesStore.importProducts`) |
+| **05 — Brand Kit & Drag-Drop** | `brands.tone_snippets JSONB` schema (Cluster 05 migration); reactive read of `selectedBrand.tone_snippets[]` via `useBrandsStore`; Brand Kit Memory tab UI (view / edit / delete brand memories surfaced to user); D-3 confirm-before-write guardrail for AI-extracted voice / tone; **NEW (§12.12 item 11):** drag-to-reorder UI on tone-snippet rows + helper copy `AI uses the first 10 — reorder to prioritize.` (because Phase A `formatToneSnippets` uses first-10 JSONB array order — user controls priority via reorder) | `formatToneSnippets` consumer pattern; brand-memory CRUD APIs already exposed via `useBrandMemoriesStore` (M5) |
+| **06 — Canvas Editor Core Chrome** | Right-panel **two-tab** framework (Design + AI — **NO Prototype tab**; scope plan §3 Cluster 06 "Prototype DEFERRED" line is superseded by "Prototype out of scope entirely" per founder ratification 2026-05-15); Shop panel UI (product grid + multi-select + "Import N to chat" button); EditorView refactor to remove `<ChatPopup>` and mount `<ChatPanel>` in the right-panel AI slot; **NEW (§12.12 item 5):** Shop panel's "Import N to chat" callback MUST trigger right-panel tab switch (Design → AI) before returning, so user sees chips populate immediately after click | `<ChatPanel>` component + import callback for the "Import N to chat" button (writes onto `chat_conversations.product_references` via `useChatProductReferencesStore.importProducts`) |
 | **07a — Canvas Engine Core + Renderer** | `figma.createSliceFromSelection({ name })` + `figma.createMeasurement({ fromNodeId, toNodeId })` engine APIs (Cluster 07a ships the NodeTypes per Q1 + Q11) | AI tool wrappers `createSliceFromSelection` + `addMeasurement` (so AI can invoke the engine surface) |
 | **01 — Auth & Identity** | Privacy policy + RoPA documentation (this PRD contributes a sub-processor disclosure clause naming Anthropic + the chat data flow); `delete-account-cron` cascade includes `db` step that CASCADEs `chat_conversations` + `brand_memories` rows on user delete | Disclosure copy fragment for §11.1; per-user atomic rate limit RPC `try_increment_generation` (already built in M5) |
 | **04 — Account & Stripe** | Future per-plan rate-limit lookup (Free / Pro / Studio plans pass distinct `p_daily_limit` to `try_increment_generation`) | None (per-plan limits a Cluster 04 extension on the existing rate-limit RPC; non-blocking for this PRD) |
@@ -915,13 +943,11 @@ Dispatch recommends cap=10 with "first 10 by user-defined order." If a brand has
 
 **Decision:** No fallback. Right-panel migration ships in lockstep with Cluster 06. ChatPopup deleted in Phase A. Two clusters delay together if schedule slips. Founder accepted maintenance-cost-over-delay-risk tradeoff during PRD review.
 
-### 12.9 OPEN QUESTION — Optional "AI is using N voice references" indicator?
+### 12.9 RESOLVED 2026-05-17 — "AI is using N voice references" indicator
 
-**Question:** Ship the indicator in Phase A or Phase B?
+**Decision:** **Phase B.** Founder ratified during Round-2 PRD review. Defer the status pill below the AI tab header to a follow-up polish PRD. Phase A ships without the indicator; saves ~30 min and a small surface area. Core AI workflow is unaffected; user simply doesn't see a counter.
 
-**Recommendation:** **Phase B.** Adds ~30 min of work + a small surface area; the value is "user trust" (knowing the AI knows their voice) — nice but not blocking the core AI workflow. Defer to Phase B unless the founder wants it in Phase A.
-
-**Resolution path:** Founder confirms during PRD review.
+**Re-spec on activation:** When Phase B is scheduled, the pill renders below the tab strip header inside the AI tab. Content: `AI is using N voice references` where `N` = `min(toneSnippets.length, 10) + min(brandMemories.length, 50)`. Pill style: `.chip.subtle` per `kova-hifi.css`.
 
 ### 12.11 RESOLVED 2026-05-15 — Right-panel tab order + Prototype removal
 
@@ -937,7 +963,26 @@ Dispatch recommends cap=10 with "first 10 by user-defined order." If a brand has
 
 Until zero-data-retention (ZDR) is in place with Anthropic, the chat messages + product references + brand memories sent to Anthropic are subject to Anthropic's standard retention. Cluster 01 §12.2 documents the hybrid model (in-DB delete + manual operator email queue).
 
-**Mitigation:** Privacy policy + RoPA discloses the current state. Founder + ops batch the `anthropic_deletion_log` rows weekly per Cluster 01 §5.1.4.3 operator runbook. Migrate to ZDR once volume justifies.
+**Mitigation:** Founder ratified Phase A acceptance 2026-05-17 (Round-2 PRD review). Privacy policy + RoPA discloses the current state and names Anthropic as sub-processor. Founder + ops batch the `anthropic_deletion_log` rows weekly per Cluster 01 §5.1.4.3 operator runbook. Migrate to ZDR once volume justifies negotiation leverage.
+
+### 12.12 RESOLVED 2026-05-17 — PRD Round-2 + Round-3 review (11 decisions)
+
+Founder-locked during PRD 10 final review (after Round-1 §12.11):
+
+1. **Voice-references indicator** → Phase B (see §12.9).
+2. **Brand-memory injection cap** → **50 most recent** by `brand_memories.created_at DESC`. Auto-prunes stale memories; user takes no action. (Applied in §6.3.2 Layer 7b — `formatBrandMemories` sorts and slices first 50.)
+3. **Chat conversation tabs per canvas cap** → **20**. New-chat button disables at 20 with tooltip `Max 20 chats per canvas — close one first.` Applied in §6.4.1 `<ChatPanel>` tab strip controls.
+4. **Chip body click action** → **no-op** (display-only). Only the `×` button removes. Matches Slack/Discord attachment-chip pattern. Applied in §6.4.4 `<ProductReferenceChip>` spec.
+5. **Auto-switch tab on import** → **Yes**. When user clicks Shop panel's "Import N to chat" button, right-panel jumps from Design → AI tab so user sees chips populate. Applied in Cluster 06 cross-cut (§11) + §6.2.3 store action.
+6. **Chip `×` visibility** → **always visible at `opacity-60`, full opacity on hover/focus**. Accessibility-first; keyboard + screen-reader users can locate the action. Applied in §6.4.4 `<ProductReferenceChip>` spec + §3.2 visual table.
+7. **Chip row position** → above textarea, **below** image attachment thumbnails. Top→bottom order in composer footer: `image attachments → product chips → textarea → send`. Applied in §3.2 visual table + §6.4.2 `<ChatInput>` spec.
+8. **Anthropic ZDR** → **Phase A acceptable**. Ship with manual deletion queue (Cluster 01 §5.1.4.3) + privacy disclosure. Migrate to ZDR when volume justifies. (See §12.10.)
+9. **New chat tab chip carry-over** → **empty by default**. Each chat tab is a fresh blank slate. User re-imports if desired. Matches per-conversation persistence model + Figma's "clear context" mental model. Applied in §6.2.3 store + §6.4.1 `<ChatPanel>` "New chat" handler.
+10. **Tab strip overflow behavior** → **horizontal scroll with arrow buttons** at edges. Tab strip stays single-row. Matches Figma's frame/page-tabs pattern. Applied in §6.4.1 `<ChatPanel>` chat-tab strip spec.
+11. **Tone-snippet cap=10 ordering** → **first 10 by user-defined order** (JSONB array order in `brands.tone_snippets`). User drags-to-reorder in Brand Kit settings (Cluster 05 owns the reorder UI + helper copy `AI uses the first 10 — reorder to prioritize.`).
+
+**Cluster 05 cross-cut amendment:** Cluster 05 PRD must add reorder-handle UI on tone-snippet rows + the helper copy. Recorded in §11 cross-cuts.
+**Cluster 06 cross-cut amendment:** Cluster 06 PRD's "Import N to chat" callback must trigger the right-panel tab switch (Design → AI) before returning. Recorded in §11 cross-cuts.
 
 ---
 

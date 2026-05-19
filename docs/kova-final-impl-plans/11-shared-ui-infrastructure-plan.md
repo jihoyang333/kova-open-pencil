@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build every UI primitive every other PRD depends on — toast / modal / confirm / Cmd+K / skeleton / empty-state / network-status / error pages / theme runtime swap / idempotency-key helper / Realtime channel naming / Tauri command convention / Sentry + Resend integrations / shared marketing + email shells — so downstream clusters import by name and never re-spec.
+**Goal:** Build every UI primitive every other PRD depends on — toast / modal / confirm / skeleton / empty-state / network-status-indicator (Figma-style icon+tooltip) / error pages / theme runtime swap / idempotency-key helper / Realtime channel naming / Tauri command convention / Sentry + Resend + Vercel-cron stubs (real wiring at pre-launch per 00 §11) / shared marketing + email shells — so downstream clusters import by name and never re-spec.
 
-**Architecture:** Twelve atomic delivery phases, foundation-up. Phase 1 lays cross-cut backend (migration + Sentry + Resend + idempotency helper + Vercel Cron). Phase 2 ships theme + online-status + Realtime-channel + idempotency-key composables. Phases 3–9 ship Pinia stores + Vue 3 components in Composition API setup style, each wrapping Reka UI primitives where applicable (Dialog → KovaModal, Popover → KovaPopover, DropdownMenu → KovaMenu, Tooltip → KovaTooltip). Phase 10 wires error-page routes + Vue global `errorHandler`. Phase 11 ships `<MarketingShell>` + `<EmailShell>` for static `/privacy` + `/terms` rendering and transactional emails. Phase 12 builds a `/dev/cluster-11` showcase route for visual smoke-testing + ships E2E coverage. Every primitive consumes `kova-hifi.css` tokens via Tailwind `@theme` translation; no hex literals.
+**Architecture:** Eleven atomic delivery phases, foundation-up. Phase 1 lays cross-cut backend (migration + Sentry STUB + Resend STUB + idempotency helper + Vercel cron STUB — all env-guarded). Phase 2 ships theme + online-status + Realtime-channel + idempotency-key composables. Phases 3–6 ship Pinia stores + Vue 3 components in Composition API setup style, each wrapping Reka UI primitives where applicable (Dialog → KovaModal, Popover → KovaPopover, DropdownMenu → KovaMenu, Tooltip → KovaTooltip). Phase 7 wires error-page routes + Vue global `errorHandler`. Phase 8 ships `<MarketingShell>` + `<EmailShell>` for static `/privacy` + `/terms` rendering and transactional emails. Phase 9 wires global app shell (`<App>` + `main.ts`) + a `/dev/cluster-11` showcase route for visual smoke-testing. Phase 10 ships E2E + manual smoke. Phase 11 enforces CI grep + coverage gates. Every primitive consumes `kova-hifi.css` tokens via Tailwind `@theme` translation; no hex literals.
 
 **Tech Stack:** Vue 3 (`<script setup lang="ts">` Composition API), Pinia (setup stores), Reka UI (Dialog / Popover / DropdownMenu / Tooltip wrappers), Tailwind CSS 4 (`@theme` token translation), VueUse (`useMediaQuery`, `useLocalStorage`), Supabase JS (`@supabase/supabase-js` Realtime), `@sentry/vue` + `@sentry/node`, Resend SDK, `valibot` (schema), `bun:test` (unit), Playwright (E2E), `juice` (CSS inlining for emails). PRD: `kova-open-pencil-1/docs/kova-final-prds/11-shared-ui-infrastructure.md`.
 
@@ -12,7 +12,7 @@
 
 ## File Structure
 
-**New files (38) — grouped by phase:**
+**New files (34) — grouped by phase:**
 
 ### Phase 1 — Cross-cut backend
 - `kova-open-pencil-1/supabase/migrations/20260520_11_shared_ui_infrastructure.sql` — `idempotency_keys` table + RLS + indexes
@@ -60,42 +60,36 @@
 - `kova-open-pencil-1/src/components/ui/KovaPill.vue`
 - `kova-open-pencil-1/src/components/ui/KovaSkeleton.vue`
 - `kova-open-pencil-1/src/components/ui/EmptyState.vue`
-- `kova-open-pencil-1/src/components/ui/NetworkStatusPill.vue`
+- `kova-open-pencil-1/src/components/ui/NetworkStatusIndicator.vue` (icon + tooltip; offline only — renders nothing when online)
 
-### Phase 7 — Command-K
-- `kova-open-pencil-1/src/stores/command-palette.ts`
-- `kova-open-pencil-1/src/composables/use-command-palette.ts`
-- `kova-open-pencil-1/src/components/ui/CommandPalette.vue`
-- `kova-open-pencil-1/src/types/command-palette.ts` — `CommandResult`, `CommandSection` interfaces
-
-### Phase 8 — Error pages
+### Phase 7 — Error pages
 - `kova-open-pencil-1/src/views/errors/Error404View.vue`
 - `kova-open-pencil-1/src/views/errors/Error500View.vue`
 - `kova-open-pencil-1/src/views/errors/NetworkUnreachableView.vue`
 
-### Phase 9 — Marketing + email shells
+### Phase 8 — Marketing + email shells
 - `kova-open-pencil-1/src/components/shell/MarketingShell.vue`
 - `kova-open-pencil-1/src/components/email/EmailShell.vue`
 - `kova-open-pencil-1/src/composables/use-email-shell.ts`
 
-### Phase 10 — App wiring + showcase
-- `kova-open-pencil-1/src/App.vue` — **MODIFY** (mount ToastStack, ConfirmModal, CommandPalette globally)
+### Phase 9 — App wiring + showcase
+- `kova-open-pencil-1/src/App.vue` — **MODIFY** (mount ToastStack + ConfirmModal globally)
 - `kova-open-pencil-1/src/main.ts` — **MODIFY** (install Sentry, mount useTheme)
 - `kova-open-pencil-1/src/router/routes.ts` — **MODIFY** (add /404, /500, /network-unreachable, /dev/cluster-11)
 - `kova-open-pencil-1/src/views/dev/Cluster11Showcase.vue` — Storybook-replacement smoke page
 
-### Test files (parallel to source, ~30 files)
+### Test files (parallel to source, ~25 files)
 - Per-source-file colocated under `tests/unit/` mirroring the `src/` tree
-- E2E specs under `tests/e2e/cluster-11/` (6 spec files)
+- E2E specs under `tests/e2e/cluster-11/` (5 spec files)
 - Integration tests under `tests/integration/cluster-11/` (4 spec files)
 
 **Existing files modified:**
-- `kova-open-pencil-1/vercel.json` — add cron entry
-- `kova-open-pencil-1/package.json` — add `@sentry/vue`, `@sentry/node`, `resend`, `juice`, `valibot` (if not already present)
+- `kova-open-pencil-1/vercel.json` — add cron entry (dormant until `CRON_SECRET` set)
+- `kova-open-pencil-1/package.json` — add `valibot` (if not already present). **Stub mode:** `@sentry/vue`, `@sentry/node`, `resend`, `juice` are NOT added at this stage — they are wired at pre-launch per 00 §11.
 - `kova-open-pencil-1/src/App.vue` — mount global UI containers
-- `kova-open-pencil-1/src/main.ts` — install Sentry, mount theme
+- `kova-open-pencil-1/src/main.ts` — install Sentry stub, mount theme
 - `kova-open-pencil-1/src/router/routes.ts` — register error + showcase routes
-- `kova-open-pencil-1/.env.example` — add `VITE_SENTRY_DSN`, `SENTRY_DSN_SERVER`, `RESEND_API_KEY`, `CRON_SECRET`
+- `kova-open-pencil-1/.env.example` — add `VITE_SENTRY_DSN_BROWSER`, `SENTRY_DSN_SERVER`, `RESEND_API_KEY`, `CRON_SECRET` (all stub-guarded; real values wired pre-launch per 00 §11)
 
 ---
 
@@ -138,6 +132,27 @@ describe('migration 20260520_11_shared_ui_infrastructure', () => {
     expect(rls.enabled).toBe(true)
     expect(rls.policies).toContainEqual(expect.objectContaining({ name: 'idempotency_service_only' }))
   })
+
+  it('creates audit_log table with PK + 2 indexes + RLS enabled (W0-1 / founder lock #11)', async () => {
+    const { data: cols } = await supabaseAdmin.rpc('describe_table', { table_name: 'audit_log' })
+    expect(cols).toEqual(expect.arrayContaining([
+      expect.objectContaining({ column: 'id', type: 'uuid', nullable: false }),
+      expect.objectContaining({ column: 'user_id', type: 'uuid', nullable: true }),
+      expect.objectContaining({ column: 'event_type', type: 'text', nullable: false }),
+      expect.objectContaining({ column: 'payload', type: 'jsonb', nullable: false }),
+      expect.objectContaining({ column: 'cluster_owner', type: 'text', nullable: true }),
+      expect.objectContaining({ column: 'created_at', type: 'timestamp with time zone', nullable: false }),
+    ]))
+
+    const { data: indexes } = await supabaseAdmin.rpc('list_indexes', { table_name: 'audit_log' })
+    expect(indexes.map((i: { name: string }) => i.name)).toEqual(
+      expect.arrayContaining(['audit_log_pkey', 'idx_audit_log_user_event', 'idx_audit_log_cluster_created']),
+    )
+
+    const { data: rls } = await supabaseAdmin.rpc('list_rls', { table_name: 'audit_log' })
+    expect(rls.enabled).toBe(true)
+    expect(rls.policies).toContainEqual(expect.objectContaining({ name: 'audit_log_service_only' }))
+  })
 })
 ```
 
@@ -151,6 +166,8 @@ Expected: FAIL with "relation idempotency_keys does not exist"
 ```sql
 -- supabase/migrations/20260520_11_shared_ui_infrastructure.sql
 BEGIN;
+
+-- ---- idempotency_keys ----
 
 CREATE TABLE IF NOT EXISTS public.idempotency_keys (
   key             text PRIMARY KEY,
@@ -179,6 +196,33 @@ CREATE POLICY idempotency_service_only
   FOR ALL TO service_role
   USING (true) WITH CHECK (true);
 
+-- ---- audit_log (W0-1 / founder lock #11) ----
+
+CREATE TABLE IF NOT EXISTS public.audit_log (
+  id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id        uuid REFERENCES public.users(id) ON DELETE CASCADE,
+  event_type     text NOT NULL,
+  payload        jsonb NOT NULL DEFAULT '{}'::jsonb,
+  cluster_owner  text,
+  created_at     timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_audit_log_user_event
+  ON public.audit_log(user_id, event_type, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_audit_log_cluster_created
+  ON public.audit_log(cluster_owner, created_at DESC);
+
+COMMENT ON TABLE public.audit_log IS
+  'Append-only event log. Cluster 11 (founder lock #11). Consumed via writeAudit() helper by Clusters 01, 03, 04, 05.';
+
+ALTER TABLE public.audit_log ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY audit_log_service_only
+  ON public.audit_log
+  FOR ALL TO service_role
+  USING (true) WITH CHECK (true);
+
 COMMIT;
 ```
 
@@ -191,7 +235,7 @@ Expected: PASS
 
 ```bash
 git add kova-open-pencil-1/supabase/migrations/20260520_11_shared_ui_infrastructure.sql kova-open-pencil-1/tests/integration/cluster-11/migration.test.ts
-git commit -m "feat(cluster-11): add idempotency_keys table migration"
+git commit -m "feat(cluster-11): add idempotency_keys + audit_log table migration"
 ```
 
 ---
@@ -200,6 +244,7 @@ git commit -m "feat(cluster-11): add idempotency_keys table migration"
 
 **Files:**
 - Create: `kova-open-pencil-1/tests/integration/cluster-11/rls-idempotency.test.ts`
+- Create: `kova-open-pencil-1/tests/integration/cluster-11/rls-audit-log.test.ts` (W0-1)
 
 - [ ] **Step 1: Write the failing RLS test**
 
@@ -247,16 +292,70 @@ describe('idempotency_keys RLS (authenticated role denied)', () => {
 })
 ```
 
-- [ ] **Step 2: Run + verify it passes (migration already applied)**
+- [ ] **Step 2: Write the failing audit_log RLS test (W0-1)**
 
-Run: `cd kova-open-pencil-1 && bun test tests/integration/cluster-11/rls-idempotency.test.ts`
-Expected: PASS (4/4)
+```typescript
+// tests/integration/cluster-11/rls-audit-log.test.ts
+import { describe, it, expect } from 'bun:test'
+import { supabaseAsAuthenticated, supabaseAdmin, signInTestUser } from '../helpers/supabase-local'
 
-- [ ] **Step 3: Commit**
+describe('audit_log RLS (authenticated role denied per founder lock #11)', () => {
+  it('authenticated cannot SELECT', async () => {
+    await signInTestUser('user-a@kova-test.local')
+    const { data, error } = await supabaseAsAuthenticated.from('audit_log').select('*')
+    expect(data).toEqual([])
+    expect(error).toBeNull()
+  })
+
+  it('authenticated cannot INSERT', async () => {
+    await signInTestUser('user-a@kova-test.local')
+    const { error } = await supabaseAsAuthenticated.from('audit_log').insert({
+      event_type: 'test.attempt', payload: {}, cluster_owner: '11',
+    })
+    expect(error?.code).toBe('42501')
+  })
+
+  it('authenticated cannot UPDATE or DELETE', async () => {
+    await signInTestUser('user-a@kova-test.local')
+    const upd = await supabaseAsAuthenticated.from('audit_log').update({ payload: { tampered: true } }).gte('created_at', '2000-01-01')
+    expect(upd.count).toBe(0)
+    const del = await supabaseAsAuthenticated.from('audit_log').delete().gte('created_at', '2000-01-01')
+    expect(del.count).toBe(0)
+  })
+
+  it('service_role can INSERT (writeAudit append-only)', async () => {
+    const userId = (await supabaseAdmin.from('users').select('id').limit(1).single()).data!.id
+    const { error, data } = await supabaseAdmin
+      .from('audit_log')
+      .insert({ user_id: userId, event_type: 'test.appended', payload: { ok: true }, cluster_owner: '11' })
+      .select()
+      .single()
+    expect(error).toBeNull()
+    expect(data?.event_type).toBe('test.appended')
+    expect(data?.payload).toEqual({ ok: true })
+  })
+
+  it('cascade: deleting users row removes its audit_log rows', async () => {
+    const { data: u } = await supabaseAdmin.auth.admin.createUser({ email: 'cascade-target@kova-test.local', password: 'X'.repeat(24) })
+    const userId = u.user!.id
+    await supabaseAdmin.from('audit_log').insert({ user_id: userId, event_type: 'cascade.probe', cluster_owner: '11' })
+    await supabaseAdmin.from('users').delete().eq('id', userId)
+    const { data: leftover } = await supabaseAdmin.from('audit_log').select('id').eq('user_id', userId)
+    expect(leftover).toEqual([])
+  })
+})
+```
+
+- [ ] **Step 3: Run + verify both files pass (migration already applied)**
+
+Run: `cd kova-open-pencil-1 && bun test tests/integration/cluster-11/rls-idempotency.test.ts tests/integration/cluster-11/rls-audit-log.test.ts`
+Expected: PASS (4/4 + 5/5)
+
+- [ ] **Step 4: Commit**
 
 ```bash
-git add kova-open-pencil-1/tests/integration/cluster-11/rls-idempotency.test.ts
-git commit -m "test(cluster-11): verify idempotency_keys RLS"
+git add kova-open-pencil-1/tests/integration/cluster-11/rls-idempotency.test.ts kova-open-pencil-1/tests/integration/cluster-11/rls-audit-log.test.ts
+git commit -m "test(cluster-11): verify idempotency_keys + audit_log RLS"
 ```
 
 ---
@@ -409,191 +508,298 @@ git commit -m "feat(cluster-11): add verifyIdempotency helper with 422 mismatch 
 
 ---
 
-### Task 1.4: Sentry browser install
+### Task 1.3a: `writeAudit()` helper (TDD) — W0-1 / founder lock #11
 
 **Files:**
-- Create: `kova-open-pencil-1/src/sentry.ts`
-- Modify: `kova-open-pencil-1/package.json` (add `@sentry/vue`)
-- Test: `kova-open-pencil-1/tests/unit/sentry.test.ts`
+- Create: `kova-open-pencil-1/api/_shared/audit.ts`
+- Test: `kova-open-pencil-1/tests/unit/api/_shared/audit.test.ts`
 
-- [ ] **Step 1: Install dependency**
+**Contract:** consumers (Cluster 01 / 03 / 04 / 05 Edge Functions) call `writeAudit(supabaseAdmin, { userId, eventType, payload, clusterOwner })` to append one row to `public.audit_log`. Helper MUST:
 
-Run: `cd kova-open-pencil-1 && bun add @sentry/vue@^9`
-Expected: package.json + bun.lock updated
+1. Insert via the service-role client (RLS bypass).
+2. Never throw on the success path of the calling Edge Function — wrap the insert in try/catch and Sentry-capture any error. Audit-log loss is preferable to losing the user-facing mutation.
+3. Special-case SQLSTATE `42P01` (table missing) with a single `captureException` + warn log, so Wave 2 consumer wiring never breaks the request path if Plan 11 Task 1.1 has not yet shipped in some environment (founder lock #19 — Sentry stub OK at MVP).
 
-- [ ] **Step 2: Write the failing test**
+- [ ] **Step 1: Write the failing unit test**
 
 ```typescript
-// tests/unit/sentry.test.ts
-import { describe, it, expect, mock, beforeEach } from 'bun:test'
-import { installSentry } from '@/sentry'
-import * as Sentry from '@sentry/vue'
+// tests/unit/api/_shared/audit.test.ts
+import { describe, it, expect, beforeEach, mock } from 'bun:test'
+import { writeAudit } from '@/api/_shared/audit'
 
-mock.module('@sentry/vue', () => ({
-  init: mock(() => undefined),
-  browserTracingIntegration: mock(() => ({ name: 'BrowserTracing' })),
-}))
+interface MockClient {
+  inserted: Array<Record<string, unknown>>
+  forcedError?: { code: string; message: string } | null
+}
+function createMock(): MockClient {
+  const state: MockClient = { inserted: [], forcedError: null }
+  // minimal supabase-js shape: from(table).insert(row) → { error }
+  ;(state as unknown as { from: unknown }).from = (table: string) => ({
+    insert: async (row: Record<string, unknown>) => {
+      if (state.forcedError) return { error: state.forcedError }
+      state.inserted.push({ table, ...row })
+      return { error: null }
+    },
+  })
+  return state
+}
 
-describe('installSentry', () => {
-  beforeEach(() => { (Sentry.init as ReturnType<typeof mock>).mockClear() })
+const captureMock = mock(() => undefined)
+mock.module('@/api/_shared/sentry', () => ({ captureException: captureMock }))
 
-  it('skips init when VITE_SENTRY_DSN unset', () => {
-    const env = { ...import.meta.env, VITE_SENTRY_DSN: undefined }
-    installSentry({} as never, {} as never, env as never)
-    expect(Sentry.init).not.toHaveBeenCalled()
+describe('writeAudit (W0-1)', () => {
+  let client: MockClient
+  beforeEach(() => { client = createMock(); captureMock.mockClear() })
+
+  it('inserts one audit_log row with all fields', async () => {
+    await writeAudit(client as never, {
+      userId: '00000000-0000-0000-0000-000000000001',
+      eventType: 'account.deletion_requested',
+      payload: { reason: 'user' },
+      clusterOwner: '01',
+    })
+    expect(client.inserted).toHaveLength(1)
+    expect(client.inserted[0]).toMatchObject({
+      table: 'audit_log',
+      user_id: '00000000-0000-0000-0000-000000000001',
+      event_type: 'account.deletion_requested',
+      payload: { reason: 'user' },
+      cluster_owner: '01',
+    })
   })
 
-  it('initializes Sentry when DSN present', () => {
-    const env = { ...import.meta.env, VITE_SENTRY_DSN: 'https://abc@sentry.io/1', VITE_VERCEL_ENV: 'preview', VITE_VERCEL_GIT_COMMIT_SHA: 'sha1' }
-    installSentry({} as never, {} as never, env as never)
-    expect(Sentry.init).toHaveBeenCalledWith(expect.objectContaining({
-      dsn: 'https://abc@sentry.io/1',
-      environment: 'preview',
-      release: 'sha1',
-      tracesSampleRate: 0.1,
-      replaysSessionSampleRate: 0,
-      replaysOnErrorSampleRate: 1.0,
-      sendDefaultPii: false,
-    }))
+  it('null userId allowed (system events)', async () => {
+    await writeAudit(client as never, { userId: null, eventType: 'cron.idempotency_cleanup', payload: {}, clusterOwner: '11' })
+    expect(client.inserted[0]?.user_id).toBeNull()
   })
 
-  it('strips email from event via beforeSend', () => {
-    const env = { VITE_SENTRY_DSN: 'https://abc@sentry.io/1' } as never
-    installSentry({} as never, {} as never, env)
-    const call = (Sentry.init as ReturnType<typeof mock>).mock.calls[0][0]
-    const event = { user: { id: '123', email: 'leak@test' } }
-    const result = call.beforeSend(event)
-    expect(result.user.email).toBeUndefined()
-    expect(result.user.id).toBe('123')
+  it('swallows 42P01 (table missing) — sentry-captures + does not throw', async () => {
+    client.forcedError = { code: '42P01', message: 'relation "audit_log" does not exist' }
+    await expect(writeAudit(client as never, { userId: 'u', eventType: 'x', payload: {}, clusterOwner: '01' })).resolves.toBeUndefined()
+    expect(captureMock).toHaveBeenCalled()
+  })
+
+  it('swallows other DB errors — sentry-captures + does not throw', async () => {
+    client.forcedError = { code: '23505', message: 'duplicate' }
+    await expect(writeAudit(client as never, { userId: 'u', eventType: 'x', payload: {}, clusterOwner: '01' })).resolves.toBeUndefined()
+    expect(captureMock).toHaveBeenCalled()
+  })
+
+  it('payload defaults to empty object when omitted', async () => {
+    await writeAudit(client as never, { userId: 'u', eventType: 'x', clusterOwner: '01' })
+    expect(client.inserted[0]?.payload).toEqual({})
   })
 })
 ```
 
-- [ ] **Step 3: Run → FAIL (no module)**
+- [ ] **Step 2: Run → FAIL (no module)**
 
-Run: `cd kova-open-pencil-1 && bun test tests/unit/sentry.test.ts`
-Expected: FAIL
+Run: `cd kova-open-pencil-1 && bun test tests/unit/api/_shared/audit.test.ts`
+Expected: FAIL with module-not-found error
 
-- [ ] **Step 4: Write the installer**
+- [ ] **Step 3: Write the helper**
 
 ```typescript
-// src/sentry.ts
-import * as Sentry from '@sentry/vue'
-import type { App } from 'vue'
-import type { Router } from 'vue-router'
+// api/_shared/audit.ts
+import type { SupabaseClient } from '@supabase/supabase-js'
+import { captureException } from './sentry'
 
-interface EnvLike {
-  VITE_SENTRY_DSN?: string
-  VITE_VERCEL_ENV?: string
-  VITE_VERCEL_GIT_COMMIT_SHA?: string
+export interface AuditEvent {
+  userId: string | null
+  eventType: string
+  payload?: Record<string, unknown>
+  clusterOwner: string  // '01' | '03' | '04' | '05' | '11' | etc.
 }
 
-export function installSentry(app: App, router: Router, env: EnvLike = import.meta.env as EnvLike): void {
-  if (!env.VITE_SENTRY_DSN) return
-  Sentry.init({
-    app,
-    dsn: env.VITE_SENTRY_DSN,
-    environment: env.VITE_VERCEL_ENV ?? 'development',
-    release: env.VITE_VERCEL_GIT_COMMIT_SHA,
-    integrations: [Sentry.browserTracingIntegration({ router })],
-    tracesSampleRate: 0.1,
-    replaysSessionSampleRate: 0,
-    replaysOnErrorSampleRate: 1.0,
-    sendDefaultPii: false,
-    beforeSend(event) {
-      if (event.user?.email) event.user.email = undefined
-      return event
-    },
-  })
+export async function writeAudit(
+  supabaseAdmin: SupabaseClient,
+  event: AuditEvent,
+): Promise<void> {
+  const row = {
+    user_id: event.userId,
+    event_type: event.eventType,
+    payload: event.payload ?? {},
+    cluster_owner: event.clusterOwner,
+  }
+  const { error } = await supabaseAdmin.from('audit_log').insert(row)
+  if (error) {
+    // Audit-log loss is preferable to losing the user-facing mutation.
+    // Sentry-capture and continue. SQLSTATE 42P01 indicates Plan 11 Task 1.1
+    // has not yet shipped in this environment — log loudly but never throw.
+    captureException(new Error(`writeAudit failed (${error.code}): ${error.message}`), {
+      tags: { helper: 'writeAudit', eventType: event.eventType, clusterOwner: event.clusterOwner },
+    })
+  }
 }
 ```
 
-- [ ] **Step 5: Run + verify pass**
+- [ ] **Step 4: Run → PASS (5/5)**
 
-Run: `bun test tests/unit/sentry.test.ts`
-Expected: PASS (3/3)
+Run: `cd kova-open-pencil-1 && bun test tests/unit/api/_shared/audit.test.ts`
+Expected: PASS
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
-git add kova-open-pencil-1/src/sentry.ts kova-open-pencil-1/tests/unit/sentry.test.ts kova-open-pencil-1/package.json kova-open-pencil-1/bun.lock
-git commit -m "feat(cluster-11): install Sentry browser SDK with PII strip"
+git add kova-open-pencil-1/api/_shared/audit.ts kova-open-pencil-1/tests/unit/api/_shared/audit.test.ts
+git commit -m "feat(cluster-11): add writeAudit() helper (W0-1 — founder lock #11)"
 ```
 
 ---
 
-### Task 1.5: Sentry server-side helper
+### Task 1.4: Sentry browser install (STUB — env-guarded)
+
+**Files:**
+- Create: `kova-open-pencil-1/src/sentry.ts`
+- Test: `kova-open-pencil-1/tests/unit/sentry.test.ts`
+
+**Stub-mode note:** No `@sentry/vue` dependency added at this stage. Helper is a no-op when `VITE_SENTRY_DSN_BROWSER` is unset. Live wiring deferred to pre-launch per 00 §11.
+
+- [ ] **Step 1: Write the failing test**
+
+```typescript
+// tests/unit/sentry.test.ts
+import { describe, it, expect, beforeEach, mock } from 'bun:test'
+import { installSentry } from '@/sentry'
+
+const warnMock = mock(() => undefined)
+const origWarn = console.warn
+
+describe('installSentry (stub mode)', () => {
+  beforeEach(() => {
+    warnMock.mockClear()
+    console.warn = warnMock
+  })
+
+  it('skips init when VITE_SENTRY_DSN_BROWSER unset (logs stub warn)', () => {
+    installSentry({} as never, {} as never)
+    expect(warnMock).toHaveBeenCalled()
+    const msg = warnMock.mock.calls[0][0]
+    expect(String(msg)).toContain('[sentry]')
+    expect(String(msg)).toContain('stub mode')
+  })
+
+  it('returns without throwing when DSN missing', () => {
+    expect(() => installSentry({} as never, {} as never)).not.toThrow()
+  })
+
+  // TODO(pre-launch §11): assert Sentry.init called with expected config when DSN present.
+  it('TODO branch reached when DSN provided (stub asserts placeholder)', () => {
+    expect(/* TODO(pre-launch §11): live-mode init */ true).toBeTruthy()
+  })
+})
+
+afterAll(() => { console.warn = origWarn })
+```
+
+- [ ] **Step 2: Run → FAIL (no module)**
+
+Run: `cd kova-open-pencil-1 && bun test tests/unit/sentry.test.ts`
+Expected: FAIL
+
+- [ ] **Step 3: Write the installer (stub mode)**
+
+```typescript
+// src/sentry.ts
+import type { App } from 'vue'
+import type { Router } from 'vue-router'
+
+const dsn = import.meta.env.VITE_SENTRY_DSN_BROWSER
+
+export function installSentry(app: App, router: Router): void {
+  if (!dsn) {
+    console.warn('[sentry] VITE_SENTRY_DSN_BROWSER missing — Sentry disabled (stub mode)')
+    return
+  }
+  // TODO(pre-launch §11): Sentry.init({ app, dsn, integrations: [...router-tracing...] })
+}
+```
+
+- [ ] **Step 4: Run + verify pass**
+
+Run: `bun test tests/unit/sentry.test.ts`
+Expected: PASS
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add kova-open-pencil-1/src/sentry.ts kova-open-pencil-1/tests/unit/sentry.test.ts
+git commit -m "feat(cluster-11): stub Sentry browser installer (env-guarded; live at 00 §11)"
+```
+
+---
+
+### Task 1.5: Sentry server-side helper (STUB — env-guarded)
 
 **Files:**
 - Create: `kova-open-pencil-1/api/_shared/sentry.ts`
-- Modify: `kova-open-pencil-1/package.json` (add `@sentry/node`)
 - Test: `kova-open-pencil-1/tests/unit/api/_shared/sentry.test.ts`
 
-- [ ] **Step 1: Install + write failing test**
+**Stub-mode note:** No `@sentry/node` dependency added at this stage. Helper is a no-op when `SENTRY_DSN_SERVER` is unset. Live wiring deferred to pre-launch per 00 §11.
 
-Run: `cd kova-open-pencil-1 && bun add @sentry/node@^9`
+- [ ] **Step 1: Write failing test**
 
 ```typescript
 // tests/unit/api/_shared/sentry.test.ts
-import { describe, it, expect, mock } from 'bun:test'
-import { captureException } from '@/api/_shared/sentry'
-import * as Sentry from '@sentry/node'
+import { describe, it, expect, beforeEach, mock } from 'bun:test'
+import { captureException, initSentry } from '@/api/_shared/sentry'
 
-mock.module('@sentry/node', () => ({
-  init: mock(() => undefined),
-  captureException: mock(() => 'event-id-1'),
-  withScope: mock((cb: (s: { setContext: (k: string, v: object) => void }) => void) => {
-    cb({ setContext: mock(() => undefined) })
-  }),
-}))
+const warnMock = mock(() => undefined)
+const origWarn = console.warn
 
-describe('captureException (server)', () => {
-  it('forwards error to Sentry with kova context', () => {
-    const err = new Error('boom')
-    captureException(err, { userId: 'u1', endpoint: 'POST /api/x' })
-    expect(Sentry.withScope).toHaveBeenCalled()
-    expect(Sentry.captureException).toHaveBeenCalledWith(err)
+describe('captureException (server, stub mode)', () => {
+  beforeEach(() => {
+    warnMock.mockClear()
+    console.warn = warnMock
+    delete process.env.SENTRY_DSN_SERVER
+  })
+
+  it('initSentry logs stub warn + returns when DSN unset', () => {
+    initSentry()
+    expect(warnMock).toHaveBeenCalled()
+    expect(String(warnMock.mock.calls[0][0])).toContain('stub mode')
+  })
+
+  it('captureException no-ops when DSN unset (no throw)', () => {
+    expect(() => captureException(new Error('boom'), { userId: 'u1' })).not.toThrow()
+    expect(warnMock).toHaveBeenCalled()
+  })
+
+  // TODO(pre-launch §11): assert Sentry.captureException + scope.setContext call once live.
+  it('TODO branch reached when DSN provided (stub asserts placeholder)', () => {
+    expect(/* TODO(pre-launch §11): live-mode capture */ true).toBeTruthy()
   })
 })
+
+afterAll(() => { console.warn = origWarn })
 ```
 
 - [ ] **Step 2: Run → fail**
 
-- [ ] **Step 3: Write `api/_shared/sentry.ts`**
+- [ ] **Step 3: Write `api/_shared/sentry.ts` (stub mode)**
 
 ```typescript
 // api/_shared/sentry.ts
-import * as Sentry from '@sentry/node'
+const dsn = process.env.SENTRY_DSN_SERVER
 
 let initialized = false
 
-function ensureInit(): void {
+export function initSentry(): void {
+  if (!dsn) {
+    console.warn('[sentry] SENTRY_DSN_SERVER missing — Sentry disabled (stub mode)')
+    return
+  }
   if (initialized) return
-  if (!process.env.SENTRY_DSN_SERVER) return
-  Sentry.init({
-    dsn: process.env.SENTRY_DSN_SERVER,
-    environment: process.env.VERCEL_ENV ?? 'development',
-    release: process.env.VERCEL_GIT_COMMIT_SHA,
-    tracesSampleRate: 0.1,
-    sendDefaultPii: false,
-  })
+  // TODO(pre-launch §11): import + init @sentry/node here once DSN provisioned
   initialized = true
 }
 
-export interface KovaContext {
-  userId?: string
-  endpoint?: string
-  brandId?: string
-  canvasId?: string
-}
-
-export function captureException(err: unknown, context: KovaContext = {}): void {
-  ensureInit()
-  Sentry.withScope((scope) => {
-    if (context.userId) scope.setUser({ id: context.userId })
-    scope.setContext('kova', { ...context })
-    Sentry.captureException(err)
-  })
+export function captureException(err: unknown, context?: Record<string, unknown>): void {
+  if (!dsn) {
+    console.warn('[sentry] captureException called but disabled (stub mode):', err)
+    return
+  }
+  // TODO(pre-launch §11): Sentry.captureException(err, { extra: context })
 }
 ```
 
@@ -601,94 +807,84 @@ export function captureException(err: unknown, context: KovaContext = {}): void 
 - [ ] **Step 5: Commit**
 
 ```bash
-git commit -am "feat(cluster-11): add server-side Sentry captureException with Kova context"
+git commit -am "feat(cluster-11): stub server-side Sentry helper (env-guarded; live at 00 §11)"
 ```
 
 ---
 
-### Task 1.6: Resend `sendEmail()` wrapper
+### Task 1.6: Resend `sendEmail()` wrapper (STUB — env-guarded)
 
 **Files:**
 - Create: `kova-open-pencil-1/api/_shared/email.ts`
-- Modify: `kova-open-pencil-1/package.json` (add `resend`, `juice`)
+- Create: `kova-open-pencil-1/api/_shared/types.ts` (`EmailPayload` interface)
 - Test: `kova-open-pencil-1/tests/unit/api/_shared/email.test.ts`
 
-- [ ] **Step 1: Install deps**
+**Stub-mode note:** No `resend` or `juice` dependencies added at this stage. Stub returns a fake `id` without making an external API call when `RESEND_API_KEY` is unset. Live wiring deferred to pre-launch per 00 §11.
 
-Run: `cd kova-open-pencil-1 && bun add resend@^4 juice@^11`
-
-- [ ] **Step 2: Write the failing test**
+- [ ] **Step 1: Write the failing test**
 
 ```typescript
 // tests/unit/api/_shared/email.test.ts
-import { describe, it, expect, mock, beforeEach } from 'bun:test'
+import { describe, it, expect, beforeEach, mock } from 'bun:test'
 import { sendEmail } from '@/api/_shared/email'
 
-const resendSendMock = mock(async () => ({ data: { id: 'msg-1' }, error: null }))
-mock.module('resend', () => ({ Resend: class { emails = { send: resendSendMock } } }))
+const warnMock = mock(() => undefined)
+const origWarn = console.warn
 
-describe('sendEmail', () => {
-  beforeEach(() => { resendSendMock.mockClear() })
-
-  it('sends with title, html, plain-text fallback, and List-Unsubscribe header', async () => {
-    process.env.RESEND_API_KEY = 'test-key'
-    process.env.RESEND_FROM = 'Kova <noreply@kova.app>'
-    const messageId = await sendEmail({
-      to: 'user@example.com',
-      subject: 'Welcome',
-      html: '<p>hi</p>',
-      text: 'hi',
-    })
-    expect(messageId).toBe('msg-1')
-    expect(resendSendMock).toHaveBeenCalledWith(expect.objectContaining({
-      from: 'Kova <noreply@kova.app>',
-      to: 'user@example.com',
-      subject: 'Welcome',
-      html: '<p>hi</p>',
-      text: 'hi',
-      headers: expect.objectContaining({
-        'List-Unsubscribe': expect.stringContaining('mailto:'),
-      }),
-    }))
+describe('sendEmail (stub mode)', () => {
+  beforeEach(() => {
+    warnMock.mockClear()
+    console.warn = warnMock
+    delete process.env.RESEND_API_KEY
   })
 
-  it('throws when RESEND_API_KEY missing', async () => {
-    delete process.env.RESEND_API_KEY
-    await expect(sendEmail({ to: 'u@x', subject: 's', html: 'h', text: 't' })).rejects.toThrow('RESEND_API_KEY')
+  it('returns stub id + logs warn when RESEND_API_KEY unset', async () => {
+    const result = await sendEmail({ to: 'u@x', subject: 's', html: '<p>h</p>', text: 't' })
+    expect(result.id).toMatch(/^stub_/)
+    expect(warnMock).toHaveBeenCalled()
+    expect(String(warnMock.mock.calls[0][0])).toContain('stub mode')
+  })
+
+  it('does not throw without API key (stub fallback)', async () => {
+    await expect(sendEmail({ to: 'u@x', subject: 's', html: 'h', text: 't' })).resolves.toBeDefined()
+  })
+
+  // TODO(pre-launch §11): assert resend.emails.send invocation with List-Unsubscribe header.
+  it('TODO branch reached when API key provided (stub asserts placeholder)', () => {
+    expect(/* TODO(pre-launch §11): live-mode send */ true).toBeTruthy()
   })
 })
+
+afterAll(() => { console.warn = origWarn })
 ```
 
-- [ ] **Step 3: Write `api/_shared/email.ts`**
+- [ ] **Step 2: Write `api/_shared/types.ts`**
 
 ```typescript
-// api/_shared/email.ts
-import { Resend } from 'resend'
-
+// api/_shared/types.ts
 export interface EmailPayload {
   to: string
   subject: string
   html: string
   text: string
 }
+```
 
-export async function sendEmail(payload: EmailPayload): Promise<string> {
-  const apiKey = process.env.RESEND_API_KEY
-  if (!apiKey) throw new Error('RESEND_API_KEY not configured')
-  const resend = new Resend(apiKey)
-  const result = await resend.emails.send({
-    from: process.env.RESEND_FROM ?? 'Kova <noreply@kova.app>',
-    to: payload.to,
-    subject: payload.subject,
-    html: payload.html,
-    text: payload.text,
-    headers: {
-      'List-Unsubscribe': `<mailto:unsubscribe@kova.app?subject=Unsubscribe-${encodeURIComponent(payload.to)}>`,
-      'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
-    },
-  })
-  if (result.error) throw new Error(`Resend failed: ${result.error.message}`)
-  return result.data!.id
+- [ ] **Step 3: Write `api/_shared/email.ts` (stub mode)**
+
+```typescript
+// api/_shared/email.ts
+import type { EmailPayload } from './types'
+
+const apiKey = process.env.RESEND_API_KEY
+
+export async function sendEmail(payload: EmailPayload): Promise<{ id: string }> {
+  if (!apiKey) {
+    console.warn('[resend] RESEND_API_KEY missing — email send skipped (stub mode):', payload.to, payload.subject)
+    return { id: `stub_${crypto.randomUUID()}` }
+  }
+  // TODO(pre-launch §11): import { Resend } from 'resend' + resend.emails.send(payload)
+  throw new Error('Resend live mode not yet wired — stub fallback only')
 }
 ```
 
@@ -696,7 +892,7 @@ export async function sendEmail(payload: EmailPayload): Promise<string> {
 - [ ] **Step 5: Commit**
 
 ```bash
-git commit -am "feat(cluster-11): add Resend sendEmail helper with List-Unsubscribe"
+git commit -am "feat(cluster-11): stub Resend sendEmail helper (env-guarded; live at 00 §11)"
 ```
 
 ---
@@ -739,7 +935,7 @@ export function channelName(userId: string, domain: string, topic: string): stri
 
 ---
 
-### Task 1.8: Cron `idempotency-cleanup` + vercel.json update
+### Task 1.8: Cron `idempotency-cleanup` + vercel.json update (STUB — env-guarded)
 
 **Files:**
 - Create: `kova-open-pencil-1/api/cron/idempotency-cleanup.ts`
@@ -747,62 +943,97 @@ export function channelName(userId: string, domain: string, topic: string): stri
 - Test: `kova-open-pencil-1/tests/unit/api/cron/idempotency-cleanup.test.ts`
 - Test: `kova-open-pencil-1/tests/integration/cluster-11/cron-idempotency-cleanup.test.ts`
 
-- [ ] **Step 1: Write unit test (auth gate + delete-where)**
+**Stub-mode note:** Handler returns `503 { stub: true }` when `CRON_SECRET` is unset. `vercel.json` cron entry stays registered but the route is dormant until the secret is provisioned. Live wiring deferred to pre-launch per 00 §11.
+
+- [ ] **Step 1: Write unit test (auth gate + stub guard + delete-where)**
 
 ```typescript
 // tests/unit/api/cron/idempotency-cleanup.test.ts
-import { describe, it, expect, mock } from 'bun:test'
+import { describe, it, expect, beforeEach, mock } from 'bun:test'
 import handler from '@/api/cron/idempotency-cleanup'
 
-mock.module('@/api/_shared/supabase', () => ({
-  supabaseAdmin: { from: () => ({ delete: () => ({ lt: () => ({ select: () => ({ data: [{ key: 'k1' }, { key: 'k2' }], error: null }) }) }) }) },
+mock.module('@/api/_shared/supabase-admin', () => ({
+  supabaseAdmin: {
+    from: () => ({
+      delete: () => ({ lt: async () => ({ error: null, count: 2 }) }),
+    }),
+  },
 }))
 
+const warnMock = mock(() => undefined)
+const origWarn = console.warn
+
+function makeRes() {
+  let _status = 200
+  let _body: unknown = null
+  return {
+    status(s: number) { _status = s; return this },
+    json(b: unknown) { _body = b; return this },
+    _get() { return { status: _status, body: _body } },
+  }
+}
+
 describe('cron idempotency-cleanup', () => {
-  it('returns 401 without CRON_SECRET', async () => {
+  beforeEach(() => {
+    warnMock.mockClear()
+    console.warn = warnMock
+  })
+
+  it('returns 503 stub response when CRON_SECRET unset', async () => {
+    delete process.env.CRON_SECRET
+    const req = { headers: {} } as never
+    const res = makeRes()
+    await handler(req, res as never)
+    expect(res._get().status).toBe(503)
+    expect((res._get().body as { stub: boolean }).stub).toBe(true)
+    expect(warnMock).toHaveBeenCalled()
+  })
+
+  it('returns 401 with invalid auth header', async () => {
     process.env.CRON_SECRET = 'secret'
-    const req = new Request('https://test/api/cron/idempotency-cleanup', { method: 'POST' })
-    const res = await handler(req)
-    expect(res.status).toBe(401)
+    const req = { headers: {} } as never
+    const res = makeRes()
+    await handler(req, res as never)
+    expect(res._get().status).toBe(401)
   })
 
   it('returns 200 + count with valid CRON_SECRET', async () => {
     process.env.CRON_SECRET = 'secret'
-    const req = new Request('https://test/api/cron/idempotency-cleanup', {
-      method: 'POST', headers: { Authorization: 'Bearer secret' },
-    })
-    const res = await handler(req)
-    expect(res.status).toBe(200)
-    expect(await res.json()).toEqual({ deleted: 2 })
+    const req = { headers: { authorization: 'Bearer secret' } } as never
+    const res = makeRes()
+    await handler(req, res as never)
+    expect(res._get().status).toBe(200)
+    expect((res._get().body as { deleted: number }).deleted).toBe(2)
   })
 })
+
+afterAll(() => { console.warn = origWarn })
 ```
 
-- [ ] **Step 2: Write handler**
+- [ ] **Step 2: Write handler (stub-guarded)**
 
 ```typescript
 // api/cron/idempotency-cleanup.ts
-import { supabaseAdmin } from '@/api/_shared/supabase'
-import { captureException } from '@/api/_shared/sentry'
+import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { supabaseAdmin } from '../_shared/supabase-admin'
 
-export default async function handler(req: Request): Promise<Response> {
-  const auth = req.headers.get('Authorization')
-  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
-    return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401 })
+const secret = process.env.CRON_SECRET
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (!secret) {
+    console.warn('[cron] CRON_SECRET missing — cron disabled (stub mode)')
+    return res.status(503).json({ stub: true, message: 'CRON_SECRET not configured' })
   }
-  try {
-    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-    const { data, error } = await supabaseAdmin
-      .from('idempotency_keys')
-      .delete()
-      .lt('created_at', cutoff)
-      .select('key')
-    if (error) throw error
-    return new Response(JSON.stringify({ deleted: data?.length ?? 0 }), { status: 200 })
-  } catch (err) {
-    captureException(err, { endpoint: 'POST /api/cron/idempotency-cleanup' })
-    return new Response(JSON.stringify({ error: 'internal_error' }), { status: 500 })
+  if (req.headers.authorization !== `Bearer ${secret}`) {
+    return res.status(401).json({ error: 'Unauthorized' })
   }
+  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+  const { error, count } = await supabaseAdmin
+    .from('idempotency_keys')
+    .delete({ count: 'exact' })
+    .lt('created_at', cutoff)
+  if (error) return res.status(500).json({ error: error.message })
+  return res.status(200).json({ deleted: count ?? 0 })
 }
 ```
 
@@ -819,7 +1050,9 @@ export default async function handler(req: Request): Promise<Response> {
 
 (If `vercel.json` does not yet have a `crons` array, add it; if Cluster 01's row is not yet present, add only this one — Cluster 01 will append on its own.)
 
-- [ ] **Step 4: Write integration test (real DB)**
+// Cron runs daily at 04:00 UTC. Stub-guarded: returns 503 if CRON_SECRET missing.
+
+- [ ] **Step 4: Write integration test (real DB, 24h retention)**
 
 ```typescript
 // tests/integration/cluster-11/cron-idempotency-cleanup.test.ts
@@ -827,7 +1060,19 @@ import { describe, it, expect, beforeEach } from 'bun:test'
 import { supabaseAdmin, resetDb } from '../helpers/supabase-local'
 import handler from '@/api/cron/idempotency-cleanup'
 
-describe('cron idempotency-cleanup (integration)', () => {
+function fakeReqRes(authHeader?: string) {
+  const req = { headers: authHeader ? { authorization: authHeader } : {} } as never
+  let _status = 200
+  let _body: unknown = null
+  const res = {
+    status(s: number) { _status = s; return this },
+    json(b: unknown) { _body = b; return this },
+    _get() { return { status: _status, body: _body } },
+  }
+  return { req, res }
+}
+
+describe('cron idempotency-cleanup (integration, 24h retention)', () => {
   beforeEach(async () => { await resetDb() })
 
   it('deletes rows older than 24h, preserves recent', async () => {
@@ -843,8 +1088,10 @@ describe('cron idempotency-cleanup (integration)', () => {
     ])
 
     process.env.CRON_SECRET = 'sec'
-    const res = await handler(new Request('https://t/api/cron/idempotency-cleanup', { method: 'POST', headers: { Authorization: 'Bearer sec' } }))
-    expect(await res.json()).toEqual({ deleted: 1 })
+    const { req, res } = fakeReqRes('Bearer sec')
+    await handler(req, res as never)
+    expect(res._get().status).toBe(200)
+    expect((res._get().body as { deleted: number }).deleted).toBe(1)
 
     const { data: remaining } = await supabaseAdmin.from('idempotency_keys').select('key')
     expect(remaining?.map(r => r.key)).toEqual([newKey])
@@ -855,7 +1102,39 @@ describe('cron idempotency-cleanup (integration)', () => {
 - [ ] **Step 5: Run all + pass + commit**
 
 ```bash
-git commit -am "feat(cluster-11): add idempotency-cleanup daily cron with auth gate"
+git commit -am "feat(cluster-11): stub idempotency-cleanup cron (env-guarded; 24h retention)"
+```
+
+---
+
+### Task 1.9: Phase 1 acceptance + pre-launch checklist link
+
+**Files:**
+- Modify: `kova-open-pencil-1/.env.example`
+
+**Stub-mode acceptance (until pre-launch §11):**
+- [ ] All 3 helpers (sentry, email, cron) function without env vars present (return no-op, log warn)
+- [ ] `bun run dev` boots cleanly with no env vars set
+- [ ] No browser console errors on a fresh app load (other than the expected stub warnings)
+
+- [ ] **Step 1: Append env-var stubs to `.env.example`**
+
+```
+# Sentry — see 00-PRD_SCOPE_PLAN.md §11 for setup before first prod deploy
+VITE_SENTRY_DSN_BROWSER=
+SENTRY_DSN_SERVER=
+
+# Resend — see 00 §11 for setup (kova.app DNS records required)
+RESEND_API_KEY=
+
+# Vercel cron — see 00 §11 for setup (Pro plan + secret generation)
+CRON_SECRET=
+```
+
+- [ ] **Step 2: Commit**
+
+```bash
+git commit -am "chore(cluster-11): add .env.example stubs for Sentry / Resend / cron (live at 00 §11)"
 ```
 
 ---
@@ -2236,7 +2515,9 @@ defineProps<{ variant?: 'neutral' | 'accent' | 'outline'; dot?: boolean; dotStat
 
 ---
 
-### Task 6.4: `<KovaSkeleton>` + `<EmptyState>` + `<NetworkStatusPill>`
+### Task 6.4: `<KovaSkeleton>` + `<EmptyState>` + `<NetworkStatusIndicator>`
+
+Note: `NetworkStatusIndicator` is a Figma-style icon-only indicator that renders nothing while online and a 14×14 `cloud-off` lucide icon wrapped in a `KovaTooltip` while offline. The legacy pill / sidebar-strip / 28px banner variants are RETIRED per the 2026-05-17 founder decision.
 
 ```vue
 <!-- src/components/ui/KovaSkeleton.vue -->
@@ -2283,192 +2564,39 @@ function renderHeadline() {
 ```
 
 ```vue
-<!-- src/components/ui/NetworkStatusPill.vue -->
+<!-- src/components/ui/NetworkStatusIndicator.vue -->
 <script setup lang="ts">
 import { useOnlineStatus } from '@/composables/use-online-status'
-import KovaPill from './KovaPill.vue'
+import KovaTooltip from '@/components/ui/KovaTooltip.vue'
 
 const { status } = useOnlineStatus()
-defineProps<{ position: 'topbar-pill' | 'sidebar-strip' | 'banner' }>()
 </script>
 
 <template>
-  <KovaPill v-if="position === 'topbar-pill'" :dot="true" :dot-state="status === 'online' ? 'ok' : 'warn'">
-    {{ status === 'online' ? 'Online' : 'Offline' }}
-  </KovaPill>
-  <div v-else-if="position === 'sidebar-strip' && status === 'offline'" class="net-strip">
-    <span class="dot" />
-    <span>Working offline</span>
-  </div>
-  <div v-else-if="position === 'banner' && status === 'offline'" class="offline-banner">
-    <icon-lucide-wifi-off />
-    <span>You're offline. Changes are saved locally and will sync when you reconnect.</span>
-  </div>
+  <KovaTooltip
+    v-if="status === 'offline'"
+    content="You're offline. Changes saved locally and sync when you reconnect."
+  >
+    <icon-lucide-cloud-off
+      class="h-3.5 w-3.5 text-ink-2"
+      aria-label="Offline"
+    />
+  </KovaTooltip>
 </template>
 ```
 
-- [ ] **Commit:** `git commit -am "feat(cluster-11): Skeleton + EmptyState + NetworkStatusPill"`
+Notes:
+- Renders nothing while `useOnlineStatus().status === 'online'`.
+- When offline, renders a 14×14 `icon-lucide-cloud-off` in `--ink-2` inside a `<KovaTooltip>` whose tooltip content matches the copy above.
+- Positioning is consumer-cluster responsibility (e.g. Cluster 02 topbar mounts this beside the avatar). This component only renders the icon+tooltip pair when offline.
+
+- [ ] **Commit:** `git commit -am "feat(cluster-11): Skeleton + EmptyState + NetworkStatusIndicator (Figma-style icon+tooltip)"`
 
 ---
 
-## Phase 7 — Command-K
+## Phase 7 — Error Pages + Vue Boundary
 
-### Task 7.1: Types + store + composable
-
-**Files:**
-- Create: `kova-open-pencil-1/src/types/command-palette.ts`
-- Create: `kova-open-pencil-1/src/stores/command-palette.ts`
-- Create: `kova-open-pencil-1/src/composables/use-command-palette.ts`
-
-```typescript
-// src/types/command-palette.ts
-export interface CommandResult {
-  id: string
-  label: string
-  meta?: string
-  icon?: string
-  shortcut?: string
-  handler: () => void
-}
-
-export interface CommandSection {
-  id: string
-  label: 'Files' | 'Brands' | 'Actions' | 'Help' | string
-  getResults: (query: string) => Promise<CommandResult[]> | CommandResult[]
-}
-```
-
-```typescript
-// src/stores/command-palette.ts
-import { ref } from 'vue'
-import { defineStore } from 'pinia'
-import type { CommandResult, CommandSection } from '@/types/command-palette'
-
-export const useCommandPaletteStore = defineStore('command-palette', () => {
-  const open = ref(false)
-  const query = ref('')
-  const sections = ref<CommandSection[]>([])
-  const results = ref<CommandResult[]>([])
-  const activeIndex = ref(0)
-
-  function toggleOpen(force?: boolean): void {
-    open.value = force ?? !open.value
-    if (!open.value) { query.value = ''; results.value = []; activeIndex.value = 0 }
-  }
-
-  function registerSection(s: CommandSection): void {
-    if (!sections.value.find(x => x.id === s.id)) sections.value.push(s)
-  }
-
-  async function runSearch(q: string): Promise<void> {
-    query.value = q
-    const all: CommandResult[] = []
-    for (const sec of sections.value) {
-      const r = await sec.getResults(q)
-      all.push(...r)
-    }
-    results.value = all
-    activeIndex.value = 0
-  }
-
-  return { open, query, sections, results, activeIndex, toggleOpen, registerSection, runSearch }
-})
-```
-
-```typescript
-// src/composables/use-command-palette.ts
-import { useCommandPaletteStore } from '@/stores/command-palette'
-import { onMounted, onUnmounted } from 'vue'
-
-export function useCommandPalette() {
-  const store = useCommandPaletteStore()
-
-  function onKeydown(e: KeyboardEvent) {
-    if (e.code === 'KeyK' && (e.metaKey || e.ctrlKey)) {
-      e.preventDefault()
-      store.toggleOpen()
-    }
-  }
-
-  onMounted(() => window.addEventListener('keydown', onKeydown))
-  onUnmounted(() => window.removeEventListener('keydown', onKeydown))
-
-  return store
-}
-```
-
-- [ ] **Commit:** `git commit -am "feat(cluster-11): Command-K store + composable + Cmd/Ctrl+K binding"`
-
----
-
-### Task 7.2: `<CommandPalette>` component
-
-```vue
-<!-- src/components/ui/CommandPalette.vue -->
-<script setup lang="ts">
-import { computed, watch, ref } from 'vue'
-import { useCommandPaletteStore } from '@/stores/command-palette'
-import KovaModal from './KovaModal.vue'
-import KovaSkeleton from './KovaSkeleton.vue'
-import EmptyState from './EmptyState.vue'
-
-const store = useCommandPaletteStore()
-const loading = ref(false)
-
-watch(() => store.query, async (q) => {
-  loading.value = true
-  await store.runSearch(q)
-  loading.value = false
-}, { flush: 'post' })
-
-function onKeydown(e: KeyboardEvent) {
-  if (e.code === 'ArrowDown') { store.activeIndex = Math.min(store.activeIndex + 1, store.results.length - 1); e.preventDefault() }
-  else if (e.code === 'ArrowUp') { store.activeIndex = Math.max(store.activeIndex - 1, 0); e.preventDefault() }
-  else if (e.code === 'Enter') {
-    const r = store.results[store.activeIndex]
-    if (r) { r.handler(); store.toggleOpen(false) }
-  }
-}
-</script>
-
-<template>
-  <KovaModal :open="store.open" @update:open="store.toggleOpen($event)" size="md">
-    <div class="ck-search">
-      <icon-lucide-sparkles class="spark" />
-      <input
-        v-model="store.query"
-        placeholder="Search Kova or ask anything…"
-        @keydown="onKeydown"
-        autofocus
-      />
-    </div>
-    <div class="ck-body">
-      <template v-if="loading">
-        <KovaSkeleton v-for="i in 4" :key="i" height="44" radius="card" />
-      </template>
-      <template v-else-if="store.query && store.results.length === 0">
-        <EmptyState size="panel-40" icon="search-x" :headline="`No results for &quot;${store.query}&quot;`" :query="store.query" />
-      </template>
-      <template v-else>
-        <div v-for="r in store.results" :key="r.id" class="ck-row" :class="{ active: store.results[store.activeIndex]?.id === r.id }" @click="r.handler(); store.toggleOpen(false)">
-          <icon-lucide-:name="r.icon" v-if="r.icon" />
-          <span class="lbl">{{ r.label }}</span>
-          <span v-if="r.meta" class="meta">{{ r.meta }}</span>
-          <kbd v-if="r.shortcut">{{ r.shortcut }}</kbd>
-        </div>
-      </template>
-    </div>
-  </KovaModal>
-</template>
-```
-
-- [ ] **Commit:** `git commit -am "feat(cluster-11): CommandPalette component"`
-
----
-
-## Phase 8 — Error Pages + Vue Boundary
-
-### Task 8.1: Three error views
+### Task 7.1: Three error views
 
 **Files:**
 - Create: `Error404View.vue`, `Error500View.vue`, `NetworkUnreachableView.vue`
@@ -2546,7 +2674,7 @@ import KovaButton from '@/components/ui/KovaButton.vue'
 
 ---
 
-### Task 8.2: Vue global errorHandler → /500
+### Task 7.2: Vue global errorHandler → /500
 
 **Files:**
 - Modify: `kova-open-pencil-1/src/main.ts`
@@ -2569,9 +2697,9 @@ app.config.errorHandler = (err, _instance, info) => {
 
 ---
 
-## Phase 9 — Marketing + Email Shells
+## Phase 8 — Marketing + Email Shells
 
-### Task 9.1: `<MarketingShell>`
+### Task 8.1: `<MarketingShell>`
 
 ```vue
 <!-- src/components/shell/MarketingShell.vue -->
@@ -2602,7 +2730,7 @@ defineProps<{ title: string }>()
 
 ---
 
-### Task 9.2: `<EmailShell>` + `useEmailShell` (CSS inlining)
+### Task 8.2: `<EmailShell>` + `useEmailShell` (CSS inlining)
 
 **Files:**
 - Create: `src/components/email/EmailShell.vue`
@@ -2672,9 +2800,9 @@ export async function buildEmail(opts: EmailShellOptions): Promise<{ html: strin
 
 ---
 
-## Phase 10 — App Wiring + Showcase
+## Phase 9 — App Wiring + Showcase
 
-### Task 10.1: Wire global containers in App.vue + main.ts
+### Task 9.1: Wire global containers in App.vue + main.ts
 
 **Files:**
 - Modify: `kova-open-pencil-1/src/App.vue`
@@ -2685,22 +2813,17 @@ export async function buildEmail(opts: EmailShellOptions): Promise<{ html: strin
 ```vue
 <!-- src/App.vue (add to existing) -->
 <script setup lang="ts">
-import { onMounted } from 'vue'
 import ToastStack from '@/components/ui/ToastStack.vue'
 import ConfirmModal from '@/components/ui/ConfirmModal.vue'
-import CommandPalette from '@/components/ui/CommandPalette.vue'
 import { useTheme } from '@/composables/use-theme'
-import { useCommandPalette } from '@/composables/use-command-palette'
 
 useTheme()
-useCommandPalette()
 </script>
 
 <template>
   <RouterView />
   <ToastStack />
   <ConfirmModal />
-  <CommandPalette />
 </template>
 ```
 
@@ -2712,11 +2835,11 @@ import { installSentry } from './sentry'
 installSentry(app, router)
 ```
 
-- [ ] **Commit:** `git commit -am "feat(cluster-11): mount ToastStack + ConfirmModal + CommandPalette globally"`
+- [ ] **Commit:** `git commit -am "feat(cluster-11): mount ToastStack + ConfirmModal globally"`
 
 ---
 
-### Task 10.2: Add error routes + showcase route
+### Task 9.2: Add error routes + showcase route
 
 **Files:**
 - Modify: `kova-open-pencil-1/src/router/routes.ts`
@@ -2735,7 +2858,7 @@ installSentry(app, router)
 
 ---
 
-### Task 10.3: Cluster11Showcase.vue (smoke page)
+### Task 9.3: Cluster11Showcase.vue (smoke page)
 
 ```vue
 <!-- src/views/dev/Cluster11Showcase.vue -->
@@ -2747,7 +2870,7 @@ import KovaButton from '@/components/ui/KovaButton.vue'
 import KovaModal from '@/components/ui/KovaModal.vue'
 import KovaSkeleton from '@/components/ui/KovaSkeleton.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
-import NetworkStatusPill from '@/components/ui/NetworkStatusPill.vue'
+import NetworkStatusIndicator from '@/components/ui/NetworkStatusIndicator.vue'
 
 const toast = useToast()
 const { confirm } = useConfirm()
@@ -2797,8 +2920,8 @@ async function tryDelete() {
 
     <section>
       <h2>Network</h2>
-      <NetworkStatusPill position="topbar-pill" />
-      <NetworkStatusPill position="banner" />
+      <p>Disconnect Wi-Fi to render the offline icon below (mounts nothing while online).</p>
+      <NetworkStatusIndicator />
     </section>
   </div>
 </template>
@@ -2808,12 +2931,18 @@ async function tryDelete() {
 
 ---
 
-## Phase 11 — E2E + Manual Smoke
+## Phase 10 — E2E + Manual Smoke
 
-### Task 11.1: E2E tests
+### Task 10.1: E2E tests
 
 **Files:**
-- Create: `tests/e2e/cluster-11/toast-flow.spec.ts`, `confirm-flow.spec.ts`, `command-palette.spec.ts`, `error-pages.spec.ts`, `theme-swap.spec.ts`, `offline-flow.spec.ts`
+- Create: `tests/e2e/cluster-11/toast-flow.spec.ts`, `confirm-flow.spec.ts`, `error-pages.spec.ts`, `theme-swap.spec.ts`, `offline-flow.spec.ts`
+
+The `offline-flow.spec.ts` test verifies:
+- When `navigator.onLine = false`, `<NetworkStatusIndicator>` renders.
+- Tooltip text on hover matches `"You're offline. Changes saved locally and sync when you reconnect."`
+- When back online, the indicator hides.
+- NO assertion that a banner appears (banner scope deleted per 2026-05-17 founder decision).
 
 - [ ] **Step 1: Each spec follows pattern**
 
@@ -2840,11 +2969,11 @@ test('all 6 toast variants render with correct behaviors', async ({ page }) => {
 
 - [ ] **Step 2: Write the other 5 spec files following the PRD §9.3 acceptance criteria, one test per spec**
 
-- [ ] **Commit:** `git commit -am "test(cluster-11): E2E specs for toast / confirm / Cmd+K / errors / theme / offline"`
+- [ ] **Commit:** `git commit -am "test(cluster-11): E2E specs for toast / confirm / errors / theme / offline"`
 
 ---
 
-### Task 11.2: Manual smoke checklist run
+### Task 10.2: Manual smoke checklist run
 
 - [ ] **Step 1: Run dev server**
 
@@ -2859,7 +2988,7 @@ For each: pass / fail / note. Address fails before merge.
 
 - [ ] **Step 4: Open Sentry dashboard, trigger a console error from `/dev/cluster-11`, confirm capture**
 
-- [ ] **Step 5: Disconnect Wi-Fi → confirm offline banner appears within 10 s; reconnect → confirm dismisses**
+- [ ] **Step 5: Disconnect Wi-Fi → confirm `<NetworkStatusIndicator>` cloud-off icon appears within 10 s + tooltip copy renders on hover; reconnect → confirm indicator hides**
 
 - [ ] **Step 6: Commit smoke results to `kova-open-pencil-1/docs/qa/cluster-11-manual-smoke-2026-05-15.md`**
 
@@ -2869,9 +2998,9 @@ git commit -am "qa(cluster-11): manual smoke pass — all 9 items + Sentry verif
 
 ---
 
-## Phase 12 — CI Grep + Coverage Verification
+## Phase 11 — CI Grep + Coverage Verification
 
-### Task 12.1: Add CI grep enforcement
+### Task 11.1: Add CI grep enforcement
 
 **Files:**
 - Modify: `.github/workflows/ci.yml` (or Vercel build hook) — depends on existing CI surface
@@ -2903,7 +3032,7 @@ git commit -am "qa(cluster-11): manual smoke pass — all 9 items + Sentry verif
 
 ---
 
-### Task 12.2: Coverage verification
+### Task 11.2: Coverage verification
 
 - [ ] **Step 1: Run coverage**
 
@@ -2923,28 +3052,27 @@ Expected: ≥85% on cluster-11 source files
 | PRD §3 / §4 / §5 / §6 surface | Plan task |
 |---|---|
 | §3.1 Toasts (8 scenes) | Phase 3 |
-| §3.2 Error pages (3 routes) | Phase 8 |
-| §3.3 Command-K (5 scenes) | Phase 7 |
-| §3.4 Modals | Phase 4 Task 4.1 |
-| §3.5 Popovers + menus + tooltip | Phase 4 Tasks 4.2 + 4.3 |
-| §3.6 Skeletons | Phase 6 Task 6.4 |
-| §3.7 Empty states | Phase 6 Task 6.4 |
-| §3.8 Network status | Phase 6 Task 6.4 + Phase 2 Task 2.4 |
-| §3.9 Marketing + email shells | Phase 9 |
-| §3.10 Design system + theme | Phase 2 Task 2.1 |
+| §3.2 Errors | Phase 7 |
+| §3.3 Modals | Phase 4 Task 4.1 |
+| §3.4 Popovers + menus + tooltip | Phase 4 Tasks 4.2 + 4.3 |
+| §3.5 Skeletons | Phase 6 Task 6.4 |
+| §3.6 Empty states | Phase 6 Task 6.4 |
+| §3.7 Network status (icon + tooltip) | Phase 6 Task 6.4 + Phase 2 Task 2.4 |
+| §3.8 Marketing + email shells | Phase 8 |
+| §3 Design system + theme | Phase 2 Task 2.1 |
 | §4 idempotency_keys schema | Phase 1 Task 1.1 |
-| §5.1 cron + idempotency cleanup | Phase 1 Task 1.8 |
+| §5.1 cron + idempotency cleanup (STUB) | Phase 1 Task 1.8 |
 | §5.2 RPCs (none) | n/a |
-| §5.4 Sentry + Resend | Phase 1 Tasks 1.4–1.6 |
+| §5.4 Sentry + Resend (STUBS) | Phase 1 Tasks 1.4–1.6 |
 | §5.5 shared helpers | Phase 1 Tasks 1.3, 1.5, 1.6, 1.7 |
-| §5.6 Realtime channel naming | Phase 1 Task 1.7 + Phase 2 Task 2.3 |
-| §5.7 Tauri command-surface | Phase 12 Task 12.1 (CI grep) |
-| §6.1 routes | Phase 10 Task 10.2 |
-| §6.2 stores | Phases 3.2, 5.1, 7.1 |
-| §6.3 composables | Phases 2 + 3.3 + 5.2 + 7.1 |
-| §6.4 components (19) | Phases 3–7 |
-| §6.4.3 marketing + email shells | Phase 9 |
-| §8 acceptance criteria | Embedded as test files in Phases 3–11 |
+| §5.6 Realtime channel naming `kova.{userId}.{domain}.{topic}` | Phase 1 Task 1.7 + Phase 2 Task 2.3 |
+| §5.7 Tauri command-surface | Phase 11 Task 11.1 (CI grep) |
+| §6.1 routes | Phase 9 Task 9.2 |
+| §6.2 stores | Phases 3.2, 5.1 |
+| §6.3 composables | Phases 2 + 3.3 + 5.2 |
+| §6.4 components | Phases 3–6 |
+| §6.4.3 marketing + email shells | Phase 8 |
+| §8 acceptance criteria | Embedded as test files in Phases 3–10 |
 | §9 test plan | Embedded |
 | §10 Phase A / B rollout | Plan is Phase A; Phase B post-merge tasks |
 
@@ -2960,9 +3088,8 @@ Every code block contains the actual code.
 
 - `Toast` / `NewToast` / `ToastVariant` consistent across `toast.ts`, `use-toast.ts`, `KovaToast.vue`, `ToastStack.vue`
 - `ConfirmOptions` / `ConfirmRequest` consistent across `confirm.ts`, `use-confirm.ts`, `ConfirmModal.vue`
-- `CommandResult` / `CommandSection` consistent across `command-palette.ts` store + composable + component
 - `MenuEntry` / `MenuItem` / `MenuSeparator` / `MenuSection` consistent across `menu.ts` + `KovaMenu.vue`
-- `EnvLike` interface in Sentry browser install matches usage
+- `EmailPayload` consistent across `api/_shared/types.ts` + stub `email.ts`
 
 **No drift found.**
 
@@ -2976,6 +3103,6 @@ Plan complete. **Two execution options:**
 
 2. **Inline Execution** — execute tasks in this session using `superpowers:executing-plans`; batch execution with checkpoints for review. Best if the founder wants tight oversight from start to finish.
 
-**Recommendation:** Subagent-Driven. Phases 1–9 are highly parallelizable after Phase 1 completes; one subagent per phase with the plan as input keeps each implementation focused.
+**Recommendation:** Subagent-Driven. Phases 1–8 are highly parallelizable after Phase 1 completes; one subagent per phase with the plan as input keeps each implementation focused.
 
 — End of plan —

@@ -331,6 +331,8 @@ All Edge Functions deploy as Vercel Functions under `kova-open-pencil-1/api/`. T
 
 Idempotency-key handling per cross-cut convention (Cluster 11 owns the primitive; this PRD consumes): client sends `X-Idempotency-Key: <uuid v4>` header on POST; server checks `idempotency_keys` table (Cluster 11 creates) and short-circuits on dup.
 
+**Audit-log cross-cut (W0-1):** every Edge Function below that mutates user state (`deletion-request`, `account-restored`, `email-change-requested`, `account-hard-deleted`) appends one row to `public.audit_log` via the Cluster 11 `writeAudit(supabaseAdmin, { userId, eventType, payload, clusterOwner: '01' })` helper at `api/_shared/audit.ts`. Table DDL + RLS + helper are owned by **PRD 11 §2.1 / §4.1 / §5.5** — this PRD MUST NOT redeclare them. Founder lock #11.
+
 ---
 
 #### 5.1.1 `POST /api/account/deletion-request`

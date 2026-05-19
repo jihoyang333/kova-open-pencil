@@ -36,7 +36,7 @@ User want preferences. Two buckets. **Layer 1 = server bucket** (sync across dev
 
 ### 1.3 Outcome (acceptance gate)
 
-User can: (1) toggle Text size / Reduce motion / High contrast inside Profile page OR via main menu → Preferences → Accessibility modal — same control, same value, syncs across devices within 1 second of last toggle; (2) toggle View prefs (showRuler / showLayoutGuide / showPixelGrid / showFrameOutlines / showSlices / showMaskOutlines) via canvas right-click → these stick across devices; (3) collapse Pages/Layers sections, drag sidebar widths, accumulate recent colors — these stay per-device; (4) opt in/out of product-update + sync-alert emails (Resend integration owned by Cluster 01) via Profile → Notifications; (5) on first boot, defaults load synchronously from `DEFAULTS` constant if server data hasn't arrived yet — no flash-of-unset-prefs.
+User can: (1) toggle Text size / Reduce motion / High contrast inside Profile page OR via main menu → Preferences → Accessibility modal — same control, same value, syncs across devices within 1 second of last toggle; (2) toggle View prefs (showRuler / showLayoutGuide / showPixelGrid / showFrameOutlines / showSlices / showMaskOutlines) via canvas right-click → these stick across devices; (3) collapse Pages/Layers sections, drag sidebar widths, accumulate recent colors — these stay per-device; (4) opt in/out of product-update + sync-alert emails via Profile → Notifications — sync-alert delivery owned by THIS PRD via an env-guarded `send-sync-alert` Supabase Edge Function that consumes Cluster 01's `_shared/resend-client.ts` helper, product-update marketing email deferred to a later marketing-email cluster, in-app toast always fires as safety net; (5) on first boot, defaults load synchronously from `DEFAULTS` constant if server data hasn't arrived yet — no flash-of-unset-prefs.
 
 A11y target: every control reachable via keyboard, screen-reader landmark + aria-label audit pass against WCAG 2.1 AA at the Profile section + A8.3 modal (other surfaces audited by their owning clusters).
 
@@ -65,7 +65,9 @@ A11y target: every control reachable via keyboard, screen-reader landmark + aria
 - `<NotificationsPanel>` reusable component — `productUpdates` (Email · monthly) toggle + `syncAlerts` (Email · immediate) toggle
 - `prefs.notifications: { productUpdates: boolean, syncAlerts: boolean }` Layer 1 JSONB block
 - Rendering host: subsection of `/account/profile` (below Accessibility)
-- Email-fan-out wiring is out of scope (Resend integration lives in Cluster 01 §5.4); this PRD only persists the user's preference
+- `prefs.notifications.syncAlerts` email delivery IS in scope (this PRD ships `supabase/functions/send-sync-alert/index.ts` as an env-guarded Edge Function consuming Cluster 01's `_shared/resend-client.ts` helper). Cluster 06's Yjs sync-retry hook calls this function after 3 failed retries (1s/5s/15s backoff). In-app toast fires immediately on retry 1 regardless — always-on safety net independent of email configuration.
+- `prefs.notifications.productUpdates` email delivery is deferred to a future marketing-email cluster (out of scope); this PRD persists the toggle value only.
+- Resend account setup (signup, domain verification, DNS records, API key) is deferred to pre-launch per founder decision 2026-05-17 — see `docs/kova-final-prds/00-PRD_SCOPE_PLAN.md §11` + memory `project_external_accounts_deferred`. The edge function code wraps `Deno.env.get('RESEND_API_KEY')` in a guard: missing key → early return `{ ok: true, skipped: true }` with `console.warn`. Pre-launch wire-up of one secret lights up Cluster 01 magic-link, Cluster 04 receipts, and Cluster 12 sync-alerts simultaneously.
 
 **View prefs receivers (storage only — overlays + UI live in other clusters):**
 - `prefs.view: { showRuler, showLayoutGuide, showPixelGrid, showFrameOutlines, showSlices, showMaskOutlines }` Layer 1 JSONB block — Cluster 07b + Cluster 08 read these
@@ -76,7 +78,7 @@ A11y target: every control reachable via keyboard, screen-reader landmark + aria
 **Per-device receivers (storage):**
 - `pagesCollapsed`, `layersCollapsed` booleans — Cluster 06 consumes
 - `sidebarLeftWidth`, `sidebarRightWidth` numbers — Cluster 06 consumes
-- `recentColors` string[] (24-color ring buffer) — Cluster 08 consumes
+- `recentColors` string[] (12-color FIFO ring buffer — founder ratified 2026-05-17, 4×3 grid in picker, ~120 bytes localStorage) — Cluster 08 consumes
 - `lastActiveBrandId` string | null — Cluster 02 (Dashboard) and Cluster 06 (Canvas) consume for session resumption
 - `lastActiveCanvasId` string | null — Cluster 06 consumes
 - `dismissedToasts` string[] — Cluster 11 consumes for "Don't show again"
@@ -96,7 +98,9 @@ A11y target: every control reachable via keyboard, screen-reader landmark + aria
 | Main-menu `Preferences ›` submenu entry that opens A8.3 modal | **08** Canvas Menus, Popovers & Shortcuts |
 | Canvas right-click items that flip `showRuler` / `showLayoutGuide` / `showPixelGrid` | **08** |
 | The overlay extensions that READ `prefs.view.*` and render frame/slice/mask outlines / ruler / pixel grid | **07b** Canvas Engine Inspector + Overlays |
-| Email fan-out for `notifications.productUpdates` / `notifications.syncAlerts` (Resend wiring) | **01** (Resend integration foundation) |
+| Resend client helper (`supabase/functions/_shared/resend-client.ts`) — shared Resend SDK wrapper consumed by all email callers | **01** Auth & Identity |
+| Email fan-out for `notifications.productUpdates` (marketing newsletter / release notes delivery) | Future marketing-email cluster (deferred) |
+| Yjs sync-retry hook (3-retry exponential-backoff loop that ultimately calls `send-sync-alert` after retry 3) | **06** Canvas Editor Core Chrome (persistence layer) |
 | `useConfirm()`, `useToast()`, `<KovaModal>`, `<KovaToggle>`, `<KovaSegmented>` primitives | **11** Shared UI Infrastructure |
 | Recent-colors UI in color picker popover | **06** Canvas Editor Core Chrome |
 | Pages/Layers section collapse interaction handlers | **06** |
@@ -108,7 +112,7 @@ A11y target: every control reachable via keyboard, screen-reader landmark + aria
 |---|---|---|
 | Snap toggle re-introduction UI (Snap to grid / guides / objects) | Per Q24 + scope-plan §3 Cluster 08 — snap behavior always-on in MVP, no public toggle. UI returns post-MVP. | Yes — `prefs.snap.{snapToGrid, snapToGuides, snapToObjects}` slot ships, defaults all `true` |
 | Custom keybindings UI | Per Q25 — registry-ready in Cluster 08 but binding-editor UI not in MVP. | Yes — `prefs.keybindings: Record<actionId, string>` slot reserved (empty default; overrides registry default) |
-| AI text suggestions toggle UI | Per `03-doc §2.7` row — feature itself Phase 2. | Yes — `prefs.ai.showTextSuggestions` slot ships (default `true`) |
+| AI text suggestions toggle UI | Per `03-doc §2.7` row — feature itself Phase 2. | Yes — `prefs.ai.showTextSuggestions` slot ships (default `false` — founder ratified 2026-05-17, reserved flag, no UI in MVP) |
 | Default zoom level / default font family UI | Engineering-ready; no hi-fi for the picker yet. | Yes — `prefs.defaults.{zoomLevel, fontFamily}` slot ships |
 | Language / locale picker | Not in any hi-fi; MVP is en-US-only. | No slot — adds in a later migration if/when needed |
 | Notifications channel beyond email (push, in-app banner) | A7.1 hi-fi only shows Email channel. | No slot — schema is `boolean` not `{ email: bool, push: bool }`; revisit when channels expand |
@@ -154,7 +158,7 @@ Per A7.1 + A8.3 hi-fi annotations ("design once, expose twice"), `<Accessibility
 
 Three Accessibility controls **drive global CSS state**, not Pinia-only state:
 
-- **Text size:** set `data-text-size="small" | "medium" | "large"` on `<html>`. Tailwind 4 `@theme` block in `app.css` defines `--text-base: 14px | 15px | 17px` per attribute. Body / list / dialog text inherits via Tailwind's `text-base`. **Canvas chrome stays fixed** (per A7.1 annotation — "Tools and canvas chrome stay fixed"); apply via `:not(.kc)` scope or omit `--text-base` reference inside `.kc` block.
+- **Text size:** set `data-text-size="small" | "medium" | "large"` on `<html>`. Set `html { font-size: 87.5% | 100% | 112.5% }` per attribute (founder ratified 2026-05-17 → 14px / 16px / 18px body). All `rem`-based sizing scales automatically. **Canvas chrome stays fixed** (per A7.1 annotation — "Tools and canvas chrome stay fixed"); apply by sizing canvas chrome in `px` (not `rem`) inside the `.kc {}` block. The optional `--text-base` token (14px/16px/18px) is exposed for explicit `font-size: var(--text-base)` declarations in long-form copy.
 - **High contrast:** set `data-high-contrast="true" | "false"` on `<html>`. CSS layer in `app.css` overrides `--border`, `--ink-3`, `--ring` to higher-contrast hex values per design system file (`main-main-kova-scope/design-system/kova-hifi.css` `:root` block plus a `data-high-contrast="true"` override block to add).
 - **Reduce motion:** set `data-reduce-motion="true" | "false"` on `<html>`. Tailwind `@theme` and global transition utilities respect via `[data-reduce-motion="true"] *, [data-reduce-motion="true"] *::before, [data-reduce-motion="true"] *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }` — same trick `@media (prefers-reduced-motion: reduce)` uses. Also respect OS via the media query for users on first boot before the server pref loads.
 
@@ -266,7 +270,29 @@ Defined in §4.1 migration above.
 
 ### 5.4 External integrations
 
-**None directly.** `prefs.notifications.{productUpdates, syncAlerts}` are READ by Cluster 01's Resend integration when fan-out occurs; this PRD only persists the user's choice.
+**Resend (transactional email) — env-guarded.** This PRD ships one Supabase Edge Function:
+
+- **Path:** `supabase/functions/send-sync-alert/index.ts`
+- **Trigger:** Cluster 06's Yjs sync-retry loop calls `POST /functions/v1/send-sync-alert` after retry attempt 3 fails (timing: 1s + 5s + 15s = 21s after first failure). Payload: `{ userId, canvasId, lastSyncAt }`.
+- **Reads:** `users.preferences->'notifications'->>'syncAlerts'` via authed Supabase client (SECURITY INVOKER honors users-table RLS). If `false`, return `{ ok: true, skipped: 'opted_out' }`.
+- **Env-guard pattern (founder-ratified 2026-05-17):**
+  ```ts
+  const apiKey = Deno.env.get('RESEND_API_KEY');
+  if (!apiKey) {
+    console.warn('Resend not configured — skipping send');
+    return new Response(JSON.stringify({ ok: true, skipped: 'no_api_key' }), { status: 200 });
+  }
+  ```
+  Resend account signup + domain verification + DNS records deferred to pre-launch (see `00-PRD_SCOPE_PLAN.md §11`). Dev runs without Resend env var — toast still fires as the always-on in-app safety net. One pre-launch secret-set lights up all consumers (Cluster 01 magic-link, Cluster 04 receipts, this PRD's sync-alerts).
+- **Resend client:** imports Cluster 01's `_shared/resend-client.ts` wrapper (do NOT instantiate Resend SDK directly). Wrapper handles retry-on-429, idempotency-key header, and dev-test-mode short-circuit.
+- **Email template:** inline plain-text first iteration ("Your changes haven't saved — reopen Kova to retry. Last sync: {lastSyncAt}"). Rich-HTML template deferred to marketing-email cluster.
+
+**Out of scope from this PRD §5.4:**
+- `notifications.productUpdates` email delivery (deferred to future marketing-email cluster — see §2.2)
+- The Yjs sync-retry loop itself (Cluster 06 persistence)
+- Cluster 01's `_shared/resend-client.ts` helper (Cluster 01 ships it)
+
+`prefs.notifications.productUpdates` is READ by the future marketing-email cluster when it ships.
 
 ### 5.5 Compliance + docs deliverables
 
@@ -284,7 +310,7 @@ Defined in §4.1 migration above.
 |---|---|---|
 | Accessibility subsection | `/account/profile` (slotted into the Profile section component) | 04 |
 | Notifications subsection | `/account/profile` (slotted below Accessibility) | 04 |
-| A8.3 Accessibility modal | Overlay — no route. Opened via `usePreferencesModal().open('accessibility')` from main-menu Preferences (Cluster 08) | 08 wires the trigger; this PRD owns the modal body |
+| A8.3 Accessibility modal | Overlay — no route. Opened via `usePreferencesModal().open('accessibility')` from main-menu Preferences (Cluster 08) **OR** global keyboard shortcut `Cmd+,` (Mac) / `Ctrl+,` (Win) — founder ratified 2026-05-17 matching Figma | 08 wires the menu entry; this PRD wires the keyboard shortcut + owns the modal body |
 
 ### 6.2 Pinia stores
 
@@ -477,15 +503,15 @@ Per founder 2026-05-15 pick (view toggles stay Layer 1 per Q5 — cross-device s
 | `accessibility.textSize` | 1 | `'medium'` | this PRD (CSS layer) |
 | `accessibility.reduceMotion` | 1 | `false` (or `true` if OS `prefers-reduced-motion`) | this PRD (CSS layer) |
 | `accessibility.highContrast` | 1 | `false` | this PRD (CSS layer) |
-| `notifications.productUpdates` | 1 | `true` | 01 (Resend fan-out) |
-| `notifications.syncAlerts` | 1 | `true` | 01 (Resend fan-out) |
+| `notifications.productUpdates` | 1 | `true` | Future marketing-email cluster (deferred) |
+| `notifications.syncAlerts` | 1 | `true` | THIS PRD (`send-sync-alert` edge function, env-guarded) + Cluster 06 (retry-hook caller) |
 | `view.showRuler` | 1 | `false` | 07b + 08 |
 | `view.showLayoutGuide` | 1 | `true` (Figma-exact default-ON per Q24) | 07b |
 | `view.showPixelGrid` | 1 | `false` (auto-shows at zoom > 800%) | 07b |
 | `view.showFrameOutlines` | 1 | `false` | 07b |
 | `view.showSlices` | 1 | `false` | 07b |
 | `view.showMaskOutlines` | 1 | `false` | 07b |
-| `ai.showTextSuggestions` | 1 | `true` (slot ships, UI Phase 2) | 07b |
+| `ai.showTextSuggestions` | 1 | `false` (slot ships, UI Phase 2 — founder ratified 2026-05-17, reserved flag default OFF) | 07b |
 | `snap.snapToGrid` | 1 | `true` (slot ships, UI deferred) | 06 (always-on behavior) |
 | `snap.snapToGuides` | 1 | `true` (slot ships, UI deferred) | 06 (always-on behavior) |
 | `snap.snapToObjects` | 1 | `true` (slot ships, UI deferred) | 06 (always-on behavior) |
@@ -946,7 +972,8 @@ Ships with Cluster 04 (same wave). Order of merge:
 
 | Other PRD | What we depend on | What they depend on us for |
 |---|---|---|
-| **01** Auth & Identity | `users.preferences jsonb` column ships in Cluster 01 migration; RLS on `users` table enforces `auth.uid() = id` for the `update_user_pref` RPC; one-line privacy-policy addendum text owned by 01 | Cluster 01 Resend integration reads `prefs.notifications.{productUpdates, syncAlerts}` to gate fan-out |
+| **01** Auth & Identity | `users.preferences jsonb` column ships in Cluster 01 migration; RLS on `users` table enforces `auth.uid() = id` for the `update_user_pref` RPC; one-line privacy-policy addendum text owned by 01; **`supabase/functions/_shared/resend-client.ts` shared Resend SDK wrapper** imported by this PRD's `send-sync-alert` edge function | None (this PRD owns its own edge function consuming Cluster 01's shared helper) |
+| **06** Canvas Editor Core Chrome | Yjs sync-retry hook (3 retries 1s/5s/15s backoff) calls `POST /functions/v1/send-sync-alert` after retry 3 fails; also calls `useToast()` immediately on retry 1 for in-app safety net | We ship the `send-sync-alert` edge function endpoint + read `prefs.notifications.syncAlerts` to gate the email send |
 | **04** Account & Stripe Billing | `/account/profile` Vue Router section mounts `<AccessibilityPanel>` + `<NotificationsPanel>` | We provide both as zero-prop reusable components |
 | **08** Canvas Menus, Popovers & Shortcuts | Main-menu Preferences entry calls `usePreferencesModal().open('accessibility')`; canvas right-click items mutate `prefs.view.*` via `usePreferencesStore.setPath` | We expose the modal + the store; we ship `prefs.view.*` slots in the `UserPreferences` shape |
 | **07b** Canvas Engine Inspector + Overlays | Overlay extensions read `usePreferencesStore.view.*` reactively to decide whether to render | We expose reactive getters with documented defaults |
@@ -1074,7 +1101,10 @@ Audit `00c §2.A` line 2122 uses `'small' | 'normal' | 'large'`. Hi-fi A7.1 + A8
 - The main-menu Preferences trigger — Cluster 08
 - The canvas right-click items that flip `view.*` prefs — Cluster 08
 - The overlay extensions that READ `view.*` and render outlines/guides/grids — Cluster 07b
-- The Resend email fan-out for `notifications.*` — Cluster 01
+- The Resend **shared client helper** (`_shared/resend-client.ts`) — Cluster 01
+- The Resend **account setup** (signup, domain verification, DNS, `RESEND_API_KEY` secret) — Pre-launch founder task (deferred; see `00-PRD_SCOPE_PLAN.md §11`)
+- Email fan-out for `notifications.productUpdates` (marketing/release-notes email) — Future marketing-email cluster
+- The Yjs sync-retry hook that calls our `send-sync-alert` endpoint — Cluster 06
 - The toast / modal / segmented / toggle primitives — Cluster 11
 - Custom keybindings UI — Phase 2 / Cluster 08 follow-up
 - Theme toggle — never (per dark-app rule)

@@ -174,7 +174,7 @@ describe('migration 20260615_05_brand_kit', () => {
     expect(insertNoAttest?.code).toBe('23514') // CHECK violation
   })
 
-  test('brand_fonts CHECK on file_size_bytes max 5 MB', async () => {
+  test('brand_fonts CHECK on file_size_bytes max 5 MB (founder ratification 2026-05-17)', async () => {
     const { error } = await supabase.from('brand_fonts').insert({
       brand_id: '00000000-0000-0000-0000-000000000001',
       family_name: 'BigFont',
@@ -221,7 +221,7 @@ Expected: FAIL — columns not found / table missing.
 Copy the SQL block from PRD `docs/kova-final-prds/05-brand-kit-and-drag-drop.md` §4.1 verbatim into `supabase/migrations/20260615_05_brand_kit.sql`. Specifically:
 
 - ALTER TABLE brands ADD COLUMN tone_snippets/saved_blocks/writing_rules/identity (jsonb NOT NULL DEFAULT)
-- CREATE TABLE brand_fonts (id, brand_id FK ON DELETE CASCADE, family_name, file_path, file_size_bytes CHECK <=5242880, mime_type CHECK IN (...), license_attested CHECK = true, uploaded_at, uploaded_by FK)
+- CREATE TABLE brand_fonts (id, brand_id FK ON DELETE CASCADE, family_name, file_path, file_size_bytes CHECK <=5242880 (5 MB per founder ratification 2026-05-17), mime_type CHECK IN (...), license_attested CHECK = true, uploaded_at, uploaded_by FK)
 - CREATE INDEX idx_brand_fonts_brand + UNIQUE INDEX idx_brand_fonts_unique_family
 - CREATE TABLE brand_kb_sources (with 10 MB cap, mime_type CHECK in pdf/plain/markdown)
 - CREATE INDEX idx_brand_kb_sources_brand
@@ -743,8 +743,8 @@ BEGIN;
 -- Create buckets if not exist
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 VALUES
-  ('brand-fonts',       'brand-fonts',       false, 5242880,  ARRAY['font/woff2','font/ttf','font/otf']::text[]),
-  ('brand-kb-sources',  'brand-kb-sources',  false, 10485760, ARRAY['application/pdf','text/plain','text/markdown']::text[])
+  ('brand-fonts',       'brand-fonts',       false, 5242880,  ARRAY['font/woff2','font/ttf','font/otf']::text[]),                                  -- 5 MB per founder ratification 2026-05-17
+  ('brand-kb-sources',  'brand-kb-sources',  false, 10485760, ARRAY['application/pdf','text/plain','text/markdown']::text[])                      -- 10 MB per-file (no count cap per founder ratification 2026-05-17)
 ON CONFLICT (id) DO NOTHING;
 
 -- Path-prefix RLS per D-5 (00e §4 verified pattern)
@@ -2376,6 +2376,26 @@ describe('VoiceDraftConfirmModal', () => {
     expect(discardDraftMock).toHaveBeenCalled()
   })
 
+  test('Skip emits skip event WITHOUT calling confirm or discard (onboarding context only)', async () => {
+    // RATIFIED 2026-05-17 PRD §12.4 — Skip-for-now: close modal, leave voice_drafts row open
+    setActivePinia(createPinia())
+    confirmDraftMock.mockClear()
+    discardDraftMock.mockClear()
+    const wrap = mount(VoiceDraftConfirmModal, { props: { draft, context: 'onboarding' } })
+    expect(wrap.find('[data-test="skip-btn"]').exists()).toBe(true)
+    await wrap.find('[data-test="skip-btn"]').trigger('click')
+    expect(confirmDraftMock).not.toHaveBeenCalled()
+    expect(discardDraftMock).not.toHaveBeenCalled()
+    expect(wrap.emitted('skip')).toBeTruthy()
+  })
+
+  test('Skip button NOT rendered when context is brand-kit', () => {
+    // RATIFIED 2026-05-17 — Skip only valid in onboarding; in brand-kit user must Confirm or Discard
+    setActivePinia(createPinia())
+    const wrap = mount(VoiceDraftConfirmModal, { props: { draft, context: 'brand-kit' } })
+    expect(wrap.find('[data-test="skip-btn"]').exists()).toBe(false)
+  })
+
   test('Removing all snippets leaves empty list', async () => {
     setActivePinia(createPinia())
     const wrap = mount(VoiceDraftConfirmModal, { props: { draft } })
@@ -2400,16 +2420,21 @@ describe('VoiceDraftConfirmModal', () => {
 ```vue
 <!-- src/components/brand-kit/modals/VoiceDraftConfirmModal.vue -->
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useVoiceDraft } from '@/composables/use-voice-draft'
 import { useToast } from '@/composables/use-toast'
 import KovaModal from '@/components/shared/KovaModal.vue'  // Cluster 11
 import type { VoiceDraft, VoiceDraftPayload } from '@/types/brand-kit'
 
-const props = defineProps<{ draft: VoiceDraft }>()
+const props = defineProps<{
+  draft: VoiceDraft
+  context?: 'onboarding' | 'brand-kit'  // RATIFIED 2026-05-17 §12.4 — Skip only valid in onboarding
+}>()
+const emit = defineEmits<{ (e: 'skip'): void; (e: 'close'): void }>()
 
 const vd = useVoiceDraft()
 const toast = useToast()
+const showSkip = computed(() => props.context === 'onboarding')
 
 const voiceContent = ref(props.draft.draft_payload.voice.content)
 const snippets = ref([...props.draft.draft_payload.tone_snippets])
@@ -2438,6 +2463,14 @@ async function onDiscard(): Promise<void> {
   } catch (e) {
     toast.show({ variant: 'error', message: 'Could not discard draft.' })
   }
+}
+
+function onSkip(): void {
+  // RATIFIED 2026-05-17 PRD §12.4 — close modal WITHOUT DB write.
+  // voice_drafts row remains open (confirmed_at IS NULL AND discarded_at IS NULL).
+  // Persistent banner in /account/brand-kit re-opens this modal later.
+  emit('skip')
+  emit('close')
 }
 </script>
 
@@ -2489,6 +2522,12 @@ async function onDiscard(): Promise<void> {
 
     <template #actions>
       <button
+        v-if="showSkip"
+        data-test="skip-btn"
+        @click="onSkip"
+        class="btn ghost text-sm"
+      >Skip for now</button>
+      <button
         data-test="discard-btn"
         @click="onDiscard"
         class="btn ghost"
@@ -2520,7 +2559,20 @@ git commit -m "feat(cluster-05): VoiceDraftConfirmModal — GUARDRAIL implementa
 For each tab, follow the same TDD cycle. Each task: test + component + commit.
 
 - **Task 21: VisualsTab + visuals primitives** (BrandColorSwatch with drag-source, BrandColorAddTile, BrandFontRow with drag-source, FontUploadDropzone with B8 states, BrandLogoRow with drag-source)
-- **Task 22: IdentityTab + IdentityCard** (inline editor with `update_brand_identity` RPC + empty state + Phase-2 hide of "Draft via interview")
+- **Task 22: IdentityTab + IdentityCard** (inline editor with `update_brand_identity` RPC + empty state + Phase-2 "Draft via interview" CTA renders **DISABLED with "Coming soon" Reka tooltip** per RATIFICATION 2026-05-17 §12.3). Add `export const BRAND_KIT_AI_INTERVIEW_ENABLED = false` to `src/constants.ts`. IdentityCard.vue template:
+  ```vue
+  <Tooltip :disabled="BRAND_KIT_AI_INTERVIEW_ENABLED">
+    <TooltipTrigger as-child>
+      <button
+        data-test="draft-via-interview-btn"
+        :disabled="!BRAND_KIT_AI_INTERVIEW_ENABLED"
+        class="btn ghost sm"
+      >Draft via interview</button>
+    </TooltipTrigger>
+    <TooltipContent>Brand voice interview — coming soon</TooltipContent>
+  </Tooltip>
+  ```
+  Unit test asserts: button rendered, `disabled` attribute present, tooltip text reads "Brand voice interview — coming soon".
 - **Task 23: ToneSnippetsTab + BrandKitListRow + ToneSnippetAddModal + ToneSnippetEditModal** (drag-reorder via @vueuse/integrations sortable or HTML5 native drag with order calc; modals use `<KovaModal>`)
 - **Task 24: SavedBlocksTab + SavedBlockAddModal + SavedBlockEditModal** (parallel + grip-handle as drag-source for `application/x-kova-saved-block`)
 - **Task 25: WritingRulesTab + WritingRuleToggle** (each toggle calls `setWritingRule` RPC)
@@ -2554,16 +2606,21 @@ git commit -m "test(cluster-05): integration coverage for voice-draft extract �
 - Create: `tests/e2e/brand-kit/writing-rules-toggle.spec.ts`
 - Create: `tests/e2e/brand-kit/voice-draft-confirm.spec.ts`
 - Create: `tests/e2e/brand-kit/voice-draft-discard.spec.ts`
+- Create: `tests/e2e/brand-kit/voice-draft-skip-banner.spec.ts` — **RATIFIED §12.4 + §12.14 2026-05-17**: onboarding shows modal → click Skip for now → wizard advances → /account/brand-kit shows persistent banner; banner never auto-expires (assert presence after 10s wait simulating long-running session)
+- Create: `tests/e2e/brand-kit/voice-draft-rescrape-replaces.spec.ts` — **RATIFIED §12.13 2026-05-17**: open draft #1 → re-run Shopify connect → assert old draft.discarded_at set + new draft created
+- Create: `tests/e2e/brand-kit/font-cap-5mb-rejection.spec.ts` — **RATIFIED 2026-05-17**: upload 6 MB font → toast "File too large (max 5 MB)" + no row in brand_fonts
+- Create: `tests/e2e/brand-kit/identity-interview-cta-disabled.spec.ts` — **RATIFIED §12.3 2026-05-17**: Identity card "Draft via interview" button rendered with `[disabled]` + tooltip text "Brand voice interview — coming soon"
+- Create: `tests/e2e/brand-kit/kb-sources-unlimited.spec.ts` — **RATIFIED §12.15 2026-05-17**: upload 30 KB source files (each ≤ 10 MB) → all 30 rows in `brand_kb_sources` + list renders without count cap error
 - Create: `tests/e2e/brand-kit/drag-color-to-canvas.spec.ts`
 - Create: `tests/e2e/brand-kit/drag-font-to-text.spec.ts`
 - Create: `tests/e2e/brand-kit/drag-saved-block-to-canvas.spec.ts`
 
-- [ ] Use existing E2E test helpers (`signIn`, `mockShopifyConnect`, `mockAnthropic`). Each spec implements the acceptance criterion from PRD §8.
+- [ ] Use existing E2E test helpers (`signIn`, `mockShopifyConnect`, `mockAnthropic`). Each spec implements the acceptance criterion from PRD §8 + ratification regression guards from §12.
 
 - [ ] **Commit**
 
 ```bash
-git commit -m "test(cluster-05): E2E coverage for all 7 sub-tabs + voice-draft + 3 drag-drop flows"
+git commit -m "test(cluster-05): E2E coverage for all 7 sub-tabs + voice-draft (incl. Skip-banner + re-scrape replace) + 5 MB font cap + KB unlimited + interview-CTA disabled + 3 drag-drop flows (all founder ratifications 2026-05-17)"
 ```
 
 ---
@@ -2675,7 +2732,7 @@ After the plan is complete, run these checks:
 
 Per founder direction in CLAUDE.md ("structured Superpowers workflow"), recommended execution path:
 
-1. **Founder reviews + approves PRD 05** (`docs/kova-final-prds/05-brand-kit-and-drag-drop.md` §0 status: DRAFT → APPROVED)
+1. **Founder reviews + approves PRD 05** (`docs/kova-final-prds/05-brand-kit-and-drag-drop.md` §0 status: REVIEW → APPROVED). All 4 open questions ratified 2026-05-17 — only final read-through remains.
 2. **Founder reviews this plan** (especially Tasks 1–6 schema decisions + Task 17 Anthropic prompt)
 3. **Subagent-Driven execution** via `superpowers:subagent-driven-development` — dispatch one fresh subagent per task, review between tasks. Recommended for the 32 tasks. Two-stage review.
 4. **OR Inline execution** via `superpowers:executing-plans` — batch execution with checkpoints. Faster for the engineer-machine cycle; founder reviews at checkpoints.

@@ -71,16 +71,19 @@
 | Task | Action | Verification |
 |---|---|---|
 | 2.1.1 Write tests asserting `compactActions ⊆ fullActions` + multi-select gate on Boolean ops + destructive flag on Delete | RED | |
-| 2.1.2 Implement `src/composables/use-object-actions.ts`. Inputs: `useEditorStore` (selection, multi-select count). Outputs: `compactActions: ComputedRef<Action[]>`, `fullActions: ComputedRef<Action[]>`. Internal `allActions[]` definition incl. each action's `invoke()` calling existing `editor.ts` method | GREEN | |
-| 2.1.3 Wire each `invoke()` to existing `editor.ts` action per PRD §7.1 mapping | All wired | |
+| 2.1.2 Implement `src/composables/use-object-actions.ts`. Inputs: `useEditorStore` (selection, multi-select count). Outputs: `compactActions: ComputedRef<Action[]>`, `fullActions: ComputedRef<Action[]>`, **`brandCardActiveActions: ComputedRef<Action[]>`**, **`brandCardArchivedActions: ComputedRef<Action[]>`**. Internal `allCanvasActions[]` + `allBrandCardActions[]` definitions; each action's `invoke(ctx?)` calling existing `editor.ts` method OR (for brand-card) PRD 03 modal trigger. Action signature: `invoke(ctx?: { brand?: Brand; node?: SceneNode }) => void` | GREEN | |
+| 2.1.3 Wire each canvas `invoke()` to existing `editor.ts` action per PRD §7.1 mapping | All wired | |
+| 2.1.4 (NEW per founder lock 2026-05-17 — B12 archived Brands page MVP) Write tests for brand-card branches: `brandCardActiveActions` returns `[Rename, Archive, Delete]` (3 items, all `invoke(ctx={brand})`); `brandCardArchivedActions` returns `[Restore, Delete]` (2 items); toggling `brand.archived_at` from `null` → ISO timestamp swaps the array returned (reactivity test via Ref<Brand>); each `invoke()` calls the PRD 03 modal trigger (mock the cross-cut to assert correct modal opened) | RED | |
+| 2.1.5 Implement brand-card action arrays + state-branch logic in `use-object-actions.ts`. Active set: `Rename` (→ PRD 03 inline-rename), `Archive` (→ PRD 03 B12.1 modal), `Delete` (→ PRD 03 B12.4 modal). Archived set: `Restore` (→ PRD 03 B12.3 modal), `Delete` (→ PRD 03 B12.4 modal). State branch: `brand.archived_at !== null` → archived; else active. Cross-cut to PRD 03 via injected dispatcher (do NOT import PRD 03 modal components directly; PRD 03 provides a `useBrandCardModals()` composable injected into `useObjectActions()`'s context) | GREEN | |
 
 ### 2.2 `useContextMenu`
 
 | Task | Action | Verification |
 |---|---|---|
-| 2.2.1 Write tests per PRD §9.1 (7 surfaces, asset-row dispatch hook) | RED | |
-| 2.2.2 Implement `src/composables/use-context-menu.ts`. Per-surface dispatch table; asset-row delegates to externally-registered items (Cluster 05 plug-in pattern) | GREEN | |
-| 2.2.3 Document the dispatch contract in `src/composables/use-context-menu.ts` JSDoc — note Cluster 05 will call `registerAssetMenuItems(items)` at boot | Inline doc present | |
+| 2.2.1 Write tests per PRD §9.1 (8 surfaces, asset-row dispatch hook, **brand-card state branch**) | RED | |
+| 2.2.2 Implement `src/composables/use-context-menu.ts`. Per-surface dispatch table; asset-row delegates to externally-registered items (Cluster 05 plug-in pattern). **`brand-card` surface (NEW per founder lock 2026-05-17): signature `useContextMenu('brand-card', { brand })` → branches on `brand.archived_at !== null` to pick `useObjectActions().brandCardActiveActions` or `brandCardArchivedActions`** | GREEN | |
+| 2.2.3 Document the dispatch contract in `src/composables/use-context-menu.ts` JSDoc — note Cluster 05 will call `registerAssetMenuItems(items)` at boot; **PRD 03 will mount `<ContextMenuShell surface='brand-card' :ctx="{ brand }" :triggerEvent>` on brand cards** | Inline doc present | |
+| 2.2.4 (NEW per founder lock 2026-05-17) Write integration test: render `<ContextMenuShell surface='brand-card'>` with a Ref<Brand>; flip `brand.archived_at` from `null` → ISO timestamp; assert items array shrinks from 3 to 2 with correct labels | GREEN | |
 
 ### 2.3 `useFind` (search algorithm + composable)
 
@@ -155,7 +158,8 @@
 | 3.2.1 `<MainMenuPopover>` mounted from Cluster 06 top chrome (mount-point cross-cut — placeholder mount in dev) | Opens / closes via `useMenuStore` | Manual click test |
 | 3.2.2 `<FileSubmenu>` (B1.2 — 7 items) | Renders + destructive coloring on Move-to-trash | Snapshot |
 | 3.2.3 `<EditSubmenu>` (B1.3 — densest, w-280) | All kbd-rows correct + Copy as ▶ sub-of-sub | Snapshot |
-| 3.2.4 `<ViewSubmenu>` (B1.4 — checkable rows) | Layout-guides defaults to checked; Pixel grid disabled with Phase 2 pill | Snapshot |
+| 3.2.4 `<ViewSubmenu>` (B1.4 — 6 checkable rows + 2 sub-of-subs per founder lock 2026-05-17) | **Defaults per Figma View menu screenshot:** Pixel grid (⇧') / Layout guides (⇧G) / Rulers (⇧R) → checked. Show slices / Mask outlines / Frame outlines → unchecked. Plus Show/Hide UI (⌘\) checked / Minimize UI (⇧⌘\) / Panels ▶ / Outlines ▶ / 5 Zoom rows. **Pixel grid NO LONGER Phase-2-disabled — active overlay primitive consumed from Cluster 07b.** Previous/Next page items DROPPED. Comments / Annotations / Property labels / Multiplayer cursors / Pixel preview NOT rendered. | Snapshot + assert defaults via reading `usePreferencesStore.prefs.view.*` post-mount |
+| 3.2.4b `<OutlinesSubmenu>` (B1.4 sub-of-sub — NEW per founder lock 2026-05-17) | Single item "Show outlines" (⇧O) checkable, default-OFF. Toggles `usePreferencesStore.prefs.view.wireframeMode`. Cluster 07b wireframe-render primitive consumed via `editor.ts.setRenderMode('wireframe'|'normal')` (Cluster 07b must ship method). | Snapshot + integration test asserts engine call on toggle |
 | 3.2.5 `<ObjectSubmenu>` (B1.5) | Multi-select gate on Boolean ops row | Snapshot single-select + multi-select |
 | 3.2.6 `<BooleanOpsSubmenu>` (B1.5 sub-of-sub) | 4 items + Multi-select-only group label | Snapshot |
 | 3.2.7 `<TextSubmenu>` (B1.6) + `<CaseSubmenu>` sub-of-sub (radio behavior) | Snapshot | |
@@ -189,9 +193,10 @@
 | 4.3 Verify `compact ⊆ full` invariant via E2E test enumerating DOM items in both | Both menus tested; subset assertion passes | |
 | 4.4 Right-click trigger wiring on canvas / layer-row / page-row / empty-canvas / frame / asset-row (Cluster 06 cross-cut — mount points stubbed during dev) | Each trigger opens correct surface | E2E |
 | 4.5 Auto-select on right-click-unselected-node behavior | E2E | |
-| 4.6 Empty-canvas surface: 3 view-toggle items bound to `usePreferencesStore.prefs.view.*` (Cluster 12 stub during dev) | Toggle persists across reload (verified after Phase 5) | |
-| 4.7 Page-row Delete: useConfirm specialization; last-page-guard error toast | Manual + E2E | |
+| 4.6 Empty-canvas surface: **12 items per Figma-full menu (founder lock 2026-05-17)** — Paste here / Paste to replace (⇧⌘R) / sep / Select all (⌘A) / Select inverse (⇧⌘A) / sep / Zoom to 100% (⌘0) / Zoom to fit (⇧1) / Zoom to selection (⇧2) / sep / Pixel grid / Layout guides / Rulers (3 checkable, all default-ON) / sep / Find (⌘F). Paste-here uses cursor→canvas coord via `editor.canvasToScreen` inverse. Toggles bound to `usePreferencesStore.prefs.view.{pixelGrid, layoutGuides, rulers}`. Find row invokes `useFindStore.open()`. | E2E test all 12 items + paste-here cursor positioning |
+| 4.7 Page-row Delete: useConfirm specialization. **Last-page guard: menu row renders `.disabled` with hover-tooltip "Cannot delete the last page" (founder lock 2026-05-17 — Figma-exact). NO useConfirm invocation, NO error toast.** Implemented in `useObjectActions` return shape `{ disabled: true, disabledReason: string }` when `pages.length === 1`. | E2E: 1-page brand → right-click page → Delete row visually grayed, click no-ops, tooltip on hover. Multi-page brand → Delete invokes useConfirm normally |
 | 4.8 Asset-row shell only — items left blank (Cluster 05 plugs in) | Shell opens with empty items list; documented Cluster 05 plug-in API | Manual |
+| 4.9 (NEW per founder lock 2026-05-17 — B12 archived Brands page MVP) Brand-card surface wiring: PRD 03 mounts `<ContextMenuShell surface='brand-card' :ctx="{ brand }" :triggerEvent>` on each brand card. Items dispatched from `useObjectActions().brandCardActiveActions` (3 items) when `brand.archived_at === null`, else `brandCardArchivedActions` (2 items). Each item's `invoke({ brand })` calls PRD 03's `useBrandCardModals().{ openArchive, openRestore, openDelete, startInlineRename }` injected dispatcher | E2E: active brand card → right-click → 3 items present (Rename / Archive / Delete); archive flow opens B12.1; archived brand card → right-click → 2 items (Restore / Delete); restore opens B12.3; delete opens B12.4. Toggle `archived_at` mid-session and re-open menu → items recompute |
 
 **Phase 4 exit gate:**
 - All 7 context-menu surfaces ship
@@ -244,9 +249,12 @@
 | 7.2 Cluster 09 `⌥⌘S` Save to version history registration: confirm 09 plugs into store | Same | |
 | 7.3 Cluster 06 tool-switch shortcuts (V/F/R/O/P/T/C): confirm 06 plugs into store | Same | |
 | 7.4 Cluster 05 asset-row right-click items: confirm 05 plugs into `useContextMenu` asset-row dispatch | Manual | |
+| 7.4b (NEW per founder lock 2026-05-17 — B12 archived Brands page MVP) PRD 03 brand-card right-click: confirm PRD 03 exposes `useBrandCardModals()` composable + Brand type with `archived_at: string \| null`; confirm PRD 03 mounts `<ContextMenuShell surface='brand-card'>` on brand cards; confirm `useObjectActions().brandCardActiveActions` / `brandCardArchivedActions` arrays render with PRD-03 modal dispatch wired | Manual + E2E both states |
 | 7.5 Cluster 11 `useConfirm()` primitive: confirm canvas-side `useConfirm` specializations call into the primitive correctly | E2E delete-page flow | |
 | 7.6 Cluster 12 `useUIStateStore.recentColors`: confirm color-picker (Cluster 06) writes; confirm overlay reads | E2E recent-colors persistence | |
-| 7.7 Cluster 12 `usePreferencesStore.prefs.view.*`: confirm View menu toggles read/write Layer 1 prefs | E2E toggle persists across reload (test against local Supabase) | |
+| 7.7 Cluster 12 `usePreferencesStore.prefs.view.*`: confirm View menu toggles read/write Layer 1 prefs per **founder lock 2026-05-17 Figma defaults**: `pixelGrid: true / layoutGuides: true / rulers: true / frameOutlines: false / maskOutlines: false / showSlices: false / wireframeMode: false`. Default `users.preferences` JSONB seed updated accordingly | E2E toggle persists across reload (test against local Supabase); seed asserts defaults on fresh user |
+| 7.7b Cluster 07b NEW dependencies (founder lock 2026-05-17) — confirm Cluster 07b ships: (a) wireframe render-mode primitive `editor.ts.setRenderMode('wireframe'|'normal')`; (b) Pixel-grid overlay primitive (active MVP, no longer Phase-2 stub); (c) Rulers overlay primitive; (d) Frame-outlines / Mask-outlines / Slices overlay primitives (on-toggle render) | Cluster 07b PRD references these as MVP scope; if not ready, this PRD's View menu toggles render but visual effect missing — flag in PR review |
+| 7.7c Cluster 12 schema seed: confirm `users.preferences` JSONB default migration includes `view.{pixelGrid: true, layoutGuides: true, rulers: true, frameOutlines: false, maskOutlines: false, showSlices: false, wireframeMode: false}` | Migration SQL diff reviewed | |
 | 7.8 Trash cross-cut sanity: confirm Move-to-trash NOT reachable from canvas (B1.11 / 13.2 stripped); dashboard right-click does reach modal | E2E | |
 
 **Phase 7 exit gate:**
@@ -300,7 +308,12 @@
 | `use-keyboard.ts` refactor drops existing shortcut | 2.6 | Pre-refactor audit + post-refactor parity tests | Open |
 | Cluster 06 / 11 stubs delay testing | 0 + 7 | Pre-flight requires stub availability; mount-point placeholders in dev | Open |
 | Q24 open question on Cluster 05 asset-menu dispatch direction | 4.8 | Decided unilaterally per PRD §12.4 — confirm during Cluster 05 PRD authoring | Resolved-pending-Cluster-05 |
-| Last-page guard UX (error toast vs disabled item) | 4.7 | Ships error-toast per PRD §8.3; founder confirms | Open |
+| Last-page guard UX (error toast vs disabled item) | 4.7 | **RESOLVED 2026-05-17 — disabled item + tooltip per founder Figma-parity lock** | Closed |
+| Outlines wireframe submenu (Cluster 07b dep) | 3.2.4b, 7.7b | NEW per founder lock 2026-05-17 — Cluster 07b must ship `editor.ts.setRenderMode` primitive | Open (Cluster 07b dep) |
+| Pixel grid activation (was Phase-2 stub) | 3.2.4, 7.7b | NEW per founder lock 2026-05-17 — Cluster 07b must ship overlay primitive | Open (Cluster 07b dep) |
+| Default View toggle states (3 ON / 4 OFF Figma defaults) | 3.2.4, 7.7c | NEW per founder lock 2026-05-17 — Cluster 12 schema seed update needed | Open (Cluster 12 dep) |
+| Empty-canvas right-click expanded to 12 items | 4.6 | NEW per founder lock 2026-05-17 — replaces 3-item minimal | Closed (spec'd) |
+| Brand-card right-click — active vs archived state branch (B12 archived Brands page MVP) | 2.1.4, 2.1.5, 2.2.2, 2.2.4, 4.9, 7.4b | NEW per founder lock 2026-05-17 — `useObjectActions` extended; `useContextMenu` gets `brand-card` surface; cross-cut to PRD 03 for B12.1/B12.3/B12.4 modals | Open (PRD 03 dep — must expose `useBrandCardModals()` composable + `Brand` type with `archived_at`) |
 
 ---
 
@@ -334,6 +347,7 @@ kova-open-pencil-1/src/components/menu/
   CaseSubmenu.vue
   CopyAsSubmenu.vue
   PanelsSubmenu.vue
+  OutlinesSubmenu.vue  # NEW per founder lock 2026-05-17 — wireframe render mode submenu
   ArrangeSubmenu.vue
   PreferencesSubmenu.vue
   HelpSubmenu.vue

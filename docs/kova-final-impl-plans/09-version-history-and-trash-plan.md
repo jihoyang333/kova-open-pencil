@@ -2,17 +2,17 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Ship the Figma-exact version-history panel + 30-min autosnapshot heartbeat + atomic restore + trash-confirm modal for PRD 09 (`docs/kova-final-prds/09-version-history-and-trash.md`).
+**Goal:** Ship the Figma-exact version-history panel + 30-min autosnapshot heartbeat + atomic restore + trash-confirm modal for PRD 09 (`docs/prd/09-version-history-and-trash.md`).
 
 **Architecture:** Single Postgres migration (1 table + 4 RPCs + RLS) + 1 private Storage bucket (`canvas-snapshots`) + 2 Vercel Edge Functions (`duplicate-to-canvas`, `cron/snapshot-prune`) + Pinia store + 6 composables + 9 Vue components. Snapshot bytes are Yjs Kiwi-encoded + Zstd-compressed. Restore is atomic with a pre-restore snapshot pushed to Yjs undo. Trash is dashboard-only (per founder 2026-05-09); the canvas-side dropdown does NOT carry "Move to trash". This PRD does NOT modify `packages/core/` (CLAUDE.md hard constraint preserved).
 
 **Tech Stack:** Supabase Postgres + Storage; SECURITY DEFINER RPCs (`plpgsql`); Vercel Functions (Fluid Compute) in `kova-open-pencil-1/api/`; `@supabase/supabase-js`; existing `yjs`, `kiwi-schema`, `@bokuweb/zstd-wasm` deps from OpenPencil `packages/core/codec`; Vue 3 Composition API + Pinia setup stores + Reka UI primitives + Tailwind CSS 4 + Lucide icons via `unplugin-icons`. Tests: `bun:test` (unit + integration via local Supabase) + Playwright/Vercel Agent Browser (E2E).
 
 **Reference docs:**
-- PRD: `kova-open-pencil-1/docs/kova-final-prds/09-version-history-and-trash.md`
+- PRD: `kova-open-pencil-1/docs/prd/09-version-history-and-trash.md`
 - Hi-fi: `main-main-kova-scope/batch-b/chunk-b6/Kova Hi-Fi 17 Version History - Dark.html` (11 scenes), `main-main-kova-scope/batch-b/chunk-b2/Kova Hi-Fi 15 Trash Confirm - Dark.html` (3 scenes)
 - Design system: `main-main-kova-scope/design-system/{design.md, kova-hifi.css, TOKEN_CANONICAL.md}`
-- Audit base: `kova-open-pencil-1/docs/kova-final-prds/00c-COMPREHENSIVE_AUDIT_REPORT.md` lines 1764–1945
+- Audit base: `kova-open-pencil-1/docs/prd/00c-COMPREHENSIVE_AUDIT_REPORT.md` lines 1764–1945
 
 ---
 
@@ -149,7 +149,7 @@ Expected: FAIL with "table canvas_snapshots does not exist" (migration not yet a
 
 - [ ] **Step 3: Write the migration**
 
-Open `kova-open-pencil-1/docs/kova-final-prds/09-version-history-and-trash.md` §4.1 and copy the SQL block verbatim into `kova-open-pencil-1/supabase/migrations/20260615_09_canvas_snapshots.sql`. Then append the bucket-provisioning SQL from §4.3 and the two test-helper RPCs:
+Open `kova-open-pencil-1/docs/prd/09-version-history-and-trash.md` §4.1 and copy the SQL block verbatim into `kova-open-pencil-1/supabase/migrations/20260615_09_canvas_snapshots.sql`. Then append the bucket-provisioning SQL from §4.3 and the two test-helper RPCs:
 
 ```sql
 -- ---- 5. Test-helper RPCs (used by integration tests only; safe in prod — read-only meta) ----
@@ -1117,7 +1117,7 @@ describe('useSnapshotsStore', () => {
 
 - [ ] **Step 2: Implement store from PRD §6.2 verbatim**
 
-Open `kova-open-pencil-1/docs/kova-final-prds/09-version-history-and-trash.md` §6.2; reproduce the body 1:1 in `kova-open-pencil-1/src/stores/snapshots.ts`. Replace inline `// ...` placeholders with concrete bodies that satisfy the tests above:
+Open `kova-open-pencil-1/docs/prd/09-version-history-and-trash.md` §6.2; reproduce the body 1:1 in `kova-open-pencil-1/src/stores/snapshots.ts`. Replace inline `// ...` placeholders with concrete bodies that satisfy the tests above:
 
 ```typescript
 // kova-open-pencil-1/src/stores/snapshots.ts (excerpt — full body from PRD §6.2)
@@ -1502,6 +1502,131 @@ git add kova-open-pencil-1/src/composables/version-history/use-deep-linked-versi
         kova-open-pencil-1/tests/unit/composables/version-history/use-deep-linked-version.test.ts \
         kova-open-pencil-1/tests/unit/composables/version-history/use-version-history-shortcut.test.ts
 git commit -m "feat(09): deep-link + ⌥⌘S shortcut composables"
+```
+
+---
+
+## Task 12a: `useCanvasEditLock` composable + preview side-doc helper
+
+> **Added 2026-05-17 to cover PRD §6.3 useCanvasEditLock row + §12.12 (edit-lock) + §12.13 (preview side-doc) + §12.14 (single in-flight side-doc).**
+
+**Files:**
+- Create: `kova-open-pencil-1/src/composables/version-history/use-canvas-edit-lock.ts`
+- Create: `kova-open-pencil-1/src/composables/version-history/use-preview-side-doc.ts`
+- Test: `kova-open-pencil-1/tests/unit/composables/version-history/use-canvas-edit-lock.test.ts`
+- Test: `kova-open-pencil-1/tests/unit/composables/version-history/use-preview-side-doc.test.ts`
+
+- [ ] **Step 1: Edit-lock test**
+
+```typescript
+// kova-open-pencil-1/tests/unit/composables/version-history/use-canvas-edit-lock.test.ts
+import { describe, expect, it } from 'bun:test'
+import { useCanvasEditLock } from '@/composables/version-history/use-canvas-edit-lock'
+
+describe('useCanvasEditLock', () => {
+  it('starts unlocked', () => {
+    const { isLocked } = useCanvasEditLock()
+    expect(isLocked.value).toBe(false)
+  })
+
+  it('lock() flips isLocked to true; unlock() flips back', () => {
+    const { lock, unlock, isLocked } = useCanvasEditLock()
+    lock(); expect(isLocked.value).toBe(true)
+    unlock(); expect(isLocked.value).toBe(false)
+  })
+
+  it('is a singleton — two consumers see the same isLocked', () => {
+    const a = useCanvasEditLock(); const b = useCanvasEditLock()
+    a.lock(); expect(b.isLocked.value).toBe(true)
+    b.unlock(); expect(a.isLocked.value).toBe(false)
+  })
+})
+```
+
+- [ ] **Step 2: Edit-lock composable (module-level state — singleton)**
+
+```typescript
+// kova-open-pencil-1/src/composables/version-history/use-canvas-edit-lock.ts
+import { computed, ref } from 'vue'
+
+const lockCount = ref(0)   // reference-count so multiple callers can lock; first to lock wins, last to unlock releases
+const isLocked = computed(() => lockCount.value > 0)
+
+export function useCanvasEditLock() {
+  function lock() { lockCount.value++ }
+  function unlock() { lockCount.value = Math.max(0, lockCount.value - 1) }
+  return { lock, unlock, isLocked }
+}
+```
+
+- [ ] **Step 3: Preview side-doc test (single in-flight)**
+
+```typescript
+// kova-open-pencil-1/tests/unit/composables/version-history/use-preview-side-doc.test.ts
+import { describe, expect, it, mock } from 'bun:test'
+import { usePreviewSideDoc } from '@/composables/version-history/use-preview-side-doc'
+
+describe('usePreviewSideDoc', () => {
+  it('load() fetches blob, decodes, renders side-doc; returns disposer', async () => {
+    // Mock: signed-url fetch + decodeCanvasSnapshot + editor.mountSideDoc(pages)
+    // Assert mountSideDoc called with decoded pages; disposer unmounts
+  })
+
+  it('successive load() calls dispose the previous side-doc FIRST (single in-flight)', async () => {
+    // Track mountSideDoc + unmountSideDoc call order; second load → unmount(first) → mount(second)
+  })
+
+  it('clear() unmounts the side-doc + restores live document', async () => {
+    // load() then clear(); assert unmountSideDoc + editor.show('live')
+  })
+})
+```
+
+- [ ] **Step 4: Preview side-doc composable**
+
+```typescript
+// kova-open-pencil-1/src/composables/version-history/use-preview-side-doc.ts
+import { ref } from 'vue'
+import { useEditor } from '@/composables/use-editor'
+import { useSnapshotsStore } from '@/stores/snapshots'
+import { useSnapshotCodec } from './use-snapshot-codec'
+
+const inFlightDisposer = ref<(() => void) | null>(null)
+
+export function usePreviewSideDoc() {
+  const editor = useEditor()
+  const store = useSnapshotsStore()
+  const { decodeCanvasSnapshot } = useSnapshotCodec()
+
+  async function load(snapshotId: string, blobPath: string) {
+    if (inFlightDisposer.value) { inFlightDisposer.value(); inFlightDisposer.value = null }
+    const signedUrl = await store.getSignedBlobUrl(blobPath)
+    const bytes = new Uint8Array(await fetch(signedUrl).then(r => r.arrayBuffer()))
+    const decoded = await decodeCanvasSnapshot(bytes)
+    // editor.mountSideDoc returns a disposer that unmounts the side-doc and reveals the live doc
+    inFlightDisposer.value = editor.mountSideDoc(decoded.pages)
+  }
+
+  function clear() {
+    if (inFlightDisposer.value) { inFlightDisposer.value(); inFlightDisposer.value = null }
+  }
+
+  return { load, clear }
+}
+```
+
+(If `editor.mountSideDoc` doesn't exist in `packages/core/` today, this becomes a Cluster 07a open question — flag as "Editor side-doc render API needed; alternatively, render the preview to a hidden offscreen canvas + composite over the live canvas via DOM positioning." Cluster 07a may already expose something similar via the canvas-extensions hook.)
+
+- [ ] **Step 5: Run + commit**
+
+```bash
+bun test ./tests/unit/composables/version-history/use-canvas-edit-lock.test.ts \
+         ./tests/unit/composables/version-history/use-preview-side-doc.test.ts
+git add kova-open-pencil-1/src/composables/version-history/use-canvas-edit-lock.ts \
+        kova-open-pencil-1/src/composables/version-history/use-preview-side-doc.ts \
+        kova-open-pencil-1/tests/unit/composables/version-history/use-canvas-edit-lock.test.ts \
+        kova-open-pencil-1/tests/unit/composables/version-history/use-preview-side-doc.test.ts
+git commit -m "feat(09): canvas edit-lock + preview side-doc composables"
 ```
 
 ---
@@ -1986,9 +2111,10 @@ describe('SnapshotTimelinePanel', () => {
 ```vue
 <!-- kova-open-pencil-1/src/components/version-history/SnapshotTimelinePanel.vue -->
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSnapshotsStore } from '@/stores/snapshots'
+import { useCanvasEditLock } from '@/composables/version-history/use-canvas-edit-lock'
 import CurrentVersionRow from './CurrentVersionRow.vue'
 import AutosaveGroupHead from './AutosaveGroupHead.vue'
 import SnapshotRow from './SnapshotRow.vue'
@@ -2000,12 +2126,20 @@ const props = defineProps<{ canvasId: string }>()
 const emit = defineEmits<{ close: [] }>()
 const store = useSnapshotsStore()
 const router = useRouter()
+const editLock = useCanvasEditLock()
 
 const filterOpen = ref(false)
 const groupCollapsed = ref(false)
 const restoreTargetId = ref<string | null>(null)
 
-onMounted(() => store.list(props.canvasId))
+onMounted(() => {
+  store.list(props.canvasId)
+  editLock.lock()        // canvas becomes non-editable while panel is open (per PRD §12.12)
+})
+onUnmounted(() => {
+  editLock.unlock()      // release the lock when panel closes
+  store.exitPreview()    // clear any active preview side-doc
+})
 
 const visible = computed(() => store.visibleFor(props.canvasId).value)
 const named = computed(() => visible.value.filter(s => s.kind === 'manual' || s.label))
@@ -2438,22 +2572,69 @@ This task is a thin cross-cluster touch. Cluster 06 owns the right-panel slot me
 import { useDeepLinkedVersion } from '@/composables/version-history/use-deep-linked-version'
 import { useVersionHistoryShortcut } from '@/composables/version-history/use-version-history-shortcut'
 import { useAutosnapshot } from '@/composables/version-history/use-autosnapshot'
-import { ref } from 'vue'
+import { useCanvasEditLock } from '@/composables/version-history/use-canvas-edit-lock'
+import { usePreviewSideDoc } from '@/composables/version-history/use-preview-side-doc'
+import { useSnapshotsStore } from '@/stores/snapshots'
+import { ref, watch } from 'vue'
 
 useDeepLinkedVersion()
 useVersionHistoryShortcut()
 const isActive = ref(true)
 const { start } = useAutosnapshot(canvasId, isActive)
 onMounted(start)
+
+// Preview side-doc: watch store.previewingId and load/unload as it changes
+const store = useSnapshotsStore()
+const { load: loadPreview, clear: clearPreview } = usePreviewSideDoc()
+watch(() => store.previewingId, async (newId) => {
+  if (!newId) { clearPreview(); return }
+  const snap = store.byCanvasId[canvasId.value]?.find(s => s.id === newId)
+  if (snap) await loadPreview(newId, snap.scene_blob_path)
+})
 ```
 
-- [ ] **Step 4: Manual smoke test** — `bun run dev`, open `/canvas/{some-id}`, hit `⌥⌘S`, observe AddVersionDialog. Open the panel via the (placeholder) trigger, observe the timeline. Snapshot a row, restore it, verify ⌘Z reverses.
+- [ ] **Step 4: Wire the canvas edit-lock overlay**
 
-- [ ] **Step 5: Commit**
+In `CanvasView.vue` wrap the canvas stage with a pointer-events overlay tied to `useCanvasEditLock.isLocked`. The overlay swallows mouse-down + click events on the stage when locked, EXCEPT when the user is space-holding (pan), ctrl/meta-scrolling (zoom), or pressing arrow keys (nudge).
+
+```vue
+<template>
+  <div class="canvas-stage" :class="{ 'edit-locked': editLock.isLocked.value }">
+    <CanvasRenderer />
+    <!-- Overlay: pointer-events: none when unlocked; auto when locked.
+         Swallows clicks but lets pan/zoom shortcuts through because those are window-level keydown handlers. -->
+    <div v-if="editLock.isLocked.value" class="edit-lock-overlay"
+         @mousedown.capture="onSuppressedEdit" @click.capture="onSuppressedEdit" />
+  </div>
+</template>
+
+<script setup lang="ts">
+const editLock = useCanvasEditLock()
+
+function onSuppressedEdit(e: Event) {
+  // Allow space-drag pan (Cluster 06 handles via window listener — already passes if space is held)
+  if ((window as any).__spaceHeld) return
+  e.preventDefault(); e.stopPropagation()
+}
+</script>
+
+<style scoped>
+.edit-lock-overlay { position: absolute; inset: 0; cursor: not-allowed; pointer-events: auto; }
+.canvas-stage.edit-locked .toolbar .tool:not(.move) { opacity: 0.4; pointer-events: none; }
+</style>
+```
+
+The toolbar-disable selector targets Cluster 06's `.toolbar .tool` markup. Cluster 06's PRD must confirm this is the expected class — if not, refactor to use the `useCanvasEditLock.isLocked` ref in the toolbar component itself.
+
+- [ ] **Step 5: Manual smoke test**
+
+`bun run dev`, open `/canvas/{some-id}`, hit `⌥⌘S`, observe AddVersionDialog. Open the panel via the (placeholder) trigger, observe the timeline. **Try to draw a rectangle while panel is open → nothing happens**. **Hold space + drag → canvas pans**. **Ctrl + scroll → zooms**. Click a row → canvas swaps to that snapshot's state (read-only preview). Close panel → canvas back to live state. Snapshot a row, restore it, verify ⌘Z reverses.
+
+- [ ] **Step 6: Commit**
 
 ```bash
 git add kova-open-pencil-1/src/views/canvas/CanvasView.vue
-git commit -m "feat(09): mount SnapshotTimelinePanel + AddVersionDialog in CanvasView"
+git commit -m "feat(09): mount VH panel + edit-lock overlay + preview side-doc watcher in CanvasView"
 ```
 
 ---
@@ -2596,13 +2777,13 @@ Expected: all green; jscpd < 3%; no oxlint errors.
 
 - [ ] **Step 3: Bump PRD §0 status to `IN-IMPLEMENTATION` once smoke is green; bump to `SHIPPED` once production deploy completes**
 
-- [ ] **Step 4: Update `docs/kova-final-prds/00a-PRD_AUTHORING_GUIDE.md` §7 tracker row for Cluster 09: status `IN-IMPLEMENTATION` then `SHIPPED`**
+- [ ] **Step 4: Update `docs/prd/00a-PRD_AUTHORING_GUIDE.md` §7 tracker row for Cluster 09: status `IN-IMPLEMENTATION` then `SHIPPED`**
 
 - [ ] **Step 5: Final commit**
 
 ```bash
-git add kova-open-pencil-1/docs/kova-final-prds/09-version-history-and-trash.md \
-        kova-open-pencil-1/docs/kova-final-prds/00a-PRD_AUTHORING_GUIDE.md
+git add kova-open-pencil-1/docs/prd/09-version-history-and-trash.md \
+        kova-open-pencil-1/docs/prd/00a-PRD_AUTHORING_GUIDE.md
 git commit -m "docs(09): mark PRD 09 as IN-IMPLEMENTATION"
 ```
 
@@ -2611,10 +2792,12 @@ git commit -m "docs(09): mark PRD 09 as IN-IMPLEMENTATION"
 ## Open coordination points (call out before merging)
 
 1. **Cluster 06 right-panel slot mechanic** — Task 21's mount assumes a `v-else` on the inspector. Confirm with Cluster 06 author that this is the intended pattern (vs a tab-switcher inside the inspector).
-2. **Cluster 08 keyboard registry shape** — Task 23 assumes a declarative array. If Cluster 08 lands a different shape, refactor the registration call.
-3. **Cluster 02 `create_canvas` RPC signature** — Task 19 assumes `p_brand_id, p_name`. Verify against Cluster 02's PRD before merge.
-4. **Cluster 04 Stripe webhook bulk-UPDATE on `retention_class`** — flag in §11.2 of PRD 09 + add an action item in Cluster 04 PRD when authored.
-5. **Cluster 11 `useConfirm`, `<KovaModal>`, `<ToastStack>`** — Tasks 13, 14, 18, 22 import these. Verify the import paths once Cluster 11 ships; until then, stub them locally.
+2. **Cluster 06 canvas-stage edit-lock overlay class** — Task 21 Step 4 selects `.toolbar .tool:not(.move)` to grey non-pan tools while edit-lock is active. If Cluster 06 toolbar class names differ, refactor the selector OR move the disabled-state logic into Cluster 06's toolbar component itself (preferred — toolbar reads `useCanvasEditLock.isLocked` directly).
+3. **Cluster 07a `editor.mountSideDoc` API** — Task 12a's `usePreviewSideDoc` calls `editor.mountSideDoc(pages)` and expects a disposer back. If `packages/core/` doesn't expose this, Cluster 07a's PRD must either add it (engine extension hook) OR Task 12a falls back to a DOM-composited offscreen-canvas overlay rendered above the live canvas. Decision point during Cluster 07a authoring.
+4. **Cluster 08 keyboard registry shape** — Task 23 assumes a declarative array. If Cluster 08 lands a different shape, refactor the registration call. Additionally, Cluster 08's registry must subscribe to `useCanvasEditLock.isLocked` and suppress edit shortcuts (Delete, ⌘C/X/V, character keys for text-edit) while locked.
+5. **Cluster 02 `create_canvas` RPC signature** — Task 19 assumes `p_brand_id, p_name`. Verify against Cluster 02's PRD before merge.
+6. **Cluster 04 Stripe webhook bulk-UPDATE on `retention_class`** — flag in §11.2 of PRD 09 + add an action item in Cluster 04 PRD when authored. Plus the 30-day downgrade grace window (per PRD §12.2).
+7. **Cluster 11 `useConfirm`, `<KovaModal>`, `<ToastStack>`** — Tasks 13, 14, 18, 22 import these. Verify the import paths once Cluster 11 ships; until then, stub them locally.
 
 ---
 
@@ -2625,10 +2808,12 @@ git commit -m "docs(09): mark PRD 09 as IN-IMPLEMENTATION"
 - §5.2 RPCs (create / restore / rename / purge_paths) → Tasks 1–5 ✓
 - §5.3 Cron (snapshot-prune) → Task 20 ✓
 - §6.2 Pinia store → Task 10 ✓
-- §6.3 Composables (autosnapshot, codec, thumbnail, restore-undo, deep-link, shortcut) → Tasks 7, 8, 9, 11, 12 ✓
+- §6.3 Composables (autosnapshot, codec, thumbnail, restore-undo, deep-link, shortcut, **edit-lock, preview side-doc**) → Tasks 7, 8, 9, 11, 12, **12a** ✓
 - §6.4 Components (8 VH + 1 trash) → Tasks 13–18 ✓
-- §7 Engine touches (read-only) → Tasks 7, 9, 10, 11 (consume editor APIs without modification) ✓
+- §7 Engine touches (read-only) → Tasks 7, 9, 10, 11 (consume editor APIs without modification); Task 12a calls `editor.mountSideDoc` if available (open coord point #3) ✓
 - §8 Acceptance criteria → covered by tests in every task; manual founder pass in Task 25 ✓
+- §8.5 row-click preview + edit-lock + pan/zoom-live acceptance → Task 12a (composables) + Task 17 (panel lifecycle) + Task 21 (overlay + watcher) ✓
 - §9 Test plan → unit + integration + E2E + manual all covered ✓
 - §10 Rollout phasing → Phase A complete after Task 25; Phase B requires production cron activation gated on Cluster 04 ✓
 - §11 Cross-cuts → Tasks 21, 22, 23 + open coordination notes ✓
+- §12.6 / §12.7 / §12.12 / §12.13 / §12.14 RESOLVED 2026-05-17 — Copy link format, no Empty Trash, edit-lock, preview side-doc, single in-flight → Tasks 12a + 17 + 21 ✓

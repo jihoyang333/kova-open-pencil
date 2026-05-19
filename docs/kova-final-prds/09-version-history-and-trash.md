@@ -794,6 +794,7 @@ export const useSnapshotsStore = defineStore('snapshots', () => {
 | `useRestoreUndo` | `src/composables/version-history/use-restore-undo.ts` | `(): { pushRestoreEntry(opts: { preRestoreSnapshotId: string }): void }` — pushes a custom entry into `editor.undoStack` | `useSnapshotsStore.restore()` |
 | `useVersionHistoryShortcut` | `src/composables/version-history/use-version-history-shortcut.ts` | `(): void` — registers `Alt+Meta+KeyS` (Mac) / `Alt+Control+KeyS` (Win) → `useSnapshotsStore.openAddDialog()` via Cluster 08 keyboard registry | Mount once at canvas view |
 | `useDeepLinkedVersion` | `src/composables/version-history/use-deep-linked-version.ts` | `(): void` — reads `?version=` query param on canvas mount; if present, opens VH panel + scrolls to + previews that snapshot | `CanvasView.vue` |
+| `useCanvasEditLock` | `src/composables/version-history/use-canvas-edit-lock.ts` | `(): { lock(): void; unlock(): void; isLocked: ComputedRef<boolean> }` — toggles a reactive flag consumed by Cluster 06 toolbar (greys non-pan tools) + Cluster 08 keyboard registry (suppresses edit shortcuts) + CanvasView overlay (`pointer-events: none` on the canvas-stage `<div>` ONLY for mouse-down edit events; whitelists space-drag pan + ctrl/meta+scroll zoom + arrow-key nav). Activated whenever `useSnapshotsStore.panelOpen` is true. **Pan, zoom, and keyboard navigation always remain live**; only edit operations (drag-to-create, drag-to-move, type-in-text, draw, delete, paste) are suppressed. | `CanvasView.vue` (mount) + `useSnapshotsStore.openPanel/closePanel` (toggle) |
 
 #### 6.3.1 Autosnapshot heartbeat detail
 
@@ -838,7 +839,7 @@ export const useSnapshotsStore = defineStore('snapshots', () => {
 
 | Component | File | Hi-fi scene | Props | Slots | Emits |
 |---|---|---|---|---|---|
-| `SnapshotTimelinePanel` | `src/components/version-history/SnapshotTimelinePanel.vue` | 17.1 / 17.2 / 17.3 / 17.11 | `canvasId: string` | none | `close` (when × clicked) |
+| `SnapshotTimelinePanel` | `src/components/version-history/SnapshotTimelinePanel.vue` | 17.1 / 17.2 / 17.3 / 17.11 | `canvasId: string` | none | `close` (when × clicked). **Side effect:** while mounted, calls `useCanvasEditLock.lock()` on mount and `.unlock()` on unmount — the canvas becomes non-editable (no drag-to-create, no text-edit, no delete) but pan + zoom + keyboard navigation stay live so the user can browse around the previewed snapshot. |
 | `SnapshotRow` | `src/components/version-history/SnapshotRow.vue` | 17.4 / 17.5 / 17.6 | `snapshot: Snapshot`, `isActive: boolean`, `isCurrent: boolean` | none | `restore-clicked`, `rename-clicked`, `duplicate-clicked`, `copy-link-clicked`, `delete-info-clicked`, `preview` |
 | `AutosaveGroupHead` | `src/components/version-history/AutosaveGroupHead.vue` | 17.1 / 17.2 (group head) | `count: number`, `collapsed: boolean` | none | `toggle` |
 | `AddVersionDialog` | `src/components/version-history/AddVersionDialog.vue` | 17.8 / 17.9 | (none — uses store) | none | `saved`, `cancelled` |
@@ -975,13 +976,17 @@ Every line is testable. No "feels right."
 - [ ] Filter dropdown (17.7) shows ONLY the "Show autosave versions" toggle (default ON); MVP omits the "All / Only yours" visibility filter
 - [ ] Toggling "Show autosave versions" off hides the autosave-group rows; named rows remain (verified by snapshot of DOM after toggle)
 - [ ] Empty state (17.11) renders when zero rows exist for the canvas
+- [ ] Clicking a row (not via the dropdown — just left-click on the row body) triggers full read-only preview: that snapshot's bytes are fetched from Storage, decoded, and rendered on the canvas. Row is marked `.active`. Other rows return canvas to live state when clicked. (Figma-exact per `help.figma.com/hc/en-us/articles/360038006754` — "View another version to see a snapshot of the file at that date and time.")
+- [ ] Opening the version-history panel makes the canvas **non-editable** (drag-to-create, drag-to-move, text-edit, delete-key, paste — all no-op) but **pan + zoom + keyboard navigation stay live** so the user can browse around the previewed snapshot. Verified by: open panel → attempt to drag a rectangle on the canvas → no shape created; press space + drag → canvas pans; ctrl + scroll → canvas zooms; arrow keys → viewport nudges.
+- [ ] Closing the panel (`x`) calls `useCanvasEditLock.unlock()`; canvas becomes editable again on the SAME state it had before the panel opened (preview does NOT mutate the live document)
 
 ### 8.6 Deep-linked version preview
 
 - [ ] Visiting `/canvas/{id}?version={snapshot_id}` opens the canvas with the VH panel open and the row focused
-- [ ] The canvas renders the snapshot's state read-only (no edits possible) until the user either restores or closes the panel
+- [ ] The canvas renders the snapshot's state read-only (no edits possible) until the user either restores or closes the panel — same edit-lock + pan/zoom rules as §8.5
 - [ ] Closing the panel (`x`) reverts to the live canvas state — no data is mutated by preview
 - [ ] If `snapshot_id` is invalid or owned by another user, the panel opens with an empty preview overlay + toast "Version not found"
+- [ ] URL parameter is exactly `?version={uuid}` (verbose; greppable in logs). Founder-locked 2026-05-17.
 
 ### 8.7 Trash modal
 
@@ -1140,9 +1145,9 @@ Per `feedback_browser_smoke_test_before_done` memory — required before claimin
 | **01 — Auth & Identity** | `users.id` for FK; `users.plan` column for retention_class derivation; account-deletion-cron `storage` step that purges our user-prefixed bucket paths; `idempotency_keys` cross-cut for the duplicate-to-canvas Edge Function | Storage path layout under `canvas-snapshots/{user_id}/**` (specified in §4.3) — Cluster 01 walks this prefix during account deletion |
 | **02 — Onboarding & Dashboard** | `canvases` table + `create_canvas` RPC (for Duplicate-to-canvas); Trash inbox view that hosts our `<TrashConfirmModal>` + the post-confirm `useCanvasesStore.moveToTrash` + Trash inbox listing of trashed canvases | `<TrashConfirmModal>` component for dashboard's right-click flow; `purge_canvas_snapshot_paths` RPC for dashboard's permanent-delete flow |
 | **04 — Account & Stripe** | `users.plan` column populated; Stripe webhook on subscription.updated that fires `UPDATE canvas_snapshots SET retention_class = 'paid' WHERE user_id = $1 AND retention_class = 'free'` on free→paid; `UPDATE ... SET retention_class = 'free' WHERE ... = 'paid'` on paid→free (rare downgrade) | Documented column contract; nothing else |
-| **06 — Canvas Editor Core Chrome** | Right-panel slot mechanic (open/close state, theme passthrough); the topbar Version-history menu item (File menu → Version history → opens panel); right-rail occupied-state CSS so the inspector and our panel don't collide | None — we live inside their slot |
+| **06 — Canvas Editor Core Chrome** | Right-panel slot mechanic (open/close state, theme passthrough); the topbar Version-history menu item (File menu → Version history → opens panel); right-rail occupied-state CSS so the inspector and our panel don't collide; **toolbar subscribes to `useCanvasEditLock.isLocked` and greys all non-pan tools when locked** (per §12.12); the canvas-stage `<div>` wraps a pointer-events overlay whose `:where()` style swaps to `pointer-events: none` for click/drag events while the lock is active (whitelist: space-drag pan, ctrl/meta+scroll zoom). | None — we live inside their slot. The edit-lock composable lives in 09 but Cluster 06 must wire the overlay + toolbar-disable in `CanvasView.vue`. |
 | **07a — Canvas Engine Core** | `editor.snapshotPage`, `editor.restorePageFromSnapshot`, `editor.captureThumbnail`, `editor.getStateVector`, `editor.pushUndoEntry`, `editor.graph` — all stable APIs; format-version stability so format_version=1 round-trips | None — read-only consumer |
-| **08 — Canvas Menus & Shortcuts** | Keyboard registry that resolves `⌥⌘S` → `useSnapshotsStore.openAddDialog()`; main-menu File → Version history → `useSnapshotsStore.openPanel()` | Keyboard binding declaration + main-menu item declaration |
+| **08 — Canvas Menus & Shortcuts** | Keyboard registry that resolves `⌥⌘S` → `useSnapshotsStore.openAddDialog()`; main-menu File → Version history → `useSnapshotsStore.openPanel()`; **registry subscribes to `useCanvasEditLock.isLocked` and suppresses edit shortcuts (Delete, ⌘C/X/V on selection, character keys for text-edit) while the lock is active** (per §12.12) | Keyboard binding declaration + main-menu item declaration |
 | **10 — AI Chat + Memory** | None at MVP — AI does not auto-trigger snapshots in MVP; deferred opt-in for Phase 2 | None |
 | **11 — Shared UI Infrastructure** | `useConfirm()` composable; `<KovaModal>` shell; `<ToastStack>` + variants (success / warning / error); skeleton primitives for the panel's loading state | None |
 | **12 — Settings & User Preferences** | None at MVP — autosnapshot interval is hard-coded; if Phase 2 exposes "Pause autosnapshot" preference, 12's `users.preferences` JSONB carries it | None |
@@ -1173,7 +1178,7 @@ If a user takes 100 MB of free-tier autosaves (all `retention_class='free'`), th
 
 Q19 (Figma-exact) keeps trashed canvases + their snapshots forever. A heavy user could accumulate hundreds of MB of trashed canvas snapshots that never prune. Cluster 01's account-deletion cron is the only sweep.
 
-**Mitigation:** the 100 MB per-brand quota applies to LIVE canvases. Trashed canvases keep their snapshot bytes but their bytes still count against the brand's 100 MB. So heavy users who fill up trash effectively block themselves from new snapshots until they Empty Trash. Documented in §2.1 — quota counts both live and trashed. **Open question: should Empty Trash be a Cluster 02 MVP feature or Phase 2? Recommend MVP — without it, the quota math feels punitive. Confirm with Cluster 02 author.**
+**Mitigation (post-founder 2026-05-17):** the 100 MB per-brand quota applies to LIVE canvases AND trashed canvases together. Heavy users who fill up trash hit the quota wall and must per-file Permanently Delete from the Trash inbox (matches Figma exactly — Figma has no Empty Trash button either, verified `help.figma.com/hc/en-us/articles/360047512294`). Per-file permanent-delete in the Trash inbox is Cluster 02 MVP scope. If quota signals surface post-launch, Phase 2 may add Empty Trash + a "Storage" tab on the dashboard showing per-brand quota usage. **No Cluster 02 dependency on Empty Trash for MVP launch.**
 
 ### 12.4 RISK (Low) — Tab-close snapshot upload race
 
@@ -1187,17 +1192,13 @@ Every restore creates a pre-restore snapshot (kind=`pre_restore`, retention=`per
 
 **Mitigation:** pre-restore snapshots are kept indefinitely BUT they are clearly listed in the timeline as named snapshots — the user can rename them or treat them as their save points. If quota becomes a problem, document a Phase 2 admin/user delete path. Not blocking MVP.
 
-### 12.6 OPEN QUESTION — Copy-link auth requirement
+### 12.6 RESOLVED 2026-05-17 — Copy-link auth requirement + URL format
 
-The Copy link feature copies `/canvas/{id}?version={snapshot_id}` to clipboard. Loading the link requires the same user's auth. No public-share token. This is intentional (matches Q6 single-user MVP + `00e §6 #2`).
+Founder confirmed: `Copy link` ships as an **authenticated deep-link** with no "share" framing in the UI. URL format is **exactly `/canvas/{canvas_id}?version={snapshot_id}`** — the long parameter name `version` is greppable in logs and self-documenting. Tooltip on the menu item: "Copy a link to this version." If marketing copy ever says "share a version with a teammate", a Phase 2 public-share-token upgrade is required (out of MVP scope).
 
-**Question for founder:** confirm that "Copy link" is acceptable as an authenticated deep-link for personal use (e.g., bookmarking a version for later) and NOT advertised as a sharing feature. If marketing copy ever says "share a version with a teammate", this PRD's Copy link needs a Phase 2 public-share-token upgrade.
+### 12.7 RESOLVED 2026-05-17 — Empty Trash button at MVP
 
-**Default in this draft:** ship as authenticated deep-link with no "share" framing in the UI. Tooltip on the menu item: "Copy a link to this version."
-
-### 12.7 OPEN QUESTION — Empty Trash button placement
-
-Not in this PRD's scope (Cluster 02). But the storage-cost mitigation in §12.3 depends on it being available at MVP. Flag for Cluster 02 PRD author.
+Founder confirmed: **NO Empty Trash button at MVP** — match Figma exactly (Figma has no Empty Trash either; verified `help.figma.com/hc/en-us/articles/360047512294`). Per-file Permanently Delete in the Trash inbox is the only delete path; Cluster 02 ships that. Quota math implications documented in §12.3 mitigation. If signals appear post-launch, Phase 2 may add an Empty Trash + per-brand storage usage display.
 
 ### 12.8 RESOLVED 2026-05-15 — Compare/diff viewer
 
@@ -1214,6 +1215,20 @@ Founder confirmed: Figma-exact behavior. "Duplicate" creates a new canvas in the
 ### 12.11 RESOLVED 2026-05-15 — Filter scope
 
 Founder confirmed: ship the autosave toggle only; omit "All / Only yours" (single-user MVP). Diverges from hi-fi 17.7 by minus-one-toggle; matches Figma (which has no filter at all).
+
+### 12.12 RESOLVED 2026-05-17 — Canvas editability while version-history panel open
+
+Founder confirmed: when the version-history panel is open, **the canvas is non-editable** but pan + zoom + keyboard navigation stay live. Implementation via `useCanvasEditLock` composable (§6.3). The lock toggles a reactive flag that Cluster 06's toolbar (greys non-pan tools), Cluster 08's keyboard registry (suppresses edit shortcuts), and `CanvasView`'s pointer-event overlay all subscribe to. Whitelisted at the overlay level: space-drag pan, ctrl/meta+scroll zoom, arrow-key viewport nudge. Suppressed: mouse-down drag-to-create, click-to-select-then-drag-to-move, text-edit typing, delete-key, paste. Acceptance criteria added to §8.5.
+
+### 12.13 RESOLVED 2026-05-17 — Row click previews full canvas state
+
+Founder confirmed: clicking a row in the version-history panel (not the dropdown — just the row body) does **full read-only preview** — fetches the snapshot's blob from Storage, decodes via `useSnapshotCodec`, and renders the snapshot state on the canvas. Matches Figma exactly (verified `help.figma.com/hc/en-us/articles/360038006754` — "View another version to see a snapshot of the file at that date and time"). Preview does NOT mutate the live document; closing the panel reverts to the pre-preview state. Implementation: `useSnapshotsStore.previewSnapshot(id)` sets `previewingId.value`; `CanvasView` watches and swaps the rendered Yjs doc to a side-doc seeded from the snapshot bytes while preview is active.
+
+### 12.14 RISK (Low) — Preview side-doc memory footprint
+
+Each row click loads a snapshot's full Yjs doc into memory for the preview render. If the user clicks through 30 rows in a row, peak memory could spike.
+
+**Mitigation:** unload the previous preview side-doc before loading the next (one in-flight side-doc max). Add to acceptance criteria: "Preview side-doc is unloaded before the next row click starts loading." Not blocking MVP; profile in Phase B if user signals appear.
 
 ---
 
@@ -1247,11 +1262,11 @@ Founder confirmed: ship the autosave toggle only; omit "All / Only yours" (singl
 
 ### 13.5 Audit + verification inputs
 
-- `kova-open-pencil-1/docs/kova-final-prds/00-PRD_SCOPE_PLAN.md` §3 Cluster 09 (scope), §5 (PRD template), §5.6 (ratification log — items 1, 2, 5 relevant), §6 (cross-cuts table)
-- `kova-open-pencil-1/docs/kova-final-prds/00a-PRD_AUTHORING_GUIDE.md` (operator manual followed for this draft)
-- `kova-open-pencil-1/docs/kova-final-prds/00c-COMPREHENSIVE_AUDIT_REPORT.md` §2.A Cluster 09 (lines 1764–1945) lifted as base
-- `kova-open-pencil-1/docs/kova-final-prds/00d-EXTERNAL_VERIFICATION_HANDOFF.md` §3 ratifications: 2.B.2 Vercel Cron, 2.C.3 Yjs + y-indexeddb persistence, 2.C.4 optimistic UI (snapshot-create), 2.C.7 multi-device wording, 2.C.8 autosnap blur/beforeunload, 2.C.10 RPC discipline, 2.C.11 Realtime channel naming
-- `kova-open-pencil-1/docs/kova-final-prds/00e-EXTERNAL_VERIFICATION_VERDICT.md` Q7 row (confirms all four Figma sub-claims); §6 #2 hygiene rule (no live multi-device sync promises); §6 #3 staging trigger; §6 #4 RoPA contribution
+- `kova-open-pencil-1/docs/prd/00-PRD_SCOPE_PLAN.md` §3 Cluster 09 (scope), §5 (PRD template), §5.6 (ratification log — items 1, 2, 5 relevant), §6 (cross-cuts table)
+- `kova-open-pencil-1/docs/prd/00a-PRD_AUTHORING_GUIDE.md` (operator manual followed for this draft)
+- `kova-open-pencil-1/docs/prd/00c-COMPREHENSIVE_AUDIT_REPORT.md` §2.A Cluster 09 (lines 1764–1945) lifted as base
+- `kova-open-pencil-1/docs/prd/00d-EXTERNAL_VERIFICATION_HANDOFF.md` §3 ratifications: 2.B.2 Vercel Cron, 2.C.3 Yjs + y-indexeddb persistence, 2.C.4 optimistic UI (snapshot-create), 2.C.7 multi-device wording, 2.C.8 autosnap blur/beforeunload, 2.C.10 RPC discipline, 2.C.11 Realtime channel naming
+- `kova-open-pencil-1/docs/prd/00e-EXTERNAL_VERIFICATION_VERDICT.md` Q7 row (confirms all four Figma sub-claims); §6 #2 hygiene rule (no live multi-device sync promises); §6 #3 staging trigger; §6 #4 RoPA contribution
 
 ### 13.6 External sources cited
 

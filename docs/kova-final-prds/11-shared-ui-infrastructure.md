@@ -4,14 +4,15 @@
 
 | Field | Value |
 |---|---|
-| **Status** | `DRAFT` 2026-05-15 (awaiting founder review) |
+| **Status** | `IN-REVIEW 2026-05-17` |
 | **Wave** | 1 (foundation — ships in parallel with Cluster 01) |
 | **Author** | Claude (Opus 4.7) |
 | **Reviewer** | Jiho Yang (founder) |
-| **Last updated** | 2026-05-15 |
+| **Last updated** | 2026-05-17 |
 | **Depends on PRDs** | None — foundational. |
 | **Blocks PRDs** | ALL — every other cluster (01, 02, 03, 04, 05, 06, 07a, 07b, 08, 09, 10, 12) consumes ≥3 primitives from this PRD. |
-| **Source artifacts** | Hi-fi: 7 files (B1, B2, A5, A6+A2a+A8, B7, B9, A11+A12+A13). 03 doc: §3C #7, #8, #15. Q-decisions: none direct (these are primitives consumed by every cluster). Audit §2.A Cluster 11 (lines 2008–2057) + §1.D cross-cuts (Vue Router theme, Realtime channels, idempotency-key, Toast variants, Tauri command-surface naming). |
+| **Source artifacts** | Hi-fi: 6 files (B1, B2, A6+A2a+A8, B7, B9, A11+A12+A13). 03 doc: §3C #7, #8, #15. Q-decisions: none direct (these are primitives consumed by every cluster). Audit §2.A Cluster 11 (lines 2008–2057) + §1.D cross-cuts (Vue Router theme, Realtime channels, idempotency-key, Toast variants, Tauri command-surface naming). |
+| **Changelog** | 2026-05-17 — Cmd+K palette dropped (00g); offline UX switched to Figma-style icon+tooltip; KD-1/2/4/5/6 ratified (KD-3/8 deleted with Cmd+K); Sentry/Resend/Vercel cron stubbed with env-var guards (real accounts wired before first prod deploy per 00 §11). |
 
 ---
 
@@ -19,15 +20,15 @@
 
 ### 1.1 Plain language (for founder)
 
-Every other PRD in the 12-cluster MVP needs the same handful of small UI building blocks: toast notifications, modal dialogs, confirm-before-destroy prompts, the Cmd+K palette, loading skeletons, empty-state panels, the offline indicator, 404 / 500 error pages, the shared HTML email template, and a few backend conventions (idempotency keys on write endpoints, named Supabase Realtime channels, route-driven theme switching). If each cluster invents its own answer, twelve different toast components ship and the app looks like twelve apps stitched together. This PRD ships one canonical version of each primitive — typed, accessible, theme-aware, and ready to import. Downstream PRDs consume by name; they do not re-spec. Cluster 11 is the load-bearing floor under everything.
+Every other PRD in the 12-cluster MVP needs the same handful of small UI building blocks: toast notifications, modal dialogs, confirm-before-destroy prompts, loading skeletons, empty-state panels, the offline indicator, 404 / 500 error pages, the shared HTML email template, and a few backend conventions (idempotency keys on write endpoints, named Supabase Realtime channels, route-driven theme switching). If each cluster invents its own answer, twelve different toast components ship and the app looks like twelve apps stitched together. This PRD ships one canonical version of each primitive — typed, accessible, theme-aware, and ready to import. Downstream PRDs consume by name; they do not re-spec. Cluster 11 is the load-bearing floor under everything.
 
 ### 1.2 Caveman summary (per CLAUDE.md communication style)
 
-Every cluster need same small UI pieces. Toast. Modal. Confirm. Cmd+K. Skeleton. Empty state. Offline pill. Error pages. Email shell. Plus four cross-cut rules: idempotency key on writes, named Realtime channels, route picks theme, Tauri commands all start `kova.*`. Build once here. Other clusters import. No copy-paste. No drift.
+Every cluster need same small UI pieces. Toast. Modal. Confirm. Skeleton. Empty state. Offline pill. Error pages. Email shell. Plus four cross-cut rules: idempotency key on writes, named Realtime channels, route picks theme, Tauri commands all start `kova.*`. Build once here. Other clusters import. No copy-paste. No drift.
 
 ### 1.3 Outcome (acceptance gate)
 
-A Wave 2 PRD author opens any cluster spec and finds **every** UI primitive they need already typed, named, and Storybook-able: `useToast()`, `useConfirm()`, `<KovaModal>`, `<KovaPopover>`, `<KovaMenu>`, `<CommandPalette>`, `<KovaSkeleton>`, `<EmptyState>`, `<NetworkStatusPill>`, `<KovaButton>`, `<KovaInput>`, `<KovaField>`, `<KovaSegmented>`, `<KovaPill>`, `<KovaTooltip>`, `<KovaToast>`, `<ToastStack>`, `<MarketingShell>`, `<EmailShell>`. Vue Router auto-swaps the stylesheet based on `route.meta.theme`. Sentry catches every uncaught error to a single project. The `idempotency_keys` table backs every write Edge Function in 4 other PRDs. The Realtime channel-naming convention (`kova.{userId}.{domain}.{topic}`) is named, documented, and registered as the only allowed pattern.
+A Wave 2 PRD author opens any cluster spec and finds **every** UI primitive they need already typed, named, and Storybook-able: `useToast()`, `useConfirm()`, `<KovaModal>`, `<KovaPopover>`, `<KovaMenu>`, `<KovaSkeleton>`, `<EmptyState>`, `<NetworkStatusIndicator>`, `<KovaButton>`, `<KovaInput>`, `<KovaField>`, `<KovaSegmented>`, `<KovaPill>`, `<KovaTooltip>`, `<KovaToast>`, `<ToastStack>`, `<MarketingShell>`, `<EmailShell>`. Vue Router auto-swaps the stylesheet based on `route.meta.theme`. Sentry catches every uncaught error to a single project. The `idempotency_keys` table backs every write Edge Function in 4 other PRDs. The Realtime channel-naming convention (`kova.{userId}.{domain}.{topic}`) is named, documented, and registered as the only allowed pattern.
 
 ---
 
@@ -35,10 +36,9 @@ A Wave 2 PRD author opens any cluster spec and finds **every** UI primitive they
 
 ### 2.1 In scope (this PRD)
 
-**Composables (10):**
+**Composables (9):**
 - `useToast()` — global toast queue (8 variants per B1)
 - `useConfirm()` — Promise-returning confirm modal (module-level `pendingConfirm` ref)
-- `useCommandPalette()` — Cmd+K open/close + search index + dispatch
 - `useOnlineStatus()` — `navigator.onLine` + Supabase Realtime ping fallback
 - `useTheme()` — read `route.meta.theme` + swap stylesheet at runtime
 - `useIdempotencyKey()` — `crypto.randomUUID()` + per-action key generator
@@ -47,12 +47,11 @@ A Wave 2 PRD author opens any cluster spec and finds **every** UI primitive they
 - `useEmailShell()` — template-string composition helper for Resend payloads
 - `useReducedMotion()` — `prefers-reduced-motion` media query reactive ref (drives skeleton shimmer + transition opt-out)
 
-**Pinia stores (3):**
+**Pinia stores (2):**
 - `useToastStore` — toast queue state (visible / queued)
 - `useConfirmStore` — pending confirm state (module-level pattern under the hood)
-- `useCommandPaletteStore` — open state + search index + active section
 
-**Components (19):**
+**Components (18):**
 - `<KovaToast>` + `<ToastStack>` — 8 variants per B1
 - `<KovaModal>` — wraps Reka Dialog, sm/md/lg sizes per A8
 - `<KovaPopover>` — wraps Reka Popover (consumed by avatar dropdown, brand switcher, color picker — built downstream)
@@ -65,8 +64,7 @@ A Wave 2 PRD author opens any cluster spec and finds **every** UI primitive they
 - `<KovaPill>` — neutral / accent / outline / dot variants
 - `<KovaSkeleton>` — 4 radius variants (pill / card / line / circle); driven by `prefers-reduced-motion`
 - `<EmptyState>` — 3 size variants (32 inline / 40 panel / 48 full-page); query-echo support
-- `<NetworkStatusPill>` — A13 online / offline + topbar offline banner
-- `<CommandPalette>` — A5 Cmd+K modal
+- `<NetworkStatusIndicator>` — A13-derived single topbar icon + tooltip (offline only); see §3.7
 - `<MarketingShell>` — light-theme shell used by `/privacy`, `/terms` (Cluster 01 consumes)
 - `<EmailShell>` — shared transactional HTML email template (Inter, Kova branding, List-Unsubscribe header)
 - `<Error404View>` — `/404` route (B2.1)
@@ -76,10 +74,12 @@ A Wave 2 PRD author opens any cluster spec and finds **every** UI primitive they
 **Backend cross-cuts:**
 - `idempotency_keys` table + RLS policy + cleanup cron
 - `verifyIdempotency()` helper for Edge Functions (`api/_shared/idempotency.ts`)
+- `audit_log` table + service-role-only RLS + `writeAudit()` helper (`api/_shared/audit.ts`) — consumed by Cluster 01 (deletion-request / restore / email-change), Cluster 03 (brand CRUD), Cluster 04 (Stripe webhook), Cluster 05 (voice-draft confirm)
 - `kova.{userId}.{domain}.{topic}` Realtime channel-naming convention (docs + helper)
 - Vue Router `meta.theme` runtime stylesheet swap (Cluster 11 owns the mechanism; downstream PRDs set `meta.theme` per route)
 - Sentry SDK install (`@sentry/vue` browser, `@sentry/node` server) + DSN wiring
 - Resend SDK wrapper (`api/_shared/email.ts`) + `<EmailShell>` template
+- **Stub policy:** Sentry, Resend, and Vercel cron integrations ship as no-op stubs guarded by their env vars. Each helper checks for the env var at call time; if missing, logs a warning and returns a no-op result. Real accounts are wired before first production deploy per `00-PRD_SCOPE_PLAN.md §11 Pre-launch checklist`. Env vars: `VITE_SENTRY_DSN_BROWSER`, `SENTRY_DSN_SERVER`, `RESEND_API_KEY`, `CRON_SECRET`.
 
 **Routes:**
 - `/404`, `/500`, `/network-unreachable` (the boundary; rendered when fetch failure boundary triggers)
@@ -94,7 +94,6 @@ A Wave 2 PRD author opens any cluster spec and finds **every** UI primitive they
 | Auth-specific surfaces (sign-in / OTP / sessions-expired chrome) | 01 — Auth (`<AuthShell>`, `<AuthCard>`, etc. ship in 01 because they are auth-scoped, not generic UI primitives) |
 | Marketing site itself | Out of MVP — separate Astro project (per `00e §8 D-5C` reversal). `<MarketingShell>` here exists ONLY to render `/privacy` + `/terms` from inside the SPA. |
 | Toast wiring per-mutation (e.g., "Canvas saved", "Memory added") | Each consuming cluster — `useToast()` API + variants ship here |
-| Command-K result content (Files, Brands, Actions, Help registries) | Each consuming cluster registers entries; `useCommandPalette()` + `<CommandPalette>` ship here |
 | Mobile fallback page (`/desktop-only`) | 01 — Auth (light surface, auth-adjacent — ships in 01 per the existing PRD's §3) |
 
 ### 2.3 Deferred to Phase 2
@@ -133,7 +132,7 @@ Every primitive maps to hi-fi files. Engineers cite file + scene ID when impleme
 | Long-content (wrapping) | same | B1.7 | Multi-line body wraps at 320 px; auto-dismiss 8 s (longer for longer copy) |
 | Over-modal | same | B1.8 | Toast renders ABOVE modal backdrop (z-index 21 vs modal 19); never blocked |
 
-**Container:** `<ToastStack />` mounted once in `<App>` shell, position fixed bottom-right (22 px / 22 px), z-index 20 (toasts), modal backdrop z-index 19, command-K modal z-index 22 (above toasts because Cmd+K is the user's active dialog).
+**Container:** `<ToastStack />` mounted once in `<App>` shell, position fixed bottom-right (22 px / 22 px), z-index 20 (toasts), modal backdrop z-index 19.
 
 **Variants taxonomy** (canonical — per `00c §1.D` cross-cut row "Toast variants taxonomy"):
 
@@ -166,38 +165,7 @@ Headline 15 px / 600 / `--ink`. Body 12.5 px / 400 / `--ink-2` (max 48 ch). CTAs
 
 **Theme bridge:** routes carry `meta.theme = 'dark'` (default). Cluster 01 may render its own light-theme error states for the auth flow; 01 does NOT inherit these dark pages.
 
-### 3.3 Command-K palette (dark only; never opens on light/auth pages)
-
-| Scene | Hi-fi | Notes |
-|---|---|---|
-| Empty | `main-main-kova-scope/batch-a/dark/Kova Hi-Fi A5 Command-K - Dark.html` A5.1 | Default state — eyebrow "Search Kova · ⌘K"; 5 category groups (Recents, Brands, Settings, Actions, Ask Kova) |
-| Populated | A5.2 | Filtered results grouped by hit-type; icons per type |
-| AI chat | A5.3 | "Ask Kova" branch — streaming response in `.ck-chat` body |
-| No results | A5.4 (edge) | `search-x` glyph, "No results for "<query>""; foot CTA "Ask Kova about it" |
-| Loading | A5.5 (edge) | Skeleton rows (4) with shimmer; "Searching…" eyebrow |
-
-**Shell** (`.ck`): 640 px wide, centered top-14 %, z-index 22. **Backdrop** (`.modal-backdrop`): rgba(26, 26, 29, 0.72) + 2 px blur.
-
-**Anatomy:**
-- `.ck-search` — 52 px height, padding 0 18 px, border-bottom 1 px `--line`; flex with: search icon (18 × 18 `--accent`), input (placeholder `--ink-3`), context pill (`pill-ctx` — brand badge if active), kbd hints (`.hint`)
-- `.ck-body` — max-height 460 px, scroll-y
-- `.ck-eyebrow` — 9.5 px / `--ink-3`
-- `.ck-group` — category section; `.cg-head` 10 px / 600 / `--ink-2`
-- `.ck-row` — flex gap 10 px, padding 6 px 12 px, radius 5 px; hover bg `--line-2`; icon 14 × 14 (color `--ink-2`), label + meta (12.5 px / `--ink-3`), kbd hint right-aligned
-- `.ask-kova` — affordance at bottom, accent spark glyph, accent ink
-
-**Categories** (per KD-3 in §12 — extensible via registry):
-
-| Category | Source | Examples |
-|---|---|---|
-| Files | dashboard canvases + recent edits | "Spring Promo · last edited 2h ago" |
-| Brands | user's brands | "Nike (current)" |
-| Actions | global commands | "New canvas", "Toggle layers panel" |
-| Help | docs / shortcuts | "Open keyboard shortcuts (⌘/)" |
-
-**Keyboard:** ↑/↓ navigate; Enter dispatches; Esc closes. Cmd+K opens / closes globally (registered as a `kova.*` Tauri command in Cluster 06's Tauri menu; SPA keyboard registry handles browser).
-
-### 3.4 Modals (dark inside app; light variant in auth)
+### 3.3 Modals (dark inside app; light variant in auth)
 
 `<KovaModal>` wraps Reka Dialog. Sizes:
 
@@ -216,7 +184,7 @@ Headline 15 px / 600 / `--ink`. Body 12.5 px / 400 / `--ink-2` (max 48 ch). CTAs
 
 **Stack limit** (per KD-2 in §12): max 2 modals nested (parent + child). Opening a 3rd closes the innermost first. Reka Dialog supports nested via portals; the stack ceiling is enforced in `useConfirmStore`.
 
-### 3.5 Popovers + menus
+### 3.4 Popovers + menus
 
 | Component | Hi-fi anchor | Notes |
 |---|---|---|
@@ -224,7 +192,7 @@ Headline 15 px / 600 / `--ink`. Body 12.5 px / 400 / `--ink-2` (max 48 ch). CTAs
 | `<KovaMenu>` | (shell only — Cluster 08 fills with right-click items per surface) | Reka DropdownMenu; min-width 240 px; padding 6 px; item hover bg `--line-2`; supports separators + section headers |
 | `<KovaTooltip>` | (no dedicated hi-fi — wrapper convention) | Reka Tooltip; show delay 500 ms; 11.5 px / `--ink` on `--rail` bg, radius 5 px |
 
-### 3.6 Skeletons (loading)
+### 3.5 Skeletons (loading)
 
 `<KovaSkeleton>` — `main-main-kova-scope/batch-a-additions/dark/Kova Hi-Fi B7 Loading Skeletons - Dark.html`. Animation = single shimmer gradient (the ONLY gradient in the system per `design.md`); 1.4 s ease-in-out infinite. `prefers-reduced-motion: reduce` → static `--fill-2` (no animation).
 
@@ -237,7 +205,7 @@ Headline 15 px / 600 / `--ink`. Body 12.5 px / 400 / `--ink-2` (max 48 ch). CTAs
 
 Surface compositions (B7.1–B7.5) ship in their consuming clusters (e.g., Cluster 02 owns the dashboard greeting skeleton); this PRD ships only the primitives.
 
-### 3.7 Empty states
+### 3.6 Empty states
 
 `<EmptyState>` — 3 size variants (per `main-main-kova-scope/batch-a-additions/dark/Kova Hi-Fi B9 List Search Empty - Dark.html` B9.4 reference grid):
 
@@ -253,22 +221,29 @@ Surface compositions (B7.1–B7.5) ship in their consuming clusters (e.g., Clust
 
 Per-surface empty states (A11.1–A11.8 from `Kova Hi-Fi A11+A12+A13+A_canvas_nav - Dark.html`) are owned by their consuming clusters — primitives ship here.
 
-### 3.8 Network status (online / offline)
+### 3.7 Network status (online / offline) — Figma-style minimal indicator
 
-| Surface | Hi-fi | Notes |
+**Decision (2026-05-17):** Adopt Figma's minimal offline UX. No persistent pill in topbar. No 28 px banner across topbar. Single small icon in topbar (right side, beside avatar) with hover tooltip when offline.
+
+| State | Surface | Visual |
 |---|---|---|
-| Online pill | A13 (within `Kova Hi-Fi A11+A12+A13+A_canvas_nav - Dark.html`) | `<KovaPill variant="ok dot">Online</KovaPill>` rendered in topbar (right-aligned, next to avatar) |
-| Offline pill (sidebar footer) | A13 | `.net-strip` — bg `--warn-soft`, border 1 px `--warn-edge`, color `--warn`; 11.5 px / 500; dot (6 × 6) + text + icon |
-| Offline banner (topbar) | A13 | `.offline-banner` — height 28 px, bg `--warn-soft`, border-bottom 1 px `--warn-edge`; copy "You're offline. Changes are saved locally and will sync when you reconnect." |
+| Online | Topbar icon hidden (no chrome consumed for healthy state) | n/a |
+| Offline | Topbar icon `cloud-off` (14 × 14, color `--ink-2`) + hover tooltip: "You're offline. Changes saved locally and sync when you reconnect." | A13 reference adapted |
 
-**Detection** (per KD-4 in §12): `useOnlineStatus()` returns `'online' | 'offline'`:
+**Component:** `<NetworkStatusIndicator>`. Renders nothing while online; renders the icon + `<KovaTooltip>` wrapper while offline.
+
+**Detection (per KD-3 in §12, formerly KD-4):** `useOnlineStatus()` returns `'online' | 'offline'`:
 - Primary: `navigator.onLine` reactive ref
-- Secondary: when `online`, ping Supabase Realtime via a heartbeat channel every 3 s; on 10 s no-ack → mark `offline` (covers cases where browser thinks online but our backend is unreachable)
-- Transitions: instant on `navigator.onLine` flip; debounced 1 s on Realtime ping (to avoid flicker)
+- Secondary: ping Supabase Realtime presence channel every 3 s; on 10 s no-ack → mark `offline` (covers DNS/firewall edge cases where browser thinks online but our backend is unreachable)
+- Transitions: instant on `navigator.onLine` flip to offline; debounced 1 s on Realtime ping; instant on transition back to online
 
-Status palette degrade per `design.md §5 ban 12`: `--warn`, `--warn-soft`, `--warn-edge` resolve to neutral `--ink-2` / `--fill` / `--line` at MVP. Offline state distinguished by glyph + copy. Phase 2 reintroduces status color.
+**Why no banner:** Image-export-only product means offline lockdown is less critical than Figma's multi-user concurrent editing. Yjs/y-indexeddb auto-persists every change locally; the user doesn't lose work. The tooltip is sufficient to explain state. Banner would consume top-of-screen real estate without benefit.
 
-### 3.9 Marketing + email shells (LIGHT theme)
+**Sidebar footer offline indicator (A13 hi-fi `.net-strip`):** RETIRED from MVP. Single topbar icon is the canonical surface.
+
+**Figma reference:** [What can I do offline in Figma?](https://help.figma.com/hc/en-us/articles/360040328553) — confirms Figma uses an icon + tooltip pattern (no persistent banner) for offline state.
+
+### 3.8 Marketing + email shells (LIGHT theme)
 
 | Shell | Used by | Theme |
 |---|---|---|
@@ -284,7 +259,7 @@ Status palette degrade per `design.md §5 ban 12`: `--warn`, `--warn-soft`, `--w
 - Plain-text fallback rendered from Markdown intermediate (Resend supports both)
 - Max width 600 px, mobile-responsive (single-column at <600 px)
 
-### 3.10 Design system references
+### 3.9 Design system references
 
 All primitives consume `kova-hifi.css` `:root` tokens. Components reference tokens, never hex literals. Tailwind `@theme` translation in `app.css` ships at PRD-implementation time (engineering follows `kova-hifi.css :root` → `@theme` block 1:1).
 
@@ -319,7 +294,7 @@ Single migration file: `kova-open-pencil-1/supabase/migrations/20260520_11_share
 ```sql
 -- ============================================================
 -- Migration 20260520_11_shared_ui_infrastructure
--- Cluster 11 Shared UI Infrastructure — idempotency-key table
+-- Cluster 11 Shared UI Infrastructure — idempotency_keys + audit_log
 -- Pairs with: nothing (first migration in this cluster)
 -- ============================================================
 
@@ -338,7 +313,7 @@ CREATE TABLE IF NOT EXISTS public.idempotency_keys (
   CHECK (length(key) >= 16 AND length(key) <= 64)
 );
 
--- TTL index for cleanup cron (24-hour retention per KD-5 in §12)
+-- TTL index for cleanup cron (24-hour retention per KD-4 in §12)
 CREATE INDEX IF NOT EXISTS idx_idempotency_keys_created_at
   ON public.idempotency_keys(created_at);
 
@@ -361,6 +336,40 @@ CREATE POLICY idempotency_service_only
   TO service_role
   USING (true) WITH CHECK (true);
 
+-- ---- audit_log (cross-cut — founder lock #11; W0-1 dispatch 2026-05-19) ----
+
+CREATE TABLE IF NOT EXISTS public.audit_log (
+  id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id        uuid REFERENCES public.users(id) ON DELETE CASCADE,
+  event_type     text NOT NULL,                 -- e.g. 'account.deletion_requested', 'brand.created', 'stripe.webhook.invoice_paid'
+  payload        jsonb NOT NULL DEFAULT '{}'::jsonb,
+  cluster_owner  text,                          -- denormalized for debugging: '01' | '03' | '04' | '05' | etc.
+  created_at     timestamptz NOT NULL DEFAULT now()
+);
+
+-- Per-user event lookup (newest first)
+CREATE INDEX IF NOT EXISTS idx_audit_log_user_event
+  ON public.audit_log(user_id, event_type, created_at DESC);
+
+-- Cluster-scoped sweep (debug + GDPR per-cluster review)
+CREATE INDEX IF NOT EXISTS idx_audit_log_cluster_created
+  ON public.audit_log(cluster_owner, created_at DESC);
+
+COMMENT ON TABLE public.audit_log IS
+  'Append-only event log. Cross-cut primitive owned by Cluster 11 (founder lock #11). Consumed via writeAudit() helper by Cluster 01 (deletion-request / restore / email-change), Cluster 03 (brand CRUD), Cluster 04 (Stripe webhook events), Cluster 05 (voice-draft confirm). Service-role only — no authenticated SELECT.';
+
+COMMENT ON COLUMN public.audit_log.cluster_owner IS
+  'Denormalized cluster identifier (the cluster whose Edge Function wrote the row). Lets ops grep audit traffic per cluster without joining to event_type allow-lists.';
+
+-- RLS: service_role only — no authenticated reads
+ALTER TABLE public.audit_log ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY audit_log_service_only
+  ON public.audit_log
+  FOR ALL
+  TO service_role
+  USING (true) WITH CHECK (true);
+
 COMMIT;
 ```
 
@@ -368,15 +377,18 @@ COMMIT;
 
 1. **Idempotent migration:** `IF NOT EXISTS` on every DDL; safe to re-run on a staging snapshot.
 2. **`request_hash` defense:** a client that reuses an idempotency key for a *different* request (different body) gets a 422, not the cached 200. Protects against logic bugs in callers.
-3. **Retention 24 hours** (per KD-5 in §12) — sufficient for the realistic retry window (network failures resolve within seconds; user-driven retries within minutes; mobile/desktop sleep/wake cycles within hours). 24 hours balances replay protection against table growth.
-4. **`ON DELETE CASCADE` from `user_id → users.id`** — when Cluster 01's GDPR cascade hard-deletes a user, their idempotency keys go with them. No orphans.
+3. **Retention 24 hours** (per KD-4 in §12) — sufficient for the realistic retry window (network failures resolve within seconds; user-driven retries within minutes; mobile/desktop sleep/wake cycles within hours). 24 hours balances replay protection against table growth.
+4. **`ON DELETE CASCADE` from `user_id → users.id`** — when Cluster 01's GDPR cascade hard-deletes a user, their idempotency keys + audit_log rows go with them. No orphans.
 5. **No `gdpr_deletion_queue.idempotency_key` cross-reference here:** Cluster 01's migration declares its own `idempotency_key text` column on its queue; the column FK-references `idempotency_keys(key)` is not required — the Edge Function looks up by key directly.
+6. **`audit_log` is append-only:** consumers MUST use the `writeAudit()` helper (§5.5) rather than raw `INSERT`. No UPDATE / DELETE policy is granted (service_role bypasses RLS but ops should treat the table as immutable except for `ON DELETE CASCADE` from `users`). Retention is unbounded at MVP — review at first 1M-row milestone.
+7. **`event_type` is a free-text discriminator** (no DB-enforced enum) so consumers can ship new events without coordinating a migration. Convention: `{cluster_domain}.{verb}` lowercase snake — e.g. `account.deletion_requested`, `brand.archived`, `stripe.webhook.invoice_paid`. The `cluster_owner` column carries the numeric cluster identifier for ops dashboards.
 
 ### 4.2 RLS policies
 
 | Table | Policy | Purpose |
 |---|---|---|
 | `public.idempotency_keys` | `idempotency_service_only` — `FOR ALL TO service_role` | Only Edge Functions (service_role) can read/write. No user-facing access. |
+| `public.audit_log` | `audit_log_service_only` — `FOR ALL TO service_role` | Only Edge Functions (service_role) can read/write. Authenticated clients have **no** SELECT/INSERT/UPDATE/DELETE. Per founder lock #11. |
 
 **Verification:** the test in §9.2 asserts `authenticated` role SELECT/INSERT/UPDATE/DELETE all fail / return 0 rows.
 
@@ -475,10 +487,13 @@ export function installSentry(app: App, router: Router): void {
 | Helper | File | Purpose |
 |---|---|---|
 | `verifyIdempotency()` | `api/_shared/idempotency.ts` | Edge Function entrypoint helper — accepts `req`, returns `{ cached: false, persist: (status, body) => void } \| { cached: true, status, body }`. Hashes request body; stores response on first success. |
-| `sendEmail()` | `api/_shared/email.ts` | Resend wrapper. Accepts `{ to, subject, react: <EmailShell>… , text }`. Returns Resend message ID. Injects `List-Unsubscribe`. |
-| `captureException()` | `api/_shared/sentry.ts` | `@sentry/node` capture wrapper with Kova context tagging. |
+| `writeAudit()` | `api/_shared/audit.ts` | Append-only audit-log writer. Signature: `writeAudit(supabaseAdmin, { userId, eventType, payload, clusterOwner }) → Promise<void>`. Inserts one row into `public.audit_log` via service-role client. Swallows + Sentry-captures `42P01` (table-missing) so a consumer call never breaks the request path. Consumed by Cluster 01 (deletion-request / restore / email-change), Cluster 03 (brand CRUD), Cluster 04 (Stripe webhook events), Cluster 05 (voice-draft confirm). |
+| `sendEmail()` | `api/_shared/email.ts` | Resend wrapper. Accepts `{ to, subject, react: <EmailShell>… , text }`. Returns Resend message ID. Injects `List-Unsubscribe`. **Stub guard:** Returns no-op (logs warn) if env var is missing. Real account wired before first prod deploy per 00 §11. |
+| `captureException()` | `api/_shared/sentry.ts` | `@sentry/node` capture wrapper with Kova context tagging. **Stub guard:** Returns no-op (logs warn) if env var is missing. Real account wired before first prod deploy per 00 §11. |
 | `verifyAuth()` | `api/_shared/auth.ts` *(already exists per M9; documented here for convention)* | JWT verification; returns `userId` or throws 401. |
 | `channelName(userId, domain, topic)` | `api/_shared/realtime.ts` | Server-side mirror of frontend `useChannelName` for cases where Edge Functions broadcast on Realtime. |
+
+**Stub guard for cron handler (`/api/cron/idempotency-cleanup`):** Returns no-op (logs warn) if `CRON_SECRET` env var is missing. Real `CRON_SECRET` wired before first prod deploy per 00 §11.
 
 `verifyIdempotency` reference implementation (`api/_shared/idempotency.ts`):
 
@@ -688,35 +703,13 @@ export const useConfirmStore = defineStore('confirm', () => {
 })
 ```
 
-```typescript
-// src/stores/command-palette.ts (NEW)
-export const useCommandPaletteStore = defineStore('command-palette', () => {
-  const open    = ref(false)
-  const query   = ref('')
-  const results = ref<CommandResult[]>([])
-  const sections = ref<CommandSection[]>([])  // populated by registry (Files / Brands / Actions / Help)
-  const activeIndex = ref(0)
-
-  function toggleOpen(force?: boolean): void {
-    open.value = force ?? !open.value
-    if (!open.value) { query.value = ''; activeIndex.value = 0 }
-  }
-
-  // Sections register themselves on app boot (one per cluster that contributes commands)
-  function registerSection(section: CommandSection): void { sections.value.push(section) }
-
-  return { open, query, results, sections, activeIndex, toggleOpen, registerSection }
-})
-```
-
 ### 6.3 Composables
 
 | Composable | File | Signature | Used by |
 |---|---|---|---|
 | `useToast` | `src/composables/use-toast.ts` | `(): { show: (toast: NewToast) => string; dismiss: (id: string) => void; success, error, info, action, progress, aiGen: (opts: Partial<NewToast>) => string }` | Every cluster with mutation feedback |
 | `useConfirm` | `src/composables/use-confirm.ts` | `(): { confirm: (opts: ConfirmOptions) => Promise<boolean> }` | 03, 04, 05, 08, 09 |
-| `useCommandPalette` | `src/composables/use-command-palette.ts` | `(): { open: Ref<boolean>; query: Ref<string>; results: Ref<CommandResult[]>; toggleOpen: (force?: boolean) => void; registerSection: (s: CommandSection) => void }` | 02 (dashboard), 06 (canvas chrome) |
-| `useOnlineStatus` | `src/composables/use-online-status.ts` | `(): { status: ComputedRef<'online' \| 'offline'>; lastChange: ComputedRef<number> }` | 06 (canvas autosnapshot pause on offline), 02 (dashboard offline UX), 11 (offline banner mount) |
+| `useOnlineStatus` | `src/composables/use-online-status.ts` | `(): { status: ComputedRef<'online' \| 'offline'>; lastChange: ComputedRef<number> }` | 06 (canvas autosnapshot pause on offline), 02 (dashboard offline UX), 11 (topbar offline icon mount) |
 | `useTheme` | `src/composables/use-theme.ts` | `(): { theme: ComputedRef<'light' \| 'dark'> }` | App.vue (mounts once); reactive to `route.meta.theme` |
 | `useIdempotencyKey` | `src/composables/use-idempotency-key.ts` | `(): { generate: () => string }` (returns `crypto.randomUUID()` — wrapped for testability) | 01 (deletion-request, restore), 04 (Stripe checkout), 09 (snapshot create) |
 | `useChannelName` | `src/composables/use-channel-name.ts` | `(domain: string, topic: string): string` | 09, 10, 04 |
@@ -736,8 +729,7 @@ export const useCommandPaletteStore = defineStore('command-palette', () => {
 | `<KovaPopover>` | `open: boolean (v-model)`; `anchor: TemplateRef<HTMLElement>`; `placement?: Placement = 'bottom-start'`; `width?: number \| 'auto' = 'auto'` | `default` (content) | `update:open` | A6 + A2a `.popover` |
 | `<KovaMenu>` | `items: MenuItem[]`; `align?: 'start' \| 'end' = 'start'`; `width?: number = 240` | none (driven by `items` prop) | `select: (item: MenuItem)` | A6 avatar dropdown anchor (catalog per surface lives in Cluster 08) |
 | `<KovaTooltip>` | `content: string`; `placement?: Placement = 'top'`; `delay?: number = 500` | `default` (anchor element) | none | (Reka wrapper, no dedicated hi-fi) |
-| `<CommandPalette>` | (none — reads `useCommandPaletteStore`) | none | none | A5.1–A5.3 |
-| `<NetworkStatusPill>` | `position: 'topbar-pill' \| 'sidebar-strip' \| 'banner'` | none | none | A13 patterns |
+| `<NetworkStatusIndicator>` | (none — reads `useOnlineStatus`) | none | none | A13-derived. Renders nothing while online; renders `cloud-off` icon + `<KovaTooltip>` while offline. See §3.7. |
 
 #### 6.4.2 Primitive components
 
@@ -796,19 +788,7 @@ Every line is testable in code or browser. No "feels right." Engineers verify ea
 - [ ] Two nested confirms: stack accommodates 2; opening a 3rd auto-closes the innermost (resolves `false`)
 - [ ] Resolved promise garbage-collects the confirm request from `useConfirmStore`
 
-### 8.3 Command-K palette
-
-- [ ] Cmd+K (Mac) / Ctrl+K (Windows/Linux) toggles `<CommandPalette>` open/closed globally
-- [ ] Esc closes; click on backdrop closes; click on a result row dispatches the result's handler and closes
-- [ ] Typing in the search input filters `useCommandPaletteStore.results` (debounced 100 ms)
-- [ ] ↑/↓ navigate active row; Enter dispatches active row
-- [ ] Empty state (`no query`) shows 5 category groups (Recents / Brands / Settings / Actions / Ask Kova)
-- [ ] No-results state shows `search-x` glyph + "No results for "<query>""
-- [ ] Loading state shows 4 skeleton rows with shimmer
-- [ ] Brand context pill renders in search input row when `useBrandsStore.selectedBrand` is non-null
-- [ ] Registry: a new cluster registers a `CommandSection` via `useCommandPaletteStore.registerSection({ id, label, getResults })` — section appears in the palette without code changes elsewhere
-
-### 8.4 Modals + popovers + menus
+### 8.3 Modals + popovers + menus
 
 - [ ] `<KovaModal size="sm">` renders 460 px wide; `md` 540 px; `lg` 880 px
 - [ ] Open / close via v-model `:open`
@@ -819,7 +799,7 @@ Every line is testable in code or browser. No "feels right." Engineers verify ea
 - [ ] `<KovaMenu items={...}>` dispatches `select` event with the chosen item; closes on select
 - [ ] Tooltip shows after 500 ms hover; hides on mouse-leave
 
-### 8.5 Skeletons + empty states
+### 8.4 Skeletons + empty states
 
 - [ ] `<KovaSkeleton radius="line" />` renders with 3 px radius + shimmer animation
 - [ ] All 4 radius variants render correctly
@@ -830,16 +810,17 @@ Every line is testable in code or browser. No "feels right." Engineers verify ea
 - [ ] `query` prop wraps the echo in `<span class="q">` (verified via DOM test)
 - [ ] `cta` slot renders below body copy with margin-top 6/8/10 px (by variant)
 
-### 8.6 Network status
+### 8.5 Network status
 
 - [ ] `useOnlineStatus()` returns `'online'` when `navigator.onLine === true` AND Realtime ping succeeded within 10 s
 - [ ] Returns `'offline'` when `navigator.onLine === false`
 - [ ] Returns `'offline'` when `navigator.onLine === true` BUT Realtime ping has not ack'd in >10 s (debounced 1 s to avoid flicker)
-- [ ] `<NetworkStatusPill position="topbar-pill">` renders `Online` / `Offline` with dot + state color (Phase 2 — currently degraded neutral)
-- [ ] `<NetworkStatusPill position="banner">` renders the topbar offline banner with the documented copy
-- [ ] Status transitions from offline → online dismiss the banner with a 200 ms fade
+- [ ] `<NetworkStatusIndicator>` renders nothing in the DOM while `useOnlineStatus().status === 'online'`
+- [ ] `<NetworkStatusIndicator>` renders the `cloud-off` icon (14 × 14, `--ink-2`) beside the avatar in the topbar while `status === 'offline'`
+- [ ] Hovering the icon shows a `<KovaTooltip>` with copy "You're offline. Changes saved locally and sync when you reconnect."
+- [ ] Status transitions from offline → online instantly hide the icon (no banner to dismiss)
 
-### 8.7 Theme detection
+### 8.6 Theme detection
 
 - [ ] Navigating to a route with `meta.theme = 'light'` sets `<html data-theme="light">`
 - [ ] Navigating to a route with `meta.theme = 'dark'` sets `<html data-theme="dark">`
@@ -847,7 +828,7 @@ Every line is testable in code or browser. No "feels right." Engineers verify ea
 - [ ] Stylesheet swap is synchronous (no FOUT) — both stylesheets ship at app boot; only the `data-theme` attribute flips
 - [ ] System theme preference (`prefers-color-scheme`) is NOT used — route meta always wins (Figma model, per `feedback_app_dark_website_light`)
 
-### 8.8 Idempotency keys
+### 8.7 Idempotency keys
 
 - [ ] Edge Function called with `X-Idempotency-Key: <uuid>` and `{}` body inserts a row in `idempotency_keys`
 - [ ] Same key + same body → returns cached `response_status` + `response_body`, does NOT re-execute logic
@@ -858,13 +839,13 @@ Every line is testable in code or browser. No "feels right." Engineers verify ea
 - [ ] RLS: `authenticated` role SELECT/INSERT/UPDATE/DELETE on `idempotency_keys` all fail / return 0 rows
 - [ ] `verifyIdempotency` is integrated by Cluster 01's `deletion-request` Edge Function (verified by import-grep)
 
-### 8.9 Realtime channel naming
+### 8.8 Realtime channel naming
 
 - [ ] `useChannelName('canvas', 'abc-123.snapshot')` returns `kova.{userId}.canvas.abc-123.snapshot`
 - [ ] Throws if called before sign-in (`auth.userId` null)
 - [ ] CI grep step (§9.5) fails the build if a Realtime `.channel(...)` call uses a string not matching `^kova\\..*\\..*$`
 
-### 8.10 Sentry + error pages
+### 8.9 Sentry + error pages
 
 - [ ] Uncaught error in a Vue component is captured by Sentry (`Sentry.captureException` called via Vue `errorHandler`)
 - [ ] User signs in → `Sentry.setUser({ id: ... })` fires (no email, per `sendDefaultPii: false`)
@@ -872,14 +853,14 @@ Every line is testable in code or browser. No "feels right." Engineers verify ea
 - [ ] An uncaught error during render routes to `/500` and renders `<Error500View>` (Vue `app.config.errorHandler`)
 - [ ] When `useOnlineStatus() === 'offline'` AND a `fetch` to a `/api/...` endpoint fails, the global error boundary routes to `/network-unreachable`
 
-### 8.11 Email shell
+### 8.10 Email shell
 
 - [ ] `<EmailShell title="Welcome">` renders 600-px max-width HTML with inlined CSS (validated via `juice` library or equivalent — no `<style>` tag in output)
 - [ ] `List-Unsubscribe` header is injected when sending via `sendEmail()` helper
 - [ ] Plain-text fallback is generated from the Markdown intermediate
 - [ ] Renders correctly in: Gmail (web), Apple Mail (macOS), Outlook 365 (web), Litmus suite
 
-### 8.12 Security
+### 8.11 Security
 
 - [ ] No `VITE_` prefix on `SENTRY_DSN_SERVER`, `RESEND_API_KEY`, `CRON_SECRET` (CI grep step)
 - [ ] `VITE_SENTRY_DSN` is browser-exposed (intentional per Sentry docs — DSN is public)
@@ -897,10 +878,8 @@ Target coverage: ≥85% on stores + composables + components.
 |---|---|
 | `tests/unit/stores/toast.test.ts` | enqueue / dismiss / max-visible promotion / sticky variants / auto-dismiss timing |
 | `tests/unit/stores/confirm.test.ts` | confirm/resolve flow / stack-2 enforcement / Escape resolves false |
-| `tests/unit/stores/command-palette.test.ts` | toggleOpen / registerSection / activeIndex navigation |
 | `tests/unit/composables/use-toast.test.ts` | All 6 variant helpers (success/error/info/action/progress/aiGen) |
 | `tests/unit/composables/use-confirm.test.ts` | Promise resolution; typed-confirm gating |
-| `tests/unit/composables/use-command-palette.test.ts` | Open/close, query debounce, result filtering |
 | `tests/unit/composables/use-online-status.test.ts` | `navigator.onLine` mocking; Realtime ping ack flow; 10-s timeout; 1-s debounce |
 | `tests/unit/composables/use-theme.test.ts` | `route.meta.theme` reactive swap; default fallback to dark |
 | `tests/unit/composables/use-idempotency-key.test.ts` | UUID format; deterministic mock for tests |
@@ -917,8 +896,7 @@ Target coverage: ≥85% on stores + composables + components.
 | `tests/unit/components/KovaSegmented.test.ts` | v-model; options render |
 | `tests/unit/components/KovaSkeleton.test.ts` | All 4 radius variants; reduced-motion suppression |
 | `tests/unit/components/EmptyState.test.ts` | All 3 sizes; query echo |
-| `tests/unit/components/NetworkStatusPill.test.ts` | All 3 positions |
-| `tests/unit/components/CommandPalette.test.ts` | Empty / populated / no-results / loading states |
+| `tests/unit/components/NetworkStatusIndicator.test.ts` | Renders nothing when online; renders icon + tooltip when offline |
 | `tests/unit/components/Error404View.test.ts` | Renders B2.1 copy + 2 CTAs |
 | `tests/unit/components/Error500View.test.ts` | Renders B2.2 copy + 2 CTAs |
 | `tests/unit/components/NetworkUnreachableView.test.ts` | Renders B2.3 copy + 1 CTA |
@@ -944,7 +922,6 @@ Target coverage: ≥85% on stores + composables + components.
 |---|---|
 | `tests/e2e/cluster-11/toast-flow.spec.ts` | Open dev page that triggers each toast variant; verify rendering + auto-dismiss + sticky behavior |
 | `tests/e2e/cluster-11/confirm-flow.spec.ts` | Trigger confirm modal; click Cancel → false; trigger again, click Confirm → true; typed-confirm requires text match |
-| `tests/e2e/cluster-11/command-palette.spec.ts` | Cmd+K opens palette; type query; arrow keys navigate; Enter dispatches; Esc closes |
 | `tests/e2e/cluster-11/error-pages.spec.ts` | Navigate to `/this-does-not-exist` → assert `/404`; navigate to a page that throws → assert `/500`; throw a fetch error while offline → assert `/network-unreachable` |
 | `tests/e2e/cluster-11/theme-swap.spec.ts` | Navigate to `/privacy` → assert `<html data-theme="light">`; navigate to `/dashboard` (light to dark cross) → assert `<html data-theme="dark">`; verify no FOUT (initial render is in the destination theme) |
 | `tests/e2e/cluster-11/offline-flow.spec.ts` | Simulate offline (Playwright route abort); assert banner renders; restore connectivity; assert banner dismisses |
@@ -956,8 +933,7 @@ Per `feedback_browser_smoke_test_before_done` — required before claiming the f
 - [ ] Open the dev Storybook (or `/dev/cluster-11` showcase route) and verify all 8 toast variants render visually-identical to B1.1–B1.8 hi-fi
 - [ ] Verify all 3 modal sizes (A8.1 / .2 / .3 corollary) render at the right widths and the `×` close button works
 - [ ] Verify the avatar dropdown popover (A6) opens at the correct anchor + auto-flips when near viewport bottom
-- [ ] Cmd+K open / type "br" → see "Brands" results / arrow down → first brand highlighted / Enter → dispatched
-- [ ] Disconnect Wi-Fi on the laptop; verify the offline banner appears at the topbar within 10 s; reconnect; verify it dismisses
+- [ ] Disconnect Wi-Fi on the laptop; verify the `cloud-off` icon appears in the topbar beside the avatar within 10 s; hover shows tooltip; reconnect; verify icon hides
 - [ ] Verify the `/404` and `/500` pages match B2.1 / B2.2 byte-for-byte (token-driven, no hex literals)
 - [ ] Open `/privacy` → confirm light theme renders correctly (no leftover dark styles)
 - [ ] Send yourself a test deletion-scheduled email via Cluster 01's Edge Function (once 01 lands); verify the `<EmailShell>` renders correctly in Gmail web + Apple Mail
@@ -980,10 +956,10 @@ Per `feedback_browser_smoke_test_before_done` — required before claiming the f
 ### Phase A — initial deploy (Wave 1 close, in parallel with Cluster 01)
 
 - Migration `20260520_11_shared_ui_infrastructure` applied to local + CI Supabase
-- All 10 composables shipped + unit-tested
-- All 3 stores shipped + unit-tested
-- All 19 components shipped + unit-tested + visually smoke-tested in `/dev/cluster-11` showcase route
-- `<App>` shell mounts `<ToastStack>` + `<CommandPalette>` once
+- All 9 composables shipped + unit-tested
+- All 2 stores shipped + unit-tested
+- All 18 components shipped + unit-tested + visually smoke-tested in `/dev/cluster-11` showcase route
+- `<App>` shell mounts `<ToastStack>` + `<NetworkStatusIndicator>` once
 - Vue Router `meta.theme` runtime swap active; default theme `dark`
 - 3 error-page routes wired
 - Sentry installed both client + server; release tags wired to Vercel `VERCEL_GIT_COMMIT_SHA`
@@ -999,6 +975,9 @@ Per `feedback_browser_smoke_test_before_done` — required before claiming the f
 - Accessibility audit via axe-core: zero P0 violations on every primitive (per `00d §3.C 2.D.11`)
 - Status-palette Phase 2 plan staged (re-introducing `--warn` / `--ok` / `--review` color)
 
+**Pre-launch checklist:**
+- Founder wires Sentry projects (browser + server), Resend account + kova.app domain DNS verification, Vercel Pro plan + CRON_SECRET. See `00-PRD_SCOPE_PLAN.md §11`.
+
 ### Feature flags (per `00d §3.B-i` — hard-coded constants for MVP)
 
 | Flag | Default | Toggle condition |
@@ -1006,9 +985,9 @@ Per `feedback_browser_smoke_test_before_done` — required before claiming the f
 | `TOAST_MAX_VISIBLE` | `5` | KD-1 default; raise if user-research surfaces stacking pain |
 | `TOAST_DEFAULT_DURATION_MS` | `5000` | KD-1 default; tune per variant in Phase B |
 | `MODAL_STACK_MAX` | `2` | KD-2 default; rarely exceeded — flag exists only for emergency raise |
-| `IDEMPOTENCY_RETENTION_HOURS` | `24` | KD-5 default; raise to 72 if mobile-app sleep cycles produce false dupes |
-| `ONLINE_PING_INTERVAL_MS` | `3000` | KD-6 default |
-| `ONLINE_PING_TIMEOUT_MS` | `10000` | KD-6 default; raise on flaky carriers |
+| `IDEMPOTENCY_RETENTION_HOURS` | `24` | KD-4 default; raise to 72 if mobile-app sleep cycles produce false dupes |
+| `ONLINE_PING_INTERVAL_MS` | `3000` | KD-3 default |
+| `ONLINE_PING_TIMEOUT_MS` | `10000` | KD-3 default; raise on flaky carriers |
 | `SENTRY_SAMPLE_RATE_TRACES` | `0.1` | 10 % of transactions; raise for canary releases |
 | `SENTRY_SAMPLE_RATE_REPLAYS_ON_ERROR` | `1.0` | Always capture replay on error; tune down on bandwidth concerns |
 | `STATUS_PALETTE_ENABLED` | `false` | Phase 2 — re-introduce `--warn` / `--ok` / `--review` color |
@@ -1020,11 +999,11 @@ Per `feedback_browser_smoke_test_before_done` — required before claiming the f
 | Other PRD | What we depend on (from them) | What they depend on us for |
 |---|---|---|
 | **01 — Auth & Identity** | None at runtime | `useToast`, `<KovaModal>`, `useConfirm`, `<DangerZoneCard>` modal logic, `<EmailShell>`, `idempotency_keys` table + helper, error pages, Sentry SDK wrapper, `<MarketingShell>` for `/privacy` + `/terms`, `useTheme` runtime stylesheet swap |
-| **02 — Onboarding & Dashboard** | None | `useToast`, `<KovaModal>`, `useConfirm`, `<EmptyState>`, `<KovaSkeleton>`, `<CommandPalette>` host, `useOnlineStatus` |
+| **02 — Onboarding & Dashboard** | None | `useToast`, `<KovaModal>`, `useConfirm`, `<EmptyState>`, `<KovaSkeleton>`, `useOnlineStatus` |
 | **03 — Brand Management** | None | `useConfirm` (delete brand typed-confirm), `<KovaModal>`, `useToast` |
 | **04 — Account + Stripe** | None | `useConfirm` (delete-account, cancel-sub), `<KovaModal>`, `useToast`, `<EmptyState>` (no integrations connected), `<EmailShell>` (Stripe receipts), `idempotency_keys` table + helper (Stripe webhook), Realtime channel name `kova.{userId}.billing.events` |
 | **05 — Brand Kit & Drag-Drop** | None | `useConfirm` (delete tone snippet, delete saved block), `<KovaModal>` (tone-snippet edit), `useToast`, `<EmptyState>` (no tone snippets yet), `<KovaSkeleton>` (KB sources loading) |
-| **06 — Canvas Editor Core Chrome** | None | `<CommandPalette>` host integration, `useToast` (canvas saved), `useOnlineStatus` (autosnapshot pause on offline), Tauri command-surface naming (`kova.*`), `<KovaPopover>`, `<KovaMenu>`, `<KovaTooltip>` |
+| **06 — Canvas Editor Core Chrome** | None | `useToast` (canvas saved), `useOnlineStatus` (autosnapshot pause on offline), Tauri command-surface naming (`kova.*`), `<KovaPopover>`, `<KovaMenu>`, `<KovaTooltip>` |
 | **07a / 07b — Canvas Engine** | None | `useToast` (export complete), `<KovaModal>` (boolean-op confirms) |
 | **08 — Menus, Popovers, Shortcuts** | None | `<KovaMenu>` shell (Cluster 08 fills with the per-surface dispatch tables); `<KovaPopover>`; keyboard shortcut registration patterns |
 | **09 — Version History + Trash** | None | `useConfirm` (delete snapshot, empty trash), `<KovaModal>` (manual snapshot), `useToast`, `idempotency_keys` table + helper (snapshot create), Realtime channel name `kova.{userId}.canvas.{canvasId}.snapshot` |
@@ -1061,23 +1040,15 @@ Acknowledged + enforced in this PRD:
 
 **Reversibility:** SOFT — `MODAL_STACK_MAX` feature flag.
 
-### 12.3 KEY DECISION KD-3 — Command-K result categories
+### 12.3 KEY DECISION KD-3 — Online/offline detection signals
 
-**Recommendation:** 4 default categories (Files, Brands, Actions, Help), extensible via `useCommandPaletteStore.registerSection({...})`.
+**Recommendation:** Primary `navigator.onLine`; secondary Supabase Realtime heartbeat ping every 3 s on `presence` channel; mark offline after 10 s no-ack. Debounce transitions 1 s to avoid flicker. UI surface = single topbar icon + tooltip (no pill, no banner per §3.7).
 
-**Rationale:** Matches Linear + Notion conventions. "Files" covers canvases + brand sub-pages. "Brands" lists user's brands (current-active highlighted). "Actions" is global commands (new canvas, toggle layers panel, etc.). "Help" surfaces shortcuts + docs links. New clusters extend without code changes to Cluster 11.
-
-**Reversibility:** SOFT — sections register dynamically; reordering is a one-line change.
-
-### 12.4 KEY DECISION KD-4 — Online/offline detection signals
-
-**Recommendation:** Primary `navigator.onLine`; secondary Supabase Realtime heartbeat ping every 3 s on `presence` channel; mark offline after 10 s no-ack. Debounce transitions 1 s to avoid flicker.
-
-**Rationale:** `navigator.onLine` is reactive and free but lies in edge cases (browser thinks online but DNS / firewall blocks our Supabase host). Realtime ping catches that. 3 s interval = ~20 pings/min/user, well under Supabase's per-connection limit. 10 s timeout = 3 missed pings; tolerable false-negative rate.
+**Rationale:** `navigator.onLine` is reactive and free but lies in edge cases (browser thinks online but DNS / firewall blocks our Supabase host). Realtime ping catches that. 3 s interval = ~20 pings/min/user, well under Supabase's per-connection limit. 10 s timeout = 3 missed pings; tolerable false-negative rate. Founder ratified 2026-05-17 the Figma-style minimal indicator (icon + tooltip only); see §3.7.
 
 **Reversibility:** SOFT — feature flags tune both intervals.
 
-### 12.5 KEY DECISION KD-5 — `idempotency_keys` retention 24 hours
+### 12.4 KEY DECISION KD-4 — `idempotency_keys` retention 24 hours
 
 **Recommendation:** Delete rows older than 24 hours via daily cron.
 
@@ -1085,7 +1056,7 @@ Acknowledged + enforced in this PRD:
 
 **Reversibility:** SOFT — `IDEMPOTENCY_RETENTION_HOURS` feature flag.
 
-### 12.6 KEY DECISION KD-6 — Realtime channel naming `kova.{userId}.{domain}.{topic}`
+### 12.5 KEY DECISION KD-5 — Realtime channel naming `kova.{userId}.{domain}.{topic}`
 
 **Recommendation:** Lock the format. Document the 5 known channels (canvas snapshot, chat stream, shopify sync, billing events, presence heartbeat). CI grep step enforces every `.channel(...)` call uses the prefix.
 
@@ -1093,35 +1064,33 @@ Acknowledged + enforced in this PRD:
 
 **Reversibility:** HARD-ish — every consuming cluster encodes the name; migrating would require coordinated PRs. But: ratifying now (before consumers ship) is cheap. The HARD-ish class is *future*, not present.
 
-### 12.7 RISK (Low) — `<EmailShell>` rendering drift across email clients
+### 12.6 RISK (Low) — `<EmailShell>` rendering drift across email clients
 
 Email clients vary wildly in CSS support. Inlining via `juice` handles most cases, but `<style>` blocks, `@media` queries, and `position` are unreliable across Outlook 2016 / Outlook 365 / Gmail / Apple Mail / Yahoo / mobile clients.
 
-**Mitigation:** §8.11 acceptance criterion verifies rendering in 4 representative clients. Phase B includes Litmus / Email-on-acid suite (per §10). Email templates use a constrained subset of CSS (margins, padding, font-size, color, text-align, width) — never `flex`, `grid`, `position`. Fallback to plain-text always available.
+**Mitigation:** §8.10 acceptance criterion verifies rendering in 4 representative clients. Phase B includes Litmus / Email-on-acid suite (per §10). Email templates use a constrained subset of CSS (margins, padding, font-size, color, text-align, width) — never `flex`, `grid`, `position`. Fallback to plain-text always available.
 
-### 12.8 RISK (Low) — `<CommandPalette>` keyboard conflict with browser default Cmd+K
-
-Cmd+K is the browser default for some address-bar focus modes (Chrome on some platforms). Intercepting may cause user confusion.
-
-**Mitigation:** Most users do not use Cmd+K for address-bar focus; Figma + Linear + Notion all intercept Cmd+K without complaint. Acceptance criterion §8.3 confirms the intercept works. If user feedback flags it, escape hatch: hold Cmd+K for >300 ms to allow the browser default.
-
-### 12.9 RISK (Low) — Sentry sampling under-captures rare bugs
+### 12.7 RISK (Low) — Sentry sampling under-captures rare bugs
 
 `tracesSampleRate: 0.1` (10 %) means rare transactions may never be sampled.
 
 **Mitigation:** `replaysOnErrorSampleRate: 1.0` ensures every error gets a session replay. Phase B re-tunes both rates based on incident-investigation hit rate.
 
-### 12.10 OPEN QUESTION — `<KovaSkeleton>` shimmer animation direction (LTR vs locale-aware)
+### 12.8 OPEN QUESTION — `<KovaSkeleton>` shimmer animation direction (LTR vs locale-aware)
 
 Hi-fi B7 demos shimmer animating left-to-right (translateX -100 % → 300 %). For Arabic / Hebrew localization (Phase 2), the natural direction reverses.
 
 **Recommendation:** ship LTR-only at MVP. Wire the gradient direction to `document.dir` in Phase 2 (i18n).
 
-### 12.11 OPEN QUESTION — Toast positioning per device class
+### 12.9 OPEN QUESTION — Toast positioning per device class
 
 Bottom-right is the canonical position per B1. On a desktop > 2560 px wide, the toasts may appear unreachably-far from the user's focus.
 
 **Recommendation:** ship bottom-right at MVP (matches Figma + Linear); revisit if user research surfaces complaint. Phase 2 could add a `useToast.position()` override.
+
+### 12.10 DROPPED 2026-05-17 — Cmd+K command palette
+
+Founder dropped the global Cmd+K command palette from MVP scope. Canvas workflow doesn't need a global navigation shortcut; users exit to dashboard for file/brand switching. Cmd+K palette doesn't fit the model. A5 hi-fi retired. KD-3 + KD-8 (browser conflict risk) deleted with it. See `00g-CMDK_KILL_DISPATCH.md`.
 
 ---
 
@@ -1152,7 +1121,6 @@ None directly. Cluster 11 is **primitives only** — every Q-decision lives in t
 
 - `main-main-kova-scope/batch-a-additions/dark/batch-0/Kova Hi-Fi B1 Toasts - Dark.html` (B1.1–B1.8 — toast variants)
 - `main-main-kova-scope/batch-a-additions/dark/batch-0/Kova Hi-Fi B2 Error Pages - Dark.html` (B2.1 / B2.2 / B2.3 — 404 / 500 / network-unreachable)
-- `main-main-kova-scope/batch-a/dark/Kova Hi-Fi A5 Command-K - Dark.html` (A5.1 / A5.2 / A5.3 + edge cases — Cmd+K palette)
 - `main-main-kova-scope/batch-a/dark/Kova Hi-Fi A6+A2a Popovers + A8 Dialogs - Dark.html` (A6 avatar popover anchor; A2a brand-switcher popover anchor; A8.1 / .2 / .3 dialog shell; A8.4 typed-confirm)
 - `main-main-kova-scope/batch-a-additions/dark/Kova Hi-Fi B7 Loading Skeletons - Dark.html` (B7.1–B7.5 — skeleton compositions; primitives derived)
 - `main-main-kova-scope/batch-a-additions/dark/Kova Hi-Fi B9 List Search Empty - Dark.html` (B9.1–B9.4 — empty-state size variants)
@@ -1179,10 +1147,9 @@ None directly. Cluster 11 is **primitives only** — every Q-decision lives in t
 **Figma reference (per `CLAUDE.md` §"Figma Is the Reference. Always."):**
 
 - [Figma — Notifications and toasts](https://help.figma.com/hc/en-us/articles/360039829434-Use-notifications-in-Figma) (bottom-right positioning, auto-dismiss timing, stacking pattern — informs §3.1)
-- [Figma — Quick actions / Cmd+K palette](https://help.figma.com/hc/en-us/articles/14182816021143-Use-the-Actions-menu-in-Figma) (Actions menu category structure, kbd hints, search-as-you-type — informs §3.3 + KD-3)
-- [Figma — Modals and dialogs (in-app UX patterns)](https://www.figma.com/community/file/928108847914589057) (size variants sm/md/lg, backdrop click-to-close, destructive confirms — informs §3.4)
-- [Figma — Empty states & loading patterns](https://help.figma.com/hc/en-us/articles/360038006194-Use-loading-states-in-prototypes) (skeleton shimmer convention; empty-state size variants — informs §3.6 + §3.7)
-- [Figma — Connection status and offline behavior](https://help.figma.com/hc/en-us/articles/9657275320599-Use-Figma-offline) (offline banner copy pattern; per-device scope — informs §3.8 + KD-4)
+- [Figma — Modals and dialogs (in-app UX patterns)](https://www.figma.com/community/file/928108847914589057) (size variants sm/md/lg, backdrop click-to-close, destructive confirms — informs §3.3)
+- [Figma — Empty states & loading patterns](https://help.figma.com/hc/en-us/articles/360038006194-Use-loading-states-in-prototypes) (skeleton shimmer convention; empty-state size variants — informs §3.5 + §3.6)
+- [Figma — Connection status and offline behavior](https://help.figma.com/hc/en-us/articles/360040328553) (icon + tooltip pattern, no persistent banner — informs §3.7 + KD-3)
 
 **Implementation libraries:**
 
@@ -1200,12 +1167,12 @@ None directly. Cluster 11 is **primitives only** — every Q-decision lives in t
 - [VueUse — useMediaQuery](https://vueuse.org/core/useMediaQuery/) (prefers-reduced-motion / prefers-color-scheme)
 - [Vue 3 — `app.config.errorHandler`](https://vuejs.org/api/application.html#app-config-errorhandler) (global error boundary → /500 route)
 - [Tailwind CSS — `@theme` directive](https://tailwindcss.com/docs/theme) (translation target for `:root` block)
-- [Litmus — Email client market share](https://www.litmus.com/email-client-market-share) (validates which clients §8.11 must cover)
+- [Litmus — Email client market share](https://www.litmus.com/email-client-market-share) (validates which clients §8.10 must cover)
 
 ### 13.7 Memory pointers consulted
 
 - `feedback_app_dark_website_light` — dark inside app, light only on auth + marketing + mobile fallback; theme convention canonical
-- `feedback_figma_ui_theme` — Figma reference for visual decisions (toast position, modal sizes, command palette layout)
+- `feedback_figma_ui_theme` — Figma reference for visual decisions (toast position, modal sizes, offline indicator pattern)
 - `feedback_browser_smoke_test_before_done` — §9.4 manual QA gate
 - `feedback_verify_with_docs` — Reka UI + Sentry + Resend + Vercel + Supabase docs cited in §13.6
 - `feedback_explain_for_nontechnical_founder` — §1.1 plain language + §1.2 caveman both included

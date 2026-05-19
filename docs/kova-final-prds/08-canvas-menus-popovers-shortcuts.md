@@ -4,11 +4,11 @@
 
 | Field | Value |
 |---|---|
-| **Status** | `DRAFT` 2026-05-15 |
+| **Status** | `DRAFT-LOCKED` 2026-05-17 (post-founder-clarification round; ready for implementation handoff) |
 | **Wave** | 5 (close) |
 | **Author** | Claude (Opus 4.7) |
 | **Reviewer** | Jiho Yang (founder) |
-| **Last updated** | 2026-05-15 |
+| **Last updated** | 2026-05-17 — founder lock-down on (a) Figma View-menu default toggle states + Pixel grid activation + Rulers added; (b) Outlines wireframe submenu (NEW); (c) Show/Hide UI ⌘\; (d) Previous/Next page DROPPED; (e) last-page delete = Figma-style disabled item + tooltip; (f) empty-canvas right-click = Figma full 12-item menu; (g) **B12 archived Brands page promoted to MVP — brand-card right-click adds active vs archived state branch via `useObjectActions().brandCardActiveActions` / `brandCardArchivedActions` (Rename/Archive/Delete vs Restore/Delete); NEW PRD 03 cross-cut**. See §13.2 founder-lock entries + §12.5 + §12.6 RESOLVED |
 | **Depends on PRDs** | 06 (chrome host mounts main-menu + right-click trigger surfaces), 11 (useConfirm primitive + `<KovaModal>` shell + toast system + idempotency-key helper N/A here) |
 | **Blocks PRDs** | None at MVP. Downstream PRDs (07b, 09) **register into** this PRD's shortcut + context-menu registries by API; they do not block on its primitives shipping ahead of them. |
 | **Source artifacts** | Hi-fi: 4 files (B1 top-chrome menus, B1.11 file-name dropdown, B11 Find overlay, B13 Trash confirm cross-cut). 03 doc: §2.2 (23 rows) + §2.8 (10 rows) + §2.10 (28 rows) = 61 rows. §3C #7 + #8 + #9 + #10 + #11. Q-decisions: Q5 (Recent colors Layer 2 localStorage), Q18 (overflow vs canvas right-click), Q23 (Copy/Paste properties), Q24 (drag-drop — cross-cut acknowledgment only), Q25 (13-category shortcut taxonomy). Audit `00c §2.A` lines 1684–1763. |
@@ -39,7 +39,7 @@ User can: (1) open main menu and every submenu including sub-of-sub (Boolean ops
 - Logo-trigger root popover (8 items per B1.1 — Back to dashboard / File / Edit / View / Object / Text / Arrange / Preferences / Help & account, Vector hidden per B1.10)
 - File submenu (B1.2) — New design / Place image… (⇧⌘K) / Export… / Save to version history (⌥⌘S) / Show version history / Move to trash (destructive)
 - Edit submenu (B1.3 — densest) — Undo / Redo / Cut / Copy / Paste / Paste to replace (⇧⌘R) / Duplicate (⌘D) / Copy as ▶ (PNG only) / Copy properties (⌥⌘C) / Paste properties (⌥⌘V) / Pick color (⌃C) / Find (⌘F) / Find next (⇧⌘F) / Find previous (⇧⌘D) / Select none / Select inverse (⇧⌘A)
-- View submenu (B1.4) — Previous/Next page / Show-hide UI (⌘\) / Minimize UI (⇧⌘\) / Panels ▶ (Left visible, Right visible) / 5 toggle rows (Frame outlines / Mask outlines / Slices / Layout guides default-ON / Pixel grid Phase-2 disabled) / Zoom 5 rows
+- View submenu (B1.4) — Show-hide UI (⌘\) / Minimize UI (⇧⌘\) / Panels ▶ (Left visible, Right visible) / 7 toggle rows: **Pixel grid (⇧') default-ON** / **Layout guides (⇧G) default-ON** / **Rulers (⇧R) default-ON** / Show slices default-OFF / Mask outlines default-OFF / Frame outlines default-OFF / Outlines ▶ sub-of-sub (Show outlines wireframe-mode ⇧O default-OFF — Cluster 07b ships wireframe render primitive) / Zoom 5 rows. **Defaults match Figma View menu screenshot (founder verified 2026-05-17)**
 - Object submenu (B1.5) — Group / Ungroup / Frame selection / Bring forward-back / to-front/back / Rotate 90° L-R-180° / Flip H/V / Use as mask (⌃⌘M) / Boolean operations ▶ (Union/Subtract/Intersect/Exclude — visible only on ≥2 multi-select per Q3 #14) / Lock-unlock / Show-hide / Rename / Delete (destructive)
 - Text submenu (B1.6) — Bulleted list / Numbered list / Create link / Case ▶ (radio: As typed / UPPERCASE / lowercase / Title Case / Sentence case) / Show text suggestions (disabled Phase-2)
 - Arrange submenu (B1.7) — Round to pixel / Pack horizontal-vertical / Distribute horizontal spacing (^⌥H) / Distribute vertical spacing (^⌥V) / 6 distribute-edge variants (left, h-centers, right, top, v-centers, bottom)
@@ -53,10 +53,11 @@ User can: (1) open main menu and every submenu including sub-of-sub (Boolean ops
 **Right-click context menus (Q18):**
 - **Canvas right-click on object** (full set, 12–20 items): Copy / Paste / Cut / Duplicate / Copy as ▶ (PNG) / Copy properties / Paste properties / Pick color / Lock-Unlock / Show-Hide / Bring forward-back / to-front/back / Group / Frame selection / Ungroup / Use as mask (⌃⌘M) / Rotate 90° L-R-180° / Flip H/V / Boolean ops (Union/Subtract/Intersect/Exclude — multi-select gate) / Rename / Delete
 - **Inspector overflow `•••`** (compact subset, 5–7 items): Lock-Unlock / Show-Hide / Rename / Copy as PNG / Copy properties / Paste properties / Delete
-- **Canvas right-click on empty area**: Show ruler / Show layout guide / Show pixel grid (Phase-2 disabled) — view toggles
+- **Canvas right-click on empty area** (Figma full menu — founder lock 2026-05-17): Paste here / Paste to replace (⇧⌘R) / sep / Select all (⌘A) / Select inverse (⇧⌘A) / sep / Zoom to 100% (⌘0) / Zoom to fit (⇧1) / Zoom to selection (⇧2) / sep / Pixel grid / Layout guides / Rulers (3 checkable toggles) / sep / Find (⌘F) — 12 items total. All wire to existing `editor.ts` methods + `usePreferencesStore.prefs.view.*`
 - **Page row right-click** (left panel Pages): Duplicate page / Rename page / Delete page (destructive, useConfirm) / Move page up / Move page down
 - **Layer row right-click** (left panel Layers): Scroll to layer / Reveal in Pages (Phase-2) / mirrors Object menu items contextually
 - **Brand-asset row right-click** (left panel Assets — cross-cut Cluster 05, this PRD ships the right-click shell; Cluster 05 ships the asset-specific items)
+- **Brand-card right-click** (Brands page — NEW per founder lock 2026-05-17, B12 archived Brands page promoted to MVP): branches on `brand.archived_at !== null` — active state shows Rename / Archive / Delete; archived state shows Restore / Delete. Items live in `useObjectActions().brandCardActiveActions` + `brandCardArchivedActions`. Modal triggers cross-cut to PRD 03 (B12.1 Archive, B12.3 Restore, B12.4 Delete)
 - Same `useObjectActions()` composable feeds full vs compact subsets
 
 **Find overlay (B11 / hi-fi 14):**
@@ -112,7 +113,7 @@ User can: (1) open main menu and every submenu including sub-of-sub (Boolean ops
 ### 2.3 Deferred to Phase 2
 
 - **Vector ▶ submenu** — trigger HIDDEN entirely per B1.10. Reinstated when Vector tooling returns.
-- **"Show pixel grid" View menu item** — visible but **disabled** with "Phase 2" pill. Auto-shows at zoom >800% in MVP (no toggle).
+- ~~**"Show pixel grid" View menu item** — visible but **disabled** with "Phase 2" pill.~~ **REVERSED 2026-05-17:** Pixel grid now active MVP per founder Figma-parity lock; default-ON; toggles via `prefs.view.pixelGrid`. Cluster 07b ships overlay primitive.
 - **"Show text suggestions" Text menu item** — visible but **disabled** with "Phase 2" pill per founder annotation B1.6.
 - **"Reveal in Pages" layer right-click item** — Phase 2 per 03-doc §2.10 row.
 - **Help item external URL** — `mailto:` MVP, external docs site Phase 2.
@@ -131,7 +132,7 @@ User can: (1) open main menu and every submenu including sub-of-sub (Boolean ops
 - **Cluster 07b** owns the engine-side boolean-operation API wiring (`figma.booleanOperation()` invocation paths). Cluster 07b **registers** its boolean-op shortcuts (`⌘⌥U/S/I/X`) into THIS PRD's `useShortcutsStore` at app boot.
 - **Cluster 09** owns the Move-to-trash confirm modal logic + the `canvases.trashed_at` RPC. The modal is reached from the **dashboard right-click** (Cluster 02 trigger). This PRD links to the cross-cut, ships nothing for trash itself.
 - **Cluster 02** owns dashboard file-grid right-click which is THE entry point for "Move to trash" + B13 confirm modal. The canvas-side file-name dropdown explicitly omits "Move to trash" per founder 2026-05-09 (and per chunk-b1 file 13 scene 13.2's "stripped" annotation).
-- **Cluster 12** owns `usePreferencesStore` (Layer 1) + `useUIStateStore` (Layer 2). This PRD reads `useUIStateStore.recentColors` for the color-picker recent row; reads `usePreferencesStore.prefs.view.*` (showRuler, showLayoutGuide, showPixelGrid, showFrameOutlines, showMaskOutlines, showSlices) for the View menu toggle rows.
+- **Cluster 12** owns `usePreferencesStore` (Layer 1) + `useUIStateStore` (Layer 2). This PRD reads `useUIStateStore.recentColors` for the color-picker recent row; reads `usePreferencesStore.prefs.view.*` (per founder lock 2026-05-17 Figma defaults: `pixelGrid` default-ON, `layoutGuides` default-ON, `rulers` default-ON, `frameOutlines` default-OFF, `maskOutlines` default-OFF, `showSlices` default-OFF, `wireframeMode` default-OFF) for the View menu toggle rows.
 - **Cluster 05** owns brand-asset right-click items (per-asset behavior). This PRD ships the right-click SHELL on asset rows; Cluster 05 plugs items into the dispatch table.
 
 ---
@@ -147,7 +148,8 @@ Every surface maps to a hi-fi file. Engineers cite the file + scene ID when impl
 | Main menu root popover | Logo trigger (left of breadcrumb) | `main-main-kova-scope/batch-b/Kova Hi-Fi 08 Top Chrome Menus - Dark.html` | B1.1 | 8 entries; left-aligned to logo, 8 px below top bar; min-width 260 px; Reka shell |
 | File ▶ submenu | Anchored 22 px right of root menu's right edge; top edge 4 px below parent row top | same | B1.2 | New design / Place image… / Export… / sep / Save to version history (⌥⌘S) / Show version history / sep / Move to trash (destructive) — opens A8.4 useConfirm cross-cut |
 | Edit ▶ submenu | same | same | B1.3 | Undo (⌘Z) / Redo (⇧⌘Z) / Cut / Copy / Paste / Paste to replace (⇧⌘R) / Duplicate (⌘D) / Copy as ▶ / Copy properties (⌥⌘C) / Paste properties (⌥⌘V) / Pick color (⌃C) / Find (⌘F) / Find next (⇧⌘F) / Find previous (⇧⌘D) / Select none / Select inverse (⇧⌘A) — min-width 280 px |
-| View ▶ submenu | same | same | B1.4 | Previous page (⌥⌘↑) / Next page (⌥⌘↓) / sep / Show/hide UI (⌘\) / Minimize UI (⇧⌘\) / Panels ▶ (Left visible, Right visible — sub-of-sub) / sep / 5 checkable toggle rows (Frame outlines / Mask outlines / Slices / **Layout guides default-ON** / Pixel grid Phase-2 disabled) / sep / 5 Zoom rows (⌘+, ⌘−, ⌘0, ⇧1, ⇧2) |
+| View ▶ submenu | same | same | B1.4 | Show/hide UI (⌘\) **default-ON visible** / Minimize UI (⇧⌘\) / Panels ▶ (Left visible, Right visible — sub-of-sub) / sep / 6 checkable toggle rows + 1 sub-of-sub (Figma defaults per founder 2026-05-17): **Pixel grid (⇧') default-ON / Layout guides (⇧G) default-ON / Rulers (⇧R) default-ON** / Show slices default-OFF / Mask outlines default-OFF / Frame outlines default-OFF / Outlines ▶ sub-of-sub / sep / 5 Zoom rows (⌘+, ⌘−, ⌘0, ⇧1, ⇧2). **Previous/Next page items REMOVED MVP per founder Q3 2026-05-17 — nav via Pages list + kbd-only.** Comments / Annotations / Property labels / Multiplayer cursors / Pixel preview / Switch to Draw / Switch to Dev Mode / Memory usage NOT in MVP (no real-time collab; no annotation system; design-tool-meta items irrelevant to email design) |
+| Outlines ▶ sub-of-sub | Anchored right of View submenu's "Outlines" row | same | B1.4 | Single item: Show outlines (⇧O) checkable, **default-OFF** — toggles canvas-wide wireframe render mode (no fills, no images, just shape edges). Cluster 07b ships engine wireframe primitive; this PRD wires the menu row + persists in `usePreferencesStore.prefs.view.wireframeMode` (Layer 1 cross-device per Q5). Figma parity confirmed via View menu screenshot (founder 2026-05-17) |
 | Object ▶ submenu | same | same | B1.5 | Group (⌘G) / Ungroup (⇧⌘G) / Frame selection (⌥⌘G) / Bring forward (⌘]) / Send backward (⌘[) / Bring to front (⌥⌘]) / Send to back (⌥⌘[) / Rotate 90° L/R/180° / Flip H (⇧H) / Flip V (⇧V) / Use as mask (⌃⌘M) / **Boolean operations ▶ (sub-of-sub — multi-select gate)** / Lock-unlock (⇧⌘L) / Show-hide (⇧⌘H) / Rename… (⌘R) / Delete (⌫) destructive |
 | Boolean ops sub-of-sub | Anchored right of Object submenu's "Boolean operations" row | same | B1.5 | Mounted only when ≥2 layers selected (Q3 #14). 4 items: Union (⌘⌥U) / Subtract (⌘⌥S) / Intersect (⌘⌥I) / Exclude (⌘⌥X). When single-select, parent row renders `.disabled` with tooltip "Select 2+ layers" |
 | Text ▶ submenu | same | same | B1.6 | Bulleted list (⇧⌘8) / Numbered list (⇧⌘7) / sep / Create link (⇧⌘U) / sep / Case ▶ (sub-of-sub) / sep / Show text suggestions (Phase-2 disabled) |
@@ -172,10 +174,12 @@ No dedicated hi-fi scene for canvas right-click — the visual contract is the R
 |---|---|---|---|
 | Canvas right-click on object (full set) | Right-click on selected node OR right-click on unselected node = auto-select then open | 12–20 items (see §2.1 list) | Same `useObjectActions()` composable as inspector `•••` |
 | Inspector overflow `•••` (compact subset) | Click on `•••` button in inspector top-right | 5–7 items: Lock-Unlock / Show-Hide / Rename / Copy as PNG / Copy properties / Paste properties / Delete (destructive) | Per Q18; subset projection of full set |
-| Canvas right-click on empty area | Right-click on canvas background (no node hit) | View-toggle items: Show ruler / Show layout guide / Show pixel grid (Phase-2 disabled) — checkable rows; values read/write via `usePreferencesStore.prefs.view.*` | Toggles persist Layer 1 cross-device per Q5 |
-| Page row right-click | Right-click on a Page row in left panel | Duplicate page / Rename page / Delete page (destructive, useConfirm) / Move page up / Move page down | Last page cannot be deleted (button stays enabled, useConfirm shows error toast on confirm — recoverable UX rather than disabling) |
+| Canvas right-click on empty area | Right-click on canvas background (no node hit) | **Figma-full menu (founder lock 2026-05-17)** — 12 items: Paste here / Paste to replace (⇧⌘R) / sep / Select all (⌘A) / Select inverse (⇧⌘A) / sep / Zoom to 100% (⌘0) / Zoom to fit (⇧1) / Zoom to selection (⇧2) / sep / Pixel grid / Layout guides / Rulers (3 checkable toggles, defaults all ON per Figma) / sep / Find (⌘F) | Paste-here uses cursor screen-coord → canvas-coord conversion via `editor.canvasToScreen` inverse. Paste-to-replace silent no-op when nothing selected. Zoom rows mirror View > Zoom items. View toggles persist Layer 1 cross-device per Q5. Find row opens FindOverlay (§3.4) |
+| Page row right-click | Right-click on a Page row in left panel | Duplicate page / Rename page / Delete page (destructive, useConfirm) / Move page up / Move page down | **Last page guard (founder lock 2026-05-17 — match Figma):** when only one page exists, Delete page menu item renders `.disabled` with hover-tooltip "Cannot delete the last page". No useConfirm invocation. Matches Figma exactly |
 | Layer row right-click | Right-click on a Layer row in left panel | Scroll to layer / Reveal in Pages (Phase-2 disabled) / Lock-Unlock / Show-Hide / Rename / Delete | Mirror of Object menu items + 2 layer-tree-only items |
 | Brand-asset row right-click | Right-click on an asset in the left-panel Assets section | Shell only — items per Cluster 05 dispatch | Cluster 05 cross-cut |
+| Brand-card right-click — **active** (NEW per founder lock 2026-05-17 — B12 archived Brands page promoted MVP) | Right-click on a brand card in Brands page (PRD 03) where `brand.archived_at === null` | 3 items: Rename / Archive / Delete | Items from `useObjectActions().brandCardActiveActions`. Archive opens B12.1 modal (cross-cut PRD 03). Delete opens B12.4 modal (cross-cut PRD 03). Rename activates inline-rename on card |
+| Brand-card right-click — **archived** (NEW per founder lock 2026-05-17) | Right-click on a brand card in Brands page where `brand.archived_at !== null` | 2 items: Restore / Delete | Items from `useObjectActions().brandCardArchivedActions`. Restore opens B12.3 modal (cross-cut PRD 03). Delete opens B12.4 modal (cross-cut PRD 03 — irreversible from archived state). State branch in `useContextMenu('brand-card', { brand })` dispatcher |
 
 ### 3.4 Find overlay (canvas — dark)
 
@@ -233,7 +237,7 @@ Every popover uses `main-main-kova-scope/design-system/kova-hifi.css` (dark CSS)
 
 **None.** This PRD ships zero schema changes.
 
-Recent colors are localStorage-only (per Q5 Layer 2 allocation table). View-toggle preferences live in `users.preferences` JSONB (Layer 1 — schema shipped in Cluster 01 `01-auth-and-identity.md` §4.1; consumed in Cluster 12). Layout-guide default-ON value is a constant default in `DEFAULTS.view.showLayoutGuide = true` (Q5 schema).
+Recent colors are localStorage-only (per Q5 Layer 2 allocation table). View-toggle preferences live in `users.preferences` JSONB (Layer 1 — schema shipped in Cluster 01 `01-auth-and-identity.md` §4.1; consumed in Cluster 12). Default seed per founder lock 2026-05-17: `DEFAULTS.view = { pixelGrid: true, layoutGuides: true, rulers: true, frameOutlines: false, maskOutlines: false, showSlices: false, wireframeMode: false }` (Figma parity).
 
 ### 4.2 RLS policies
 
@@ -443,8 +447,8 @@ export const useFindStore = defineStore('find', () => {
 
 | Composable | File | Signature | Used by |
 |---|---|---|---|
-| `useObjectActions` | `src/composables/use-object-actions.ts` | `(): { compactActions: ComputedRef<Action[]>; fullActions: ComputedRef<Action[]>; }` where `Action = { id; label; kbd?: string; destructive?: boolean; disabled?: ComputedRef<boolean>; invoke: () => void; }`. Both arrays derive from a single internal `allActions[]`; `compactActions` = filter by `id in COMPACT_IDS`; `fullActions` = filter by `enabled-for-current-selection`. | `ContextMenuShell` (canvas right-click), `OverflowDots` (inspector `•••`) |
-| `useContextMenu` | `src/composables/use-context-menu.ts` | `(surface: 'canvas' \| 'empty-canvas' \| 'layer-row' \| 'page-row' \| 'asset-row' \| 'frame' \| 'overflow-dots') => { items: ComputedRef<MenuItem[]>; open(event: MouseEvent): void; close(): void; }`. Dispatch table per surface. | Right-click handlers on each surface (Cluster 06 mounts the surfaces) |
+| `useObjectActions` | `src/composables/use-object-actions.ts` | `(): { compactActions: ComputedRef<Action[]>; fullActions: ComputedRef<Action[]>; brandCardActiveActions: ComputedRef<Action[]>; brandCardArchivedActions: ComputedRef<Action[]>; }` where `Action = { id; label; kbd?: string; destructive?: boolean; disabled?: ComputedRef<boolean>; disabledReason?: string; invoke: (ctx?: { brand?: Brand; node?: SceneNode }) => void; }`. Canvas arrays (compact/full) derive from `allCanvasActions[]`. **Brand-card arrays (NEW per founder lock 2026-05-17 — B12 archived Brands page promoted to MVP) derive from active vs archived state:** `brandCardActiveActions = [Rename, Archive, Delete]`; `brandCardArchivedActions = [Restore, Delete]`. State branch in dispatcher checks `brand.archived_at !== null`. Modal triggers cross-cut to PRD 03 (B12.3 Restore modal; B12.4 Delete modal). | `ContextMenuShell` (canvas + brand-card right-click), `OverflowDots` (inspector `•••`) |
+| `useContextMenu` | `src/composables/use-context-menu.ts` | `(surface: 'canvas' \| 'empty-canvas' \| 'layer-row' \| 'page-row' \| 'asset-row' \| 'frame' \| 'overflow-dots' \| 'brand-card', ctx?: { brand?: Brand }) => { items: ComputedRef<MenuItem[]>; open(event: MouseEvent): void; close(): void; }`. Dispatch table per surface. **`brand-card` surface (NEW per founder lock 2026-05-17 — B12 archived Brands page promoted to MVP):** branches on `ctx.brand.archived_at !== null` → archived items (`brandCardArchivedActions`) or active items (`brandCardActiveActions`) from `useObjectActions()`. | Right-click handlers on each surface (Cluster 06 mounts canvas surfaces; PRD 02 dashboard / PRD 03 brands page mounts brand-card surface) |
 | `useConfirm` (CONSUME — primitive lives in Cluster 11) | `src/composables/use-confirm.ts` (Cluster 11 ships) | `(spec: ConfirmSpec) => Promise<boolean>` where `ConfirmSpec = { title; body; confirmLabel; destructive?; typedConfirmText? }`. | `useObjectActions` (Delete), `useEditorStore.deletePage` wiring, Cluster 09 trash flow |
 | `useFind` | `src/composables/use-find.ts` | `(): { open(): void; close(): void; setQuery(q: string): void; next(): void; previous(): void; }`. Wraps `useFindStore`; implements the **4-field search algorithm** (TEXT content + layer names + frame names + page names) — debounced 150 ms on input change; iterates `editor.graph` traversal; updates `useFindStore.hits`. | `FindOverlay.vue`; `use-keyboard.ts` (⌘F / ⇧⌘F / ⇧⌘D bindings) |
 | `useMainMenu` | `src/composables/use-main-menu.ts` | `(): { rootItems: ComputedRef<MenuItem[]>; openMenu(): void; openSubmenu(id): void; closeAll(): void; }`. Composes `useMenuStore` state + the dispatch table for File/Edit/View/Object/Text/Arrange/Preferences/Help submenus. | `MainMenuPopover.vue` mounted from Cluster 06 top chrome |
@@ -461,7 +465,8 @@ export const useFindStore = defineStore('find', () => {
 | `MainMenuPopover` | `src/components/menu/MainMenuPopover.vue` | `anchorEl: HTMLElement` (logo trigger DOM node) | none | `close` | B1.1 root popover; uses Reka `DropdownMenu.Root` |
 | `FileSubmenu` | `src/components/menu/FileSubmenu.vue` | none | none | none | B1.2 — 7 items including destructive Move-to-trash (opens `useConfirm` typed-confirm cross-cut to Cluster 09 dashboard flow when invoked from main-menu File ▶ Move-to-trash — note: this main-menu path stays MVP per audit §2.A; only the in-canvas **file-name dropdown** specifically strips it) |
 | `EditSubmenu` | `src/components/menu/EditSubmenu.vue` | none | none | none | B1.3 — densest, min-width 280 px; carries Copy as ▶ sub-of-sub |
-| `ViewSubmenu` | `src/components/menu/ViewSubmenu.vue` | none | none | none | B1.4 — 5 checkable rows + Panels ▶ sub-of-sub; layout-guides default-ON checked state |
+| `ViewSubmenu` | `src/components/menu/ViewSubmenu.vue` | none | none | none | B1.4 — 6 checkable rows + Panels ▶ sub-of-sub + Outlines ▶ sub-of-sub (NEW per founder lock 2026-05-17); Show/Hide UI (⌘\) + Minimize UI (⇧⌘\) + 5 Zoom rows. Defaults match Figma per founder lock: Pixel grid / Layout guides / Rulers ON; Show slices / Mask outlines / Frame outlines / Wireframe OFF. Previous/Next page items NOT rendered (dropped MVP) |
+| `OutlinesSubmenu` (NEW per founder lock 2026-05-17) | `src/components/menu/OutlinesSubmenu.vue` | none | none | none | B1.4 sub-of-sub — single item "Show outlines" (⇧O) checkable, default-OFF; toggles `usePreferencesStore.prefs.view.wireframeMode` (Layer 1 cross-device) |
 | `ObjectSubmenu` | `src/components/menu/ObjectSubmenu.vue` | `multiSelect: boolean` (controls Boolean ops sub-of-sub visibility) | none | none | B1.5 — uses `useObjectActions().fullActions` for the action set |
 | `BooleanOpsSubmenu` | `src/components/menu/BooleanOpsSubmenu.vue` | none | none | none | B1.5 sub-of-sub — 4 ops with `⌘⌥U/S/I/X` kbd glyphs |
 | `TextSubmenu` | `src/components/menu/TextSubmenu.vue` | none | none | none | B1.6 — bulleted (⇧⌘8) / numbered (⇧⌘7) / link (⇧⌘U) / Case ▶ / suggestions disabled |
@@ -557,8 +562,15 @@ Every line is testable in code or browser. No "feels right." Engineers verify ea
 - [ ] File submenu shows New design / Place image… / Export… / sep / Save to version history (⌥⌘S) / Show version history / sep / Move to trash (destructive coloring)
 - [ ] Edit submenu Copy as ▶ → opens sub-of-sub with single "Copy as PNG"; Edit submenu min-width 280 px verified
 - [ ] View submenu Panels ▶ → opens sub-of-sub with two checkable rows "Left visible" / "Right visible"; persist per-canvas Yjs awareness (Cluster 09 sync)
-- [ ] View submenu "Show layout guides" checkable row renders **checked by default** (default-ON per Q24)
-- [ ] View submenu "Show pixel grid" checkable row renders **disabled with "Phase 2" pill**; click is no-op
+- [ ] View submenu "Layout guides" (⇧G) checkable row renders **checked by default** (default-ON per Q24 + Figma)
+- [ ] View submenu "Pixel grid" (⇧') checkable row renders **checked by default** (default-ON per Figma — founder lock 2026-05-17); toggle persists via `usePreferencesStore.prefs.view.pixelGrid` (Layer 1 cross-device); **NOT Phase-2-disabled — activated MVP** with Cluster 07b overlay primitive
+- [ ] View submenu "Rulers" (⇧R) checkable row renders **checked by default** (default-ON per Figma); toggle persists via `usePreferencesStore.prefs.view.rulers` (Layer 1)
+- [ ] View submenu "Show slices" / "Mask outlines" / "Frame outlines" checkable rows render **UNchecked by default** (default-OFF per Figma — founder lock 2026-05-17); each toggle persists Layer 1 cross-device
+- [ ] View submenu "Outlines ▶" row → opens sub-of-sub with single item "Show outlines" (⇧O) checkable, **default-OFF**; toggle flips canvas to wireframe render mode (no fills, no images, edges only); persists via `usePreferencesStore.prefs.view.wireframeMode` (Layer 1); Cluster 07b ships engine wireframe render primitive — this PRD blocks if Cluster 07b not ready (acceptance row marks "wireframe-mode dependency on Cluster 07b")
+- [ ] View submenu "Show/Hide UI" (⌘\) row renders **checked by default** (chrome visible); toggle hides topbar + left panel + right panel + bottom toolbar; state lives in `useUIStateStore.uiVisible` (Cluster 12 — Layer 2 per-device or ephemeral; reload resets to visible per Figma parity)
+- [ ] View submenu "Minimize UI" (⇧⌘\) row click → reduces topbar height + collapses panel widths to icon-only (existing Cluster 06 chrome size variants)
+- [ ] View submenu does **NOT render** Previous/Next page items (removed MVP per founder Q3 2026-05-17 — nav via Pages list)
+- [ ] View submenu does **NOT render** Comments / Annotations / Property labels / Multiplayer cursors / Pixel preview / Switch to Draw / Switch to Dev Mode / Memory usage (out of MVP scope — no real-time collab + no annotation system)
 - [ ] Object submenu on single-select → Boolean operations row renders `.disabled` with tooltip "Select 2+ layers"
 - [ ] Object submenu on multi-select ≥2 → Boolean operations row enabled; hovering opens Boolean ops sub-of-sub showing Union (⌘⌥U) / Subtract (⌘⌥S) / Intersect (⌘⌥I) / Exclude (⌘⌥X) with `Multi-select only` group label
 - [ ] Object submenu "Use as mask" row carries `⌃⌘M` kbd-row (control-cmd-M, not plain ⌘M)
@@ -588,11 +600,23 @@ Every line is testable in code or browser. No "feels right." Engineers verify ea
 - [ ] Right-click on an unselected node → node auto-selects, then menu opens
 - [ ] Right-click on inspector `•••` button → menu opens with `surface='overflow-dots'`; renders **compact subset** (5–7 items per Q18)
 - [ ] Compact subset = strict subset of full set (no item appears in compact that isn't in full); verified by test enumerating both arrays and asserting `compact ⊆ full`
-- [ ] Right-click on canvas empty area → menu opens with `surface='empty-canvas'`; renders 3 view-toggle items (Show ruler / Show layout guide / Show pixel grid Phase-2-disabled); toggles persist via `usePreferencesStore`
+- [ ] Right-click on canvas empty area → menu opens with `surface='empty-canvas'`; renders **12 items per Figma-full menu (founder lock 2026-05-17)**: Paste here / Paste to replace (⇧⌘R) / sep / Select all (⌘A) / Select inverse (⇧⌘A) / sep / Zoom to 100% (⌘0) / Zoom to fit (⇧1) / Zoom to selection (⇧2) / sep / Pixel grid (checkable, default-ON) / Layout guides (checkable, default-ON) / Rulers (checkable, default-ON) / sep / Find (⌘F)
+- [ ] Paste here uses cursor-position from `e.clientX/Y` → converted to canvas coords via `editor.canvasToScreen` inverse; pasted nodes positioned at cursor
+- [ ] Paste to replace with no selection → silent no-op (no toast); with selection → existing selected nodes replaced by clipboard contents
+- [ ] All 3 Zoom items invoke existing `editor.ts` zoom methods (`zoomTo100`, `zoomToFit`, `zoomToSelection`)
+- [ ] All 3 view-toggle checkable rows read/write via `usePreferencesStore.prefs.view.{pixelGrid, layoutGuides, rulers}` (Layer 1 cross-device per Q5)
+- [ ] Find row click → invokes `useFindStore.open()` (same path as ⌘F shortcut)
 - [ ] Right-click on Page row → menu opens with `surface='page-row'`; renders Duplicate / Rename / Delete (destructive, useConfirm) / Move up / Move down
-- [ ] Delete page on the only page → useConfirm shows error toast "Can't delete the last page" and aborts (no destructive action)
+- [ ] **Delete page on the only page → menu row renders `.disabled` with hover-tooltip "Cannot delete the last page" (founder lock 2026-05-17 — match Figma exactly). No click handler, no useConfirm invocation.** Tooltip lives in `useObjectActions` disabled-reason field; rendered by `<MenuItem>` `.disabled` variant
 - [ ] Right-click on Layer row → menu opens with `surface='layer-row'`; renders Scroll to layer / Reveal in Pages (Phase-2 disabled) / Lock-Unlock / Show-Hide / Rename / Delete
 - [ ] Right-click on a Brand-asset row → menu opens with `surface='asset-row'` and renders **Cluster 05 dispatch items** (shell verified open; items per Cluster 05 PRD)
+- [ ] **Right-click on Brand card (active state, `brand.archived_at === null`) → `useContextMenu('brand-card', { brand })` opens with 3 items: Rename / Archive / Delete (founder lock 2026-05-17 — B12 archived Brands page MVP)**
+- [ ] **Right-click on Brand card (archived state, `brand.archived_at !== null`) → same composable opens with 2 items: Restore / Delete (founder lock 2026-05-17)**
+- [ ] Brand-card Archive item click → opens B12.1 Archive modal (cross-cut PRD 03 owns modal + RPC)
+- [ ] Brand-card Restore item click → opens B12.3 Restore modal (cross-cut PRD 03)
+- [ ] Brand-card Delete item click (from either state) → opens B12.4 Delete modal (cross-cut PRD 03 — destructive, useConfirm typed-confirm)
+- [ ] Brand-card Rename item click → activates inline rename on the card title (PRD 03 owns the inline-rename composable; this PRD dispatches to it)
+- [ ] State branch test: brand toggled from active → archived → menu items recompute (reactive to `brand.archived_at`); verified via unit test mutating `brand.archived_at` Ref
 - [ ] Esc closes any open context menu; click-outside closes
 
 ### 8.4 Find overlay
@@ -641,7 +665,7 @@ Every line is testable in code or browser. No "feels right." Engineers verify ea
 ### 8.8 useConfirm canvas specializations
 
 - [ ] Delete page (right-click on Page row → Delete) → useConfirm shows modal: "Delete page '<name>'?" / body "All layers on this page will be lost. This can't be undone." / confirm label "Delete page" / destructive variant; on confirm → `useEditorStore.deletePage(pageId)`
-- [ ] Delete last page → useConfirm aborts with error toast "Can't delete the last page" (no destructive modal opens)
+- [ ] Delete last page → menu row pre-emptively disabled with hover-tooltip "Cannot delete the last page" (Figma-exact per founder lock 2026-05-17); useConfirm never invoked — guarded at the menu-item level via `useObjectActions` `disabled` + `disabledReason`
 - [ ] Delete with locked descendants → useConfirm shows additional warning: "N locked layer(s) will also be deleted" appended to body
 - [ ] Object Delete (⌫) on multi-select containing locked layers → useConfirm shows "Delete N layers?" + lock-count warning; confirm → all deleted with single undo entry
 - [ ] Paste properties on mixed-type selection → mass-skip toast: "Some properties don't apply to this layer type" (one-time dismissable, stored in `useUIStateStore.dismissedToasts`)
@@ -674,8 +698,8 @@ Every line is testable in code or browser. No "feels right." Engineers verify ea
 | `useShortcutsStore` register/unregister/byKeys/byCategory/visibleCategories | `tests/stores/shortcuts.test.ts` | Registry duplicate detection, deferred filtering, category ordering, lookup correctness |
 | `useFindStore` open/close/next/previous/setHits cycling | `tests/stores/find.test.ts` | Index wrap-around (forward + backward), reset-on-close, empty-hits guard |
 | `useMenuStore` open/openSub/openSubSub/close transitions | `tests/stores/menu.test.ts` | Mutual exclusivity (one root + one sub + one sub-of-sub), close clears all three |
-| `useObjectActions` compact vs full action set composition | `tests/composables/use-object-actions.test.ts` | `compact ⊆ full`; multi-select gate on Boolean ops; destructive flag on Delete |
-| `useContextMenu` dispatch table per surface | `tests/composables/use-context-menu.test.ts` | All 7 surfaces return non-empty items; surface='asset-row' delegates to Cluster 05 (assert presence of dispatch hook) |
+| `useObjectActions` compact vs full action set composition + brand-card branches | `tests/composables/use-object-actions.test.ts` | `compact ⊆ full`; multi-select gate on Boolean ops; destructive flag on Delete; **`brandCardActiveActions = [Rename, Archive, Delete]` (3 items, founder lock 2026-05-17)**; **`brandCardArchivedActions = [Restore, Delete]` (2 items)**; toggling `brand.archived_at` reactively recomputes both arrays |
+| `useContextMenu` dispatch table per surface | `tests/composables/use-context-menu.test.ts` | All 8 surfaces return non-empty items; surface='asset-row' delegates to Cluster 05; **surface='brand-card' branches on `ctx.brand.archived_at` to active vs archived action set** |
 | `useFind` 4-field search algorithm | `tests/composables/use-find.test.ts` | Match TEXT content (case-insensitive substring); match layer names; match frame names; match page names; cross-page hits ordered by (page-index, document-order); empty query returns empty hits; debounce timing (150 ms) |
 | `usePropertyClipboard` copy/paste per Q23 property set | `tests/composables/use-property-clipboard.test.ts` | Full property set (fills + strokes complete + effects + corner radius + blend + opacity); incompatible-prop silent skip; mass-skip detection |
 | `use-keyboard.ts` registry dispatch (post-refactor) | `tests/composables/use-keyboard.test.ts` | byKeys lookup; text-edit guard; number-keys-for-opacity single + two-digit (4-3 within 500 ms = 43%); two-digit timeout edge (4 then 600 ms gap then 3 = 0.4 then 0.3); coalesced undo |
@@ -777,7 +801,7 @@ Engineer runs against `bun run dev` localhost:1420; founder verifies before appr
 |---|---|---|
 | `HELP_EXTERNAL_URL_ENABLED` | `false` | Flip when external docs site ships (Phase 2) |
 | `VECTOR_MENU_ENABLED` | `false` | Flip when Vector tooling re-enters scope (Phase 2) |
-| `PIXEL_GRID_TOGGLE_ENABLED` | `false` | Flip when pixel-grid render extension ships (Cluster 07b Phase 2) |
+| ~~`PIXEL_GRID_TOGGLE_ENABLED`~~ REMOVED 2026-05-17 | n/a | Pixel grid active MVP per founder Figma-parity lock — no flag needed |
 | `TEXT_SUGGESTIONS_ENABLED` | `false` | Flip when AI text-suggestions ship (Cluster 10 Phase 2) |
 | `REVEAL_IN_PAGES_ENABLED` | `false` | Flip when feature ships (Phase 2) |
 | `OPACITY_TWO_DIGIT_WINDOW_MS` | `500` | Adjustable if usability data shows different optimum |
@@ -792,11 +816,12 @@ Engineer runs against `bun run dev` localhost:1420; founder verifies before appr
 | **11 — Shared UI Infrastructure** | `useConfirm()` primitive + `<ConfirmDialog>` shell + `<KovaModal>` shell + toast system + `useToast()` composable | Theme detection meta convention (we inherit `meta.theme = 'dark'`; they own the runtime swap) |
 | **06 — Canvas Editor Core Chrome** | Topbar layout incl. logo trigger surface + file-name trigger surface; bottom toolbar; left panel (Pages section + Layers tree + Assets panel rows that host right-click triggers); right panel inspector incl. overflow `•••` button; color picker popover (recent-colors row sink) | `<MainMenuPopover>` mount point; `<FileNameDropdown>` mount point; right-click trigger event wiring on each surface; `<OverflowDots>` button component; `<FindOverlay>` mount point; `<KeyboardShortcutsDialog>` mount point in `<App>` shell |
 | **07a — Canvas Engine Core + Renderer** | `figma.booleanOperation()` (Q3 #14) public API; `node.isMask` field (Q2); `editor.ts.commitNodeUpdate` / `commitMove` / `commitResize` / `updateNodeWithUndo` / `flashNodes` / `select` / `switchPage` | None — this PRD does not modify core |
-| **07b — Canvas Engine Inspector + Overlays** | Find-highlight overlay rendering primitive (canvas-extension pattern); Layout-guides default-ON overlay; Eyedropper canvas-extension (right-click "Pick color" variant reuses); Show ruler / Show pixel grid overlays (Phase-2 wiring) | Boolean-ops shortcuts (`⌘⌥U/S/I/X`) registered into `useShortcutsStore` at boot; Use-as-mask shortcut (`⌃⌘M`); shortcut registry shape for any other overlay-triggering shortcuts they introduce |
+| **07b — Canvas Engine Inspector + Overlays** | Find-highlight overlay rendering primitive (canvas-extension pattern); Layout-guides default-ON overlay; Eyedropper canvas-extension (right-click "Pick color" variant reuses); **Pixel-grid overlay primitive (MVP-active, default-ON per Figma — founder lock 2026-05-17)**; **Rulers overlay primitive (MVP-active, default-ON per Figma)**; **Wireframe render mode primitive (Outlines submenu — default-OFF, toggles to canvas-wide line-art render — NEW dep per founder lock 2026-05-17)**; Frame-outlines / Mask-outlines / Slices overlay primitives (default-OFF, on-toggle render) | Boolean-ops shortcuts (`⌘⌥U/S/I/X`) registered into `useShortcutsStore` at boot; Use-as-mask shortcut (`⌃⌘M`); Outlines wireframe shortcut (`⇧O`); Pixel grid shortcut (`⇧'`); Layout guides shortcut (`⇧G`); Rulers shortcut (`⇧R`); shortcut registry shape for any other overlay-triggering shortcuts they introduce |
 | **02 — Onboarding & Dashboard** | Dashboard file-grid right-click trigger surface (Move-to-trash entry point — Cluster 02 owns the trigger, Cluster 09 owns the modal) | None — we explicitly do NOT carry a trash entry in canvas |
 | **09 — Version History + Trash** | `canvases.trashed_at` RPC + restore + `<TrashConfirmModal>` + B13 success-toast pattern; Save-to-version-history snapshot RPC (⌥⌘S); Show-version-history panel route | Save-to-version-history shortcut (`⌥⌘S`) registered into `useShortcutsStore`; `useConfirm` consumption pattern for canvas-side destructive items |
-| **12 — Settings + User Preferences** | `usePreferencesStore` (Layer 1) reads for View toggles (`prefs.view.showRuler` / `showLayoutGuide` / `showPixelGrid` / `showFrameOutlines` / `showMaskOutlines` / `showSlices`); `useUIStateStore` (Layer 2) reads for `recentColors`, `dismissedToasts`, `pagesCollapsed`, `layersCollapsed` | Layout-guides default-ON DEFAULTS shape (Q5 schema); Recent-colors consumer pattern documented |
+| **12 — Settings + User Preferences** | `usePreferencesStore` (Layer 1) reads for View toggles per **founder lock 2026-05-17 (Figma defaults)**: `prefs.view.pixelGrid` (default `true`) / `layoutGuides` (default `true`) / `rulers` (default `true`) / `frameOutlines` (default `false`) / `maskOutlines` (default `false`) / `showSlices` (default `false`) / `wireframeMode` (default `false`); `useUIStateStore` (Layer 2 or ephemeral) reads for `uiVisible` (default `true`, reload-resets), `recentColors`, `dismissedToasts`, `pagesCollapsed`, `layersCollapsed` | Defaults shape (`pixelGrid: true, layoutGuides: true, rulers: true, frameOutlines: false, maskOutlines: false, showSlices: false, wireframeMode: false` — Figma-parity per founder 2026-05-17); Recent-colors consumer pattern documented |
 | **05 — Brand Kit + Drag-Drop** | Per-asset items dispatched into our `ContextMenuShell` when `surface='asset-row'` | Right-click shell on asset rows (we ship the shell, they ship the items) |
+| **03 — Brand Management** (NEW dep per founder lock 2026-05-17 — B12 archived Brands page promoted to MVP) | B12.1 Archive modal + B12.3 Restore modal + B12.4 Delete modal + the corresponding RPCs / mutations (`brands.archive`, `brands.restore`, `brands.deleteHard`); brand-card inline-rename composable; `Brand` type definition incl. `archived_at: string \| null` field | `useObjectActions().brandCardActiveActions` + `brandCardArchivedActions` arrays; `useContextMenu('brand-card', { brand })` surface dispatcher that branches on `brand.archived_at`; `<ContextMenuShell surface='brand-card' triggerEvent>` mount contract |
 | **04 — Account & Stripe Billing** | None at runtime | None |
 | **01 — Auth & Identity** | `useAuthStore.signOut()` for Help & account submenu Log out item | None |
 | **10 — AI Chat + Memory** | None at runtime | None |
@@ -838,19 +863,22 @@ Cluster 08 ships the `ContextMenuShell` on asset rows; Cluster 05 ships the item
 
 **Recommendation:** Cluster 05 calls `useShortcutRegistration([...])` at app boot to inject asset items into a per-surface registry (extend `useContextMenu` to accept registered items by surface). This keeps the contract one-directional and matches the existing shortcut-registry pattern. Decided unilaterally per §5 founder-question protocol "Pure naming" rule — confirm during Cluster 05 PRD authoring.
 
-### 12.5 OPEN QUESTION — Default `showFrameOutlines` / `showMaskOutlines` / `showSlices` state
+### 12.5 RESOLVED 2026-05-17 — Default View toggle states (Figma-exact)
 
-Q5 / Q24 give us "default-ON" only for Layout guides. The other three View menu checkable toggles are spec'd to default-OFF in the hi-fi B1.4 stage note ("Default ON only Show layout guides per Q5 Layer 1 prefs persistence. Frame outlines / mask outlines / slices default OFF.").
+Founder reviewed Figma View menu screenshot (`main-main-kova-scope/design-system/compressed-figma-canvas-ui/figma-outline-image-reference.png`) and locked Kova to **match Figma defaults exactly**:
 
-**Recommendation:** Match the hi-fi annotation — default-OFF for the three. Founder confirms in review; pure UX preference, easy to flip if wrong. Decided per §5 protocol "Acceptance criterion depends on a behavior not in any source" → ask if founder disagrees with the hi-fi annotation.
+- **Default ON:** Pixel grid / Layout guides / Rulers / Show/Hide UI (chrome visible)
+- **Default OFF:** Show slices / Mask outlines / Frame outlines / Outlines wireframe submenu
 
-### 12.6 OPEN QUESTION — Last-page guard UX on Delete page
+Earlier "All ON" answer corrected by founder mid-session. Hi-fi B1.4 annotation supersedes for the OFF group; Figma supersedes hi-fi for Pixel grid (now activated MVP, not Phase-2-disabled).
 
-When a brand has only one page, "Delete page" must NOT destroy it (no recovery possible). The PRD's §8.3 specifies the useConfirm aborts with error toast.
+Rulers added to View submenu (was previously only in right-click empty area). Outlines wireframe submenu added (new — Cluster 07b ships engine primitive).
 
-**Alternative:** Disable the "Delete page" right-click item when only one page exists (gray it out, tooltip "Cannot delete the last page"). This is less recoverable-feeling but more visually correct.
+### 12.6 RESOLVED 2026-05-17 — Last-page guard (Figma-exact disabled item + tooltip)
 
-**Recommendation:** Ship error-toast variant (per §8.3) since it surfaces the *reason* the action failed rather than silently disabling. Disable would surprise users with no explanation. Founder confirms in review.
+Founder locked **match Figma exactly**: when only one page exists, "Delete page" menu item renders `.disabled` with hover-tooltip "Cannot delete the last page". No click handler. No useConfirm invocation.
+
+Per founder lock 2026-05-17, the error-toast alternative (originally recommended in §8.3) is REJECTED. Figma parity wins — cleaner, zero-surprise, no destructive flash. The disabled state's tooltip surfaces the reason on hover, eliminating the discoverability concern. `useObjectActions` returns `disabled: true, disabledReason: 'Cannot delete the last page'` when `pages.length === 1` for the surface.
 
 ### 12.7 OPEN QUESTION — Cmd-G vs Cmd-Alt-G for group/frame
 
@@ -872,7 +900,7 @@ The find overlay is fixed-position above the canvas; Reka popovers portal to bod
 
 - **§2.2 Main menu submenus** (23 rows) — all File / Edit / View / Object / Text / Arrange / Preferences / Help & account submenu items
 - **§2.8 Modals / popovers** (10 rows) — Recent colors persistence (1), Confirmation dialogs (1), Keyboard shortcuts dialog (1), Shortcuts dialog content (1), Number keys for opacity (1); 5 others (color-picker swatch row, missing-fonts tooltip, network status indicator, snapshot/save toasts) cross-cut Clusters 06 / 09 / 11
-- **§2.10 Context menus & keyboard shortcuts** (28 rows) — Find / Find next / Find previous (3), Copy properties / Paste properties / Pick color / Select none / Select inverse / Paste to replace / Copy as PNG (7), Show ruler / Show layout guide / Show pixel grid (3 — Phase-2 wiring), Duplicate page / Rename page / Delete page / Move page up / down (5), Scroll to layer / Reveal in Pages (2), Rotate / Lock / Show / Use as mask (4), 4 boolean-op rows (cross-cut Cluster 07b) — total 28 rows, all wired here
+- **§2.10 Context menus & keyboard shortcuts** (28 rows) — Find / Find next / Find previous (3), Copy properties / Paste properties / Pick color / Select none / Select inverse / Paste to replace / Copy as PNG (7), Show ruler / Show layout guide / Show pixel grid (3 — **all 3 active MVP per founder lock 2026-05-17 Figma defaults**, default-ON), Duplicate page / Rename page / Delete page / Move page up / down (5), Scroll to layer / Reveal in Pages (2), Rotate / Lock / Show / Use as mask (4), 4 boolean-op rows (cross-cut Cluster 07b) — total 28 rows, all wired here
 - **§3C #7 Right-click context menu shell** — `ContextMenuShell` + `useContextMenu` dispatch table
 - **§3C #8 `useConfirm()` composable** — canvas-side catalog of specializations (primitive in Cluster 11)
 - **§3C #9 Keyboard shortcut registry** — `useShortcutsStore` + `use-keyboard.ts` refactor
@@ -882,7 +910,17 @@ The find overlay is fixed-position above the canvas; Reka popovers portal to bod
 ### 13.2 Q-decisions baked in
 
 - **Q5 (Recent colors)** — Layer 2 localStorage allocation per `useUIStateStore.recentColors`; 24-entry ring buffer; per-device; acceptable to lose on browser data clear
-- **Q5 (View toggle persistence)** — Layer 1 `users.preferences.view.*` for showRuler / showLayoutGuide / showPixelGrid / showFrameOutlines / showMaskOutlines / showSlices — sticky workflow prefs sync cross-device; default-ON only for Layout guides
+- **Q5 (View toggle persistence)** — Layer 1 `users.preferences.view.*` for `pixelGrid / layoutGuides / rulers / frameOutlines / maskOutlines / showSlices / wireframeMode` — sticky workflow prefs sync cross-device
+- **Founder lock 2026-05-17 (Figma View menu screenshot — defaults)** — Default ON: `pixelGrid / layoutGuides / rulers`. Default OFF: `frameOutlines / maskOutlines / showSlices / wireframeMode`. Reference image: `main-main-kova-scope/design-system/compressed-figma-canvas-ui/figma-outline-image-reference.png`
+- **Founder lock 2026-05-17 (Outlines wireframe submenu)** — Add `View > Outlines ▶ > Show outlines (⇧O)` sub-of-sub. Toggles canvas-wide wireframe render mode. Cluster 07b ships engine primitive. New dep
+- **Founder lock 2026-05-17 (Pixel grid activated MVP)** — Was Phase-2 disabled stub. Now active overlay primitive (Cluster 07b ships), default-ON, persists via `prefs.view.pixelGrid`
+- **Founder lock 2026-05-17 (Rulers added to View submenu)** — Was only in right-click empty-area menu. Now also in View submenu (⇧R), default-ON
+- **Founder lock 2026-05-17 (Show/Hide UI ⌘\ in View submenu)** — Default ON visible; toggle hides chrome; ephemeral or Layer 2 (reload-resets per Figma)
+- **Founder lock 2026-05-17 (Previous/Next page DROPPED from View submenu)** — Nav via Pages list + kbd-only; no menu items
+- **Founder lock 2026-05-17 (Comments / Annotations / Property labels / Multiplayer cursors / Pixel preview NOT IN MVP)** — No real-time collab + no annotation system + design-tool-meta items irrelevant to email design. Skipped, not rendered as disabled stubs
+- **Founder lock 2026-05-17 (Last-page delete = Figma-style disabled item + tooltip)** — `useObjectActions` returns `disabled: true, disabledReason: 'Cannot delete the last page'` when `pages.length === 1`. Menu row renders `.disabled`. No useConfirm. Replaces earlier error-toast spec
+- **Founder lock 2026-05-17 (Empty-canvas right-click = Figma full menu, 12 items)** — Paste here / Paste to replace / sep / Select all / Select inverse / sep / Zoom 100% / Zoom to fit / Zoom to selection / sep / Pixel grid / Layout guides / Rulers / sep / Find. Replaces earlier 3-item minimal spec
+- **Founder lock 2026-05-17 (B12 archived Brands page promoted to MVP — brand-card right-click)** — `useObjectActions()` extended with `brandCardActiveActions` (Rename / Archive / Delete) + `brandCardArchivedActions` (Restore / Delete). `useContextMenu('brand-card', { brand })` branches on `brand.archived_at !== null`. Modal triggers cross-cut to PRD 03 (B12.1 / B12.3 / B12.4). Reverses prior assumption that archived Brands page was Phase-2; now MVP scope
 - **Q18 (Overflow vs canvas right-click)** — `useObjectActions()` returns both `compactActions` (5–7 items for `•••`) and `fullActions` (12–20 items for canvas right-click); compact ⊆ full
 - **Q23 (Copy/Paste properties full set)** — `usePropertyClipboard` carries fills + strokes complete (color + opacity + weight + align + dash pattern) + effects + corner radius + blend mode + opacity (better than Figma's stroke-partial); silent-skip incompatible props with mass-skip toast
 - **Q24 (Drag-drop semantics — cross-cut acknowledgment)** — drag-drop MIME types live in Cluster 05; this PRD's right-click menus do not initiate drag interactions

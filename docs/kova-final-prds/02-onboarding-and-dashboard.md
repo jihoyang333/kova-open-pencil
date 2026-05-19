@@ -9,7 +9,7 @@
 | **Author** | Claude (Opus 4.7) |
 | **Reviewer** | Jiho Yang (founder) |
 | **Last updated** | 2026-05-15 |
-| **Depends on PRDs** | 01 (Auth & Identity — for `/auth/callback` post-redirect logic, `users.preferences` JSONB column, viewport guard pattern), 11 (Shared UI Infrastructure — `useToast`, `<KovaModal>`, skeletons, empty-state component, Command-K palette, offline indicator) |
+| **Depends on PRDs** | 01 (Auth & Identity — for `/auth/callback` post-redirect logic, `users.preferences` JSONB column, viewport guard pattern), 11 (Shared UI Infrastructure — `useToast`, `<KovaModal>`, skeletons, empty-state component, offline indicator) |
 | **Blocks PRDs** | 03 (Brand Management — consumes the brand-picker chrome + sidebar selector + new-brand flow this PRD ships), 06 (Canvas Editor Core Chrome — consumes `B11` canvas-creation transition + the "Back to dashboard" navigation contract) |
 | **Source artifacts** | Hi-fi: 7 files (A1 onboarding, 03 dashboard, B11 canvas transition, B7 skeletons, B9 empty, A11+A12+A13 nav, B12 brands). 03 doc: implicit (no direct §2 rows — dashboard is not in canvas-side inventory). Q-decisions: Q17 (brand-switching only via dashboard sidebar — REVERSED 2026-04-25), Q5 Layer 2 (last-active brand persisted in localStorage). Audit §2.A Cluster 02 (lines 1105–1182) + §5.6 item 1 (M9 light→dark refactor) + `00e §6 #2(a)` (access_token security recategorization). |
 
@@ -19,7 +19,7 @@
 
 ### 1.1 Plain language (for founder)
 
-After a user signs up (PRD 01 owns the auth flow), they need to land somewhere useful. This PRD ships that landing surface in two pieces. **First-brand onboarding** is the 4-screen wizard that catches a brand-new user with no brands yet: (1) brand name + website + auto-fetched logo, (2) Shopify connect or skip, (3) brand-kit populate (drop assets + paste guidelines, AI extracts colors / fonts / voice on commit — Cluster 05 owns the extract Edge Function; this PRD ships the upload UI), (4) splash confirming the workspace is ready. **The dashboard** is the daily landing once a user has at least one brand: a left sidebar (brand selector at top, search bar with ⌘K, nav sections for Home/Library/Brand, account footer), a topbar (breadcrumb "Brand · Home", "New canvas" button), and a content pane (AI composer hero + recent files grid with 4-column layout + status tags + thumbnails). The dashboard is the **only** place a user can switch brands (Q17 reversal 2026-04-25 — no in-canvas brand picker). When a user clicks "Generate on canvas" in the composer or "New canvas" in the topbar, the canvas-creation transition (B11) plays for ≤500ms before routing to the editor. Empty states for zero canvases (A11.1) and zero brands (A11.7) ship with the chrome. Offline indicator (A13) lives in the sidebar footer + topbar pill + per-pane banner.
+After a user signs up (PRD 01 owns the auth flow), they need to land somewhere useful. This PRD ships that landing surface in two pieces. **First-brand onboarding** is the 4-screen wizard that catches a brand-new user with no brands yet: (1) brand name + website + auto-fetched logo, (2) Shopify connect or skip, (3) brand-kit populate (drop assets + paste guidelines, AI extracts colors / fonts / voice on commit — Cluster 05 owns the extract Edge Function; this PRD ships the upload UI), (4) splash confirming the workspace is ready. **The dashboard** is the daily landing once a user has at least one brand: a left sidebar (brand selector at top, search input, nav sections for Home/Library/Brand, account footer), a topbar (breadcrumb "Brand · Home", "New canvas" button), and a content pane (AI composer hero + recent files grid with 4-column layout + status tags + thumbnails). The dashboard is the **only** place a user can switch brands (Q17 reversal 2026-04-25 — no in-canvas brand picker). When a user clicks "Generate on canvas" in the composer or "New canvas" in the topbar, the canvas-creation transition (B11) plays for ≤500ms before routing to the editor. Empty states for zero canvases (A11.1) and zero brands (A11.7) ship with the chrome. Offline indicator (A13) lives in the sidebar footer + topbar pill + per-pane banner.
 
 ### 1.2 Caveman summary (per CLAUDE.md communication style)
 
@@ -47,7 +47,7 @@ User can: (1) complete the 4-step onboarding wizard from a fresh sign-up — bra
 
 **Dashboard chrome (dark):**
 - Vue Router: `/brand/:brandId` (home), `/brand/:brandId/recents` (alias for home active-nav state), `/brand/:brandId/calendar` (A12 "coming soon" — Phase 2 destination but route exists), `/brand/:brandId/products`, `/brand/:brandId/personalization` (placeholder), `/brand/:brandId/knowledge-base` (placeholder), `/brand/:brandId/memories` (placeholder)
-- Sidebar: brand-switch button (current brand + caret) → opens Reka DropdownMenu listing all active brands + "Manage brands" link + "New brand" affordance; search bar with ⌘K hint (routes to Command-K palette, Cluster 11); nav sections (Home, Library, Brand) with "SOON" pill on Phase-2 destinations (Calendar, Swipes, Templates); side-footer with avatar + name + plan + more dropdown
+- Sidebar: brand-switch button (current brand + caret) → opens Reka DropdownMenu listing all active brands + "Manage brands" link (routes to `/account/brands` — B12 page, MVP per 2026-05-17 reversal, owned by PRD 03/04) + "New brand" affordance; search input (no Cmd+K shortcut — palette dropped per 00g 2026-05-17); nav sections (Home, Library, Brand) with "SOON" pill on Phase-2 destinations (Calendar, Swipes, Templates) but **NOT on the Brands item** (Brands ships visible at MVP per §12.11 Part B RESOLVED 2026-05-17); side-footer with avatar + name + plan + more dropdown
 - Topbar: breadcrumb (Brand → current page), "New canvas" button
 - Content pane: greeting ("Good morning/afternoon/evening, {Name}"), composer hero (AI input + 5 preset chips + "Generate on canvas" CTA), Recent files section header (sort dropdown + grid/list view toggle), file grid (4 columns at 1440px, responsive collapse to 2 at <1024 — but viewport guard from Cluster 01 catches <1024 first)
 
@@ -112,7 +112,7 @@ User can: (1) complete the 4-step onboarding wizard from a fresh sign-up — bra
 | Version history + restore | 09 |
 | Trash UI + restore | 09 (existing `MoveToTrashDialog.vue` lives in `components/dashboard/` — this PRD verifies the dashboard topbar trash entry but 09 owns the trash view) |
 | AI chat panel + memory | 10 |
-| Toast component, `<KovaModal>`, `useConfirm`, skeleton primitives, empty-state primitive, Command-K palette, offline-detection cross-cut | 11 |
+| Toast component, `<KovaModal>`, `useConfirm`, skeleton primitives, empty-state primitive, offline-detection cross-cut | 11 |
 | User preferences storage (Layer 1 server JSONB) | 12 (this PRD persists `lastActiveBrandId` to Layer 2 localStorage via `useLocalStorage` per Q5 schema) |
 | Avatar dropdown menu items (Account / Help / Shortcuts / Sign out) | 06 (canvas-side topbar) and this PRD (dashboard sidebar footer dropdown — same `AccountMenu.vue` component, already exists). Item set per Q16. |
 
@@ -130,7 +130,7 @@ User can: (1) complete the 4-step onboarding wizard from a fresh sign-up — bra
 
 ### 2.4 Cross-cut acknowledgments (foreign owners)
 
-- **Cluster 11** owns: `useToast()`, `<KovaModal>`, `useConfirm()`, skeleton primitive (`<KovaSkeleton>`), empty-state primitive (`<EmptyState>` — note: existing `src/components/dashboard/EmptyState.vue` is the M9-era component and may be lifted into Cluster 11; this PRD consumes by name), Command-K palette (`use-command-palette.ts`), offline state composable (`use-offline-state.ts`).
+- **Cluster 11** owns: `useToast()`, `<KovaModal>`, `useConfirm()`, skeleton primitive (`<KovaSkeleton>`), empty-state primitive (`<EmptyState>` — note: existing `src/components/dashboard/EmptyState.vue` is the M9-era component and may be lifted into Cluster 11; this PRD consumes by name), offline state composable (`use-offline-state.ts`). **Command-K palette dropped from MVP entirely per 00g 2026-05-17 — no longer a Cluster 11 deliverable.**
 - **Cluster 01** owns: `/auth/callback` post-redirect logic per A15.06 annotation — (no brands → `/onboarding`, one brand → `/brand/{brandId}`, multi → `/brands/picker`). This PRD specifies the **interface** Cluster 01 reads from: `useBrandsStore.brands.length`.
 - **Cluster 03** owns: `useBrandsStore.createBrand` action body (already exists; this PRD verifies it's compatible), archive/delete RPCs, new-brand modal outside the wizard, `/account/brands` page, brand-color auto-assign palette logic.
 - **Cluster 05** owns: brand-kit-extract Edge Function and the confirm step UX. This PRD's onboarding step 3 uploads files + posts guidelines into a payload **Cluster 05** consumes downstream. The "Kova will extract" AI surface in step 3 is a UI promise — actual extract execution happens server-side in Cluster 05's flow.
@@ -160,7 +160,7 @@ Every surface maps to a hi-fi file + scene ID. Engineers cite the file + scene w
 
 | Surface | Route | Hi-fi file | Scene IDs | Notes |
 |---|---|---|---|---|
-| Brand dashboard · home | `/brand/:brandId` | `main-main-kova-scope/batch-a/dark/Kova Hi-Fi 03 Brand Dashboard - Dark.html` | 03.a | Sidebar (`.sidebar`) + main (`.main`) split: 236px / 1fr. Sidebar contains `.brand-switch` (logo + name + caret) + `.side-search` (with ⌘K hint) + `.nav` (3 sections: Home / Library / Brand) + `.side-footer` (avatar + name + plan + more). Topbar (`.topbar`, 52px) has `.breadcrumb` ("Brand → Home") + actions ("New canvas" sm button). Content (`.content`, padded 48 32 40) shows `.greeting` ("Good morning, {Name}") + `.composer` (input wrap 760px max-width + 5 chips) + Recent files section header (`.sec-head` with count + sort filter + view toggle) + `.file-grid` (4 cols, 14px gap, 4:3 thumbs) |
+| Brand dashboard · home | `/brand/:brandId` | `main-main-kova-scope/batch-a/dark/Kova Hi-Fi 03 Brand Dashboard - Dark.html` | 03.a | Sidebar (`.sidebar`) + main (`.main`) split: 236px / 1fr. Sidebar contains `.brand-switch` (logo + name + caret) + `.side-search` (plain search input — no Cmd+K shortcut hint per 00g 2026-05-17) + `.nav` (3 sections: Home / Library / Brand) + `.side-footer` (avatar + name + plan + more). Topbar (`.topbar`, 52px) has `.breadcrumb` ("Brand → Home") + actions ("New canvas" sm button). Content (`.content`, padded 48 32 40) shows `.greeting` ("Good morning, {Name}") + `.composer` (input wrap 760px max-width + 5 chips) + Recent files section header (`.sec-head` with count + sort filter + view toggle) + `.file-grid` (4 cols, 14px gap, 4:3 thumbs) |
 | Brand dashboard · sidebar brand-switcher popover (open state) | same | A2/A3 brand-switcher pattern (cross-cut) | A2.a (per A11 reference — Cluster 03 owns full A2 spec) | Reka DropdownMenu anchored to `.brand-switch` chevron — lists every active brand with logo glyph + name, divider, "Manage brands" → `/account/brands`, divider, "+ New brand" → opens new-brand modal (Cluster 03 owns modal) |
 
 ### 3.3 Canvas-creation transition (DARK)
@@ -682,9 +682,10 @@ Every line testable in code or browser. No "feels right."
 - [ ] Clicking `.brand-switch` opens Reka DropdownMenu listing all active brands; clicking a brand routes to `/brand/{other-id}` and updates `useUIStateStore.lastActiveBrandId`
 - [ ] Dropdown "+ New brand" item routes to Cluster 03's new-brand modal (or fallback no-op + toast pre-Cluster-03)
 - [ ] Dropdown "Manage brands" item routes to `/account/brands` (Cluster 03/04 owns the page)
-- [ ] Sidebar `.side-search` button + ⌘K hint open Command-K palette (Cluster 11)
+- [ ] Sidebar `.side-search` renders as plain search input (no Cmd+K shortcut binding — palette dropped per 00g 2026-05-17)
 - [ ] Sidebar nav sections (Home / Library / Brand) render with correct items + active highlight per current route
 - [ ] Sidebar nav "Calendar" / "Swipes" / "Templates" items show `SOON` pill (9px font, neutral pill)
+- [ ] Sidebar nav "Brands" item ships visible at MVP with NO `SOON` pill (§12.11 Part B RESOLVED 2026-05-17 — PRD 03 owns the `/account/brands` page content)
 - [ ] Sidebar `.side-footer` shows avatar (user initials), name, plan label ("Free plan" / "Pro plan" — reads `users.plan` if present, else "Free")
 - [ ] Sidebar footer "more" button opens `AccountMenu` (existing) — items: Account · Help · Shortcuts · Sign out (per Q16)
 - [ ] Topbar shows breadcrumb "{Brand} → Home"
@@ -890,7 +891,7 @@ Per `feedback_browser_smoke_test_before_done` memory.
 | Other PRD | What we depend on (from them) | What they depend on us for |
 |---|---|---|
 | **01 — Auth & Identity** | `/auth/callback` post-redirect logic; `users.preferences` JSONB column; auth guard `requiresAuth` + `requiresOnboarding` + `onboardingOnly` + `viewportGuard` metas; `useAuthStore.profile.name` for greeting | We surface `useBrandsStore.brands.length` for the callback router to read |
-| **11 — Shared UI Infrastructure** | `useToast()`, `<KovaModal>`, `useConfirm()`, `<KovaSkeleton>` primitive, `<EmptyState>` primitive, Command-K palette (`use-command-palette.ts`), `useOfflineState`, Reka DropdownMenu wrapper, theme meta convention | None at runtime — we author against their primitives |
+| **11 — Shared UI Infrastructure** | `useToast()`, `<KovaModal>`, `useConfirm()`, `<KovaSkeleton>` primitive, `<EmptyState>` primitive, `useOfflineState`, Reka DropdownMenu wrapper, theme meta convention. *(Command-K palette dropped per 00g 2026-05-17 — no longer a Cluster 11 dep.)* | None at runtime — we author against their primitives |
 | **03 — Brand Management** | `useBrandsStore.createBrand` action (already exists); `archive_brand` + `delete_brand` RPCs; `/account/brands` page (B12); new-brand modal (A2/A3); brand-color auto-assign palette; `brands.archived_at` column | Sidebar `.brand-switch` "Manage brands" routes to their page; "+ New brand" opens their modal; onboarding wizard step 1 calls `useBrandsStore.createBrand` |
 | **04 — Account & Stripe** | `users.plan` column (for sidebar footer plan label); `users.stripe_*` columns (just-checked by sidebar plan badge, not modified) | We render the plan label in sidebar footer; we surface "Account" item in `AccountMenu` that routes to `/account` |
 | **05 — Brand Kit & Drag-Drop** | Brand-kit-extract Edge Function (`api/shopify/brand-kit-extract.ts` extended per §5.6 item 3); confirm-before-write brand-voice review surface | Onboarding step 3 (`BrandKitStep`) uploads files + posts payload that Cluster 05's extract consumes; the AI promise card UI promises Cluster 05's downstream extract |
@@ -958,17 +959,22 @@ Cluster 03 ships `brands.color` (CHECK IN coral/violet/sage/sand/graphite). This
 
 **Recommendation:** Consolidate per hi-fi. Existing M9 code retired during refactor. **ESCALATE: founder** — confirm consolidation OK (impacts existing tests + onboarding analytics).
 
-### 12.11 OPEN QUESTION — Sidebar SOON-tagged nav entries
+### 12.11 Sidebar SOON-tagged nav entries — split into Part A + Part B
 
-Sidebar currently has "Brand Kit" + "Knowledge base" + "Memories" items per A12 hi-fi. These route to `/brand/:brandId/{kind}` placeholders until Cluster 05 + 10 ship. Should the sidebar show them with `SOON` pills (per A12 pattern) or hide entirely?
+**Part A — Brand Kit / Knowledge base / Memories items.** OPEN at draft time; RESOLVED in-session 2026-05-17 by founder — show with `SOON` pills per A12 pattern. Communicates roadmap + sets expectations. Implementation: render the items with `.pill` token (9px font, neutral pill) on the right side of each nav row; route handlers render placeholder views until Cluster 05 + 10 ship.
 
-**Recommendation:** Show with `SOON` pills. Communicates roadmap + sets expectations. **ESCALATE: founder** — confirm OK to expose roadmap items pre-implementation.
+**Part B — "Brands" sidebar item.** RESOLVED 2026-05-17 via B12 reversal dispatch (00f Prompt C). Brands item ships **visible at MVP with NO `SOON` pill** — it routes to `/account/brands`, the live B12 page owned by PRD 03 (page content) + PRD 04 (route registration + `.acc-rail` host). Promoted from Phase 2 → MVP per founder reversal of the 2026-05-13 lock. See §13.2 Q-decisions cross-ref.
 
 ### 12.12 OPEN QUESTION — `/account` sidebar entry
 
 A12 hi-fi shows no "Account" item in sidebar nav — `/account` is reachable only via sidebar-footer `AccountMenu` dropdown. Cluster 04 (Account & Stripe) confirms this routing per Q12 + Q13.
 
 **Recommendation:** No `/account` sidebar item. User reaches Account via sidebar-footer avatar dropdown only. **ESCALATE: founder** — confirm acceptable that "Account" lives only in dropdown.
+
+### 12.13 Changelog 2026-05-17
+
+- **§12.11 split** — Part A (Brand Kit / Knowledge base / Memories) resolved in-session: show with `SOON` pills. Part B (Brands item) resolved via 00f B12 reversal dispatch: ships visible at MVP, no `SOON` pill, routes to `/account/brands` (PRD 03 + 04 own).
+- **Cmd+K reference scrubbed per 00g kill decision** — Command-K palette dropped from MVP entirely. Sidebar `.side-search` now plain search input (no shortcut hint, no palette binding). Affected lines: §0 depends-on table; §1.1 plain-language paragraph; §2.1 sidebar bullet; §2.2 dep table (Cluster 11 row); §2.4 cross-cut acknowledgment (Cluster 11); §3.2 dashboard hi-fi raster row; §8.2 sidebar checklist; §11 cross-cluster dep table (Cluster 11 row); §12.13 (this entry); §A.1 dep summary (Cluster 11 line).
 
 ---
 
@@ -1047,6 +1053,6 @@ A12 hi-fi shows no "Account" item in sidebar nav — `/account` is reachable onl
 - File-card right-click context menu (Cluster 08 owns shell; we emit the event)
 - Trash view (Cluster 09)
 - AI chat panel (Cluster 10)
-- Toast / modal / skeleton / empty-state / Command-K / offline-state primitives (Cluster 11)
+- Toast / modal / skeleton / empty-state / offline-state primitives (Cluster 11)
 - User preferences Layer 1 server JSONB shape (Cluster 12)
 - Privacy policy + RoPA (Cluster 01 owns; we acknowledge brand-kit extract data flow via §5.6 item 3 routing)

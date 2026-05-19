@@ -4,14 +4,14 @@
 
 | Field | Value |
 |---|---|
-| **Status** | `DRAFT` 2026-05-15 |
+| **Status** | `IN-REVIEW` 2026-05-17 (B12 reversal applied — see §12.10) |
 | **Wave** | 2 (post-foundation) |
 | **Author** | Claude (Opus 4.7) |
 | **Reviewer** | Jiho Yang (founder) |
-| **Last updated** | 2026-05-15 |
-| **Depends on PRDs** | 01 (Auth — `useAuthStore`, `users` row), 02 (Onboarding & Dashboard — sidebar host, brand-list reads), 11 (Shared UI — `<KovaModal>`, `useConfirm()`, `useToast()`, skeletons) |
-| **Blocks PRDs** | 04 (Account & Stripe — Brands list inside `/account/brands` Phase 2; Account-route brand-context selector for Brand Kit / Integrations sections), 05 (Brand Kit — per-brand picker reads `useBrandsStore.brands[]`), 06 (Canvas chrome — brand label reads `useBrandsStore.selectedBrand`), 09 (Trash purge — `delete_brand` cascade integrates with trash flow), 10 (AI chat — chat is per-brand; chat cascades on brand delete) |
-| **Source artifacts** | Hi-fi: 4 files (A2+A3 picker + new-brand, A4+A9+A10 modals, A6+A2a modal shell, B12 Brands page = Phase 2 reference). 03-doc: §2.1 brand-label row (cross-cut to Cluster 06), §3C net-new `brands.{tone_snippets, saved_blocks}` JSONB (owned by Cluster 05). Q-decisions: A4.2 archive flow locked (founder 2026-05-13 — action ships, no archived-list page MVP); Q17 brand-label = navigate to brand dashboard (REVERSED — no popover); Q19 trash retention (informs cascade copy only). Audit §2.A Cluster 03 lines 1183–1271 lifted as base. |
+| **Last updated** | 2026-05-17 |
+| **Depends on PRDs** | 01 (Auth — `useAuthStore`, `users` row), 02 (Onboarding & Dashboard — sidebar host, brand-list reads), 04 (Account & Stripe — `/account` shell + `.acc-rail` sidebar host; `/account/brands` route registration), 11 (Shared UI — `<KovaModal>`, `useConfirm()`, `useToast()`, skeletons, `<NotShippedYet>` placeholder) |
+| **Blocks PRDs** | 04 (Account & Stripe — brand-context selector in Brand Kit / Integrations sections; `/account/brands` page content owned here), 05 (Brand Kit — per-brand picker reads `useBrandsStore.brands[]`), 06 (Canvas chrome — brand label reads `useBrandsStore.selectedBrand`), 09 (Trash purge — `delete_brand` cascade integrates with trash flow), 10 (AI chat — chat is per-brand; chat cascades on brand delete) |
+| **Source artifacts** | Hi-fi: 4 files (A2+A3 picker + new-brand, A4+A9+A10 modals, A6+A2a modal shell, B12 Brands page = MVP per 2026-05-17 reversal). 03-doc: §2.1 brand-label row (cross-cut to Cluster 06), §3C net-new `brands.{tone_snippets, saved_blocks}` JSONB (owned by Cluster 05). Q-decisions: A4.2 archive flow (founder 2026-05-13 lock — action ships; **REVERSED 2026-05-17** — B12 archived inventory page ships MVP, restore + delete-archived enabled, Import CTA dropped); Q17 brand-label = navigate to brand dashboard (REVERSED — no popover); Q19 trash retention (informs cascade copy only). Audit §2.A Cluster 03 lines 1183–1271 lifted as base. |
 
 ---
 
@@ -19,15 +19,15 @@
 
 ### 1.1 Plain language (for founder)
 
-A Kova user is a freelance email marketer juggling multiple client brands. This PRD ships the **brand record lifecycle**: a picker page that lists all the user's brands (`/brands`), an "add brand" sub-flow (`/brands/new` — 3 steps: name+URL → Shopify connect → brand-kit populate → done splash), three CRUD modals reachable from each brand card's kebab (Rename, Archive, Delete), and the auto-assigned brand-color tint so cards stay visually distinguishable at a glance. Archive is recoverable (sets `archived_at`, hides from picker, preserves all data); Delete is destructive (typed-confirm with the brand name, hard-deletes via DB cascade across canvases / media / fonts / Shopify connections / chat / memories). The picker is the post-login landing for multi-brand users; single-brand users skip it and go straight to their one brand's dashboard. Cluster 02 owns the dashboard chrome around all of this; Cluster 03 owns the brand records themselves and every surface that creates / renames / archives / deletes one. Cluster 05 owns the per-brand *settings* (Brand Kit, fonts, tone) — this PRD does not touch those.
+A Kova user is a freelance email marketer juggling multiple client brands. This PRD ships the **brand record lifecycle**: a picker page that lists all the user's brands (`/brands`), an "add brand" sub-flow (`/brands/new` — 3 steps: name+URL → Shopify connect → brand-kit populate → done splash), three CRUD modals reachable from each brand card's kebab (Rename, Archive, Delete), the auto-assigned brand-color tint so cards stay visually distinguishable at a glance, and a **`/account/brands` archived-inventory page** (B12) that lists active + archived brands together with Restore + Delete-archived flows. Archive is recoverable (sets `archived_at`, hides from picker, browse-and-restore in `/account/brands`); Delete is destructive (typed-confirm with the brand name, hard-deletes via DB cascade across canvases / media / fonts / Shopify connections / chat / memories). The picker is the post-login landing for multi-brand users; single-brand users skip it and go straight to their one brand's dashboard. Cluster 02 owns the dashboard chrome around all of this; Cluster 04 owns the `/account` chrome that hosts B12; Cluster 03 owns the brand records themselves and every surface that creates / renames / archives / restores / deletes one. Cluster 05 owns the per-brand *settings* (Brand Kit, fonts, tone) — this PRD does not touch those.
 
 ### 1.2 Caveman summary (per CLAUDE.md communication style)
 
-User have many brand. Brand picker show all brand on grid. Click brand → go dashboard. "+ New brand" → 3-step mini-onboarding (name+URL → Shopify → brand kit → done). Each brand card have kebab: Rename / Archive / Delete. Rename = neutral. Archive = hide but keep, recoverable, no archived-list page in MVP. Delete = type brand name to confirm, hard cascade (canvases, media, fonts, Shopify, chat, memories — all gone). Color auto-assigned at create-time from coral/violet/sage/sand/graphite palette so brand cards look different. Cluster 02 owns dashboard chrome; this PRD owns brand records + their CRUD.
+User have many brand. Brand picker show all brand on grid. Click brand → go dashboard. "+ New brand" → 3-step mini-onboarding (name+URL → Shopify → brand kit → done). Each brand card have kebab: Rename / Archive / Delete. Rename = neutral. Archive = hide but keep. Browse archived + restore at `/account/brands` (B12 page). Delete = type brand name to confirm, hard cascade (canvases, media, fonts, Shopify, chat, memories — all gone). Color auto-assigned at create-time from coral/violet/sage/sand/graphite palette so brand cards look different. Cluster 02 owns dashboard chrome, Cluster 04 owns `/account` shell; this PRD owns brand records + their CRUD + B12 page content.
 
 ### 1.3 Outcome (acceptance gate)
 
-User can: (1) land on `/brands` after login if they have 2+ brands, (2) see every active brand as a card with logo + name + URL + Shopify status pill + canvas count + last-edited, (3) hit "+ New brand" → 3-step flow → land in new brand's dashboard, (4) right-click / kebab any card → choose Rename / Archive / Delete, (5) Archive hides the brand from the picker grid + sidebar brand-switcher + brand-list dropdowns (`useBrandsStore.activeBrands`), (6) Delete only succeeds when the user types the brand name exactly (case-sensitive) — destructive CTA stays disabled otherwise, (7) Delete cascades through every child table without dangling rows or orphan Storage objects, (8) every brand created via this PRD has a stable auto-assigned color from the 5-tint palette that survives renames. Backend RLS ensures `brand.user_id = auth.uid()` for every CRUD operation. Audit log row written for create / archive / delete. Restore (un-archive), full `/account/brands` page, and color-override UI are Phase 2.
+User can: (1) land on `/brands` after login if they have 2+ brands, (2) see every active brand as a card with logo + name + URL + Shopify status pill + canvas count + last-edited, (3) hit "+ New brand" → 3-step flow → land in new brand's dashboard, (4) right-click / kebab any card → choose Rename / Archive / Delete, (5) Archive hides the brand from the picker grid + sidebar brand-switcher + brand-list dropdowns (`useBrandsStore.activeBrands`), (6) Delete only succeeds when the user types the brand name exactly (case-sensitive) — destructive CTA stays disabled otherwise, (7) Delete cascades through every child table without dangling rows or orphan Storage objects, (8) every brand created via this PRD has a stable auto-assigned color from the 5-tint palette that survives renames, (9) **navigate `/account/brands` (B12) to see active + archived brands in segmented view (`All / Active / Archived`), restore any archived brand back to active, or delete-archived (typed-confirm hard cascade)**, (10) **filter the `/brands` picker by "Archived" via the top-right dropdown** to surface archived brands in-line as 78% opacity tiles. Backend RLS ensures `brand.user_id = auth.uid()` for every CRUD operation. Audit log row written for create / archive / restore / delete (Cluster 11 breadcrumb stopgap until `audit_log` table ships — see §12.1). Color-override UI is the only Phase 2 item.
 
 ---
 
@@ -36,25 +36,29 @@ User can: (1) land on `/brands` after login if they have 2+ brands, (2) see ever
 ### 2.1 In scope (this PRD)
 
 **Surfaces:**
-- `/brands` route — A2.a populated picker + A2.b zero-state. Multi-brand landing.
+- `/brands` route — A2.a populated picker + A2.b zero-state. Multi-brand landing. **"Archived" filter dropdown ENABLED** (renders archived brands in-line at 78% opacity when toggled).
 - `/brands/new` route — A3.a (name+URL) → A3.b (Shopify connect) → A3.c (brand-kit populate) → A3.d (done splash). 4 scenes.
-- Three CRUD modals reachable from `.bp-card` kebab in the picker (and from the same kebab in any other brand-list surface — sidebar brand-switcher menu, Cluster 04 Account-page brand dropdown):
+- `/account/brands` route (B12) — full active + archived inventory inside the Account-page left rail. Segmented control `All / Active / Archived`. Hero has **"+ New brand"** primary CTA only (no Import). Click an active card → brand dashboard. Click archived card kebab → Restore (B12.3) or Delete (B12.4). PRD 04 owns route registration + `.acc-rail` host; PRD 03 owns page content.
+- Three active-state CRUD modals reachable from `.bp-card` kebab in the picker (and from the same kebab in any other brand-list surface — sidebar brand-switcher menu, Cluster 04 Account-page brand dropdown, B12 active grid):
   - **A4.1 Rename brand** — single-input neutral modal; slug surfaced read-only.
-  - **A4.2 Archive brand** — neutral confirm with structured explainer; sets `archived_at`. Recoverable.
+  - **A4.2 Archive brand** — neutral confirm with structured explainer; sets `archived_at`. Recoverable via B12.3.
   - **A4.3 Delete brand** — typed-confirm (brand name, case-sensitive). Destructive. Hard cascade.
+- Two archived-state modals reachable from B12 archived-card kebab:
+  - **B12.3 Restore brand** — `.dlg.sm` neutral confirm, no typed-confirm. Clears `archived_at`.
+  - **B12.4 Delete-archived brand** — same `<DeleteBrandModal>` component as A4.3 (typed-confirm, hard cascade). Mounted from archived row.
 
 **Data + backend:**
 - `brands` table extension: `archived_at timestamptz`, `color text` (CHECK in `('coral','violet','sage','sand','graphite')`), `slug text` (derived from name on insert, immutable per A4.1 spec), `url text` (display URL field captured at create), `description text` (optional, captured at A3.a step).
 - Partial index `idx_brands_active_per_user` for hot-path "list my active brands" query.
-- 5 SECURITY DEFINER RPCs: `create_brand`, `rename_brand`, `archive_brand`, `delete_brand`, `list_active_brands`. (Plus Phase-2-stubbed `restore_brand`.)
-- 4 Edge Functions: `POST /api/brands/create`, `POST /api/brands/rename`, `POST /api/brands/archive`, `DELETE /api/brands/delete` (the last calls `delete_brand` RPC then sweeps Storage paths). All authenticated, all rate-limited via `idempotency_keys` (Cluster 11 ships table + helper).
+- 6 SECURITY DEFINER RPCs: `create_brand`, `rename_brand`, `archive_brand`, **`restore_brand` (REAL — clears `archived_at`)**, `delete_brand`, `list_active_brands` (+ `list_archived_brands` getter via `list_brands(p_filter text)` overload — see §5).
+- 5 Edge Functions: `POST /api/brands/create`, `POST /api/brands/rename`, `POST /api/brands/archive`, **`POST /api/brands/restore`**, `DELETE /api/brands/delete` (the last calls `delete_brand` RPC then sweeps Storage paths). All authenticated, all rate-limited via `idempotency_keys` (Cluster 11 ships table + helper).
 - Storage sweep helper: `purgeBrandStorageObjects(brand_id, user_id)` — deletes per-brand Storage paths in `media-assets/{brand_id}/`, `brand-fonts/{brand_id}/`, `brand-logos/{brand_id}/`, `canvas-snapshots/{brand_id}/`. Storage doesn't cascade via DB FK, so this is explicit.
-- `audit_log` rows for `brand.created`, `brand.renamed`, `brand.archived`, `brand.deleted` (deferred to operator-visible log if Cluster 01 hasn't shipped the table — see §12.1).
+- Audit events `brand.created`, `brand.renamed`, `brand.archived`, **`brand.restored`**, `brand.deleted` via `writeAudit(event, payload)` helper — **breadcrumb stopgap** (console + Sentry) until Cluster 11 ships `audit_log` table, at which point helper internals swap to INSERT. Signature unchanged. See §12.1.
 
 **Frontend:**
-- `useBrandsStore` extension: `activeBrands` getter (filters `archived_at IS NULL`), `archivedBrands` getter (Phase 2 — exposed but consuming UI Phase 2), `createBrand({ name, url, description })`, `renameBrand(id, newName)`, `archiveBrand(id)`, `deleteBrand(id, typedConfirm)` actions. All wrap the matching Edge Function call.
+- `useBrandsStore` extension: `activeBrands` getter (filters `archived_at IS NULL`), `archivedBrands` getter (filters `archived_at IS NOT NULL` — **consumed by B12 page + A2.a Archived filter**), `createBrand({ name, url, description })`, `renameBrand(id, newName)`, `archiveBrand(id)`, **`restoreBrand(id)` (REAL, wired)**, `deleteBrand(id, typedConfirm)` actions. All wrap the matching Edge Function call.
 - 3-step new-brand wizard composable: `use-new-brand-flow.ts` (state machine for A3.a → A3.b → A3.c → A3.d, with "Cancel" exit guard if any field dirty).
-- 5 components: `<BrandPicker />`, `<BrandCard />` (kebab launcher), `<NewBrandWizard />`, `<RenameBrandModal />`, `<ArchiveBrandModal />`, `<DeleteBrandModal />` (typed-confirm via `useConfirm()` from Cluster 11).
+- Components: `<BrandPickerView />`, `<BrandCard />` (kebab launcher; renders active OR archived state based on `brand.archived_at`), `<NewBrandWizardView />`, `<RenameBrandModal />`, `<ArchiveBrandModal />`, `<DeleteBrandModal />` (typed-confirm via `useConfirm()` from Cluster 11), **`<BrandsAccountView />` (B12 page)**, **`<BrandsSegmentedControl />` (`All / Active / Archived`)**, **`<RestoreBrandModal />` (B12.3)**.
 - Brand-color seed util `seedBrandColor(existingBrandCount)` — deterministic palette index `palette[count % 5]`. Called inside `create_brand` RPC server-side.
 
 **Cross-cuts shipped from here:**
@@ -67,30 +71,33 @@ User can: (1) land on `/brands` after login if they have 2+ brands, (2) see ever
 | Dashboard chrome (sidebar, topbar, brand-switcher, file grid, recent files) | 02 |
 | Brand Kit settings (per-brand colors / fonts / logos / tone-snippets / saved-blocks editor) | 05 |
 | Shopify OAuth flow itself (the redirect → callback → token-store loop) — the A3.b "Connect Shopify" CTA in this PRD hands off to the existing M9 OAuth wiring | M9 / Cluster 04 (settings) — reused, not re-built |
-| Account-page `/account/brands` (B12 — full active+archived inventory page + Restore confirm B12.3 + Delete-archived confirm B12.4) | Phase 2 cluster (see §2.3) |
+| `/account` shell + `.acc-rail` sidebar + route registration for `/account/brands` | 04 (PRD 03 ships B12 page content as `<BrandsAccountView>` mounted by PRD 04 route) |
 | Brand-color **override** UI (let user change a brand's tint after creation) | Phase 2 — Cluster 05 Brand Kit sub-tab |
 | Sidebar brand-switcher dropdown + brand-label-in-canvas chrome | 02 (dashboard sidebar) + 06 (canvas brand-label) — both READ `useBrandsStore.activeBrands` from us |
 | `users.deleted_at` GDPR cascade orchestrator (account-level — cascades through all owned brands) | 01 — already shipped; brand-delete cascade here is consistent with the per-brand cascade fired from there |
 | Trash cron purge | 09 (delete_brand cascade integrates with trash flow — canvases trashed before brand-delete are already gone via FK CASCADE) |
-| `useConfirm()` composable, `<KovaModal>` shell, `useToast()`, skeletons | 11 |
-| `audit_log` table + writer helper | 01 (if not yet shipped) / 11 — see §12.1 |
+| `useConfirm()` composable, `<KovaModal>` shell, `useToast()`, skeletons, `<NotShippedYet>` placeholder | 11 |
+| `audit_log` table + writer helper (PRD 03 ships breadcrumb stopgap via `writeAudit()` until table lands) | 11 — see §12.1 |
 | `idempotency_keys` table + Edge Function helper | 11 (00c §1.D cross-cut) |
 
 ### 2.3 Deferred to Phase 2
 
-- **`/account/brands` page (B12 hi-fi).** Full active+archived inventory inside the Account-page left rail, with restore-from-archive + delete-archived flows. Hi-fi exists (`Kova Hi-Fi B12 Brands page - Dark.html`) and is structurally identical to B12.1–B12.4. Founder ratified 2026-05-13: MVP ships the archive *action* but NO archived-list page. Phase 2 ships B12 + the `restore_brand` RPC (RPC stub written now, kept guarded behind a feature flag `BRANDS_RESTORE_ENABLED=false`).
-- **B12.3 Restore confirm modal** + the `useBrandsStore.restoreBrand()` action — stubbed-only, not wired.
-- **B12.4 Delete-archived confirm modal** — same shell as A4.3, same RPC; Phase 2 mounts it from the B12 archived grid. MVP-only delete path is from A4.3 (active-brand kebab → Delete).
 - **Brand-color override UI.** MVP auto-assigns; Phase 2 Brand Kit color sub-tab adds a 5-tint picker so users can manually change.
-- **Brand archive filter in `/brands` picker** (the A2.a top-right "Archived" sort dropdown). Hi-fi draws it; MVP renders the filter as DISABLED (`title="Coming in Phase 2"`) so the chrome stays consistent but no archived-list functionality is exposed in `/brands`. Founder-ratified.
-- **Brand "Import" CTA** (B12 hi-fi shows it in the page hero). Phase 2.
 - **A10.1/A10.2/A10.3 Shopify reconnect / disconnect** — these surfaces are visually adjacent to brand management but are owned by Cluster 04 Account → Integrations + the existing M9 disconnect flow. Out of scope here.
+
+### 2.3.1 Dropped entirely (NOT building)
+
+- **Brand "Import" CTA** (B12 hi-fi shows it in the page hero). Founder cut 2026-05-17 — never building. B12 hero has "+ New brand" primary CTA only. Removed from all hi-fi rasters in §3.
+
+### 2.3.2 Reversal log
+
+- **2026-05-17 reversal**: founder reversed the 2026-05-13 lock on B12. The `/account/brands` page, `restore_brand` RPC + UI, B12.3 Restore modal, B12.4 Delete-archived modal, and A2.a "Archived" filter dropdown are now **MVP**, not Phase 2. `BRANDS_RESTORE_ENABLED` feature flag is kept (default `true`) as a rollback safety toggle. See §12.10.
 
 ### 2.4 Cross-cut acknowledgments (foreign owners)
 
 - **Cluster 11** owns `useConfirm()`, `<KovaModal>`, `useToast()`, skeletons, error-states, and `idempotency_keys`. This PRD consumes by composable / component name only.
 - **Cluster 02** owns the brand-switcher in the sidebar (the `.brand-switch` chrome) and consumes `useBrandsStore.activeBrands` to render the dropdown. The dropdown's per-row kebab launches the same `<RenameBrandModal>` / `<ArchiveBrandModal>` / `<DeleteBrandModal>` components shipped here.
-- **Cluster 04** owns `/account` + Brand-Kit + Integrations sections. The brand-picker dropdown those sections expose reads `useBrandsStore.activeBrands` from us. The Phase-2 `/account/brands` page is also Cluster 04's surface to mount when ready.
+- **Cluster 04** owns `/account` + `.acc-rail` sidebar + Brand-Kit + Integrations sections + the `/account/brands` **route registration** (auth meta `requiresAuth`, theme `dark`). The brand-picker dropdown those sections expose reads `useBrandsStore.activeBrands` from us. The `/account/brands` **page content** (`<BrandsAccountView>` + segmented control + Restore/Delete-archived flows) is owned **here**, mounted into the Cluster 04 route per 2026-05-17 reversal.
 - **Cluster 05** consumes `brands.color` to render brand-kit headers and consumes `brands.{id, name, slug}` to scope per-brand Kit data. It writes `brands.{colors, fonts, logo_url, voice, tone_snippets, saved_blocks}` JSONB columns — those columns exist now or ship via Cluster 05's migration; this PRD does NOT touch them.
 - **Cluster 06** consumes `useBrandsStore.selectedBrand` for the canvas brand-label per Q17 (click navigates to `/dashboard?brandId={current}`). No popover.
 - **M9 Shopify** existing flow is invoked from A3.b. Per the scope plan §5.5 disposition, Cluster 03 reuses the existing `connectShopify` flow verbatim (no refactor in this PRD).
@@ -105,7 +112,7 @@ Every surface maps to a hi-fi file. Engineers cite file + scene ID when implemen
 
 | Surface | Route | Hi-fi file | Scene IDs | Notes |
 |---|---|---|---|---|
-| Brand picker · populated | `/brands` | `main-main-kova-scope/batch-a/dark/Kova Hi-Fi A2+A3 Brand picker & New brand - Dark.html` | A2.a | 880px content block, 3-col grid of `.bp-card`, top wordmark + avatar pill only (no sidebar — between-brands chrome). Search input on top row + Sort dropdown (Last edited default) + "Archived" filter dropdown (rendered DISABLED in MVP per §2.3). 5-color logo palette (coral / violet / sage / sand / graphite). Last grid tile = `.bp-newcard` ("+ New brand"). |
+| Brand picker · populated | `/brands` | `main-main-kova-scope/batch-a/dark/Kova Hi-Fi A2+A3 Brand picker & New brand - Dark.html` | A2.a | 880px content block, 3-col grid of `.bp-card`, top wordmark + avatar pill only (no sidebar — between-brands chrome). Search input on top row + Sort dropdown (Last edited default) + **"Archived" filter dropdown ENABLED** (options: `Hide / Show / Only`; wires to `archivedBrands` getter — when Show, archived tiles render in-line at 78% opacity with "Archived" outline pill; when Only, only archived tiles render). 5-color logo palette (coral / violet / sage / sand / graphite). Last grid tile = `.bp-newcard` ("+ New brand"). Top-right: "Account" button → `/account` (with `<NotShippedYet>` fallback if PRD 04 not yet shipped per §12.7). |
 | Brand picker · empty | `/brands` (zero brands) | same | A2.b | Single empty pane (`.bp-empty`) — icon-circle + h3 + p + primary CTA + tour-link foot-hint. Same shell as A2.a; only the grid is replaced. Routes to A3.a on click. |
 
 ### 3.2 New-brand wizard surfaces (DARK theme)
@@ -122,7 +129,7 @@ Every surface maps to a hi-fi file. Engineers cite file + scene ID when implemen
 | Surface | Trigger | Hi-fi file | Scene IDs | Notes |
 |---|---|---|---|---|
 | Rename brand | `.bp-card` kebab → "Rename" | `main-main-kova-scope/batch-a/dark/Kova Hi-Fi A4+A9+A10 Modals - Dark.html` | A4.1 | `.dlg.sm` width. Two fields: Brand name (editable) + URL slug (read-only — slug is immutable per A4.1 lock). Foot meta `--ink-3` info icon ("Renaming is reversible. No data is touched."). Neutral "Save" primary CTA. |
-| Archive brand | `.bp-card` kebab → "Archive" | same | A4.2 | `.dlg.md` width. Headline "Archive '{brandName}'?". Body: `.info-card` 4-bullet explainer (hidden from switcher / data kept / Shopify stays connected / restore from Settings → Archive [grey-out the link in MVP since Phase-2 only]) + `.brand-summary` row + paragraph re-statement. Foot meta `--ink-3` info icon ("Reversible. No data is removed."). Neutral "Archive brand" primary CTA. |
+| Archive brand | `.bp-card` kebab → "Archive" | same | A4.2 | `.dlg.md` width. Headline "Archive '{brandName}'?". Body: `.info-card` 4-bullet explainer (hidden from switcher / data kept / Shopify stays connected / restore from `/account/brands`) + `.brand-summary` row + paragraph re-statement. Bullet 4 link target = `/account/brands` (B12 page) — live MVP per 2026-05-17 reversal, no longer greyed. Foot meta `--ink-3` info icon ("Reversible. Browse archived brands in /account/brands."). Neutral "Archive brand" primary CTA. |
 | Delete brand | `.bp-card` kebab → "Delete" | same | A4.3 | `.dlg.md` width. Headline "Delete brand '{brandName}'?". Body: `.brand-summary` row + `.loss-list` 5-row warn-soft surface (canvases / snapshots / brand-kit / KB sources / Shopify connection — with live counts via store getters) + typed-confirm `.fld` input. CTA is `.btn.danger`, disabled until input matches brand name exactly (case-sensitive). Foot meta `--warn` alert-triangle ("This action is permanent."). |
 
 ### 3.4 Modal shell references
@@ -133,14 +140,14 @@ Every surface maps to a hi-fi file. Engineers cite file + scene ID when implemen
 | Typed-confirm `.fld` + `.input.confirm-typed` | A4.3 + A8.4 (Popovers + Dialogs file, variant 3) | Border colors: idle `--line`, partial `--ink-3`, matched `--ok` (green glow). Component is `<TypedConfirmField>` from Cluster 11; this PRD configures it with `expected={brand.name}` + `case='sensitive'`. |
 | `.brand-summary` row + `.loss-list` | A4.2 + A4.3 (intra-file pattern) | Both classes ship as scoped component CSS in the three modal components. No design-system token additions. |
 
-### 3.5 B12 Phase-2 visual reference (not built MVP)
+### 3.5 B12 `/account/brands` surfaces (DARK theme — **MVP per 2026-05-17 reversal**)
 
-| Surface | Hi-fi file | Scene IDs | Notes |
-|---|---|---|---|
-| Brands page · populated | `main-main-kova-scope/batch-a-additions/dark/Kova Hi-Fi B12 Brands page - Dark.html` | B12.1 | Phase 2. Reference only. Active grid + Archived grid + filter bar inside `/account/brands`. |
-| Brands page · archived empty | same | B12.2 | Phase 2. Empty-pane pattern. |
-| Restore confirm | same | B12.3 | Phase 2. `.dlg.sm` neutral primary, no typed-confirm. |
-| Delete-archived confirm | same | B12.4 | Phase 2. Visually identical to A4.3 — same `<DeleteBrandModal>` component, just launched from the archived row. |
+| Surface | Route | Hi-fi file | Scene IDs | Notes |
+|---|---|---|---|---|
+| Brands page · populated | `/account/brands` | `main-main-kova-scope/batch-a-additions/dark/Kova Hi-Fi B12 Brands page - Dark.html` | B12.1 | Hosted inside Cluster 04 `.acc-rail` shell. Hero: page title "Brands" + "+ New brand" primary CTA only (Import REMOVED). Below hero: segmented control `All / Active / Archived` (default `All`). Below: 3-col `.bp-card` grid filtered by segment. Active cards render full-opacity with active-state kebab (Rename / Archive / Delete). Archived cards render 78% opacity with "Archived" outline pill + archived-state kebab (Restore / Delete). Empty segments render zero-state pane per B12.2. |
+| Brands page · archived empty | `/account/brands?filter=archived` | same | B12.2 | Empty-pane pattern (`.bp-empty`). Headline "No archived brands". Body p "Archive a brand from `/brands` to see it here." No CTA. |
+| Restore confirm | `/account/brands` (archived card kebab → Restore) | same | B12.3 | `.dlg.sm` width. Headline "Restore '{brandName}'?". Body: `.brand-summary` row + paragraph "Restoring brings this brand back to your active list. Canvases, kit, Shopify, and chat are unchanged." No typed-confirm. Neutral "Restore brand" primary CTA. On success: archived card moves to active grid + toast `success("'{name}' restored")`. |
+| Delete-archived confirm | `/account/brands` (archived card kebab → Delete) | same | B12.4 | Visually identical to A4.3 — same `<DeleteBrandModal>` component, just launched from the archived row. Footer copy override: render "This action is permanent." (NOT the hi-fi's mis-leaked "GDPR Art. 17 cascade · 30-day soft-delete" — see §12.8; brand-delete is immediate hard cascade). |
 
 ### 3.6 Design system references
 
@@ -175,7 +182,7 @@ ALTER TABLE public.brands
   ADD COLUMN IF NOT EXISTS description text NULL;
 
 COMMENT ON COLUMN public.brands.archived_at IS
-  'Soft-archive timestamp. Set by archive_brand(); cleared by restore_brand() (Phase 2). NOT a soft-delete — brand stays queryable; UI filters it from active lists.';
+  'Soft-archive timestamp. Set by archive_brand(); cleared by restore_brand(). NOT a soft-delete — brand stays queryable; UI filters it from active lists. Restored from /account/brands (B12).';
 COMMENT ON COLUMN public.brands.color IS
   'Auto-assigned palette tint at create-time. Stable across renames. User-overridable Phase 2.';
 COMMENT ON COLUMN public.brands.slug IS
@@ -242,6 +249,8 @@ The `delete_brand` cascade triggers `purgeBrandStorageObjects()` (Edge Function 
 
 All Edge Functions live under `kova-open-pencil-1/api/brands/` (Vercel routing). All accept JSON body; all return JSON. All require `Authorization: Bearer <supabase_jwt>`. All use the `idempotency_keys` helper from Cluster 11 (00c §1.D cross-cut) — clients send `Idempotency-Key` header, server records key + result, replays return cached response.
 
+**Audit-log cross-cut (W0-1):** create / rename / archive / restore / delete each append one row to `public.audit_log` via the Cluster 11 `writeAudit(supabaseAdmin, { userId, eventType, payload, clusterOwner: '03' })` helper at `api/_shared/audit.ts`. Table DDL + RLS + helper are owned by **PRD 11 §2.1 / §4.1 / §5.5** (founder lock #11). The local `writeAudit()` helper described in §5.5 of this PRD has been retired: §5.5 now documents *what* this cluster writes (event-type catalog + payload examples) but the *helper implementation* lives in Cluster 11.
+
 #### 5.1.1 `POST /api/brands/create`
 
 | Field | Value |
@@ -278,7 +287,19 @@ All Edge Functions live under `kova-open-pencil-1/api/brands/` (Vercel routing).
 | **Rate limit** | 30 req/min per user |
 | **Side-effects** | If the archived brand is the currently selected brand for the user, server replies with `next_brand_id` (oldest active brand, or `null` if none) so frontend re-routes. |
 
-#### 5.1.4 `DELETE /api/brands/delete`
+#### 5.1.4 `POST /api/brands/restore` (MVP per 2026-05-17 reversal)
+
+| Field | Value |
+|---|---|
+| **Trigger** | B12.3 "Restore brand" CTA on archived-card kebab from `/account/brands` |
+| **Body** | `{ brand_id: uuid }` |
+| **Action** | Calls `restore_brand(p_brand_id)` RPC. Clears `archived_at`. Fires `writeAudit('brand.restored', { brand_id, name })`. |
+| **Response** | `{ brand: Brand }` (200) \| `{ error: 'not_archived' \| 'not_owner' \| 'not_found' }` |
+| **Rate limit** | 30 req/min per user |
+| **Feature gate** | If `BRANDS_RESTORE_ENABLED=false` (rollback toggle), endpoint returns `503 { error: 'feature_disabled' }`. Default `true`. |
+| **Side-effects** | Brand reappears in `useBrandsStore.activeBrands` after client refetch. Sidebar brand-switcher + brand-list dropdowns re-render. |
+
+#### 5.1.5 `DELETE /api/brands/delete`
 
 | Field | Value |
 |---|---|
@@ -317,6 +338,52 @@ export async function purgeBrandStorageObjects(
   return { swept, failed }
 }
 ```
+
+**Audit helper** (`kova-open-pencil-1/api/_shared/audit.ts`) — **Cluster 11 stopgap pattern** per §12.1:
+
+```typescript
+import * as Sentry from '@sentry/node'
+
+export type BrandAuditEvent =
+  | 'brand.created'
+  | 'brand.renamed'
+  | 'brand.archived'
+  | 'brand.restored'
+  | 'brand.deleted'
+
+export interface AuditContext {
+  userId: string
+  brandId: string
+  payload?: Record<string, unknown>
+}
+
+/**
+ * Stopgap audit writer until Cluster 11 ships `audit_log` table.
+ *
+ * Phase A (Wave 2 — now): write to console.info + Sentry breadcrumb.
+ * Phase B (Cluster 11 lands): swap internals to `INSERT INTO audit_log`.
+ *
+ * Signature is stable — callers do not change at swap time.
+ */
+export function writeAudit(event: BrandAuditEvent, ctx: AuditContext): void {
+  const record = {
+    event,
+    user_id: ctx.userId,
+    brand_id: ctx.brandId,
+    payload: ctx.payload ?? null,
+    at: new Date().toISOString(),
+  }
+  console.info('[audit]', JSON.stringify(record))
+  Sentry.addBreadcrumb({
+    category: 'audit',
+    level: 'info',
+    message: event,
+    data: record,
+  })
+}
+```
+
+Frontend never reads audit events. Loss of an audit row during the stopgap window is operationally tolerable — Sentry breadcrumb preserves the trace for any incident replay. Cluster 11 swap replaces internals only; no caller-site changes.
 
 ### 5.2 RPCs (database functions)
 
@@ -423,7 +490,9 @@ BEGIN
 END;
 $$;
 
--- ---- restore_brand (Phase 2 — STUB) ----
+-- ---- restore_brand (REAL — MVP per 2026-05-17 reversal) ----
+-- Clears archived_at. Brand returns to active list + brand-switcher dropdowns.
+-- Audit event 'brand.restored' fired by Edge Function caller via writeAudit().
 
 CREATE OR REPLACE FUNCTION public.restore_brand(p_brand_id uuid)
 RETURNS public.brands
@@ -439,7 +508,13 @@ BEGIN
   WHERE id = p_brand_id AND user_id = v_user_id AND archived_at IS NOT NULL
   RETURNING * INTO v_brand;
 
-  IF v_brand IS NULL THEN RAISE EXCEPTION 'not_found' USING ERRCODE = 'P0002'; END IF;
+  IF v_brand IS NULL THEN
+    -- Distinguish not-found vs not-archived for caller error mapping.
+    IF EXISTS (SELECT 1 FROM public.brands WHERE id = p_brand_id AND user_id = v_user_id) THEN
+      RAISE EXCEPTION 'not_archived' USING ERRCODE = 'P0001';
+    END IF;
+    RAISE EXCEPTION 'not_found' USING ERRCODE = 'P0002';
+  END IF;
   RETURN v_brand;
 END;
 $$;
@@ -494,12 +569,23 @@ LANGUAGE sql SECURITY DEFINER STABLE AS $$
   ORDER BY updated_at DESC;
 $$;
 
+-- ---- list_archived_brands (read helper for B12 page + A2.a filter — MVP per 2026-05-17 reversal) ----
+
+CREATE OR REPLACE FUNCTION public.list_archived_brands()
+RETURNS SETOF public.brands
+LANGUAGE sql SECURITY DEFINER STABLE AS $$
+  SELECT * FROM public.brands
+  WHERE user_id = auth.uid() AND archived_at IS NOT NULL
+  ORDER BY archived_at DESC;
+$$;
+
 GRANT EXECUTE ON FUNCTION public.create_brand,
                          public.rename_brand,
                          public.archive_brand,
                          public.restore_brand,
                          public.delete_brand,
-                         public.list_active_brands
+                         public.list_active_brands,
+                         public.list_archived_brands
   TO authenticated;
 ```
 
@@ -515,17 +601,19 @@ GRANT EXECUTE ON FUNCTION public.create_brand,
 
 ### 5.5 Audit log
 
-This PRD writes `audit_log` rows for create / rename / archive / delete (4 events). Schema is owned by Cluster 11 (see §12.1). Sample payload:
+This PRD writes `audit_log` rows for create / rename / archive / restore / delete (5 events). Schema + helper are owned by **Cluster 11** (PRD 11 §2.1 / §4.1 / §5.5; W0-1 dispatch 2026-05-19). This section documents the event-type catalog that Edge Functions in §5.1 emit; the `writeAudit()` helper implementation lives in `api/_shared/audit.ts` (Plan 11 Task 1.3a).
 
-```json
-{ "event": "brand.deleted",
-  "user_id": "<uuid>",
-  "brand_id": "<uuid>",
-  "ts": "2026-06-01T10:00:00Z",
-  "details": { "name": "Field Notes", "canvas_count": 9 } }
-```
+| Edge Function | `event_type` | `payload` shape |
+|---|---|---|
+| `POST /api/brands/create` | `brand.created` | `{ brand_id, name, slug, color }` |
+| `POST /api/brands/rename` | `brand.renamed` | `{ brand_id, name_old, name_new }` |
+| `POST /api/brands/archive` | `brand.archived` | `{ brand_id, name, canvas_count }` |
+| `POST /api/brands/restore` | `brand.restored` | `{ brand_id, name, archived_at }` |
+| `POST /api/brands/delete` | `brand.deleted` | `{ brand_id, name, canvas_count }` |
 
-See §12.1 for the dependency on the table existing.
+Every row goes through `writeAudit(supabaseAdmin, { userId, eventType, payload, clusterOwner: '03' })`. The helper Sentry-captures + swallows DB errors so a failed audit write never breaks the user mutation (per W0-1 contract).
+
+See §12.1 for the historical dependency on the table existing — now RESOLVED by W0-1 dispatch.
 
 ---
 
@@ -537,8 +625,11 @@ See §12.1 for the dependency on the table existing.
 |---|---|---|---|---|
 | `/brands` | `<BrandPickerView>` | `requiresAuth` + redirect to `/onboarding` if user has zero brands AND has never completed onboarding (Cluster 02 owns this check) | dark | Multi-brand landing. Lazy-loaded chunk. |
 | `/brands/new` | `<NewBrandWizardView>` (state machine routes internally to A3.a/b/c/d) | `requiresAuth` | dark | Children: `/brands/new` (a), `/brands/new/shopify` (b), `/brands/new/brand-kit` (c), `/brands/new/done` (d). Wizard composable holds state across child routes. |
+| `/account/brands` | `<BrandsAccountView>` (B12) | `requiresAuth` | dark | **Route registration owned by PRD 04** (lives inside `/account` chrome with `.acc-rail` sidebar — PRD 04's "Brands" nav item links here). Page content owned here. Segmented control persisted via `?filter=all\|active\|archived` query param. Default `all`. |
 
 Single-brand users skip `/brands` per scope plan §3 Cluster 02 — Cluster 02 router handles the redirect logic.
+
+**Account-button fallback (§12.7 resolved):** The "Account" button in `<BrandPickerView>` top-right always renders. If PRD 04 has not yet registered the `/account` route at runtime, the router falls back to `/account/coming-soon` which renders Cluster 11 `<NotShippedYet feature="Account settings" />`. Discoverability is preserved per Figma pattern (settings always reachable).
 
 ### 6.2 Pinia stores
 
@@ -566,8 +657,8 @@ async function createBrand(input: { name: string; url: string | null; descriptio
 async function renameBrand(id: string, name: string): Promise<void>
 async function archiveBrand(id: string): Promise<void>
 async function deleteBrand(id: string, typedConfirm: string): Promise<void>
-// Phase 2:
-async function restoreBrand(id: string): Promise<void>                   // exists in store, gated by feature flag
+async function restoreBrand(id: string): Promise<void>                   // REAL — MVP per 2026-05-17 reversal; gated by BRANDS_RESTORE_ENABLED flag (default true)
+async function fetchArchivedBrands(): Promise<void>                      // populates archivedBrands; lazy-loaded by B12 page on first mount + by A2.a when "Show" or "Only" filter selected
 ```
 
 All mutating actions:
@@ -617,8 +708,9 @@ function brandLogoClass(color: BrandColor): string {
 
 | Component | Path | Props | Slots | Emits | Notes |
 |---|---|---|---|---|---|
-| `<BrandPickerView>` | `src/views/brands/BrandPickerView.vue` | — | — | — | Reads `useBrandsStore`. Renders A2.a populated grid or A2.b empty. Top-of-page actions: Account button (routes to `/account`), New brand primary CTA. |
-| `<BrandCard>` | `src/components/brand/BrandCard.vue` | `brand: Brand`, `isCurrent?: boolean` | — | `select`, `archive`, `delete`, `rename` | Renders the A2.a `.bp-card`. Kebab opens A8 Reka DropdownMenu with 3 items (Rename / Archive / Delete brand). Logo glyph reads `brand.color`. Click = `emit('select', brand.id)`. |
+| `<BrandPickerView>` | `src/views/brands/BrandPickerView.vue` | — | — | — | Reads `useBrandsStore`. Renders A2.a populated grid or A2.b empty. Top-of-page actions: Account button (routes to `/account`; falls back to `/account/coming-soon` w/ `<NotShippedYet>` if PRD 04 not ready), "+ New brand" primary CTA. Includes `<BrandsArchivedFilter>` dropdown (Hide/Show/Only — ENABLED per 2026-05-17 reversal). |
+| `<BrandCard>` | `src/components/brand/BrandCard.vue` | `brand: Brand`, `isCurrent?: boolean` | — | `select`, `archive`, `restore`, `delete`, `rename` | Renders the A2.a `.bp-card`. Active state: kebab opens A8 Reka DropdownMenu with 3 items (Rename / Archive / Delete brand). **Archived state** (`brand.archived_at !== null`): renders at 78% opacity with "Archived" outline pill; kebab shows 2 items (Restore / Delete). Logo glyph reads `brand.color`. Click on active card = `emit('select', brand.id)`. Click on archived card body is no-op in `/brands`; in `/account/brands` opens read-only preview (Phase 2). |
+| `<BrandsArchivedFilter>` | `src/components/brand/BrandsArchivedFilter.vue` | `modelValue: 'hide' \| 'show' \| 'only'` | — | `update:modelValue` | A2.a top-right Reka Select dropdown. Three options. Persisted to localStorage `kova.brands.archivedFilter`. Lazy-triggers `useBrandsStore.fetchArchivedBrands()` on first non-Hide selection. |
 | `<NewBrandTile>` | `src/components/brand/NewBrandTile.vue` | — | — | `click` | The `.bp-newcard` 5th-tile launcher. Routes to `/brands/new`. |
 | `<NewBrandWizardView>` | `src/views/brands/NewBrandWizardView.vue` | — | — | — | Hosts `useNewBrandFlow()`. Renders A3 chrome (`.onb-shell` + `.onb-progress`) + step-component slot via `<router-view>` (children: `<StepNameUrl>`, `<StepShopify>`, `<StepBrandKit>`, `<StepDone>`). |
 | `<StepNameUrl>` | `src/views/brands/wizard/StepNameUrl.vue` | — | — | — | A3.a layout. 3 form fields. "Continue" calls `flow.advance()` after validation. |
@@ -627,7 +719,10 @@ function brandLogoClass(color: BrandColor): string {
 | `<StepDone>` | `src/views/brands/wizard/StepDone.vue` | — | — | — | A3.d layout. CTA navigates to `/dashboard?brandId={brandId}`. |
 | `<RenameBrandModal>` | `src/components/brand/RenameBrandModal.vue` | `brand: Brand`, `open: boolean` | — | `update:open`, `saved` | Wraps `<KovaModal>` size `sm`. Two fields. Save → `useBrandsStore.renameBrand`. |
 | `<ArchiveBrandModal>` | `src/components/brand/ArchiveBrandModal.vue` | `brand: Brand`, `open: boolean` | — | `update:open`, `archived` | Wraps `<KovaModal>` size `md`. Info-card + summary + paragraph. Archive → `useBrandsStore.archiveBrand`. Foot meta info icon. |
-| `<DeleteBrandModal>` | `src/components/brand/DeleteBrandModal.vue` | `brand: Brand`, `open: boolean` | — | `update:open`, `deleted` | Wraps `<KovaModal>` size `md`. Summary + loss-list (counts from store getters: canvases, snapshots [Cluster 09 getter], brand-kit, KB sources [Cluster 05 getter], Shopify) + `<TypedConfirmField expected={brand.name} case='sensitive'>`. CTA `.btn.danger`. On confirm → `useBrandsStore.deleteBrand(id, typed)`. |
+| `<DeleteBrandModal>` | `src/components/brand/DeleteBrandModal.vue` | `brand: Brand`, `open: boolean` | — | `update:open`, `deleted` | Wraps `<KovaModal>` size `md`. Summary + loss-list (counts from store getters: canvases, snapshots [Cluster 09 getter], brand-kit, KB sources [Cluster 05 getter], Shopify) + `<TypedConfirmField expected={brand.name} case='sensitive'>`. CTA `.btn.danger`. On confirm → `useBrandsStore.deleteBrand(id, typed)`. Reused for both A4.3 (active-card kebab from `/brands`) and B12.4 (archived-card kebab from `/account/brands`). Footer always "This action is permanent." regardless of caller (overrides hi-fi B12.4 mis-leak per §12.8). |
+| `<RestoreBrandModal>` | `src/components/brand/RestoreBrandModal.vue` | `brand: Brand`, `open: boolean` | — | `update:open`, `restored` | **MVP per 2026-05-17 reversal.** Wraps `<KovaModal>` size `sm`. B12.3 layout: `.brand-summary` row + paragraph. NO typed-confirm. Neutral "Restore brand" primary CTA. On confirm → `useBrandsStore.restoreBrand(id)`. Foot meta `--ink-3` ("Restored brands return to your active list. No data changes."). |
+| `<BrandsAccountView>` | `src/views/account/BrandsAccountView.vue` | — | — | — | **MVP per 2026-05-17 reversal.** B12 page hosted inside Cluster 04 `.acc-rail` shell. Hero: title "Brands" + "+ New brand" CTA (no Import). `<BrandsSegmentedControl v-model="filter">` (`all` / `active` / `archived`). Grid renders `useBrandsStore.activeBrands`, `archivedBrands`, or both depending on filter. Empty segments render B12.2 zero-state. Per-card kebab routes to active or archived modal set based on `brand.archived_at`. Filter persisted via `?filter=` query param. |
+| `<BrandsSegmentedControl>` | `src/components/brand/BrandsSegmentedControl.vue` | `modelValue: 'all' \| 'active' \| 'archived'` | — | `update:modelValue` | 3-pill segmented control matching B12.1 hi-fi. Keyboard arrow-key navigation. Aria-role tablist. Triggers `fetchArchivedBrands()` on first `archived` or `all` selection. |
 
 **Skeleton:** `<BrandPickerView>` uses `<KovaSkeleton variant="brand-grid" rows="3" cols="3" />` (Cluster 11 ships the skeleton primitive; per-surface variant is added here).
 
@@ -663,7 +758,10 @@ If any store hasn't been wired yet at runtime, the loss-list row shows "—" (em
 - [ ] "+ New brand" tile is the 5th grid slot (or 2nd if 1 active brand exists)
 - [ ] Card click navigates to `/dashboard?brandId={card.id}` and calls `useBrandsStore.selectBrand(card.id)`
 - [ ] Kebab on each card opens a Reka DropdownMenu with 3 items: Rename, Archive, Delete brand
-- [ ] Archived brands are rendered at 78% opacity with an "Archived" outline pill (per A2.a hi-fi annotation card 5 — Field Notes) when the Archived filter dropdown is set to "All". The Archived filter dropdown itself is DISABLED in MVP (Phase 2 unlocks)
+- [ ] Archived brands are rendered at 78% opacity with an "Archived" outline pill (per A2.a hi-fi annotation card 5 — Field Notes) when the Archived filter dropdown is set to "Show" or "Only". The Archived filter dropdown is **ENABLED MVP per 2026-05-17 reversal** (options: Hide / Show / Only; default Hide; selection persists to localStorage `kova.brands.archivedFilter`)
+- [ ] Archived-card kebab in `/brands` (when filter = Show or Only) opens 2-item DropdownMenu: Restore / Delete (per B12.1 archived-state spec)
+- [ ] Account button top-right always renders; clicking routes to `/account`. If PRD 04 not yet shipped, fallback route `/account/coming-soon` renders `<NotShippedYet feature="Account settings" />` placeholder
+- [ ] No "Import" CTA appears anywhere in `/brands` or `/account/brands` (founder cut 2026-05-17)
 - [ ] Search input filters cards by `name` OR `url` substring (case-insensitive); empty result shows inline `<EmptySearch>` (Cluster 11 ships)
 - [ ] Sort dropdown (Last edited / Name) reorders the grid; preference persists per device via localStorage
 
@@ -692,7 +790,7 @@ If any store hasn't been wired yet at runtime, the loss-list row shows "—" (em
 ### 8.4 Archive modal (A4.2)
 
 - [ ] Opens with headline "Archive '{brand.name}'?"; brand-summary row shows logo + name + canvas count + last-edited + Shopify pill
-- [ ] Info-card explainer text is the 4-bullet list from A4.2; the "Settings → Archive" link in bullet 4 is rendered grey (Phase 2 — no archived list MVP)
+- [ ] Info-card explainer text is the 4-bullet list from A4.2; bullet 4 reads "Restore anytime from /account/brands" with the path rendered as a live `<router-link>` to `/account/brands` (B12 page — MVP per 2026-05-17 reversal, no longer greyed)
 - [ ] "Archive brand" primary CTA (neutral, NOT danger) calls `POST /api/brands/archive`
 - [ ] On success: modal closes; toast `success("'{name}' archived")`; brand disappears from picker grid + sidebar switch + every active-brand dropdown across the app; if the archived brand was the currently selected brand, router navigates to `/brands`
 - [ ] If brand is already archived (race — another tab), toast `error("Already archived")`; modal closes
@@ -708,26 +806,46 @@ If any store hasn't been wired yet at runtime, the loss-list row shows "—" (em
 - [ ] On server error during cascade: toast `error("Delete failed — try again or contact support")`; brand row stays (transaction rolls back); Sentry logged
 - [ ] Storage sweep is best-effort: cascade succeeds even if Storage purge partially fails; failures are logged + admin can re-run sweep via operator script
 
-### 8.6 Backend
+### 8.6 B12 `/account/brands` page (MVP per 2026-05-17 reversal)
+
+- [ ] Page mounts inside Cluster 04 `.acc-rail` shell at `/account/brands`. If PRD 04 not yet shipped, dev-mode flag enables direct mount at `/account/brands` with placeholder chrome (graceful degradation)
+- [ ] Hero renders page title "Brands" + "+ New brand" primary CTA. No "Import" CTA anywhere
+- [ ] Segmented control renders 3 pills (`All / Active / Archived`); default `All`; selection persists to URL query param `?filter=`
+- [ ] Filter `All`: grid shows active brands at full opacity (with active-state kebab Rename / Archive / Delete) + archived brands at 78% opacity with "Archived" pill (with archived-state kebab Restore / Delete)
+- [ ] Filter `Active`: grid shows only `archived_at IS NULL` brands
+- [ ] Filter `Archived`: grid shows only `archived_at IS NOT NULL` brands; empty segment renders B12.2 zero-state ("No archived brands")
+- [ ] Archived card click on body is a no-op (no navigate); active card click navigates to brand dashboard
+- [ ] Restore action via archived-card kebab opens `<RestoreBrandModal>` (B12.3); confirm calls `POST /api/brands/restore`; on success: card moves from archived to active grid + toast `success("'{name}' restored")`
+- [ ] Delete-archived action via archived-card kebab opens `<DeleteBrandModal>` (B12.4 — same component as A4.3); typed-confirm required; success cascade-deletes brand
+- [ ] First mount of B12 page triggers `useBrandsStore.fetchArchivedBrands()` lazily; subsequent mounts skip if cache fresh (< 60s)
+- [ ] If `BRANDS_RESTORE_ENABLED=false`, Restore CTA renders disabled with tooltip "Restore is temporarily disabled" + 503 response from API
+
+### 8.7 Backend
 
 - [ ] `create_brand` RPC seeds `color` deterministically: 1st brand for user = coral, 2nd = violet, 3rd = sage, 4th = sand, 5th = graphite, 6th = coral, etc.
 - [ ] `create_brand` derives `slug` from name; on collision within same user, appends `-1`, `-2`, … until unique
 - [ ] `archive_brand` raises `already_archived` (not a no-op) when called on an already-archived brand — UI maps to a soft toast
+- [ ] `restore_brand` raises `not_archived` when called on an already-active brand; `not_found` when brand doesn't exist or belongs to another user
 - [ ] `delete_brand` requires exact case-sensitive name match; mismatch raises `confirm_mismatch`
 - [ ] `delete_brand` cascade leaves zero orphan rows in: canvases, media, brand_memories, chat_conversations, chat_messages, chat_attachments, shopify_connections (incl. Vault token via FK), product_catalog, canvas_bindings, brand_fonts
 - [ ] Every RPC re-enforces `user_id = auth.uid()` inside the function body (not just relying on RLS)
 - [ ] `list_active_brands` returns rows ordered by `updated_at DESC`; only `archived_at IS NULL`
-- [ ] All 5 RPCs error-codes documented and surface to frontend as typed errors
+- [ ] `list_archived_brands` returns rows ordered by `archived_at DESC`; only `archived_at IS NOT NULL`
+- [ ] All 6 RPCs error-codes documented and surface to frontend as typed errors
+- [ ] `writeAudit()` helper writes 5 event types (`brand.created`, `brand.renamed`, `brand.archived`, `brand.restored`, `brand.deleted`) to console + Sentry breadcrumb in Wave 2 stopgap mode
 - [ ] Storage sweep deletes all objects under `{brand_id}/**` in: `brand-logos`, `media-assets`, `brand-fonts`, `canvas-snapshots`
 - [ ] Edge Functions reject requests without `Authorization` header (401)
 - [ ] Edge Functions accept `Idempotency-Key` header and return cached response on replay
+- [ ] `/api/brands/restore` returns 503 when `BRANDS_RESTORE_ENABLED=false`
 
-### 8.7 Cross-cut behavior
+### 8.8 Cross-cut behavior
 
 - [ ] Brand-color tint (`brands.color`) survives a rename — same color before + after
+- [ ] Brand-color tint survives an archive + restore round-trip — same color before + after
 - [ ] After archive, brand is filtered out of: `useBrandsStore.activeBrands`, sidebar brand-switcher, every Cluster 04 brand-dropdown selector, Brand Kit per-brand picker (Cluster 05)
+- [ ] After restore, brand re-appears in all active-brand surfaces; brand-switcher updates reactively
 - [ ] After delete, brand is removed from `useBrandsStore.brands[]` entirely (not just filtered)
-- [ ] If user has only 1 active brand and archives or deletes it, they land on `/brands` (zero-state A2.b)
+- [ ] If user has only 1 active brand and archives or deletes it, they land on `/brands` (zero-state A2.b) — except when triggered from `/account/brands`, in which case they stay on B12 with segment auto-switched to Archived
 
 ---
 
@@ -807,31 +925,28 @@ Coverage target: ≥ 85% line coverage on every new file under `src/views/brands
 ### Phase A — initial deploy (Wave 2 close)
 
 - Migration `20260601_03_brands_lifecycle.sql` applied to local + staging
-- 5 RPCs deployed (including `restore_brand` STUB)
-- 4 Edge Functions deployed
-- All 5 frontend components shipped
-- `useBrandsStore` extended actions wired
+- 6 RPCs deployed (`create_brand`, `rename_brand`, `archive_brand`, `restore_brand` **REAL**, `delete_brand`, `list_active_brands`, `list_archived_brands`)
+- 5 Edge Functions deployed (`create`, `rename`, `archive`, `restore`, `delete`)
+- All frontend components shipped including B12 (`<BrandsAccountView>`, `<BrandsSegmentedControl>`, `<RestoreBrandModal>`, `<BrandsArchivedFilter>`)
+- `useBrandsStore` extended actions wired (incl. `restoreBrand` REAL + `fetchArchivedBrands`)
 - `useNewBrandFlow` composable shipped
+- `writeAudit()` helper shipped (Cluster 11 stopgap — console + Sentry breadcrumb)
 - Feature flags hardcoded:
-  - `BRANDS_RESTORE_ENABLED = false` (gates Phase 2 B12)
-  - `BRANDS_ARCHIVE_FILTER_ENABLED = false` (gates A2.a "Archived" sort dropdown)
+  - `BRANDS_RESTORE_ENABLED = true` (rollback safety toggle per 2026-05-17 reversal — flip off only if Restore needs emergency disable)
 - Storage sweep helper shipped
 - Unit + integration test suites green (≥ 85% coverage on new files)
-- Manual smoke pass against staging
+- Manual smoke pass against staging — incl. archive → /account/brands → restore round-trip
 
-### Phase B — Phase 2 unlock (post-Wave 6)
+### Phase B — post-MVP unlock
 
-- `BRANDS_RESTORE_ENABLED = true` — `restoreBrand` action wired into store
-- `BRANDS_ARCHIVE_FILTER_ENABLED = true` — A2.a filter dropdown enabled
-- `<BrandsAccountView>` shipped at `/account/brands` (B12.1 + B12.2 + B12.3 + B12.4)
-- Brand-color override picker shipped (Cluster 05 Brand Kit sub-tab)
+- Brand-color override picker shipped (Cluster 05 Brand Kit sub-tab) — the only PRD-03 item still Phase 2
+- `writeAudit()` internals swapped from breadcrumb stopgap to `INSERT INTO audit_log` once Cluster 11 ships the table
 
 ### Feature flags
 
 | Flag | Default (MVP) | Toggle condition |
 |---|---|---|
-| `BRANDS_RESTORE_ENABLED` | `false` | Flip when Phase 2 B12 ships |
-| `BRANDS_ARCHIVE_FILTER_ENABLED` | `false` | Same |
+| `BRANDS_RESTORE_ENABLED` | `true` | Flip to `false` only as emergency rollback if Restore behavior is broken |
 | `BRAND_NAME_MAX_LEN` | `80` | Adjust if name-truncation feedback surfaces |
 
 ---
@@ -842,7 +957,7 @@ Coverage target: ≥ 85% line coverage on every new file under `src/views/brands
 |---|---|---|
 | **01 — Auth & Identity** | `useAuthStore.user`; auth middleware; `users` row | None at runtime (account deletion cascades through `auth.users.id` → `brands.user_id ON DELETE CASCADE` — fires our `delete_brand` cascade indirectly, but Cluster 01's cron orchestrator owns that surface) |
 | **02 — Onboarding & Dashboard** | Dashboard chrome (sidebar, topbar, brand-switcher widget); router redirect logic (zero/one/multi brand routing) | `useBrandsStore.activeBrands` for sidebar dropdown; `<RenameBrandModal>`, `<ArchiveBrandModal>`, `<DeleteBrandModal>` components for sidebar kebab |
-| **04 — Account & Stripe** | `/account` route shell + sidebar host | `useBrandsStore.activeBrands` for the per-brand picker dropdown in Brand-Kit + Integrations sections; `<BrandsAccountView>` slot ready for Phase 2 mount at `/account/brands` |
+| **04 — Account & Stripe** | `/account` route shell + `.acc-rail` sidebar host with "Brands" nav item; route registration for `/account/brands` (auth meta `requiresAuth`, theme `dark`); fallback route `/account/coming-soon` with `<NotShippedYet>` placeholder if shipped before PRD 03 | `useBrandsStore.activeBrands` + `archivedBrands` for the per-brand picker dropdown in Brand-Kit + Integrations sections; `<BrandsAccountView>` component mounted at `/account/brands` (page content owned here per 2026-05-17 reversal) |
 | **05 — Brand Kit & Drag-Drop** | `useBrandKitStore.kitByBrand(brandId)`; `useMediaStore.mediaByBrand` getter | `brands.color` for header tints; `useBrandsStore.selectedBrand` for "which brand am I editing?" context |
 | **06 — Canvas Editor Core Chrome** | Canvas chrome (topbar, breadcrumb, brand label) | `useBrandsStore.selectedBrand.{name, color, slug}` for brand label rendering; brand-label click handler navigates to `/dashboard?brandId={current}` per Q17 |
 | **09 — Version History + Trash** | `useSnapshotStore.snapshotsByBrand` getter for `<DeleteBrandModal>` loss-list count | Brand-delete cascade includes `canvas_snapshots` rows (FK CASCADE via `brand_id`) — Cluster 09 must add that FK column with `ON DELETE CASCADE` |
@@ -862,18 +977,13 @@ Coverage target: ≥ 85% line coverage on every new file under `src/views/brands
 
 ## 12. Risks + open questions
 
-### 12.1 OPEN QUESTION — `audit_log` table ownership
+### 12.1 RESOLVED 2026-05-17 — `audit_log` table ownership
 
-This PRD writes 4 event types (`brand.created`, `brand.renamed`, `brand.archived`, `brand.deleted`). The table itself is not yet defined in any migration.
+This PRD writes 5 event types (`brand.created`, `brand.renamed`, `brand.archived`, `brand.restored`, `brand.deleted`).
 
-**Options:**
-- A. Cluster 01 ships `audit_log` (it already needs audit rows for `account.deletion_requested` + `account.restored`) — Cluster 03 just writes to the table.
-- B. Cluster 11 ships it as shared infra (writes happen from many clusters).
-- C. Cluster 03 ships a minimal stub and lets later clusters extend.
+**Decision:** **Cluster 11 owns `audit_log` table + write helper.** PRD 03 ships `writeAudit()` helper (see §5.1 audit helper code block) with a stopgap that writes to `console.info` + `Sentry.addBreadcrumb`. When Cluster 11 lands, helper internals swap to `INSERT INTO audit_log`. Caller signature is unchanged — zero PRD 03 code changes at swap.
 
-**Recommendation:** **B (Cluster 11).** Audit log is shared infra. If Cluster 11 isn't ready by the time Cluster 03 ships (likely — Wave 1 vs Wave 2), we **write to console + Sentry breadcrumb** as a stopgap, and migrate to `audit_log` table writes once Cluster 11 lands. Frontend never sees audit events; loss is operationally tolerable.
-
-**ESCALATE: founder** — confirm Cluster 11 owns audit_log + accept the breadcrumb-stopgap until Cluster 11 ships.
+**Why:** Audit log is shared infra; multiple clusters write to it (Cluster 01 already needs `account.deletion_requested` + `account.restored`). Owning it inside Cluster 11 avoids schema fragmentation. Stopgap window is operationally tolerable — frontend never reads audit events; Sentry breadcrumb preserves trace for any incident replay.
 
 ### 12.2 RESOLVED 2026-05-15 — Typed-confirm string
 
@@ -907,33 +1017,51 @@ Dispatcher recommended "hash-of-brand-name modulo color-set-size (deterministic,
 
 **Mitigation:** (a) failures logged to Sentry; (b) operator script `scripts/reap-orphan-storage.ts` (admin-only) lists+removes objects whose `brand_id` no longer exists in `brands`. Run monthly during Phase A. Phase B may add a Vercel Cron once Cluster 11 cron infra is in place.
 
-### 12.7 OPEN QUESTION — A2.a "Account" button placement
+### 12.7 RESOLVED 2026-05-17 — A2.a "Account" button placement
 
-A2.a hi-fi shows an "Account" button next to "+ New brand" in the top-right of the picker block. This routes to `/account` (Cluster 04). If Cluster 04 hasn't shipped by Wave 2 close, the button needs a placeholder behavior.
+A2.a hi-fi shows an "Account" button next to "+ New brand" in the top-right of the picker block.
 
-**Recommendation:** if Cluster 04 not yet shipped, route to `/account` with a Cluster 11 `<NotShippedYet>` shell (per Cluster 11's "feature parking lot" pattern). If Cluster 04 has shipped, route lands normally.
+**Decision:** **Button always renders.** Click routes to `/account`. If Cluster 04 has not yet registered the `/account` route at runtime, the router falls back to `/account/coming-soon` which renders Cluster 11 `<NotShippedYet feature="Account settings" />`. Discoverability is preserved.
 
-**ESCALATE: founder** — confirm fallback is acceptable, or hide the button entirely until Cluster 04 ships.
+**Why:** Figma always renders Account/Settings from chrome — never feature-gated. Hiding the button removes the entry point and confuses discoverability. Placeholder shell is the standard pattern when route is not yet ready. PRD 04 ships `<NotShippedYet>` route stub as part of its initial scaffolding; PRD 11 ships the placeholder component.
 
 ### 12.8 RESOLVED 2026-05-15 — Hi-fi B12.4 footer copy mis-leak
 
-B12.4 (Phase 2) footer reads: "GDPR Art. 17 cascade · 30-day soft-delete + daily hard-delete cron". This describes the **account-deletion** cascade (Cluster 01), NOT brand-deletion. Brand-delete is immediate hard cascade per audit + this PRD's `delete_brand` RPC.
+B12.4 hi-fi footer reads: "GDPR Art. 17 cascade · 30-day soft-delete + daily hard-delete cron". This describes the **account-deletion** cascade (Cluster 01), NOT brand-deletion. Brand-delete is immediate hard cascade per audit + this PRD's `delete_brand` RPC.
 
-**Resolution:** B12.4 footer copy is hi-fi divergence from intended brand-delete semantics. When Phase 2 builds B12.4, replace the footer with "This action is permanent." (matching A4.3's foot meta) to avoid mis-implying a 30-day window that doesn't exist for brand-delete.
+**Resolution:** B12.4 footer copy is hi-fi divergence from intended brand-delete semantics. Per 2026-05-17 reversal, B12.4 ships MVP via the reused `<DeleteBrandModal>` component — footer is overridden to "This action is permanent." (matching A4.3's foot meta) so the modal renders correctly regardless of caller. The hi-fi mis-leak stays in the source HTML as-is; the implementation diverges intentionally.
 
-Noted here for the Phase 2 implementer; no MVP action needed.
+### 12.9 RESOLVED 2026-05-17 — A3.b store-URL validation
 
-### 12.9 OPEN QUESTION — A3.b store-URL validation
+A3.b shows the Shopify store URL field with `.myshopify.com` suffix affixed.
 
-A3.b shows the Shopify store URL field with `.myshopify.com` suffix affixed. Should the wizard validate that the typed subdomain is reachable BEFORE the user clicks "Connect Shopify"? Or let the OAuth flow itself fail and route back?
+**Decision:** **No pre-flight validation. Let OAuth fail.** User clicks "Connect Shopify" → redirects to Shopify OAuth → if store invalid, redirects back to step 2 with `?error=store_not_found`. M9 `/api/shopify/connect` already handles this — see M9 reuse note in §5.6. Step 2 component renders inline error banner ("Store not found — check the subdomain") when `?error=store_not_found` present in URL.
 
-**Recommendation:** **let OAuth fail.** M9's `/api/shopify/connect` already handles invalid-store errors with a redirect back to step 2 with `?error=store_not_found`. Adding pre-flight validation in this PRD duplicates logic + adds a network round-trip.
+**Why:** Shopify itself is the source of truth for store existence — duplicate pre-flight check adds a network round-trip with no upside. Most Shopify apps follow this pattern. CORS would block a direct browser HEAD request anyway; pre-flight would require an extra server proxy endpoint. Founder-confirmed 2026-05-17.
 
-**ESCALATE: founder** — confirm the let-OAuth-fail UX is acceptable, or build pre-flight check.
+### 12.10 RESOLVED 2026-05-17 — B12 archive inclusion (reversal of 2026-05-13 lock)
 
----
+Founder reversed the 2026-05-13 lock that scoped B12 (`/account/brands` archived inventory page) to Phase 2.
 
-## 13. References
+**Decision (locked 2026-05-17 per `docs/kova-final-prds/00f-B12_REVERSAL_DISPATCH.md`):**
+
+1. `/account/brands` page (`<BrandsAccountView>`) ships **MVP**. Full active + archived inventory inside Cluster 04 `.acc-rail` shell.
+2. `restore_brand` RPC is **REAL**, not a stub. Clears `archived_at`. Audit event `brand.restored` fired.
+3. `POST /api/brands/restore` Edge Function ships.
+4. `<RestoreBrandModal>` (B12.3) ships — `.dlg.sm` neutral confirm, no typed-confirm.
+5. `<DeleteBrandModal>` (B12.4) reused — typed-confirm hard cascade; footer override "This action is permanent." per §12.8.
+6. `<BrandsSegmentedControl>` ships (`All / Active / Archived`); state in URL `?filter=`.
+7. A2.a "Archived" filter dropdown on `/brands` is **ENABLED** (`Hide / Show / Only`) — no longer DISABLED w/ "Coming Phase 2" tooltip.
+8. `BRANDS_RESTORE_ENABLED` feature flag kept (default `true`) as emergency rollback safety toggle.
+9. **Brand "Import" CTA dropped entirely.** Founder cut — never building. Hero on B12 has "+ New brand" CTA only.
+
+**Cross-PRD coordination (per 00f doc dispatch prompts B/C/D/E):**
+- **PRD 04** adds "Brands" item to `.acc-rail` nav + registers `/account/brands` route (auth meta, dark theme).
+- **PRD 02** resolves §12.11 Brands-item sidebar SOON pill (item ships visible at MVP, no SOON treatment).
+- **PRD 08** `useObjectActions` composable adds archived-state action set (Restore / Delete) on brand cards based on `brand.archived_at !== null`.
+- **`00-PRD_SCOPE_PLAN.md` §3** Cluster 03 summary + line-130 archive-flow note updated to reflect reversal.
+
+**Why founder reversed:** Without an archived-list page in MVP, archive becomes a one-way trap (no UI restore path). Forcing users to wait through Phase 2 for a discovery mechanism would either drive avoid-archive workarounds or require operator SQL for support tickets. Shipping B12 MVP is cheap incremental work atop the same RPCs + components Cluster 03 already produced — the page reuses `<BrandCard>`, `<DeleteBrandModal>`, the stored archived_at column, the existing palette logic, and the same Cluster 04 chrome it would have used in Phase 2 anyway.
 
 ### 13.1 03-doc rows covered
 
@@ -942,17 +1070,22 @@ A3.b shows the Shopify store URL field with `.myshopify.com` suffix affixed. Sho
 
 ### 13.2 Q-decisions baked in
 
-- **A4.2 archive flow** (founder confirmed 2026-05-13): action ships MVP, no archived-list page MVP (Phase 2 = B12).
+- **A4.2 archive flow** (founder confirmed 2026-05-13 — action ships; **REVERSED 2026-05-17** — B12 archived inventory page ships MVP, restore + delete-archived enabled, A2.a "Archived" filter dropdown ENABLED, Import CTA dropped entirely; see §12.10 + `00f-B12_REVERSAL_DISPATCH.md`).
 - **Q17** (REVERSED 2026-04-25): brand label click → navigates to brand's dashboard. NO popover. This PRD does not own the canvas brand-label (Cluster 06) but ships the `selectedBrand` store getter that Cluster 06 consumes.
 - **Q19** (Figma-exact trash retention): informs the brand-delete cascade messaging ("This action is permanent" — no 30-day window for brand delete, unlike account delete).
 - **Q24** (drag-drop semantics): N/A in this PRD — owned by Cluster 05 / 06.
+- **§12.1 audit_log ownership** (RESOLVED 2026-05-17): Cluster 11 owns `audit_log` table + writer; PRD 03 ships `writeAudit()` helper with breadcrumb stopgap.
+- **§12.7 Account button placement** (RESOLVED 2026-05-17): button always renders; `<NotShippedYet>` fallback if PRD 04 not ready.
+- **§12.9 Shopify store-URL pre-flight** (RESOLVED 2026-05-17): no pre-flight; let OAuth fail with `?error=store_not_found` redirect.
 
 ### 13.3 Hi-fi files
 
 - `main-main-kova-scope/batch-a/dark/Kova Hi-Fi A2+A3 Brand picker & New brand - Dark.html` — A2.a populated picker + A2.b zero-state + A3.a/b/c/d 4-step wizard
 - `main-main-kova-scope/batch-a/dark/Kova Hi-Fi A4+A9+A10 Modals - Dark.html` — A4.1 Rename + A4.2 Archive + A4.3 Delete typed-confirm
 - `main-main-kova-scope/batch-a/dark/Kova Hi-Fi A6+A2a Popovers + A8 Dialogs - Dark.html` — `.dlg` shell + `.btn.danger` vocabulary reference
-- `main-main-kova-scope/batch-a-additions/dark/Kova Hi-Fi B12 Brands page - Dark.html` — B12.1/2/3/4 (Phase 2 reference; NOT MVP)
+- `main-main-kova-scope/batch-a-additions/dark/Kova Hi-Fi B12 Brands page - Dark.html` — B12.1/2/3/4 (**MVP per 2026-05-17 reversal**; Import CTA in hi-fi is DROPPED from build)
+- `main-main-kova-scope/handoff-docs/CHUNK_B12_BRANDS_PAGE_REWASH.md` — B12 implementation notes referenced by 00f reversal dispatch
+- `main-main-kova-scope/batch-a-additions/dark/screenshots/B12/` — B12 reference screenshots
 
 ### 13.4 Design system
 
@@ -995,14 +1128,15 @@ A3.b shows the Shopify store URL field with `.myshopify.com` suffix affixed. Sho
 
 - Dashboard chrome / sidebar (Cluster 02)
 - Brand Kit settings UI + per-brand fonts / tone-snippets / saved-blocks editor (Cluster 05)
-- Brand-color override picker (Cluster 05 Phase 2)
-- `/account/brands` Phase-2 page (Cluster 04 Phase 2)
-- Restore from archive (Cluster 04 Phase 2; RPC stub ships here)
+- Brand-color override picker (Cluster 05 Phase 2 — only Phase 2 item remaining for Cluster 03)
+- `/account` shell + `.acc-rail` sidebar + `/account/brands` **route registration** (PRD 04; page content owned here per 2026-05-17 reversal)
 - Shopify OAuth flow internals (M9 reuse)
-- `<KovaModal>` / `useConfirm()` / `useToast()` / `<KovaSkeleton>` / `<TypedConfirmField>` / `idempotency_keys` / `audit_log` table (Cluster 11; see §12.1 for audit-log open question)
+- `<KovaModal>` / `useConfirm()` / `useToast()` / `<KovaSkeleton>` / `<TypedConfirmField>` / `<NotShippedYet>` / `idempotency_keys` / `audit_log` table + writer (Cluster 11; PRD 03 ships `writeAudit()` stopgap)
 - Canvas brand-label rendering (Cluster 06 — reads `useBrandsStore.selectedBrand`)
 - Trash / version-history cascades (Cluster 09 — must add `brand_id ON DELETE CASCADE` to its tables)
 - GDPR account-deletion cascade (Cluster 01 — `brands.user_id ON DELETE CASCADE` already wired; account-delete fires through us indirectly)
+- Sidebar "Brands" nav item rendering (PRD 02 — owns sidebar item rendering; per §12.10 resolves §12.11 Brands-item SOON pill removal)
+- Archived-state context-menu items on brand cards (PRD 08 — `useObjectActions` composable adds Restore/Delete action set when `brand.archived_at !== null`)
 
 ---
 

@@ -2,6 +2,9 @@
 
 > **Status:** ✅ APPROVED FOR PRD AUTHORING. Two audits cleared: (1) Foundation pre-PRD audit 2026-05-13 (`main-main-kova-scope/handoff-docs/PRE_PRD_READINESS_AUDIT_V2.md`); (2) Comprehensive decision-stress-test + gap-fill audit 2026-05-14 (`00c-COMPREHENSIVE_AUDIT_REPORT.md`, 2585 lines) — verdict ⚠️ REQUIRES FOUNDER RATIFICATION flipped to ✅ after founder ratified all 10 priority items (see §5.6). This doc maps the 182-row inventory from `03-implied-surfaces-and-backend.md` + the 39 hi-fi mockup files in `main-main-kova-scope/` into 12 cohesive feature-cluster PRDs.
 
+**Changelog:**
+- 2026-05-17 — Cmd+K dropped from Cluster 11 (00g); §11 Pre-launch checklist added; offline UX simplified to Figma-style icon+tooltip; KD-1/2/4/5/6 ratified.
+
 ---
 
 ## 1. Purpose
@@ -127,14 +130,16 @@ For each cluster: scope boundary, 03-doc rows covered, hi-fi files referenced, Q
 - `batch-a/dark/Kova Hi-Fi A6+A2a Popovers + A8 Dialogs - Dark.html` (modal shell reference)
 
 **Q-decisions baked in:**
-- A4.2 archive flow stays (founder confirmed 2026-05-13: archive action exists, no archived-list page at MVP — Phase 2 adds list)
+- A4.2 archive flow stays. Founder 2026-05-13 locked archive action only; **REVERSED 2026-05-17 — B12 archived Brands page now MVP** (PRD 03 owns; Restore + Delete-archived modals + segmented `All / Active / Archived` filter + A2.a picker "Archived" filter ENABLED; Import CTA dropped entirely).
 - Q17: clicking brand label = navigate to brand's dashboard (no in-canvas brand-switcher)
 
 **Infrastructure scope:**
-- `brands` table CRUD: `create_brand`, `archive_brand` (sets `archived_at`), `restore_brand` (Phase 2 — not in this PRD), `delete_brand` (cascades to canvases, media, fonts, etc.)
-- `useBrandsStore` brand-creation flow
+- `brands` table CRUD: `create_brand`, `archive_brand` (sets `archived_at`), **`restore_brand` (MVP per 2026-05-17 reversal — SECURITY DEFINER, clears `archived_at`)**, `delete_brand` (cascades to canvases, media, fonts, etc.)
+- `useBrandsStore` brand-creation flow + **`archivedBrands` getter + `restoreBrand` action (MVP per 2026-05-17 reversal)**
 - Typed-confirm modal pattern (`useConfirm()` composable — built in Cluster 11)
 - Per-brand color palette (auto-assign from Kova brand-color set: coral/violet/sage/sand/graphite per A2 pattern)
+- **B12 `/account/brands` page content** (`<BrandsAccountView>` + segmented control + Restore/Delete-archived flows). Page content owned here; route registration owned by Cluster 04.
+- **`BRANDS_RESTORE_ENABLED` feature flag** — kept (default `true`) as rollback safety toggle.
 
 **Estimated PRD size:** ~15-20 spec sections. Small-medium.
 
@@ -379,14 +384,11 @@ For each cluster: scope boundary, 03-doc rows covered, hi-fi files referenced, Q
 
 **Scope:** Toast system + error pages + modal primitives + loading skeletons + offline indicator + empty-state patterns. The non-feature-specific UI infrastructure all other clusters use.
 
-**2026-05-17 REVERSAL — Cmd+K command palette DROPPED.** Founder decision: canvas workflow doesn't need global navigation shortcut (users exit to dashboard for file/brand switching, not inside canvas). A5 hi-fi retired from MVP scope.
-
 **03-doc coverage:** Scattered cross-cuts. §3C #7 (right-click shell), #8 (useConfirm) overlap with Cluster 08 but the primitive lives here.
 
 **Hi-fi files referenced:**
 - `batch-a-additions/dark/Kova Hi-Fi B1 Toasts - Dark.html` (8 toast scenes: success/error/info/action/AI-gen/stacked/long-content/over-modal)
 - `batch-a-additions/dark/Kova Hi-Fi B2 Error Pages - Dark.html` (404/500/network-unreachable)
-- ~~`batch-a/dark/Kova Hi-Fi A5 Command-K - Dark.html`~~ (DROPPED 2026-05-17 — no Cmd+K in Kova)
 - `batch-a/dark/Kova Hi-Fi A6+A2a Popovers + A8 Dialogs - Dark.html` (modal `.dlg` shell + popover primitives)
 - `batch-a-additions/dark/Kova Hi-Fi B7 Loading Skeletons - Dark.html` (5 skeleton patterns)
 - `batch-a-additions/dark/Kova Hi-Fi B9 List Search Empty - Dark.html` (3 empty-result patterns)
@@ -399,15 +401,17 @@ For each cluster: scope boundary, 03-doc rows covered, hi-fi files referenced, Q
 - Error pages: routes `/404`, `/500`, fallback boundary catches unhandled. Network-unreachable boundary.
 - `<KovaModal />` component (wraps Reka Dialog) + size variants (sm/md/lg) per A6+A2a
 - `useConfirm()` composable (also referenced by Cluster 08)
-- Command-K palette composable (`use-command-palette.ts`) + search index + result renderers
 - Skeleton component primitives + per-surface skeleton compositions
 - Empty-state component + per-surface empty illustrations
 - Offline indicator composable: `navigator.onLine` + Supabase channel state (§3C #15)
-- Network status pill (A13 pattern)
+- `<NetworkStatusIndicator>` (Figma-style icon + tooltip; offline-only render) (no banner; no pill — single topbar icon + tooltip per founder decision 2026-05-17)
+- Sentry / Resend / Vercel cron integration scaffolding (stub-guarded with env vars at MVP; real accounts wired pre-launch per §11)
 
 **Estimated PRD size:** ~30-35 spec sections. Medium-large.
 
 **Dependencies:** None — foundational. Used by ALL other clusters.
+
+**Changelog 2026-05-17:** Cmd+K dropped (00g); offline UX → Figma-style icon+tooltip only; Sentry / Resend / Vercel cron stubbed (real wiring at pre-launch §11); KD-1/2/4/5/6 ratified.
 
 ---
 
@@ -448,7 +452,7 @@ Sequential authoring (one PRD at a time per founder pick 2026-05-13). Six waves,
 | Wave | PRD(s) | Why this order |
 |------|--------|----------------|
 | **1** | **01 Auth & Identity** | Foundation. Every other cluster depends on logged-in user. |
-| **1** (close) | **11 Shared UI Infrastructure** | Foundation. Every other cluster uses toasts/modals/skeletons/error-pages/Command-K. |
+| **1** (close) | **11 Shared UI Infrastructure** | Foundation. Every other cluster uses toasts/modals/skeletons/error-pages. |
 | **2** | **02 Onboarding & Dashboard** | Post-auth landing. Sets the dashboard chrome other clusters reference. |
 | **2** (close) | **03 Brand Management** | Brand records exist after this. Canvas + Account both need brand context. |
 | **3** | **04 Account Page + Stripe Billing** | User-scoped account chrome + billing foundation. |
@@ -675,7 +679,6 @@ These primitives + integrations touch 3+ PRDs and need consistent treatment:
 | Toast system (incl. variant taxonomy: success / error / info / AI-gen) | 11 | every cluster with mutation feedback (03, 04, 05, 06, 07, 09, 10) |
 | Modal `.dlg` shell | 11 | 03, 04, 05, 08, 09 |
 | Loading skeletons | 11 | 02, 03, 04, 05, 09 |
-| Command-K palette | 11 | 02, 06 (canvas-aware nav) |
 | Right-click context-menu shell | 08 | 02 (file grid right-click), 03 (brand list right-click), 06 (layer right-click), 08 (canvas right-click) |
 | Keyboard shortcut registry | 08 | 06 (tool shortcuts), 07 (boolean ops shortcuts), 08 (all menu shortcuts), 12 (custom-keybindings unlock-ready) |
 | User preferences (Layer 1 JSONB + Layer 2 localStorage) | 12 | 06 (panel collapse), 08 (recent colors, ruler visibility), 07 (show text suggestions) |
@@ -736,19 +739,114 @@ Both audits cleared, all 10 priority items ratified (see §5.6). **Ready for Wav
 
 ---
 
-## 11. Pre-launch external account checklist (deferred 2026-05-17)
+## 11. Pre-launch checklist
 
-Three external services are required for prod but **deferred during dev** per founder 2026-05-17. Implementation agents must stub these with TODO comments + env-var name placeholders during Phase 1. Founder wires real accounts (~1 hour batch) before first prod deploy.
+> **Purpose:** Single master gate listing every deferred external account, env var, domain DNS record, and infrastructure provisioning step that MUST be green before the first production deploy. PRDs reference this section when they stub an integration (e.g., Sentry / Resend / Vercel cron in PRD 11). Founder owns this gate.
 
-| Service | Used by | Env vars | Local dev workaround | Setup time |
-|---|---|---|---|---|
-| **Sentry** | All clusters (error tracking + session replays) | `VITE_SENTRY_DSN_BROWSER`, `SENTRY_DSN_SERVER` | None needed — silently no-op in dev | ~10 min |
-| **Resend** | Cluster 01 (magic-link, deletion confirm), Cluster 04 (Stripe receipts) | `RESEND_API_KEY` | Local Supabase Inbucket catches magic-link emails — sufficient for dev | ~15 min (DNS propagation slowest) |
-| **Vercel Cron** | Cluster 01 (delete-account cron), Cluster 11 (idempotency cleanup cron) | `CRON_SECRET` + Vercel Pro plan | Cron only fires in deployed env — trigger handlers manually via curl in dev | ~5 min |
+> **Status:** All items deferred unless marked complete. Each item lists the owning PRD + the env var(s) the running code expects to be populated.
 
-**Stub pattern for agents:** wrap each integration in a guard that returns a no-op when env var missing. Example: `if (!process.env.RESEND_API_KEY) { console.warn('Resend not configured — skipping send'); return; }`. Never block the dev flow.
+### 11.1 Error tracking — Sentry
 
-**Pre-launch wire-up checklist** (founder runs before first prod deploy):
-- [ ] Sentry — create kova-browser + kova-server projects → copy DSNs to env vars
-- [ ] Resend — add domain kova.app → SPF + DKIM DNS records → wait verify → generate API key
-- [ ] Vercel — upgrade to Pro → `openssl rand -hex 32` → save as `CRON_SECRET`
+**Owning PRD:** 11 — Shared UI Infrastructure
+
+- [ ] Create Sentry organization (name: `kova`)
+- [ ] Create project `kova-browser` (platform: Vue 3) → copy public DSN
+- [ ] Create project `kova-server` (platform: Node.js) → copy DSN
+- [ ] Set env vars in Vercel project settings:
+  - `VITE_SENTRY_DSN_BROWSER` = browser-project DSN (VITE_ prefix is intentional — Sentry browser DSNs are public per Sentry docs)
+  - `SENTRY_DSN_SERVER` = server-project DSN (server-only; never VITE_)
+- [ ] Verify `kova-browser` receives a test error from a Preview deployment
+- [ ] Verify `kova-server` receives a test error from a Preview deployment
+- [ ] Configure alert rules (founder's email) for any error with > 5 occurrences in 1 hour
+
+### 11.2 Transactional email — Resend
+
+**Owning PRD:** 01 — Auth + 04 — Account/Stripe Billing + 11 — Shared UI Infrastructure
+
+- [ ] Create Resend account (founder's email)
+- [ ] Verify domain `kova.app` — add DNS records (SPF + DKIM + DMARC) per Resend onboarding. Records:
+  - SPF: `v=spf1 include:resend.com ~all`
+  - DKIM: TXT record at `resend._domainkey.kova.app` (value provided by Resend)
+  - DMARC: TXT record at `_dmarc.kova.app` (`v=DMARC1; p=quarantine; rua=mailto:postmaster@kova.app`)
+- [ ] Wait for DNS propagation (5 min to 48 h)
+- [ ] Send test email from Resend dashboard → verify deliverability
+- [ ] Generate API key (full-send scope) → copy
+- [ ] Set env var in Vercel project settings:
+  - `RESEND_API_KEY` = generated key (server-only; never VITE_)
+- [ ] Send a real `deletion-scheduled` email from a Preview deployment → verify rendering in 4 representative clients (Gmail web, Apple Mail desktop, Outlook 2016, mobile Gmail)
+- [ ] Configure `List-Unsubscribe` header in every Resend send (per Resend best-practice docs)
+
+### 11.3 Scheduled jobs — Vercel cron
+
+**Owning PRD:** 11 — Shared UI Infrastructure (idempotency-key cleanup) + future PRDs
+
+- [ ] Confirm Vercel project is on Pro plan or higher (cron requires it)
+- [ ] Generate `CRON_SECRET` — strong random string (≥ 32 bytes). Generate via: `openssl rand -base64 32`
+- [ ] Set env var in Vercel project settings:
+  - `CRON_SECRET` = generated string (server-only; never VITE_)
+- [ ] Verify `vercel.json` cron entry is present and schedule = `0 4 * * *` (04:00 UTC daily)
+- [ ] Verify `api/cron/idempotency-cleanup.ts` returns 200 when called with `Authorization: Bearer ${CRON_SECRET}` from a Preview deployment
+- [ ] After first cron firing in production, verify Vercel logs show the cron handler executed + a non-zero `deleted` count after 24 h of production traffic
+
+### 11.4 Stripe — Billing
+
+**Owning PRD:** 04 — Account + Stripe Billing
+
+- [ ] Create Stripe account (founder)
+- [ ] Verify business identity (Stripe Atlas or local equivalent — required for live mode)
+- [ ] Create Product: `Kova Pro` + Prices (monthly + annual) per PRD 04 §4 pricing schedule
+- [ ] Generate API keys (publishable + secret) — use TEST keys first; switch to LIVE keys at launch
+- [ ] Set env vars in Vercel project settings:
+  - `VITE_STRIPE_PUBLISHABLE_KEY` = publishable key (browser-safe per Stripe docs)
+  - `STRIPE_SECRET_KEY` = secret key (server-only; never VITE_)
+- [ ] Configure webhook endpoint in Stripe Dashboard → `https://kova.app/api/webhooks/stripe`
+- [ ] Subscribe webhook to events: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_failed`
+- [ ] Set env var:
+  - `STRIPE_WEBHOOK_SECRET` = webhook signing secret (server-only)
+- [ ] End-to-end test in TEST mode: signup → upgrade → cancel → downgrade. Verify all webhook events fire and Kova DB reflects state.
+
+### 11.5 Anthropic — AI chat + memory
+
+**Owning PRD:** 10 — AI Chat + Memory
+
+- [ ] Verify Anthropic API account is provisioned with `Claude Sonnet 4.6` + `Claude Opus 4.7` model access
+- [ ] Generate API key → copy
+- [ ] Set env var in Vercel project settings:
+  - `ANTHROPIC_API_KEY` = generated key (server-only; NEVER VITE_)
+- [ ] Configure spend alerts at 50 % / 80 % / 100 % of monthly budget
+- [ ] Verify a chat completion from a Preview deployment hits Anthropic and streams a response
+
+### 11.6 Supabase — Database + Auth + Storage + Realtime
+
+**Owning PRD:** All clusters (foundational)
+
+- [ ] Confirm Supabase project on Pro plan or higher (RLS + Realtime + cron compatibility)
+- [ ] Run all migrations 0001 onwards against production project: `supabase db push` (or equivalent)
+- [ ] Verify RLS enabled on every table per audit §2.A migrations
+- [ ] Set env vars in Vercel project settings:
+  - `VITE_SUPABASE_URL` = project URL (browser-safe per Supabase docs)
+  - `VITE_SUPABASE_ANON_KEY` = anon key (browser-safe per Supabase docs)
+  - `SUPABASE_SERVICE_ROLE_KEY` = service role key (server-only; NEVER VITE_)
+- [ ] Verify a sign-in flow works end-to-end against production Supabase from a Preview deployment
+
+### 11.7 Domain + DNS — `kova.app`
+
+**Owning PRD:** All clusters (foundational)
+
+- [ ] Domain registered + nameservers point to Vercel / Cloudflare (whichever is canonical)
+- [ ] A / AAAA / CNAME records configured per Vercel "Add Domain" wizard
+- [ ] Verify HTTPS cert auto-provisioned (Let's Encrypt via Vercel)
+- [ ] Verify `kova.app` and `www.kova.app` both serve the app (one redirects to canonical)
+- [ ] MX records → Resend or other email provider (for postmaster@ + system mail)
+
+### 11.8 Sign-off gate
+
+**Production deploy is blocked until every checkbox in §11.1 through §11.7 is checked.** Founder runs a final sweep:
+
+- [ ] All env vars present in Vercel production environment (count check)
+- [ ] No `console.warn` "[stub mode]" messages appear on a fresh production app load
+- [ ] All cron handlers return 200 from cron-authenticated requests
+- [ ] First-real-user signup → onboarding → dashboard → canvas-create → export-image flow works end-to-end without errors in Sentry
+- [ ] Memo this checklist's completion in `00-PRD_SCOPE_PLAN.md §0 changelog` with date.
+
+---

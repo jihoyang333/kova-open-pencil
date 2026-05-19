@@ -88,6 +88,27 @@
 
 ---
 
+## Founder-locked decisions (PRD §12.11 + §12.12)
+
+Twelve decisions ratified during PRD 10 review rounds 1 + 2 + 3. Each affects specific tasks below — read this index before starting any task.
+
+| # | Decision | Affects task(s) |
+|---|---|---|
+| 1 | Voice-references indicator → **Phase B** (defer; not in this plan) | None in this plan; Task 15 omits the pill |
+| 2 | Brand-memory injection cap → **50 newest by `created_at DESC`** | NEW Task 5b (`formatBrandMemories` extension) |
+| 3 | Chat conversation tabs per canvas → **cap 20**; new-chat button disables at 20 with tooltip `Max 20 chats per canvas — close one first.` | Task 15 (`<ChatPanel>` tab strip) |
+| 4 | Chip body click → **no-op** (display-only; only `×` removes) | Task 12 (`<ProductReferenceChip>`) |
+| 5 | "Import N to chat" → **auto-switch right-panel to AI tab** before importing | Task 17 (Shop panel callback) |
+| 6 | Chip `×` → **always visible at `opacity-60`, full opacity on hover/focus** | Task 12 (`<ProductReferenceChip>`) |
+| 7 | Composer footer vertical order → `image attachments → product chips → textarea → send` (chip row BELOW image attachments) | Task 14 (`<ChatInput>` wiring) |
+| 8 | Anthropic ZDR → **Phase A acceptable**; ship with manual deletion queue + privacy disclosure | Task 19 (disclosure copy) |
+| 9 | New chat tab → **empty chips by default**; chips do NOT carry over | Task 15 (`<ChatPanel>` new-chat handler) |
+| 10 | Tab strip overflow → **horizontal scroll with arrow buttons at edges**; single-row, no wrap, no dropdown | Task 15 (`<ChatPanel>` tab strip) |
+| 11 | Tone-snippet cap=10 ordering → **first 10 by user-defined JSONB array order** (Cluster 05 ships reorder UI + helper copy) | Task 5 (already correct — no change) |
+| 12 | Existing Round-1 decisions (right-panel tab order = Design+AI, Prototype dropped, per-conversation chip persistence, no popup fallback) — see PRD §12.11 | Task 16 (mount) + Task 15 (chat surface) |
+
+---
+
 ## Task 1: Add `ChatProductReference` type + extend `ChatConversation`
 
 **Files:**
@@ -762,6 +783,127 @@ git commit -m "feat(prd10): formatToneSnippets layer (cap 10, JSONB-array order,
 
 ---
 
+## Task 5b: `formatBrandMemories` cap=50 newest (founder-locked §12.12 item 2)
+
+**Files:**
+- Modify: `kova-open-pencil-1/src/ai/build-system-prompt.ts` (existing `formatBrandMemories` at line ~105)
+- Extend: `kova-open-pencil-1/tests/engine/ai/build-system-prompt-extensions.test.ts`
+
+> **Why this task exists:** M5's `formatBrandMemories` is uncapped. Founder-locked Round-1 review (2026-05-17) requires cap=50 newest-by-`created_at` to auto-prune stale memories from the prompt and bound token budget.
+
+- [ ] **Step 1: Write the failing test**
+
+  Append to `tests/engine/ai/build-system-prompt-extensions.test.ts`:
+
+```typescript
+import type { BrandMemory } from '@/types/kova/brand-memory'
+
+const makeMemory = (i: number, daysAgo: number): BrandMemory => ({
+  id: `m${i}`,
+  brand_id: 'b1',
+  user_id: 'u1',
+  content: `memory-${i}`,
+  source: 'user',
+  created_at: new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000).toISOString()
+})
+
+describe('formatBrandMemories cap=50 newest (§12.12 item 2)', () => {
+  test('renders all when ≤ 50 memories', async () => {
+    const memories = Array.from({ length: 30 }, (_, i) => makeMemory(i, i))
+    const prompt = await buildSystemPrompt({
+      brandProfile: baseBrand, availableImages: [],
+      brandMemories: memories, chatAttachments: [], productReferences: []
+    })
+    expect(prompt).toContain('## Brand Memories')
+    for (let i = 0; i < 30; i++) {
+      expect(prompt).toContain(`memory-${i}`)
+    }
+    expect(prompt).not.toContain('older memories exist')
+  })
+
+  test('caps to 50 newest by created_at DESC when > 50', async () => {
+    // memory-0 = today (newest); memory-99 = 99 days ago (oldest)
+    const memories = Array.from({ length: 100 }, (_, i) => makeMemory(i, i))
+    const prompt = await buildSystemPrompt({
+      brandProfile: baseBrand, availableImages: [],
+      brandMemories: memories, chatAttachments: [], productReferences: []
+    })
+    // Newest 50 (memory-0 ... memory-49) present
+    for (let i = 0; i < 50; i++) {
+      expect(prompt).toContain(`memory-${i}`)
+    }
+    // Older 50 (memory-50 ... memory-99) absent
+    for (let i = 50; i < 100; i++) {
+      expect(prompt).not.toContain(`memory-${i}`)
+    }
+    expect(prompt).toContain('(50 older memories exist; using the most recent 50 per the configured cap.)')
+  })
+
+  test('sort is stable on tied created_at', async () => {
+    const sameTime = '2026-05-17T00:00:00Z'
+    const memories: BrandMemory[] = [
+      { id: 'a', brand_id: 'b1', user_id: 'u1', content: 'A', source: 'user', created_at: sameTime },
+      { id: 'b', brand_id: 'b1', user_id: 'u1', content: 'B', source: 'user', created_at: sameTime }
+    ]
+    const prompt = await buildSystemPrompt({
+      brandProfile: baseBrand, availableImages: [],
+      brandMemories: memories, chatAttachments: [], productReferences: []
+    })
+    expect(prompt).toContain('A')
+    expect(prompt).toContain('B')
+  })
+})
+```
+
+- [ ] **Step 2: Run test — should FAIL**
+
+  `cd kova-open-pencil-1 && bun test tests/engine/ai/build-system-prompt-extensions.test.ts -t "cap=50"` → fails (uncapped).
+
+- [ ] **Step 3: Implement the cap**
+
+  Replace existing `formatBrandMemories` (line ~105 of `src/ai/build-system-prompt.ts`) with:
+
+```typescript
+const MAX_BRAND_MEMORIES = 50
+
+function formatBrandMemories(memories: readonly BrandMemory[]): string {
+  // Sort newest-first by created_at DESC (lexicographic on ISO-8601 strings is correct).
+  const sorted = [...memories].sort((a, b) => b.created_at.localeCompare(a.created_at))
+  const limited = sorted.slice(0, MAX_BRAND_MEMORIES)
+  const memoryLines = limited.map((m) => `- ${m.content}`).join('\n')
+  const overflow = sorted.length > MAX_BRAND_MEMORIES
+    ? `\n\n(${sorted.length - MAX_BRAND_MEMORIES} older memories exist; using the most recent ${MAX_BRAND_MEMORIES} per the configured cap.)`
+    : ''
+  return `## Brand Memories
+The following are things you've learned about this brand from previous conversations.
+Apply these in all your design decisions for this brand.
+
+${memoryLines}${overflow}`
+}
+```
+
+- [ ] **Step 4: Run test — should PASS**
+
+  `cd kova-open-pencil-1 && bun test tests/engine/ai/build-system-prompt-extensions.test.ts` → green.
+
+- [ ] **Step 5: Verify no regression in M5 tests**
+
+  `cd kova-open-pencil-1 && bun run test:unit` → expect 1484+ pass, 0 fail (3 new tests added).
+
+- [ ] **Step 6: Commit**
+
+  ```
+  git add src/ai/build-system-prompt.ts tests/engine/ai/build-system-prompt-extensions.test.ts
+  git commit -m "feat(ai): cap brand memories to 50 newest by created_at DESC
+
+  Founder-locked PRD 10 §12.12 item 2 (2026-05-17 PRD review).
+  Sorts brandMemories by created_at DESC and slices first 50 before injection.
+  Auto-prunes stale memories from prompt; bounds token budget.
+  Adds 3 tests."
+  ```
+
+---
+
 ## Task 6: `formatProductReferences` extension + Layer 9 in `buildSystemPrompt`
 
 **Files:**
@@ -1390,6 +1532,23 @@ describe('<ProductReferenceChip>', () => {
     const titleEl = w.find('[data-test-id="chip-title"]')
     expect(titleEl.classes()).toContain('truncate')
   })
+
+  // Founder-locked §12.12 item 6 — × always visible at opacity-60, full on hover/focus
+  test('× button is always visible at opacity-60 (founder-locked accessibility)', () => {
+    const w = mount(ProductReferenceChip, { props: { reference: makeRef() } })
+    const removeBtn = w.find('[data-test-id="chip-remove"]')
+    expect(removeBtn.classes()).toContain('opacity-60')
+    expect(removeBtn.classes()).toContain('hover:opacity-100')
+  })
+
+  // Founder-locked §12.12 item 4 — chip body click is a no-op (display-only)
+  test('chip body click does NOT emit remove or any event', async () => {
+    const w = mount(ProductReferenceChip, { props: { reference: makeRef() } })
+    await w.find('[data-test-id="product-reference-chip"]').trigger('click')
+    expect(w.emitted('remove')).toBeFalsy()
+    // No other events should be emitted from body click either
+    expect(Object.keys(w.emitted())).toHaveLength(0)
+  })
 })
 ```
 
@@ -1633,6 +1792,29 @@ describe('<ChatInput> productReferences prop', () => {
     const emitted = w.emitted('remove-reference') as Array<[{ productId: string }]>
     expect(emitted[0][0]).toEqual({ productId: 'a' })
   })
+
+  // Founder-locked §12.12 item 7 — composer-footer vertical order:
+  // image attachments → product chips → textarea → send.
+  // Chip row MUST appear in the DOM AFTER the attachment-thumbnails block but BEFORE the <form>.
+  test('chip row sits below attachment thumbnails and above textarea (DOM order)', () => {
+    const w = mount(ChatInput, {
+      props: {
+        status: 'ready',
+        productReferences: [makeRef('a')],
+        attachments: [{ id: 'att1', publicUrl: 'https://x/a.jpg', fileName: 'a.jpg' }] as any
+      }
+    })
+    const html = w.html()
+    const attachmentsIdx = html.indexOf('data-test-id="chat-attachment-thumbnail"')
+    const chipsIdx = html.indexOf('data-test-id="product-reference-chip-row"')
+    const textareaIdx = html.indexOf('<textarea')
+    expect(attachmentsIdx).toBeGreaterThan(-1)
+    expect(chipsIdx).toBeGreaterThan(-1)
+    expect(textareaIdx).toBeGreaterThan(-1)
+    // Attachments come first, then chip row, then textarea
+    expect(attachmentsIdx).toBeLessThan(chipsIdx)
+    expect(chipsIdx).toBeLessThan(textareaIdx)
+  })
 })
 ```
 
@@ -1674,19 +1856,29 @@ const emit = defineEmits<{
 <template>
   <TooltipProvider>
     <div class="shrink-0 border-t border-border px-3 py-2">
-      <!-- NEW: product-reference chip row (above attachments) -->
+      <!--
+        Founder-locked composer-footer vertical order (§12.12 item 7):
+        image attachments (existing) → product chips (NEW, below attachments) → textarea (existing) → send/stop (existing)
+      -->
+
+      <!-- existing model-display dev block -->
+
+      <!-- 1. existing attachment thumbnails (image attachments row) -->
+      <!-- (existing markup retained — no change to its position) -->
+
+      <!-- 2. NEW: product-reference chip row (BELOW attachments, ABOVE textarea) -->
       <ProductReferenceChipRow
         :references="productReferences"
         @remove="emit('remove-reference', $event)"
       />
 
-      <!-- existing model-display dev block -->
-      <!-- existing attachment thumbnails -->
-      <!-- existing form -->
+      <!-- 3. existing form (textarea + send/stop button) -->
     </div>
   </TooltipProvider>
 </template>
 ```
+
+> **Wiring guidance:** in actual `ChatInput.vue`, locate the existing `<!-- Attachment thumbnails -->` block (around line 96–118 per `ChatInput.vue` lines reference in PRD §3.1) and insert `<ProductReferenceChipRow>` IMMEDIATELY AFTER that block (still BEFORE the `<form>` element that wraps the textarea). Do NOT place it before the attachment thumbnails.
 
 - [ ] **Step 4: Run test to verify it passes**
 
@@ -1887,14 +2079,56 @@ async function handleSwitchTab(conversationId: string) {
   }
 }
 
+// Founder-locked §12.12 item 3 — cap 20 chat conversations per canvas.
+const MAX_CHATS_PER_CANVAS = 20
+
+const isNewChatDisabled = computed(
+  () => chatStore.conversations.length >= MAX_CHATS_PER_CANVAS
+)
+
 async function handleNewTab() {
+  if (isNewChatDisabled.value) return // hard guard; button is also disabled in template
   const conv = await chatStore.createConversation(brandId, canvasId)
   chatStore.activeConversationId = conv.id
   chat.value = null
   resetChat()
   clearToolLogEntries()
   chatImages.clearAttachments()
+  // Founder-locked §12.12 item 9 — new chat starts with empty chips.
+  // No carry-over from prior conversation. New conversation row has
+  // product_references = '[]' per the migration DEFAULT (Task 2).
 }
+
+// Founder-locked §12.12 item 10 — tab strip horizontal scroll with arrow buttons.
+const tabStripRef = ref<HTMLElement | null>(null)
+const canScrollLeft = ref(false)
+const canScrollRight = ref(false)
+
+function updateScrollArrows() {
+  const el = tabStripRef.value
+  if (!el) {
+    canScrollLeft.value = false
+    canScrollRight.value = false
+    return
+  }
+  canScrollLeft.value = el.scrollLeft > 0
+  canScrollRight.value = el.scrollLeft + el.clientWidth < el.scrollWidth - 1
+}
+
+function scrollTabs(direction: 'left' | 'right') {
+  const el = tabStripRef.value
+  if (!el) return
+  const delta = direction === 'left' ? -120 : 120
+  el.scrollBy({ left: delta, behavior: 'smooth' })
+}
+
+onMounted(() => {
+  updateScrollArrows()
+  const ro = new ResizeObserver(updateScrollArrows)
+  if (tabStripRef.value) ro.observe(tabStripRef.value)
+  onBeforeUnmount(() => ro.disconnect())
+})
+watch(() => chatStore.conversations.length, () => nextTick(updateScrollArrows))
 
 onMounted(() => {
   setAssistantFinishHandler((message, conversationId) => {
@@ -1923,9 +2157,30 @@ watch(pendingMessage, async (msg) => {
 
 <template>
   <div data-test-id="chat-panel" class="flex h-full w-full flex-col select-text">
-    <!-- Tab strip for multiple conversations -->
+    <!--
+      Tab strip for multiple conversations.
+      Founder-locked §12.12 item 10 — horizontal scroll with arrow buttons at edges.
+      Founder-locked §12.12 item 3  — new-chat disables at MAX_CHATS_PER_CANVAS=20.
+    -->
     <div class="flex shrink-0 items-center gap-1 border-b border-border px-2 py-1.5">
-      <div class="flex flex-1 items-center gap-1 overflow-x-auto">
+      <!-- Left scroll arrow (only when scrollable left) -->
+      <button
+        v-show="canScrollLeft"
+        type="button"
+        data-test-id="tab-strip-scroll-left"
+        class="flex size-6 shrink-0 items-center justify-center rounded-lg text-muted hover:bg-hover hover:text-[#ccc]"
+        aria-label="Scroll tabs left"
+        @click="scrollTabs('left')"
+      >
+        <icon-lucide-chevron-left class="size-3.5" />
+      </button>
+
+      <div
+        ref="tabStripRef"
+        class="flex flex-1 items-center gap-1 overflow-x-auto scroll-smooth [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+        data-test-id="tab-strip-scroll-container"
+        @scroll="updateScrollArrows"
+      >
         <button
           v-for="conv in chatStore.conversations"
           :key="conv.id"
@@ -1938,9 +2193,27 @@ watch(pendingMessage, async (msg) => {
           {{ conv.title ?? 'New chat' }}
         </button>
       </div>
+
+      <!-- Right scroll arrow (only when scrollable right) -->
       <button
-        class="flex size-6 items-center justify-center rounded-lg text-muted hover:bg-hover hover:text-[#ccc]"
-        title="New chat"
+        v-show="canScrollRight"
+        type="button"
+        data-test-id="tab-strip-scroll-right"
+        class="flex size-6 shrink-0 items-center justify-center rounded-lg text-muted hover:bg-hover hover:text-[#ccc]"
+        aria-label="Scroll tabs right"
+        @click="scrollTabs('right')"
+      >
+        <icon-lucide-chevron-right class="size-3.5" />
+      </button>
+
+      <!-- New chat button — disabled at cap (founder-locked §12.12 item 3) -->
+      <button
+        type="button"
+        data-test-id="new-chat-button"
+        class="flex size-6 items-center justify-center rounded-lg text-muted hover:bg-hover hover:text-[#ccc] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-muted"
+        :disabled="isNewChatDisabled"
+        :title="isNewChatDisabled ? 'Max 20 chats per canvas — close one first.' : 'New chat'"
+        :aria-label="isNewChatDisabled ? 'Max 20 chats reached — close one first' : 'New chat'"
         @click="handleNewTab"
       >
         <icon-lucide-plus class="size-3.5" />
@@ -2116,12 +2389,16 @@ git commit -m "feat(prd10): mount ChatPanel in right-panel AI tab; remove ChatPo
 ```typescript
 import { useChatProductReferencesStore } from '@/stores/chat-product-references'
 import { useChatStore } from '@/stores/chat'
+// Founder-locked §12.12 item 5 — auto-switch right-panel to AI tab before importing.
+// Cluster 06 owns the right-panel-tab store; this PRD depends on the public API.
+import { useRightPanelTabStore } from '@/stores/right-panel-tab'
 import { toast } from '@/composables/use-toast'
 
 import type { ChatProductReference } from '@/types/kova/chat'
 
 const productRefsStore = useChatProductReferencesStore()
 const chatStore = useChatStore()
+const rightPanelTab = useRightPanelTabStore()
 
 async function handleImport(): Promise<void> {
   const convId = chatStore.activeConversationId
@@ -2144,6 +2421,9 @@ async function handleImport(): Promise<void> {
     added_at: new Date().toISOString()
   }))
   try {
+    // Founder-locked §12.12 item 5 — switch BEFORE awaiting import so the chip
+    // row is already rendered when the new refs hydrate. User sees chips populate.
+    rightPanelTab.setActiveTab('ai')
     await productRefsStore.importProducts(convId, refs)
     clearSelection()                              // Cluster 06 store method
     toast.show(`Imported ${refs.length} product${refs.length === 1 ? '' : 's'} to chat`, 'success')
@@ -2152,6 +2432,8 @@ async function handleImport(): Promise<void> {
   }
 }
 ```
+
+> **Cluster 06 dependency:** `useRightPanelTabStore` with `setActiveTab('design' | 'ai')` is owned by Cluster 06 per §11 cross-cuts. If Cluster 06's store has a different API name, adapt the import + call site accordingly. If the store doesn't exist yet, STOP — Cluster 06 must ship the 2-tab framework first.
 
 - [ ] **Step 3: Test interactively + via E2E (E2E covered in Task 18)**
 

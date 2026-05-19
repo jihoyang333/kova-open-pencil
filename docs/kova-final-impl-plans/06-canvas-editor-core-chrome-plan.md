@@ -133,7 +133,18 @@ import type { NodeType } from '@open-pencil/core'
 export interface InspectorSectionDef {
   id: string
   component: Component
-  priority: number  // ascending sort; PageSection=0, Position=10, Layout=20, Fill=30, Stroke=40, Text=50, Effects=60, Export=70
+  priority: number  // ascending sort; coordination contract with Cluster 07b (RATIFIED 2026-05-17 §12.15)
+  //   10  PageSection         (no-selection)
+  //   20  PositionSection
+  //   30  LayoutSection
+  //   40  AppearanceSection
+  //   50  FillSection
+  //   60  StrokeSection
+  //   70  TypographySection   (text-only)
+  //   80  EffectsSection
+  //   90  ExportSection
+  //  100  VariablesSection    (page-level)
+  // Cluster 06 ships PageSection (priority 10) at init; Cluster 07b registers 20–100 at app boot.
   supports: 'none' | NodeType[] | 'all'  // 'none' = render when no selection; 'all' = render for any selection
   multiSelect?: boolean  // false → hide when multi-selection (e.g., Layout)
 }
@@ -360,38 +371,53 @@ describe('useRightPanelStore', () => {
     localStorage.clear()
   })
 
-  test('activeTab default = design', () => {
+  test('activeTab default = ai (RATIFIED 2026-05-17 §12.13 — Kova differentiator: chat-first UX)', () => {
     const store = useRightPanelStore()
-    expect(store.activeTab).toBe('design')
-    expect(store.isDesignActive).toBe(true)
-    expect(store.isAiActive).toBe(false)
+    expect(store.activeTab).toBe('ai')
+    expect(store.isAiActive).toBe(true)
+    expect(store.isDesignActive).toBe(false)
   })
 
   test('setActiveTab switches', () => {
     const store = useRightPanelStore()
-    store.setActiveTab('ai')
-    expect(store.activeTab).toBe('ai')
-    expect(store.isAiActive).toBe(true)
+    store.setActiveTab('design')
+    expect(store.activeTab).toBe('design')
+    expect(store.isDesignActive).toBe(true)
   })
 
   test('persists per-canvas via localStorage', () => {
     const store = useRightPanelStore()
     store.initFor('canvas-1')
-    store.setActiveTab('ai')
-    expect(localStorage.getItem('right-panel-tab:canvas-1')).toBe('ai')
+    store.setActiveTab('design')
+    expect(localStorage.getItem('right-panel-tab:canvas-1')).toBe('design')
   })
 
-  test('initFor hydrates from localStorage', () => {
-    localStorage.setItem('right-panel-tab:canvas-2', 'ai')
+  test('initFor with no localStorage key → defaults to ai (first canvas open)', () => {
+    const store = useRightPanelStore()
+    store.initFor('canvas-fresh')
+    expect(store.activeTab).toBe('ai')
+  })
+
+  test('initFor hydrates from localStorage when key present', () => {
+    localStorage.setItem('right-panel-tab:canvas-2', 'design')
     const store = useRightPanelStore()
     store.initFor('canvas-2')
-    expect(store.activeTab).toBe('ai')
+    expect(store.activeTab).toBe('design')
   })
 
   test('setActiveTab rejects "prototype"', () => {
     const store = useRightPanelStore()
     // @ts-expect-error — runtime guard
     expect(() => store.setActiveTab('prototype')).toThrow()
+  })
+
+  test('REGRESSION GUARD: store does NOT subscribe to selection events (sticky behavior — RATIFIED 2026-05-17 §12.14)', async () => {
+    // The store source MUST NOT import useEditorStore or subscribe to selection changes.
+    // Verify by static check: read the source file and assert no editor-store import.
+    const src = await Bun.file('src/stores/right-panel.ts').text()
+    expect(src).not.toContain('useEditorStore')
+    expect(src).not.toContain('selectedNodeIds')
+    expect(src).not.toContain('selectionStore')
   })
 })
 ```
@@ -407,8 +433,11 @@ import { ref, computed } from 'vue'
 
 export type RightPanelTab = 'design' | 'ai'
 
+// RATIFIED 2026-05-17 (founder):
+//   §12.13 — Default tab on FIRST canvas open = 'ai' (Kova differentiator over Figma)
+//   §12.14 — STICKY on layer-click: this store MUST NOT subscribe to selection events
 export const useRightPanelStore = defineStore('right-panel', () => {
-  const activeTab = ref<RightPanelTab>('design')
+  const activeTab = ref<RightPanelTab>('ai')   // §12.13: first-open default
   const currentCanvasId = ref<string | null>(null)
 
   const isDesignActive = computed(() => activeTab.value === 'design')
@@ -429,11 +458,14 @@ export const useRightPanelStore = defineStore('right-panel', () => {
     try {
       const persisted = localStorage.getItem(`right-panel-tab:${canvasId}`)
       if (persisted === 'design' || persisted === 'ai') activeTab.value = persisted
-      else activeTab.value = 'design'
+      else activeTab.value = 'ai'   // §12.13: first-open default = AI
     } catch {
-      activeTab.value = 'design'
+      activeTab.value = 'ai'
     }
   }
+
+  // §12.14 STICKY: do NOT import useEditorStore; do NOT subscribe to selection.
+  // The store has no awareness of canvas selection. Sticky behavior verified by static-check test.
 
   return { activeTab, isDesignActive, isAiActive, setActiveTab, toggleAi, initFor }
 })
@@ -445,7 +477,7 @@ export const useRightPanelStore = defineStore('right-panel', () => {
 
 ```bash
 git add src/stores/right-panel.ts tests/unit/stores/right-panel.test.ts
-git commit -m "feat(cluster-06): useRightPanelStore — Design+AI tab framework (Prototype out of scope per founder 2026-05-15)"
+git commit -m "feat(cluster-06): useRightPanelStore — AI-default tab framework (Prototype dropped 2026-05-15; AI-default + sticky-on-selection ratified 2026-05-17)"
 ```
 
 ---
@@ -607,6 +639,183 @@ registry.register({ id: 'components', slot: 'components', icon: 'i-lucide-compon
 ```bash
 git add src/stores/tool-registry.ts src/main.ts tests/unit/stores/tool-registry.test.ts
 git commit -m "feat(cluster-06): useToolRegistry — declarative tool registration API + register 8 default tools (Slice + Measurement deferred to Cluster 07a)"
+```
+
+---
+
+### Task 4b: use-page-operations composable (RATIFIED 2026-05-17 §12.2 — reorderPage + duplicatePage primitives)
+
+**Why:** PRD §12.2 verified core lacks `editor.reorderPage` + `editor.duplicatePage` (grep `reorderPage|duplicatePage|movePage` in `packages/core/src` returns ZERO matches as of 2026-05-17). Cluster 06's Pages right-click menu (Cluster 08 owns the menu shell, this PRD owns the actions) needs both. **Decision: implement as Cluster-06 composable wrapping Yjs page-array splice** — no core mods.
+
+**Files:**
+- Create: `src/composables/use-page-operations.ts`
+- Test: `tests/unit/composables/use-page-operations.test.ts`
+
+- [ ] **Step 1: Write failing test**
+
+```ts
+// tests/unit/composables/use-page-operations.test.ts
+import { describe, test, expect, beforeEach } from 'bun:test'
+import { setActivePinia, createPinia } from 'pinia'
+import * as Y from 'yjs'
+import { usePageOperations } from '@/composables/use-page-operations'
+import { useEditorStore } from '@/stores/editor'
+
+describe('usePageOperations (RATIFIED 2026-05-17 §12.2)', () => {
+  beforeEach(() => setActivePinia(createPinia()))
+
+  test('reorderPage moves page from index 0 to index 2', () => {
+    const editor = useEditorStore()
+    editor.addPage('Page 1')
+    editor.addPage('Page 2')
+    editor.addPage('Page 3')
+    const ops = usePageOperations()
+    const firstPageId = editor.pages[0].id
+
+    ops.reorderPage(0, 2)
+
+    expect(editor.pages[2].id).toBe(firstPageId)
+    expect(editor.pages.length).toBe(3)
+  })
+
+  test('reorderPage no-op when fromIdx === toIdx', () => {
+    const editor = useEditorStore()
+    editor.addPage('Page 1')
+    editor.addPage('Page 2')
+    const before = editor.pages.map(p => p.id)
+    const ops = usePageOperations()
+
+    ops.reorderPage(1, 1)
+
+    expect(editor.pages.map(p => p.id)).toEqual(before)
+  })
+
+  test('reorderPage throws on out-of-bounds index', () => {
+    const editor = useEditorStore()
+    editor.addPage('Page 1')
+    const ops = usePageOperations()
+    expect(() => ops.reorderPage(0, 99)).toThrow('out_of_bounds')
+    expect(() => ops.reorderPage(-1, 0)).toThrow('out_of_bounds')
+  })
+
+  test('duplicatePage deep-clones target page + appends as new page with new id + " copy" suffix', () => {
+    const editor = useEditorStore()
+    editor.addPage('Hero Section')
+    const originalId = editor.pages[0].id
+    const ops = usePageOperations()
+
+    const newId = ops.duplicatePage(originalId)
+
+    expect(editor.pages.length).toBe(2)
+    expect(editor.pages[1].id).toBe(newId)
+    expect(editor.pages[1].id).not.toBe(originalId)
+    expect(editor.pages[1].name).toBe('Hero Section copy')
+  })
+
+  test('duplicatePage throws when target page id not found', () => {
+    const editor = useEditorStore()
+    const ops = usePageOperations()
+    expect(() => ops.duplicatePage('nonexistent-id')).toThrow('page_not_found')
+  })
+
+  test('duplicatePage clones nodes inside page (deep-clone, not by ref)', () => {
+    const editor = useEditorStore()
+    editor.addPage('Source')
+    const originalId = editor.pages[0].id
+    editor.addNodeToPage(originalId, { type: 'TEXT', text: 'Hello' })
+    const ops = usePageOperations()
+
+    const newId = ops.duplicatePage(originalId)
+    const clonedNode = editor.pages.find(p => p.id === newId)!.nodes[0]
+    const originalNode = editor.pages[0].nodes[0]
+    expect(clonedNode.id).not.toBe(originalNode.id)
+    expect(clonedNode.text).toBe('Hello')
+  })
+})
+```
+
+- [ ] **Step 2: Verify failure**
+
+- [ ] **Step 3: Implement**
+
+```ts
+// src/composables/use-page-operations.ts
+// RATIFIED 2026-05-17 PRD §12.2 — composable wrappers over Yjs page-array; no packages/core mods.
+import { useEditorStore } from '@/stores/editor'
+import { crypto } from '@/utils/crypto'  // crypto.getRandomValues per CLAUDE.md
+
+export function usePageOperations(): {
+  reorderPage: (fromIdx: number, toIdx: number) => void
+  duplicatePage: (pageId: string) => string
+} {
+  const editor = useEditorStore()
+
+  function reorderPage(fromIdx: number, toIdx: number): void {
+    const pages = editor.pages
+    if (fromIdx < 0 || fromIdx >= pages.length || toIdx < 0 || toIdx >= pages.length) {
+      throw new Error('out_of_bounds')
+    }
+    if (fromIdx === toIdx) return
+
+    // Yjs Y.Array splice — uses editor's internal Y.Doc transaction
+    editor.transactPages((yPages) => {
+      const moved = yPages.get(fromIdx)
+      yPages.delete(fromIdx, 1)
+      const insertIdx = toIdx > fromIdx ? toIdx - 1 : toIdx
+      yPages.insert(insertIdx, [moved])
+    })
+  }
+
+  function duplicatePage(pageId: string): string {
+    const sourceIdx = editor.pages.findIndex(p => p.id === pageId)
+    if (sourceIdx === -1) throw new Error('page_not_found')
+    const source = editor.pages[sourceIdx]
+
+    const newId = crypto.randomUUID()
+    const cloned = structuredClone({
+      ...source,
+      id: newId,
+      name: `${source.name} copy`,
+      // node ids must also be regenerated so cloned tree doesn't collide with source
+      nodes: source.nodes.map((n) => regenerateNodeIds(n)),
+    })
+
+    editor.transactPages((yPages) => {
+      yPages.push([cloned])
+    })
+
+    return newId
+  }
+
+  return { reorderPage, duplicatePage }
+}
+
+// Recursive node-id regeneration helper
+function regenerateNodeIds<T extends { id: string; children?: T[] }>(node: T): T {
+  return {
+    ...node,
+    id: crypto.randomUUID(),
+    children: node.children?.map((c) => regenerateNodeIds(c)),
+  }
+}
+```
+
+**Engine extension needed:** `useEditorStore.transactPages(fn: (yPages: Y.Array) => void)` exposes the Y.Doc transaction wrapper around the page array. Add to `editor.ts` (Pinia store, NOT `packages/core/`):
+
+```ts
+// src/stores/editor.ts (additions)
+function transactPages(fn: (yPages: Y.Array<PageData>) => void): void {
+  yDoc.transact(() => fn(yPagesArray))
+}
+```
+
+- [ ] **Step 4: Run tests, verify PASS**
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/composables/use-page-operations.ts src/stores/editor.ts tests/unit/composables/use-page-operations.test.ts
+git commit -m "feat(cluster-06): use-page-operations composable — reorderPage + duplicatePage Yjs wrappers (RATIFIED §12.2 2026-05-17 — core lacks primitives, Cluster 06 owns)"
 ```
 
 ---
@@ -1222,15 +1431,37 @@ git commit -m "feat(cluster-06): use-canvas-drop — 5 MIME dispatch + modifier-
 - Create: `src/components/editor/TopChrome.vue`, `TopChromeLogo.vue`, `FileBreadcrumb.vue`, `TopChromeActions.vue`, `AvatarDropdown.vue`, `MissingFontsPill.vue`
 - Test: `tests/unit/components/editor/TopChrome.test.ts`, `AvatarDropdown.test.ts`, `FileBreadcrumb.test.ts`
 
-- [ ] **Step 1: Write failing tests** (3 component tests covering: 5-item avatar dropdown per Q16; brand-click emit; topbar renders all 4 children)
+- [ ] **Step 1: Write failing tests** (4 component tests covering: 5-item avatar dropdown per Q16; brand-click emit; topbar renders all children; **TopChromeActions renders NO Comments slot — RATIFIED HIDE 2026-05-17 §12.3**)
 
-- [ ] **Step 2: Write components per PRD §6.4.2** — see PRD for exact prop/emit contracts. AvatarDropdown uses Reka DropdownMenu from Cluster 11.
+- [ ] **Step 2: Write components per PRD §6.4.2** — see PRD for exact prop/emit contracts. AvatarDropdown uses Reka DropdownMenu from Cluster 11. `TopChromeActions.vue` template renders ONLY: `<NotificationsIcon disabled />` + `<PresentIcon disabled />` + `<AvatarDropdown />`. **NO `<CommentsIconButton>` slot** — DOM must not contain `[data-testid="topbar-comments"]`.
 
 - [ ] **Step 3: PASS + Commit**
 
+```ts
+// tests/unit/components/editor/TopChromeActions.test.ts
+import { describe, test, expect } from 'bun:test'
+import { mount } from '@vue/test-utils'
+import TopChromeActions from '@/components/editor/TopChromeActions.vue'
+
+describe('TopChromeActions — RATIFIED 2026-05-17 §12.3 (Comments HIDDEN)', () => {
+  test('does NOT render Comments icon in topbar', () => {
+    const wrap = mount(TopChromeActions)
+    expect(wrap.find('[data-testid="topbar-comments"]').exists()).toBe(false)
+    expect(wrap.text().toLowerCase()).not.toContain('comment')
+  })
+
+  test('renders Notifications + Present + Avatar slots', () => {
+    const wrap = mount(TopChromeActions)
+    expect(wrap.find('[data-testid="topbar-notifications"]').exists()).toBe(true)
+    expect(wrap.find('[data-testid="topbar-present"]').exists()).toBe(true)
+    expect(wrap.find('[data-testid="topbar-avatar"]').exists()).toBe(true)
+  })
+})
+```
+
 ```bash
-git add src/components/editor/TopChrome.vue src/components/editor/TopChromeLogo.vue src/components/editor/FileBreadcrumb.vue src/components/editor/TopChromeActions.vue src/components/editor/AvatarDropdown.vue src/components/editor/MissingFontsPill.vue tests/unit/components/editor/TopChrome.test.ts tests/unit/components/editor/AvatarDropdown.test.ts tests/unit/components/editor/FileBreadcrumb.test.ts
-git commit -m "feat(cluster-06): top chrome — logo + file breadcrumb (Q17 navigate) + actions + 5-item avatar dropdown (Q16)"
+git add src/components/editor/TopChrome.vue src/components/editor/TopChromeLogo.vue src/components/editor/FileBreadcrumb.vue src/components/editor/TopChromeActions.vue src/components/editor/AvatarDropdown.vue src/components/editor/MissingFontsPill.vue tests/unit/components/editor/TopChrome.test.ts tests/unit/components/editor/TopChromeActions.test.ts tests/unit/components/editor/AvatarDropdown.test.ts tests/unit/components/editor/FileBreadcrumb.test.ts
+git commit -m "feat(cluster-06): top chrome — logo + file breadcrumb (Q17 navigate) + actions (Comments hidden per §12.3 2026-05-17) + 5-item avatar dropdown (Q16)"
 ```
 
 ---
@@ -1253,21 +1484,129 @@ git commit -m "feat(cluster-06): bottom toolbar — 9 default tools rendered fro
 
 ---
 
-### Task 11: LeftPanel + FileRow + LayersPanel extension + LayerRow + LayersEmptyState
+### Task 11: LeftPanel + FileRow + LayersPanel extension + LayerRow + LayersEmptyState + useLeftPanelStore
 
 **Files:**
-- Create: `src/components/editor/LeftPanel.vue`, `FileRow.vue`, `LayerRow.vue`, `LayersEmptyState.vue`
+- Create: `src/components/editor/LeftPanel.vue`, `FileRow.vue`, `LayerRow.vue`, `LayersEmptyState.vue`, `src/stores/left-panel.ts` (NEW — collapsed-section state per RATIFICATION 2026-05-17 §12.1)
 - Modify: `src/components/editor/LayersPanel.vue`, `PagesPanel.vue` (existing — add right-click anchor)
-- Test: `tests/unit/components/editor/LayersPanel.test.ts`, `LayerRow.test.ts`
+- Test: `tests/unit/components/editor/LayersPanel.test.ts`, `LayerRow.test.ts`, `tests/unit/components/editor/LeftPanel.test.ts`, `tests/unit/stores/left-panel.test.ts`
 
-- [ ] **Step 1: Tests covering:** mask glyph + slice glyph per node type; empty state renders when no rows; LayerRow per maskType variant
+- [ ] **Step 1: Tests covering:**
+  - mask glyph + slice glyph per node type
+  - empty state renders when no rows
+  - LayerRow per maskType variant
+  - **LeftPanel renders 3 stacked `<CollapsibleRoot>` sections in order: Pages, Layers, Shop (RATIFIED §12.1 2026-05-17)**
+  - **Shop section default-expanded when active brand has `shopify_connection_history.connection_status = 'connected'`; default-collapsed otherwise**
+  - **`useLeftPanelStore.collapsed['shop']` persists per-user via localStorage**
+  - Section header count badge format: `"Pages · 3"`, `"Layers · 14"`, `"Shop · 247"`
 
-- [ ] **Step 2: Implement.** LayersPanel uses `useLayerTree`. Virtual scrolling via `<vue-virtual-scroller>` or hand-rolled with `rowHeight: 28`. LayerRow renders all 7 cells (caret + icon + indent + name + mask + vis + lock).
+- [ ] **Step 2: Implement.**
+  - `LayersPanel` uses `useLayerTree`. Virtual scrolling via `<vue-virtual-scroller>` or hand-rolled with `rowHeight: 28`.
+  - `LayerRow` renders all 7 cells (caret + icon + indent + name + mask + vis + lock).
+  - `LeftPanel.vue` composes 3 sections — see template below.
+  - `useLeftPanelStore` tracks `collapsed: Record<'pages'|'layers'|'shop', boolean>`, persists to `localStorage['left-panel-collapsed']`.
+
+```vue
+<!-- src/components/editor/LeftPanel.vue (RATIFIED §12.1 2026-05-17 — 3 stacked sections) -->
+<script setup lang="ts">
+import { computed } from 'vue'
+import { CollapsibleRoot, CollapsibleTrigger, CollapsibleContent } from 'reka-ui'
+import PagesPanel from './sidebar/PagesPanel.vue'
+import LayersPanel from './sidebar/LayersPanel.vue'
+import ShopPanel from './sidebar/ShopPanel.vue'
+import FileRow from './FileRow.vue'
+import { useLeftPanelStore } from '@/stores/left-panel'
+import { useBrandsStore } from '@/stores/brands'
+import { useShopifyConnectionStore } from '@/stores/shopify-connection'
+
+const lp = useLeftPanelStore()
+const brands = useBrandsStore()
+const shopify = useShopifyConnectionStore()
+
+const shopifyConnected = computed(() =>
+  shopify.connectionStatusForBrand(brands.activeBrandId) === 'connected'
+)
+const shopDefaultExpanded = computed(() => shopifyConnected.value)
+</script>
+
+<template>
+  <aside class="left-panel w-[240px] h-full flex flex-col bg-fill-2 border-r border-line">
+    <FileRow />
+
+    <CollapsibleRoot v-model:open="lp.expanded.pages" class="flex-shrink-0">
+      <CollapsibleTrigger class="section-header">
+        <span>Pages</span>
+        <span class="count-badge">{{ pageCount }}</span>
+      </CollapsibleTrigger>
+      <CollapsibleContent><PagesPanel /></CollapsibleContent>
+    </CollapsibleRoot>
+
+    <CollapsibleRoot v-model:open="lp.expanded.layers" class="flex-1 min-h-0 flex flex-col">
+      <CollapsibleTrigger class="section-header">
+        <span>Layers</span>
+        <span class="count-badge">{{ layerCount }}</span>
+      </CollapsibleTrigger>
+      <CollapsibleContent class="flex-1 overflow-hidden"><LayersPanel /></CollapsibleContent>
+    </CollapsibleRoot>
+
+    <CollapsibleRoot
+      v-model:open="lp.expanded.shop"
+      :default-open="shopDefaultExpanded"
+      class="flex-shrink-0 max-h-[40vh]"
+    >
+      <CollapsibleTrigger class="section-header">
+        <span>Shop</span>
+        <span class="count-badge">{{ productCount }}</span>
+      </CollapsibleTrigger>
+      <CollapsibleContent class="overflow-hidden"><ShopPanel /></CollapsibleContent>
+    </CollapsibleRoot>
+  </aside>
+</template>
+```
+
+```ts
+// src/stores/left-panel.ts (NEW)
+import { defineStore } from 'pinia'
+import { reactive, watch } from 'vue'
+
+interface ExpandedState {
+  pages: boolean
+  layers: boolean
+  shop: boolean
+}
+
+const STORAGE_KEY = 'left-panel-expanded'
+
+function loadInitial(): ExpandedState {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      return {
+        pages: parsed.pages ?? true,
+        layers: parsed.layers ?? true,
+        shop: parsed.shop ?? false,  // §12.1: default-collapsed unless brand has Shopify (LeftPanel.vue overrides via :default-open)
+      }
+    }
+  } catch {}
+  return { pages: true, layers: true, shop: false }
+}
+
+export const useLeftPanelStore = defineStore('left-panel', () => {
+  const expanded = reactive<ExpandedState>(loadInitial())
+
+  watch(expanded, (next) => {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)) } catch {}
+  }, { deep: true })
+
+  return { expanded }
+})
+```
 
 - [ ] **Step 3: PASS + Commit**
 
 ```bash
-git commit -m "feat(cluster-06): left panel — Pages + Layers tree with virtual scroll + mask/slice glyphs + empty state"
+git commit -m "feat(cluster-06): left panel — 3 stacked sections (Pages + Layers + Shop) per §12.1 2026-05-17 + virtual scroll + mask/slice glyphs + useLeftPanelStore persisted collapse state"
 ```
 
 ---
@@ -1404,14 +1743,68 @@ git commit -m "refactor(cluster-06): EditorView refactor — remove ChatPopup + 
 - Create: `src/components/editor/RightPanel.vue`, `RightPanelTabs.vue`, `FrameHead.vue`, `InspectorRouter.vue`, `RightPanelAiSlot.vue`
 - Test: `tests/unit/components/editor/RightPanelTabs.test.ts`, `InspectorRouter.test.ts`
 
-- [ ] **Step 1: Tests** — RightPanelTabs renders EXACTLY 2 tabs (Design + AI), Prototype NOT in DOM, default-active Design; InspectorRouter renders correct section list per selection
+- [ ] **Step 1: Tests** — RightPanelTabs renders EXACTLY 2 tabs (Design + AI), Prototype NOT in DOM, **default-active AI on first canvas open (no localStorage key) per §12.13 RATIFICATION 2026-05-17**; click switches; **layer-selection event does NOT change `activeTab` (sticky regression per §12.14)**; InspectorRouter renders correct section list per selection.
 
-- [ ] **Step 2: Implement.** RightPanelTabs uses Reka Tabs. InspectorRouter reads `useInspectorRouter().activeSections`. RightPanelAiSlot conditionally mounts Cluster 10's `<ChatPanel>` (use dynamic import or lazy import; fall back to placeholder if Cluster 10 not yet shipped during Wave 4 staging).
+```ts
+// tests/unit/components/editor/RightPanelTabs.test.ts
+import { describe, test, expect, beforeEach } from 'bun:test'
+import { mount, flushPromises } from '@vue/test-utils'
+import { setActivePinia, createPinia } from 'pinia'
+import RightPanelTabs from '@/components/editor/RightPanelTabs.vue'
+import { useRightPanelStore } from '@/stores/right-panel'
+import { useEditorStore } from '@/stores/editor'
+
+describe('RightPanelTabs', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    localStorage.clear()
+  })
+
+  test('renders EXACTLY 2 tabs: Design + AI (Prototype NOT in DOM per founder 2026-05-15)', () => {
+    const wrap = mount(RightPanelTabs)
+    expect(wrap.findAll('[role="tab"]')).toHaveLength(2)
+    expect(wrap.text()).toContain('Design')
+    expect(wrap.text()).toContain('AI')
+    expect(wrap.text().toLowerCase()).not.toContain('prototype')
+    expect(wrap.find('[data-tab="prototype"]').exists()).toBe(false)
+  })
+
+  test('default-active = AI on first canvas open (RATIFIED §12.13 2026-05-17)', () => {
+    useRightPanelStore().initFor('canvas-fresh')
+    const wrap = mount(RightPanelTabs)
+    expect(wrap.find('[data-tab="ai"][data-state="active"]').exists()).toBe(true)
+    expect(wrap.find('[data-tab="design"][data-state="active"]').exists()).toBe(false)
+  })
+
+  test('respects per-canvas localStorage on subsequent opens', () => {
+    localStorage.setItem('right-panel-tab:canvas-2', 'design')
+    useRightPanelStore().initFor('canvas-2')
+    const wrap = mount(RightPanelTabs)
+    expect(wrap.find('[data-tab="design"][data-state="active"]').exists()).toBe(true)
+  })
+
+  test('REGRESSION GUARD: layer click does NOT switch active tab (sticky per §12.14)', async () => {
+    const rp = useRightPanelStore()
+    const editor = useEditorStore()
+    rp.initFor('canvas-1')
+    expect(rp.activeTab).toBe('ai')
+
+    const wrap = mount(RightPanelTabs)
+    editor.setSelection(['some-node-id'])
+    await flushPromises()
+
+    expect(rp.activeTab).toBe('ai')  // SHOULD NOT have switched to 'design'
+    expect(wrap.find('[data-tab="ai"][data-state="active"]').exists()).toBe(true)
+  })
+})
+```
+
+- [ ] **Step 2: Implement.** RightPanelTabs uses Reka Tabs. **Default tab read from `useRightPanelStore.activeTab` which defaults to 'ai' on first open per §12.13.** Component MUST NOT subscribe to selection events. InspectorRouter reads `useInspectorRouter().activeSections`. RightPanelAiSlot conditionally mounts Cluster 10's `<ChatPanel>` (use dynamic import or lazy import; fall back to placeholder if Cluster 10 not yet shipped during Wave 4 staging).
 
 - [ ] **Step 3: PASS + Commit**
 
 ```bash
-git commit -m "feat(cluster-06): right panel — 2-tab framework (Design + AI; Prototype out of scope), inspector router, AI slot for Cluster 10 ChatPanel"
+git commit -m "feat(cluster-06): right panel — 2-tab framework (Design + AI; Prototype out of scope) + AI-default on first open (§12.13) + sticky-on-selection regression guard (§12.14) + inspector router + AI slot for Cluster 10 ChatPanel"
 ```
 
 ---
@@ -1505,25 +1898,29 @@ git commit -m "test(cluster-06): drop receiver integration — all 5 MIME types 
 
 ---
 
-### Task 20: E2E tests (11 specs per PRD §9.3)
+### Task 20: E2E tests (14 specs — 11 baseline + 3 ratification regression guards)
 
-- [ ] Implement each spec listed in PRD §9.3:
-  - `load-and-render.spec.ts`
-  - `avatar-dropdown.spec.ts`
-  - `brand-label-navigates.spec.ts`
-  - `right-panel-tab-switch.spec.ts`
-  - `ai-tool-button.spec.ts`
-  - `layer-tree-interactions.spec.ts`
-  - `drag-color-to-frame.spec.ts`
-  - `drag-saved-block-to-canvas.spec.ts`
-  - `shop-panel-import-flow.spec.ts`
-  - `no-chat-popup.spec.ts` (regression guard)
-  - `no-prototype-tab.spec.ts` (regression guard)
+- [ ] Implement each spec listed in PRD §9.3 + ratification regression guards:
+  - `load-and-render.spec.ts` — basic chrome renders
+  - `avatar-dropdown.spec.ts` — 5-item menu per Q16
+  - `brand-label-navigates.spec.ts` — Q17 navigate to dashboard
+  - `right-panel-default-ai.spec.ts` — **RATIFIED §12.13 2026-05-17**: open canvas in incognito → assert AI tab is default-active
+  - `right-panel-sticky-on-select.spec.ts` — **RATIFIED §12.14 2026-05-17**: AI tab active → click any layer → assert AI tab STILL active (no auto-switch to Design)
+  - `right-panel-tab-switch.spec.ts` — manual tab switching works + persists per-canvas
+  - `ai-tool-button.spec.ts` — bottom toolbar AI button focuses chat composer
+  - `layer-tree-interactions.spec.ts` — hover highlight, mask glyph, slice glyph
+  - `left-panel-shop-section.spec.ts` — **RATIFIED §12.1 2026-05-17**: LeftPanel renders 3 collapsible sections (Pages, Layers, Shop); Shop default-expanded when brand has Shopify
+  - `topbar-no-comments.spec.ts` — **RATIFIED §12.3 2026-05-17**: top chrome has no Comments icon (DOM regression guard)
+  - `drag-color-to-frame.spec.ts` — color drag → fill replace
+  - `drag-saved-block-to-canvas.spec.ts` — saved-block drag → TEXT spawn
+  - `shop-panel-import-flow.spec.ts` — multi-select + Import N to chat
+  - `no-chat-popup.spec.ts` (regression guard) — floating ChatPopup not in DOM
+  - `no-prototype-tab.spec.ts` (regression guard) — Prototype tab not in DOM
 
 - [ ] **Commit**
 
 ```bash
-git commit -m "test(cluster-06): E2E coverage — 11 specs covering chrome render, drag-drop, AI tab, regression guards"
+git commit -m "test(cluster-06): E2E coverage — 14 specs covering chrome render, drag-drop, AI tab, all founder ratification regression guards (§12.1, §12.3, §12.13, §12.14)"
 ```
 
 ---

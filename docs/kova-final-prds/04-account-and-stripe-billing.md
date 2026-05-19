@@ -19,7 +19,7 @@
 
 ### 1.1 Plain language (for founder)
 
-A signed-in user needs one canonical place to manage everything that is "theirs at the account level" — name, email, avatar, accessibility preferences, plan, payment method, invoices, per-brand Brand Kit settings, per-brand integrations (Shopify), and the option to delete their account. This PRD ships that place: a full-page `/account` route with a left sidebar of five sections (Profile, Plan & billing, Brand Kit, Integrations, Danger zone). It also ships the **Stripe foundation** behind the Plan & billing section: a Checkout session creator for upgrades, a Customer Portal session creator for self-service management (cancel, update card, view invoices — opened in a **new tab** because Stripe does not support iframe embed), and a webhook handler that keeps our local `users.plan` / `users.plan_status` / `current_period_end` rows in sync with Stripe's state. The Brand Kit section ships only its **shell** + a brand-picker dropdown — the sub-tab content (Visuals/Fonts/Tone/Saved-blocks/Memory/KB) lives in Cluster 05. The Integrations section **refactors** M9's existing Shopify connect/disconnect UI from light to dark theme, re-routes it from `/dashboard/:brandId/settings/integrations` to `/account/integrations` with a brand-picker, and wires the previously-empty sync-history accordion to a NEW `shopify_connection_history` table. The Danger zone mounts the `<DangerZoneCard>` component shipped by Cluster 01 — this PRD owns the surface, but Cluster 01 owns the cascade. Toast / modal / skeleton / idempotency-key primitives all come from Cluster 11.
+A signed-in user needs one canonical place to manage everything that is "theirs at the account level" — name, email, avatar, accessibility preferences, plan, payment method, invoices, per-brand Brand Kit settings, per-brand integrations (Shopify), all brands (active + archived), and the option to delete their account. This PRD ships that place: a full-page `/account` route with a left sidebar of **six sections** (Profile, **Brands**, Plan & billing, Brand Kit, Integrations, Danger zone — Brands added per B12 reversal 2026-05-17, content owned by PRD 03). It also ships the **Stripe foundation** behind the Plan & billing section: a Checkout session creator for upgrades, a Customer Portal session creator for self-service management (cancel, update card, view invoices — opened in a **new tab** because Stripe does not support iframe embed), and a webhook handler that keeps our local `users.plan` / `users.plan_status` / `current_period_end` rows in sync with Stripe's state. The Brand Kit section ships only its **shell** + a brand-picker dropdown — the sub-tab content (Visuals/Fonts/Tone/Saved-blocks/Memory/KB) lives in Cluster 05. The Integrations section **refactors** M9's existing Shopify connect/disconnect UI from light to dark theme, re-routes it from `/dashboard/:brandId/settings/integrations` to `/account/integrations` with a brand-picker, and wires the previously-empty sync-history accordion to a NEW `shopify_connection_history` table. The Danger zone mounts the `<DangerZoneCard>` component shipped by Cluster 01 — this PRD owns the surface, but Cluster 01 owns the cascade. Toast / modal / skeleton / idempotency-key primitives all come from Cluster 11.
 
 ### 1.2 Caveman summary (per CLAUDE.md communication style)
 
@@ -27,7 +27,7 @@ User get one big page for everything user-scoped. Five sidebar tabs: Profile, Pl
 
 ### 1.3 Outcome (acceptance gate)
 
-User can: (1) open `/account` → see 5 sidebar sections + default landing on Profile; (2) edit name + upload avatar + change email (via `useEmailChange` from 01) + tune accessibility prefs + save changes with an "unsaved changes" indicator; (3) view current plan + usage + invoice history; (4) click "Manage billing" → open Stripe Customer Portal in a new tab; (5) click "Upgrade" → land in Stripe Checkout → return to `/account/billing/success` (B10.1) or `/account/billing/cancel` (B10.2); (6) pick a brand in Brand Kit section's brand-picker → see that brand's kit shell (sub-tabs populated by Cluster 05); (7) pick a brand in Integrations section → see Shopify connect/disconnect/sync UI (M9 reused) + populated sync-history accordion; (8) click "Delete account" in Danger zone → confirm via typed-DELETE modal → auth signs out → restore in 30-day grace per Cluster 01. Stripe webhook handler verifies signature, dedups by event.id, processes 6 events, returns 200 within Stripe's 20-second ack window. Weekly reconciliation cron heals drift when a `past_due` user has actually paid (Stripe says active, webhook missed). Privacy policy and RoPA carry every Stripe + Shopify cross-cut disclosure.
+User can: (1) open `/account` → see **6 sidebar sections** (Profile, Brands, Plan & billing, Brand Kit, Integrations, Danger zone — Brands added per B12 reversal 2026-05-17) + default landing on Profile; (2) edit name + upload avatar + change email (via `useEmailChange` from 01) + tune accessibility prefs + save changes with an "unsaved changes" indicator; (3) view current plan + usage + invoice history; (4) click "Manage billing" → open Stripe Customer Portal in a new tab; (5) click "Upgrade" → land in Stripe Checkout → return to `/account/billing/success` (B10.1) or `/account/billing/cancel` (B10.2); (6) pick a brand in Brand Kit section's brand-picker → see that brand's kit shell (sub-tabs populated by Cluster 05); (7) pick a brand in Integrations section → see Shopify connect/disconnect/sync UI (M9 reused) + populated sync-history accordion; (8) click "Delete account" in Danger zone → confirm via typed-DELETE modal → auth signs out → restore in 30-day grace per Cluster 01. Stripe webhook handler verifies signature, dedups by event.id, processes 6 events, returns 200 within Stripe's 20-second ack window. Weekly reconciliation cron heals drift when a `past_due` user has actually paid (Stripe says active, webhook missed). Privacy policy and RoPA carry every Stripe + Shopify cross-cut disclosure.
 
 ---
 
@@ -37,14 +37,14 @@ User can: (1) open `/account` → see 5 sidebar sections + default landing on Pr
 
 **Account page chrome + navigation:**
 - `/account/:section?` route (default section: `profile`)
-- 5-section sidebar (Profile, Plan & billing, Brand Kit, Integrations, Danger zone)
+- 6-section sidebar (Profile, **Brands**, Plan & billing, Brand Kit, Integrations, Danger zone) — Brands added 2026-05-17 per B12 archive reversal; PRD 03 owns content, PRD 04 owns route + chrome entry
 - `<AccountView>` layout (top chrome with Back-to-dashboard, left sidebar 240px, right content max-width 720px)
 - `useAccountSection()` composable (active-section state, route-sync, deep-link support)
 - `<BrandPicker>` component used by per-brand sections (Brand Kit + Integrations) — reads `useBrandsStore.brands[]` from Cluster 03
 
 **Profile section (A7.1):**
 - Name field (editable text input, debounced save)
-- Avatar upload (PNG/JPG/SVG, ≥256px square, ≤2MB; writes to existing `media-assets` bucket at `users/{user_id}/avatar.{ext}`; `users.avatar_storage_path` column)
+- Avatar upload (PNG/JPG only — SVG rejected to eliminate XSS surface per founder decision 2026-05-17; ≥256px square recommended; ≤5MB upload max; server normalizes to PNG via `sharp` + resizes to 256×256; writes to existing `media-assets` bucket at `users/{user_id}/avatar.png` (FIXED extension); `users.avatar_storage_path` column. Fallback when unset: initials on per-user-stable hashed color tile.)
 - Email field (read-only display + "Change…" button triggers `useEmailChange.requestChange()` from Cluster 01 — opens inline form + confirm modal)
 - Password row (display "Last changed YYYY-MM-DD" + "Send reset link" button — only visible if `FORGOT_PASSWORD_ENABLED=true` per Cluster 01 §10; hidden at MVP)
 - Accessibility preferences subsection: text size segmented control (Small/Medium/Large), reduce motion toggle, high contrast toggle (all wired to `usePreferencesStore` from Cluster 12 — this PRD just renders the UI)
@@ -53,17 +53,17 @@ User can: (1) open `/account` → see 5 sidebar sections + default landing on Pr
 - Unsaved-changes pill with Discard / Save buttons (debounced 800ms autosave on individual field commit; explicit Save flushes)
 
 **Plan & billing section (A7.2):**
-- Current plan card: plan name (templated `{{ planName }}` from `users.plan` — defaults to "Free"), price, billing cadence, status pill (Active / Past due / Cancelled / Incomplete), feature list (placeholder per founder), `Manage billing` button (opens Stripe Customer Portal new tab), `Compare plans` button (opens upgrade dialog or routes to a Phase-2 plan-comparison page)
+- Current plan card: plan name (templated `{{ planName }}` from `users.plan` — defaults to "Free"), price, billing cadence, status pill (**Active / Past due / Cancelled / Incomplete / Trial** — Trial variant ships hidden, conditional on `plan_status === 'trialing'`), feature list (Free tier MVP bullets: "1 brand kit", "Unlimited canvases", "AI design assistant", "Image export (PNG slices)" — defined in `@/constants/billing-plans.ts`; Solo/Agency bullets land Phase B with pricing), `Manage billing` button (opens Stripe Customer Portal new tab), `Compare plans` button (visible button → surfaces toast "Pricing coming soon." at MVP; Phase-2 wires to plan-comparison surface)
 - Usage subsection: AI generations counter (current month, X / cap based on plan; resets on `current_period_end` rollover); Storage usage (412 MB / cap)
 - Invoice history table: last 12 invoices fetched via Stripe API (`/api/stripe/invoices`); columns Date, Description, Amount, Status, Download (links to `hosted_invoice_url`)
-- Past-due banner: when `users.plan_status = 'past_due'`, shows warn-soft banner with "Update payment method" CTA → Stripe Portal
+- Past-due banner: when `users.plan_status = 'past_due'`, shows warn-soft banner with copy **"Your last payment didn't go through. Update your card before {{ deadline }} to keep your subscription."** (deadline = `current_period_end + 7 days`) + single "Update payment method" CTA → Stripe Portal new tab (same flow as Manage billing)
 - Stripe Checkout flow trigger: "Upgrade" CTA → `POST /api/stripe/checkout-session` → redirect to Stripe-hosted Checkout
 - Stripe Customer Portal trigger: "Manage billing" → `POST /api/stripe/portal-session` → `window.open(url, '_blank')`
 
 **Brand Kit section (A7.3) — SHELL ONLY:**
 - Brand-picker dropdown at top (selects which brand's kit is shown)
 - Sub-tab navigation rail (Visuals / Identity / Tone snippets / Saved blocks / Writing rules / Memories / Knowledge base) — Cluster 05 ships each sub-tab's actual content + CRUD modals; this PRD ships only the empty `<RouterView>`-style outlet + active-tab routing
-- Per-brand picker persists selection via URL query (`?brand=:brandId`) + falls back to `usePreferencesStore.lastActiveBrandId` (Q5 Layer 2 from Cluster 12)
+- Per-brand picker default precedence (founder decision 2026-05-17): `?brand=:brandId` URL query > `usePreferencesStore.lastActiveBrandId` (Q5 Layer 2) > first brand alphabetically. Renders as **static label** when user has 1 brand (no dropdown chevron — Figma pattern); full **dropdown** when 2+; **`<EmptyState>`** when 0.
 
 **Integrations section (A7.5) — M9 REUSE + REFACTOR:**
 - Brand-picker dropdown at top (same component as Brand Kit)
@@ -94,7 +94,7 @@ User can: (1) open `/account` → see 5 sidebar sections + default landing on Pr
 - `useAccountStore` (active section, unsaved-changes flags per section; `save()`, `discard()`)
 - `usePlanGate(feature)` composable (stub at MVP — returns `allowed: true` for everything; map of feature → plans-allowed lives in constants; founder activates gating post-launch when pricing locks)
 - `useAccountSection()` composable (sync `:section` URL param with active sidebar item)
-- `useBrandPicker(scope)` composable (selected brand id; persists to URL + Q5 Layer 2)
+- `useBrandPicker(scope)` composable (selected brand id; precedence URL > Q5 Layer 2 > alphabetical; renderMode 'empty' | 'static-label' | 'dropdown')
 
 **Compliance + cross-cuts:**
 - Privacy policy update: Stripe sub-processor disclosure (already named by Cluster 01 — verify naming)
@@ -126,12 +126,12 @@ User can: (1) open `/account` → see 5 sidebar sections + default landing on Pr
 - Plan-based feature gate enforcement (gate composable ships as stub; founder activates when pricing locks)
 - Multi-currency billing — single USD at MVP
 - Tax handling — Stripe Tax integration deferred until revenue justifies
-- Team / agency billing entity — explicitly out per D-2 (one Stripe Customer per user, forever)
+- Team / agency billing entity — explicitly out per D-2 (one Stripe Customer per user). **D-2 AMENDMENT 2026-05-17:** Stripe Customer **deleted** on account deletion via Cluster 01 GDPR cron (was originally "kept forever"). See §13.2 D-2 amendment note. Invoice history persists in Stripe 7 yrs per their docs regardless.
 - Mailchimp / Klaviyo / SendGrid integration tiles — UI placeholder only; backend Phase 2
 - Mobile-responsive `/account` page — desktop-only at MVP (viewport guard from Cluster 01)
 - Avatar cropping UI — upload + auto-square crop at center via canvas API; full editor Phase 2
 - Invoice CSV export — link to Stripe-hosted `hosted_invoice_url` at MVP; CSV bundle Phase 2
-- Trial period flow (`plan_status='trialing'`) — see §12.3 risk; deferred unless founder activates trials
+- Trial period flow (`plan_status='trialing'`) — **DB CHECK supports it now** (§4.1 migration includes 'trialing'); UI scaffold (status pill "Trial" variant + "Trial — X days left" banner) ships hidden in code at MVP, conditional render on `plan_status === 'trialing'`. Activation deferred until founder turns on Stripe trial settings in Dashboard. Founder decision 2026-05-17 reverses §12.3 OPEN.
 
 ### 2.4 Cross-cut acknowledgments (foreign owners)
 
@@ -153,7 +153,7 @@ Every surface maps to a hi-fi file. Engineers cite the file + scene ID when impl
 | Surface | Route | Hi-fi file | Scene IDs | Notes |
 |---|---|---|---|---|
 | Account page shell (sidebar visible, no section open) | `/account` (redirects to `/account/profile`) | `main-main-kova-scope/batch-a/dark/Kova Hi-Fi A7 Account Page - Dark.html` | shared chrome across A7.1–A7.6 | 240px sidebar; top chrome with "Back to dashboard" + page title "Account"; content area max-width 720px |
-| Sidebar item list | same | same | A7 chrome | 5 items: Profile (user icon), Plan & billing (credit-card icon), Brand Kit (palette icon), Integrations (plug icon), Danger zone (trash-2 icon, warn-tinted) |
+| Sidebar item list | same | same | A7 chrome + B12 hi-fi | **6 items** (B12 reversal 2026-05-17): Profile (user icon), **Brands (layers icon — NEW, slot 2)**, Plan & billing (credit-card icon), Brand Kit (palette icon), Integrations (plug icon), Danger zone (trash-2 icon, warn-tinted). Verified against `Kova Hi-Fi B12 Brands page - Dark.html` lines 554–560. |
 | Brand picker dropdown (per-brand sections) | `/account/brand-kit` + `/account/integrations` | same + `Kova Hi-Fi A7 Account Page - Dark.html` (A2b dropdown open variant) | A7.3 (open) | Reka DropdownMenu anchored to brand-pill at top of section content; search field + active brands list + archived (muted) + "Add new brand" footer |
 
 ### 3.2 Profile section (A7.1)
@@ -161,7 +161,7 @@ Every surface maps to a hi-fi file. Engineers cite the file + scene ID when impl
 | Surface | Route | Hi-fi file | Scene IDs | Notes |
 |---|---|---|---|---|
 | Profile default | `/account/profile` | `Kova Hi-Fi A7 Account Page - Dark.html` | A7.1 | Headline "Profile" + sub-copy "Your name, email, avatar, and preferences. These are user-level — they apply across every brand you manage in Kova." |
-| Avatar row | same | same | A7.1 | Current avatar (or initials fallback) 64×64; "Upload image" button → file picker (PNG/JPG/SVG ≤2MB) → preview → confirm save |
+| Avatar row | same | same | A7.1 | Current avatar (or **initials on hashed-color tile** 64×64 fallback) 64×64; "Upload image" button → file picker (PNG/JPG only ≤5MB, SVG REJECTED) → preview → confirm save. Server resizes to 256×256 PNG via `sharp` before storage. |
 | Name field | same | same | A7.1 | `<AuthField>`-style input; value bound to `useAccountStore.draft.name` |
 | Email row | same | same | A7.1 | Read-only display of current email; "Verified inbox" pill; "Change…" button → opens inline `useEmailChange.requestChange()` flow (Cluster 01 owns the flow; we provide the trigger) |
 | Password row (HIDDEN AT MVP) | same | same | A7.1 | Shows "Last changed YYYY-MM-DD"; "Send reset link" button. Hidden via `FORGOT_PASSWORD_ENABLED=false` per Cluster 01 §10 feature flag |
@@ -178,7 +178,7 @@ Every surface maps to a hi-fi file. Engineers cite the file + scene ID when impl
 | Surface | Route | Hi-fi file | Scene IDs | Notes |
 |---|---|---|---|---|
 | Plan & billing default | `/account/billing` | same | A7.2 | Headline "Plan & billing" + sub-copy "Your subscription, invoices, and monthly usage. Billing is handled by Stripe — clicking **Manage billing** opens the secure Stripe portal in a new tab." |
-| Current plan card | same | same | A7.2 | Plan name `{{ planName }}` from `users.plan` (default "Free"); price line `$—/month · billed monthly`; status pill (Active / Past due / Cancelled / Incomplete); feature list (placeholder per founder); two buttons: `Manage billing` (Stripe Portal, new tab) + `Compare plans` (Phase 2 — wires to a placeholder toast for MVP) |
+| Current plan card | same | same | A7.2 | Plan name `{{ planName }}` from `users.plan` (default "Free"); price line `$—/month · billed monthly`; status pill (Active / Past due / Cancelled / Incomplete / **Trial** — Trial variant ships hidden, conditional on `plan_status === 'trialing'` — founder decision 2026-05-17); feature list (Free-tier bullets: "1 brand kit" · "Unlimited canvases" · "AI design assistant" · "Image export (PNG slices)" — `@/constants/billing-plans.ts`); two buttons: `Manage billing` (Stripe Portal, new tab) + `Compare plans` (visible button → surfaces toast "Pricing coming soon." at MVP; Phase-2 wires to plan-comparison surface) |
 | Past-due banner (conditional) | same | same | (not drawn — net-new) | Renders when `useBillingStore.planStatus === 'past_due'`; warn-soft surface; copy "Your last payment didn't go through. Update your card before {{ current_period_end + 7 days }} to keep your subscription."; CTA "Update payment method" → Stripe Portal |
 | Usage subsection | same | same | A7.2 | AI generations: progress bar X / cap (e.g., "47 / 200 · resets May 1"); Storage: progress bar (e.g., "412 MB / 5 GB"). Cap values come from plan map in `@/constants/billing-plans.ts` |
 | Invoice history table | same | same | A7.2 | Columns: Date, Description, Amount, Status (Paid / Failed pill), Download (icon link to `hosted_invoice_url`); fetched via `useBillingStore.fetchInvoices()` → `/api/stripe/invoices`; last 12 invoices |
@@ -264,7 +264,7 @@ ALTER TABLE public.users
   ADD COLUMN IF NOT EXISTS plan                   text NOT NULL DEFAULT 'free'
                             CHECK (plan IN ('free', 'solo', 'agency')),
   ADD COLUMN IF NOT EXISTS plan_status            text NOT NULL DEFAULT 'active'
-                            CHECK (plan_status IN ('active', 'past_due', 'cancelled', 'incomplete')),
+                            CHECK (plan_status IN ('active', 'past_due', 'cancelled', 'incomplete', 'trialing')),
   ADD COLUMN IF NOT EXISTS current_period_end     timestamptz,
   ADD COLUMN IF NOT EXISTS cancel_at_period_end   boolean NOT NULL DEFAULT false,
   ADD COLUMN IF NOT EXISTS avatar_storage_path    text NULL;
@@ -278,11 +278,11 @@ CREATE INDEX IF NOT EXISTS idx_users_past_due
   WHERE plan_status = 'past_due';
 
 COMMENT ON COLUMN public.users.stripe_customer_id IS
-  'Stripe Customer ID (cus_…). One-per-user, forever (per founder decision D-2 2026-05-14). NULL until first Checkout completes.';
+  'Stripe Customer ID (cus_…). One-per-user. Deleted from Stripe on account-deletion via Cluster 01 GDPR cron (D-2 amended 2026-05-17). NULL until first Checkout completes.';
 COMMENT ON COLUMN public.users.plan IS
   'Current plan tier. CHECK in (free, solo, agency); founder activates pricing post-launch. ALTER CHECK if names change.';
 COMMENT ON COLUMN public.users.plan_status IS
-  'Stripe subscription lifecycle. CHECK omits "trialing" (no trials at MVP — see PRD 04 §12.3). ALTER CHECK if trials activate.';
+  'Stripe subscription lifecycle. CHECK includes "trialing" (founder decision 2026-05-17 — future-proof for trials). UI scaffold for trial states ships hidden at MVP per PRD 04 §3.4.';
 COMMENT ON COLUMN public.users.avatar_storage_path IS
   'Storage path within media-assets bucket (e.g., users/{user_id}/avatar.png). NULL = default initials avatar.';
 
@@ -432,7 +432,7 @@ COMMIT;
 
 **Notes on this migration:**
 
-1. `plan` and `plan_status` CHECK constraints follow Q14 + dispatch prompt. If founder activates trials, ALTER CHECK to add `trialing` is a one-line migration (see §12.3).
+1. `plan` CHECK follows Q14 + dispatch prompt. `plan_status` CHECK includes `'trialing'` per founder decision 2026-05-17 (§12.3 RESOLVED) — future-proofs for trial activation without rework.
 2. `cancel_at_period_end` lets the UI render "Subscription ends YYYY-MM-DD" without a separate query.
 3. `avatar_storage_path` is added here (Cluster 04 owns the Profile section UI); Cluster 05 owns the `media-assets` bucket itself.
 4. `stripe_webhook_events.event_id` as PRIMARY KEY = idempotency by design (`INSERT … ON CONFLICT DO NOTHING` then check rowcount).
@@ -455,7 +455,7 @@ No new buckets in this PRD. The Profile-section avatar upload writes to the **ex
 
 | Bucket | Path | Owner | This PRD's use |
 |---|---|---|---|
-| `media-assets` | `users/{user_id}/avatar.{ext}` (where ext = png / jpg / svg) | Cluster 05 | Avatar upload writes here via `supabase.storage.from('media-assets').upload(...)`. Path stored in `users.avatar_storage_path`. Signed URL fetched on display (15-min TTL per scope plan 2.C.13). |
+| `media-assets` | `users/{user_id}/avatar.png` (FIXED extension — founder decision 2026-05-17, normalize to PNG via `sharp`) | Cluster 05 | Avatar upload writes here via `supabase.storage.from('media-assets').update(...)` (upsert=true) from `avatar-confirm` Edge Function after `sharp` resize→PNG pipeline. Path stored in `users.avatar_storage_path`. Signed URL fetched on display (15-min TTL per scope plan 2.C.13). |
 
 **Cascade behavior:** PRD 01's GDPR cron `storage` step purges `media-assets/users/{user_id}/**` on hard-delete. No new cascade logic needed.
 
@@ -468,6 +468,8 @@ No new buckets in this PRD. The Profile-section avatar upload writes to the **ex
 All Edge Functions deploy as Vercel Functions under `kova-open-pencil-1/api/stripe/` and `kova-open-pencil-1/api/account/`. The repo already uses Fluid Compute (no Edge runtime — Stripe SDK requires Node).
 
 Idempotency-key handling per Cluster 11 cross-cut convention (client sends `X-Idempotency-Key: <uuid v4>`). Rate-limit per scope plan D-5 (atomic Supabase RPC; reuse M5 pattern; new buckets: `stripe.checkout`, `stripe.portal`, `stripe.invoices`).
+
+**Audit-log cross-cut (W0-1):** the Stripe webhook handler in §5.1.3 and the profile/email-change flows append rows to `public.audit_log` via the Cluster 11 `writeAudit(supabaseAdmin, { userId, eventType, payload, clusterOwner: '04' })` helper at `api/_shared/audit.ts`. Table DDL + RLS + helper are owned by **PRD 11 §2.1 / §4.1 / §5.5** (founder lock #11). Webhook event types emitted: `stripe.checkout.completed`, `stripe.subscription.created`, `stripe.subscription.updated`, `stripe.subscription.deleted`, `stripe.invoice.payment_succeeded`, `stripe.invoice.payment_failed`.
 
 ---
 
@@ -575,7 +577,7 @@ Idempotency-key handling per Cluster 11 cross-cut convention (client sends `X-Id
 //     UPDATE users SET
 //       stripe_subscription_id = sub.id,
 //       plan = planName,
-//       plan_status = sub.status,                     // 'active'|'past_due'|'cancelled'|'incomplete' — map 'trialing' → 'active' for MVP
+//       plan_status = sub.status,                     // 'active'|'past_due'|'cancelled'|'incomplete'|'trialing' — DB CHECK supports all 5 (founder decision 2026-05-17)
 //       current_period_end = to_timestamp(sub.current_period_end),
 //       cancel_at_period_end = sub.cancel_at_period_end
 //     WHERE id = userId
@@ -653,22 +655,24 @@ Idempotency-key handling per Cluster 11 cross-cut convention (client sends `X-Id
 // Method:      POST
 // Auth:        Supabase JWT
 // Headers:     X-Idempotency-Key (optional)
-// Body:        { mime_type: 'image/png' | 'image/jpeg' | 'image/svg+xml', size_bytes: number }
+// Body:        { mime_type: 'image/png' | 'image/jpeg', size_bytes: number }   // SVG REJECTED (founder decision 2026-05-17 — XSS surface)
 // Response 200: { signed_url: string, expires_at: ISO8601, storage_path: string }
 // Response 401: { error: 'unauthenticated' }
-// Response 413: { error: 'too_large', max_bytes: 2097152 }
-// Response 415: { error: 'unsupported_mime' }
+// Response 413: { error: 'too_large', max_bytes: 5242880 }   // 5 MB (founder decision 2026-05-17)
+// Response 415: { error: 'unsupported_mime' }                  // PNG/JPG only — SVG rejected
 //
 // Side effects:
-//   1. Validate mime + size (≤2 MB)
-//   2. Compute storage_path = `users/${user_id}/avatar.${extFromMime(mime_type)}`
+//   1. Validate mime ∈ {image/png, image/jpeg} + size (≤5 MB)
+//   2. Compute storage_path = `users/${user_id}/avatar.png`   // FIXED extension (founder decision 2026-05-17 — normalize to PNG)
 //   3. supabase.storage.from('media-assets').createSignedUploadUrl(storage_path) → 15-min URL
 //   4. Return { signed_url, expires_at, storage_path }
 //
-// Client then PUTs the file directly to signed_url. On success, client POSTs /api/account/avatar-confirm
-// with { storage_path } → server updates users.avatar_storage_path.
+// Client then PUTs the file directly to signed_url. On success, client POSTs /api/account/avatar-confirm.
+// The avatar-confirm handler fetches the uploaded file, processes it via `sharp` (resize 256×256, convert to PNG),
+// re-uploads the normalized output to the same path (overwrite), then updates users.avatar_storage_path.
 //
-// Why split: lets the browser stream the file without proxying through our Function.
+// Why split: lets the browser stream the original file without proxying through our Function; normalize step
+// runs server-side (~50-150ms via sharp) before persisting state.
 ```
 
 ```typescript
@@ -679,11 +683,13 @@ Idempotency-key handling per Cluster 11 cross-cut convention (client sends `X-Id
 // Response 200: { success: true, public_url: string }
 //
 // Side effects:
-//   1. Validate storage_path matches `users/${auth.uid()}/avatar.{ext}` pattern
-//   2. supabase.storage.from('media-assets').list to verify file actually exists at path
-//   3. UPDATE users SET avatar_storage_path = $1 WHERE id = auth.uid()
-//   4. Generate signed display URL (15-min TTL); return
-//   5. Audit-log row 'account.avatar_uploaded'
+//   1. Validate storage_path === `users/${auth.uid()}/avatar.png` (fixed extension)
+//   2. supabase.storage.from('media-assets').download(storage_path) — fetch uploaded file
+//   3. Run through `sharp` pipeline: rotate (EXIF auto) → resize fit:'cover' 256×256 → toFormat('png', { compressionLevel: 9 })
+//   4. supabase.storage.from('media-assets').update(storage_path, normalizedBuffer, { contentType: 'image/png', upsert: true })
+//   5. UPDATE users SET avatar_storage_path = $1 WHERE id = auth.uid()
+//   6. Generate signed display URL (15-min TTL); return
+//   7. Audit-log row 'account.avatar_uploaded' with { original_size, normalized_size }
 ```
 
 ---
@@ -721,8 +727,9 @@ Vercel Cron config additions to `kova-open-pencil-1/vercel.json`:
 | Integration | SDK / version | Use | Webhooks | Env vars |
 |---|---|---|---|---|
 | **Stripe** | `stripe` npm package v17.x (latest GA at PRD time) | `customers.create`, `checkout.sessions.create`, `billingPortal.sessions.create`, `subscriptions.retrieve`, `subscriptions.cancel` (Cluster 01 cron uses), `customers.del` (Cluster 01 cron uses), `invoices.list`, `webhooks.constructEvent` | `POST /api/stripe/webhook` (signature-verified; ack within 20s) | `STRIPE_SECRET_KEY` (server-only), `STRIPE_WEBHOOK_SECRET` (server-only), `VITE_STRIPE_PUBLISHABLE_KEY` (client — Stripe.js for future inline elements; not used at MVP but reserved), `STRIPE_PRICE_ID_SOLO`, `STRIPE_PRICE_ID_AGENCY` (server-only price IDs — values filled in post-pricing-lock) |
-| **Resend** | `resend` npm (already installed by Cluster 01) | `subscription-payment-failed.html` template | None | `RESEND_API_KEY` (Cluster 01 ships) |
+| **Resend** | `resend` npm (already installed by Cluster 01) | 4 templates: `subscription-new.html`, `subscription-upgraded.html`, `subscription-cancelled.html`, `subscription-payment-failed.html` (founder decision 2026-05-17 — all 4 events at MVP) | None | `RESEND_API_KEY` (Cluster 01 ships) |
 | **Supabase Storage** | `@supabase/supabase-js` | `media-assets` bucket — avatar upload via createSignedUploadUrl | None | Existing |
+| **sharp** (NEW) | `sharp` npm package v0.34.x (latest GA at PRD time) | Server-side avatar image normalization (resize 256×256 + convert to PNG). Runs in `avatar-confirm` Edge Function only. ~600 KB install; native bindings auto-resolved per Vercel runtime. | None | None |
 | **Shopify** (M9 reuse) | direct fetch (existing) | `IntegrationsCard` reuses existing OAuth start/callback/disconnect endpoints; this PRD wires history-log via `log_shopify_connection_event` RPC into those endpoints | M9 already ships `shop/uninstalled`, `customers/redact`, `shop/redact` handlers — verify they call `log_shopify_connection_event` on uninstall | Existing |
 
 #### 5.4.1 Stripe Customer Portal configuration
@@ -750,15 +757,24 @@ In Stripe Dashboard → Developers → Webhooks → Add endpoint:
 - Events to send: `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.paid`, `invoice.payment_failed`
 - Signing secret: copy `whsec_*` → set as `STRIPE_WEBHOOK_SECRET` env var per environment
 
-#### 5.4.3 Email templates (Resend)
+#### 5.4.3 Email templates (Resend) — all 4 events ship at MVP (founder decision 2026-05-17)
 
-| Template | Trigger | File |
-|---|---|---|
-| `subscription-payment-failed.html` | `invoice.payment_failed` webhook | `kova-open-pencil-1/emails/account/subscription-payment-failed.html` |
-| `subscription-upgraded.html` (Phase 2 — confirm via founder; B10.1 already serves as in-app receipt) | `customer.subscription.created` if `plan != 'free'` | TBD |
-| `subscription-cancelled.html` (Phase 2 — Stripe Customer Portal already emails cancel confirmation by default) | `customer.subscription.deleted` | TBD — verify Stripe-default-email first |
+All templates extend `<EmailShell>` (Cluster 11), use Inter, plain-text fallback, valid `List-Unsubscribe` header (`<mailto:unsubscribe@kova.app>`), `X-Entity-Ref-ID: {{ user_id }}` for thread grouping. Stored at `kova-open-pencil-1/emails/account/*.html`. Each template accepts variables documented per row.
 
-All templates extend `<EmailShell>` (Cluster 11), use Inter, plain-text fallback, valid `List-Unsubscribe` header. Stored at `kova-open-pencil-1/emails/account/*.html`.
+| Template file | Webhook trigger | Subject | Body summary | Variables |
+|---|---|---|---|---|
+| `subscription-new.html` | `customer.subscription.created` where `plan != 'free'` | `Welcome to Kova {{ planName }} 🎉` | H1: "Welcome to Kova {{ planName }}". P1: "Thanks for subscribing — your account now includes {{ planName }} features." P2: "Your first invoice for ${{ amount }} is processed and you're all set." Primary CTA: "Open Kova" → `https://kova.app/dashboard`. Secondary link: "View invoice" → `{{ hosted_invoice_url }}`. Footer: subscription managed via Kova; unsubscribe note clarifies billing emails are transactional + cannot be opted out. | `planName`, `amount`, `currency` (default USD), `hosted_invoice_url`, `user_id` |
+| `subscription-upgraded.html` | `customer.subscription.updated` where price-id changed AND new plan-name != old plan-name | `You're now on Kova {{ planName }}` | H1: "You're on {{ planName }}". P1: "Your plan changed from {{ oldPlanName }} to {{ planName }} effective immediately." P2: "Your next invoice for ${{ amount }} renews {{ currentPeriodEnd \| date('long') }}." Primary CTA: "Open Kova". Secondary: "Manage subscription" → `/account/billing`. | `planName`, `oldPlanName`, `amount`, `currentPeriodEnd`, `user_id` |
+| `subscription-cancelled.html` | `customer.subscription.updated` where `cancel_at_period_end` flipped false→true; ALSO `customer.subscription.deleted` (fired at period end) | `Your Kova subscription has been cancelled` | H1: "Subscription cancelled". P1 (for cancel-scheduled): "Your subscription will end on {{ accessEndsOn \| date('long') }}. Until then, you keep full access." P1 (for deleted): "Your subscription ended on {{ accessEndsOn \| date('long') }}. We've moved you to the Free plan." P2: "We'd love to know what we could've done better — reply to this email anytime." Primary CTA: "Reactivate" → `/account/billing`. Secondary: "Send feedback" → `mailto:hello@kova.app`. | `accessEndsOn`, `wasScheduled` (bool — picks the variant), `user_id` |
+| `subscription-payment-failed.html` | `invoice.payment_failed` | `Action needed: payment failed for Kova` | H1: "We couldn't charge your card". P1: "Your last payment of ${{ amount }} didn't go through (attempt {{ attemptCount }} of 4)." P2: "Update your card before **{{ deadline \| date('long') }}** to keep your subscription. After that, Kova will downgrade your account." Primary CTA: "Update payment method" → triggers `POST /api/stripe/portal-session` and redirects to portal new tab. Secondary: "View invoice" → `{{ hosted_invoice_url }}`. Footer notes: "Stripe is our payment processor and will also email you separately about this charge." | `amount`, `attemptCount`, `deadline`, `hosted_invoice_url`, `user_id` |
+
+**Send timing:** All emails fire **immediately** from the webhook handler (after the DB UPDATE completes and BEFORE the handler returns 200). Resend SDK call is wrapped in try/catch; failure logs to Sentry as `level: 'warning'` but does NOT 500 the handler (we've already updated DB; Stripe's own customer-emails serve as backup per §12.11).
+
+**Plain-text fallback:** Each `.html` template has a corresponding `.txt` sibling generated at build via `juice` + plain-text extractor. Resend SDK accepts both `html:` and `text:` payloads — we send both.
+
+**Localization:** English only at MVP. Phase 2 adds locale-aware variants based on `users.preferences.locale`.
+
+**Stripe's own emails:** Configure Stripe Dashboard → Settings → Customer emails to ENABLE: "Successful payments" + "Failed payments" + "Refunds" + "Upcoming invoices". Kova emails are supplementary; Stripe's are authoritative for legal/dunning purposes.
 
 ### 5.5 Compliance + docs deliverables
 
@@ -785,12 +801,12 @@ const accountRoutes = [
   },
   // /account/:section?
   {
-    path: '/account/:section(profile|billing|brand-kit|integrations|danger)',
+    path: '/account/:section(profile|brands|billing|brand-kit|integrations|danger)',
     name: 'account',
     component: () => import('@/views/account/AccountView.vue'),
     meta: { theme: 'dark', requiresAuth: true, viewportGuard: 'desktop' },
     props: true,
-    // Nested for Brand Kit sub-tabs (Cluster 05 ships the tab content components)
+    // Nested: Brand Kit sub-tabs (Cluster 05) + Brands archive page (Cluster 03 owns content; PRD 04 owns route + chrome)
     children: [
       {
         path: '',
@@ -821,9 +837,10 @@ const accountRoutes = [
 
 **Route notes:**
 
-- Section param uses Vue Router enumerated path: `:section(profile|billing|brand-kit|integrations|danger)` — invalid section 404s.
+- Section param uses Vue Router enumerated path: `:section(profile|brands|billing|brand-kit|integrations|danger)` — invalid section 404s.
 - Brand Kit sub-tab routing uses query param `?tab=visuals` (Cluster 05 owns).
 - Brand picker uses query param `?brand=:brandId` on Brand Kit + Integrations sections.
+- **`/account/brands` cross-cluster ownership (B12 reversal 2026-05-17):** PRD 04 owns the route registration + auth meta + sidebar nav entry; **PRD 03 owns the page content** (active+archived brand inventory grid, B12.3 Restore modal, B12.4 Delete-archived modal). `<SectionResolver>` (§6.4.1) maps `:section === 'brands'` to PRD 03's `<BrandsArchiveView>` component. Auth meta inherits from parent `account` route (requiresAuth: true, theme: dark, viewportGuard: desktop) — no additional guards needed.
 
 ### 6.2 Pinia stores
 
@@ -991,7 +1008,7 @@ export const useAccountStore = defineStore('account', () => {
 | Composable | File | Signature | Used by |
 |---|---|---|---|
 | `useAccountSection` | `src/composables/account/use-account-section.ts` | `(): { activeSection: ComputedRef<Section>; setSection(s: Section): void }` — syncs `useAccountStore.activeSection` with `route.params.section`; updates URL on `setSection()`; reads URL on mount | `<AccountView>`, sidebar nav |
-| `useBrandPicker` | `src/composables/account/use-brand-picker.ts` | `(scope: 'brand-kit' \| 'integrations'): { selectedBrand: ComputedRef<Brand \| null>; selectedBrandId: ComputedRef<string \| null>; setBrand(id: string): void }` — reads URL `?brand=:brandId` + falls back to `usePreferencesStore.lastActiveBrandId`; writes URL on `setBrand()` + persists to prefs | `<BrandKitSection>`, `<IntegrationsSection>` |
+| `useBrandPicker` | `src/composables/account/use-brand-picker.ts` | `(scope: 'brand-kit' \| 'integrations'): { selectedBrand: ComputedRef<Brand \| null>; selectedBrandId: ComputedRef<string \| null>; setBrand(id: string): void; renderMode: ComputedRef<'empty' \| 'static-label' \| 'dropdown'> }` — **default precedence (founder decision 2026-05-17):** `route.query.brand` (URL param) > `usePreferencesStore.lastActiveBrandId` (Q5 Layer 2) > first brand alphabetically. Writes URL query on `setBrand()` AND persists to prefs. **renderMode:** `'empty'` (0 brands), `'static-label'` (1 brand — Figma pattern), `'dropdown'` (2+ brands). | `<BrandKitSection>`, `<IntegrationsSection>` |
 | `usePlanGate` | `src/composables/account/use-plan-gate.ts` | `(feature: 'ai_generation' \| 'unlimited_history' \| 'custom_fonts' \| string): { allowed: ComputedRef<boolean>; reason: ComputedRef<string \| null> }` | All feature surfaces that may gate (M5 AI proxy, Cluster 09 unlimited history, Cluster 05 brand-font upload). STUB at MVP — `allowed.value = true` for all features. |
 | `useAvatarUpload` | `src/composables/account/use-avatar-upload.ts` | `(): { upload(file: File): Promise<{ public_url: string }>; uploading: Ref<boolean>; error: Ref<string \| null> }` — validates mime + size, requests signed URL, PUTs file, calls confirm endpoint | `<ProfileSection>` |
 | `useStripeReturn` | `src/composables/account/use-stripe-return.ts` | `(): { planName: ComputedRef<string>; mode: 'success' \| 'cancel'; goToDashboard(): void; goToBilling(): void; retryCheckout(): Promise<void> }` — reads `:mode` route prop + last-known priceId from localStorage for retry | `<StripeReturnLanding>` |
@@ -1004,12 +1021,13 @@ export const useAccountStore = defineStore('account', () => {
 |---|---|---|
 | `AccountView` | `src/views/account/AccountView.vue` | A7 chrome (sidebar + content area) |
 | `StripeReturnLanding` | `src/views/account/StripeReturnLanding.vue` | B10.1 + B10.2 (single component, `mode` prop branches) |
-| `SectionResolver` | `src/views/account/sections/SectionResolver.vue` | Internal — dispatch to specific section component per `useAccountStore.activeSection` |
+| `SectionResolver` | `src/views/account/sections/SectionResolver.vue` | Internal — dispatch to specific section component per `useAccountStore.activeSection`. **Maps `'brands'` → PRD 03's `<BrandsArchiveView>` via dynamic import** (B12 reversal 2026-05-17). |
 | `ProfileSection` | `src/views/account/sections/ProfileSection.vue` | A7.1 |
 | `BillingSection` | `src/views/account/sections/BillingSection.vue` | A7.2 |
 | `BrandKitSection` | `src/views/account/sections/BrandKitSection.vue` | A7.3 (shell only — sub-tab content from Cluster 05) |
 | `IntegrationsSection` | `src/views/account/sections/IntegrationsSection.vue` | A7.5 (refactored from M9 `SettingsBrandIntegrationsView`) |
 | `DangerZoneSection` | `src/views/account/sections/DangerZoneSection.vue` | A7.6 (thin wrapper that mounts `<DangerZoneCard>` from Cluster 01) |
+| `BrandsArchiveView` *(cross-cluster, owned by PRD 03)* | `src/views/account/sections/BrandsArchiveView.vue` *(PRD 03 path)* | **B12** page content (active+archived brand grid + B12.3 Restore + B12.4 Delete-archived modals). **PRD 04 only registers the route + sidebar entry; PRD 03 ships this component.** Imported by `<SectionResolver>` when `:section === 'brands'`. |
 
 #### 6.4.2 Reusable account-shell components
 
@@ -1018,8 +1036,9 @@ export const useAccountStore = defineStore('account', () => {
 | `<AccountSidebar>` (`src/components/account/AccountSidebar.vue`) | `activeSection: Section`; `items: Array<{ id: Section; label: string; icon: string; warnTinted?: boolean }>` | none | `select: (section: Section)` | A7 sidebar |
 | `<AccountSectionHeader>` (`src/components/account/AccountSectionHeader.vue`) | `title: string`; `subcopy: string` | `trailing` (optional, e.g., unsaved-pill slot) | none | A7 section headers |
 | `<UnsavedPill>` (`src/components/account/UnsavedPill.vue`) | `fields: string[]` | none | `save`, `discard` | A7.1 pill |
-| `<BrandPicker>` (`src/components/account/BrandPicker.vue`) | `modelValue: string \| null` (selected brand id); `brands: Brand[]`; `archivedBrands?: Brand[]` | `footer` (e.g., "+ Add new brand" if Cluster 03 dialog exists) | `update:modelValue: (id: string)` | A7.3 (A2b dropdown variant) |
-| `<PlanCard>` (`src/components/account/PlanCard.vue`) | `plan: string`; `planStatus: string`; `currentPeriodEnd: Date \| null`; `cancelAtPeriodEnd: boolean`; `features: string[]` | none | `manage-billing`, `compare-plans` | A7.2 |
+| `<BrandPicker>` (`src/components/account/BrandPicker.vue`) | `modelValue: string \| null` (selected brand id); `brands: Brand[]`; `archivedBrands?: Brand[]`; `renderMode: 'empty' \| 'static-label' \| 'dropdown'` (from `useBrandPicker.renderMode`) | `footer` (e.g., "+ Add new brand" if Cluster 03 dialog exists) | `update:modelValue: (id: string)` | A7.3 (A2b dropdown variant). **Render variants (founder decision 2026-05-17):** `'empty'` → defer to parent `<EmptyState>`; `'static-label'` → render brand name as non-interactive label (no chevron — Figma pattern); `'dropdown'` → full Reka-UI Select with chevron + search. |
+| `<PlanCard>` (`src/components/account/PlanCard.vue`) | `plan: string`; `planStatus: 'active' \| 'past_due' \| 'cancelled' \| 'incomplete' \| 'trialing'`; `currentPeriodEnd: Date \| null`; `cancelAtPeriodEnd: boolean`; `features: string[]` | none | `manage-billing`, `compare-plans` | A7.2. Renders **5 status pill variants** including "Trial" (founder decision 2026-05-17 — Trial pill hidden until `planStatus === 'trialing'`). |
+| `<TrialBanner>` (`src/components/account/TrialBanner.vue`) | `currentPeriodEnd: Date` (trial-end date); `planName: string` | none | none | net-new. Renders "Trial — {{ daysLeft }} days left of {{ planName }}." Conditional on `useBillingStore.planStatus === 'trialing'`. Ships hidden at MVP — no Stripe trial settings active. Activation = founder turns trial on in Stripe Dashboard; component lights up automatically via reactive store. |
 | `<UsageBar>` (`src/components/account/UsageBar.vue`) | `label: string`; `used: number`; `cap: number`; `unit: 'count' \| 'bytes'`; `resetAt?: Date` | none | none | A7.2 |
 | `<InvoiceTable>` (`src/components/account/InvoiceTable.vue`) | `invoices: Invoice[]`; `loading?: boolean`; `error?: string` | none | none | A7.2 |
 | `<PastDueBanner>` (`src/components/account/PastDueBanner.vue`) | `cardLast4?: string`; `nextAttemptAt?: Date` | none | `update-payment` (opens Portal) | net-new — wired to `useBillingStore.isPastDue` |
@@ -1111,7 +1130,7 @@ Every line is testable in code or browser. No "feels right."
 
 - [ ] Visiting `/account` redirects to `/account/profile` with HTTP 200
 - [ ] Visiting `/account/:section` for an unknown section returns 404 (Vue Router path enum)
-- [ ] Sidebar renders exactly 5 items in the order Profile, Plan & billing, Brand Kit, Integrations, Danger zone
+- [ ] Sidebar renders exactly **6 items** in the order Profile, **Brands**, Plan & billing, Brand Kit, Integrations, Danger zone (B12 reversal 2026-05-17)
 - [ ] Danger zone sidebar item is warn-tinted (trash-2 icon in `--warn` color, label in `--ink`)
 - [ ] Clicking a sidebar item updates the URL to `/account/{section}` AND renders the section content within ≤200ms
 - [ ] `<AccountView>` enforces 240px sidebar + 720px content max-width on viewports ≥1024px
@@ -1124,8 +1143,8 @@ Every line is testable in code or browser. No "feels right."
 - [ ] Editing the Name field marks `useAccountStore.hasUnsaved = true` AND renders `<UnsavedPill>` with "1 unsaved change · Name"
 - [ ] Clicking Save persists changes to `users` via `supabase.from('users').update()` and resets the pill
 - [ ] Clicking Discard reverts draft to original; pill disappears
-- [ ] Avatar Upload button opens file picker filtered to `.png,.jpg,.jpeg,.svg`
-- [ ] Files >2 MB are rejected client-side (size check before request) with toast "File too large (max 2 MB)"
+- [ ] Avatar Upload button opens file picker filtered to `.png,.jpg,.jpeg` (SVG REJECTED — founder decision 2026-05-17)
+- [ ] Files >5 MB are rejected client-side (size check before request) with toast "File too large (max 5 MB)"
 - [ ] Files with bad mime are rejected by the server (`/api/account/avatar-upload` returns 415)
 - [ ] Successful avatar upload renders the new image in the row within ≤2s of file selection
 - [ ] Default initials render when `users.avatar_storage_path IS NULL` (computes from `name.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase()`)
@@ -1245,7 +1264,7 @@ Target coverage: ≥85% on stores + composables + Edge-Function handlers.
 | `tests/unit/api/stripe/portal-session.test.ts` | no_customer 404; success URL return; rate limit |
 | `tests/unit/api/stripe/webhook.test.ts` | Signature verify (valid + invalid + missing); event_id dedup; per-event-type dispatch (6 handlers); unhandled_type returns 200; handler exception → Sentry + outcome='error' |
 | `tests/unit/api/stripe/webhook-handlers/handle-checkout-completed.test.ts` | Reads client_reference_id; falls back to customer.metadata.user_id; audit log |
-| `tests/unit/api/stripe/webhook-handlers/handle-subscription-created.test.ts` | Maps price_id to plan name; sets plan/status/period; trialing → 'active' mapping |
+| `tests/unit/api/stripe/webhook-handlers/handle-subscription-created.test.ts` | Maps price_id to plan name; sets plan/status/period; stores `trialing` as-is when Stripe sends it (founder decision 2026-05-17) |
 | `tests/unit/api/stripe/webhook-handlers/handle-subscription-updated.test.ts` | cancel_at_period_end propagation; status transitions |
 | `tests/unit/api/stripe/webhook-handlers/handle-subscription-deleted.test.ts` | Resets plan to 'free', cancel_at_period_end to false |
 | `tests/unit/api/stripe/webhook-handlers/handle-invoice-paid.test.ts` | Past-due → active recovery |
@@ -1254,7 +1273,7 @@ Target coverage: ≥85% on stores + composables + Edge-Function handlers.
 | `tests/unit/api/stripe/reconcile.test.ts` | CRON_SECRET auth; past_due reconcile; cancelled cleanup; no-drift no-op |
 | `tests/unit/api/account/avatar-upload.test.ts` | Mime/size validation; signed URL creation; path construction |
 | `tests/unit/api/account/avatar-confirm.test.ts` | Path validation; existence check; users.avatar_storage_path UPDATE |
-| `tests/unit/components/account/AccountSidebar.test.ts` | Renders 5 items, active highlight, select emit |
+| `tests/unit/components/account/AccountSidebar.test.ts` | Renders 6 items in order (Profile, Brands, Plan & billing, Brand Kit, Integrations, Danger zone) + active highlight + select emit. B12 reversal 2026-05-17. |
 | `tests/unit/components/account/BrandPicker.test.ts` | Renders active + archived; emits update:modelValue; search filter |
 | `tests/unit/components/account/PlanCard.test.ts` | Status pill color mapping; cancel-at-period-end footer copy; manage-billing visibility |
 | `tests/unit/components/account/UsageBar.test.ts` | Percent rendering; unit formatting (bytes/count) |
@@ -1310,7 +1329,7 @@ Per `feedback_browser_smoke_test_before_done` memory — required before claimin
 
 - [ ] Sign in; open `/account`; click each section; verify content + theme
 - [ ] Edit name + timezone in Profile; observe unsaved pill; save; reload; persists
-- [ ] Upload avatar (PNG, JPG, SVG, and a >2MB file to see rejection); verify display
+- [ ] Upload avatar (PNG, JPG, an SVG to see rejection, and a >5MB file to see rejection); verify normalized 256×256 PNG renders
 - [ ] Click "Change…" email; complete the cross-cluster flow (Cluster 01); verify B5.1 lands on success
 - [ ] In Plan & billing: click "Manage billing" — verify new tab opens to Stripe Customer Portal (test mode)
 - [ ] Trigger a Stripe Checkout in test mode (real card 4242 4242 4242 4242); land at B10.1; observe plan name update
@@ -1372,7 +1391,10 @@ Per `feedback_browser_smoke_test_before_done` memory — required before claimin
 | `STRIPE_CHECKOUT_ENABLED` | `false` until prices locked | Flip after Stripe Live mode + prices set in Stripe Dashboard |
 | `STRIPE_RECONCILE_CRON_ENABLED` | `false` in dev, `true` in prod | Activated via `vercel.json` schedule presence |
 | `PLAN_GATE_ENFORCED` | `false` (stub allows everything) | Flip when pricing locks; founder edits constants |
-| `MAX_AVATAR_SIZE_BYTES` | `2 * 1024 * 1024` (2 MB) | Adjust if abuse signals |
+| `MAX_AVATAR_SIZE_BYTES` | `5 * 1024 * 1024` (5 MB) | Founder decision 2026-05-17 — matches Figma/GitHub. Adjust if abuse signals. Server resizes to 256×256 PNG regardless. |
+| `AVATAR_ALLOWED_MIME` | `['image/png', 'image/jpeg'] as const` | SVG explicitly excluded (XSS) — founder decision 2026-05-17 |
+| `AVATAR_OUTPUT_SIZE_PX` | `256` | Final stored dimension; `sharp` resizes via fit:'cover' |
+| `AVATAR_OUTPUT_FORMAT` | `'png'` | Server normalization target — fixed extension `avatar.png` (no orphans) |
 | `AVATAR_BUCKET_PATH_PREFIX` | `users/{user_id}/avatar` | Hardcoded; matches existing M9 pattern |
 
 ---
@@ -1418,24 +1440,19 @@ Q14 explicitly defers pricing tiers. At Phase B activation, founder must create 
 
 **Mitigation:** Operator runbook (§5.5) enumerates the exact order. CI gate: on every deploy to production, a startup health check calls `stripe.prices.retrieve(STRIPE_PRICE_ID_SOLO)` and `.AGENCY` — if either 404s, deployment fails. (Deferred from this PRD; spec'd here, implemented in Phase B.)
 
-### 12.3 OPEN QUESTION — `trialing` plan_status omission
+### 12.3 RESOLVED 2026-05-17 — `trialing` plan_status added to CHECK
 
-The CHECK constraint `plan_status IN ('active','past_due','cancelled','incomplete')` follows Q14 + dispatch prompt. Stripe emits `customer.subscription.trial_will_end` and sets subscription status to `'trialing'` during trial periods. If founder activates trials post-launch, the webhook handler will receive a `trialing` status, attempt `UPDATE users SET plan_status = 'trialing'`, and FAIL the CHECK constraint.
+**Founder decision:** Option B — add `'trialing'` to plan_status CHECK NOW. DB CHECK is `('active','past_due','cancelled','incomplete','trialing')`. Webhook handler stores `sub.status` as-is (no mapping). UI scaffold (status pill "Trial" variant + "Trial — X days left" banner) ships hidden at MVP, conditional render on `plan_status === 'trialing'`. Activation deferred until founder turns on Stripe trial settings in Dashboard. Reasoning: founder picked future-proof + overbuild posture; ALTER CHECK was trivial cost today vs. future-rework risk.
 
-**Founder decision required:**
+### 12.4 RESOLVED 2026-05-17 — Plan-name placeholder + Free-tier feature bullets
 
-| Option | Pros | Cons |
-|---|---|---|
-| **A. Map `trialing` → `'active'` in webhook handler (current spec)** | No migration; user sees "Active" pill during trial which matches the entitlement reality | Loses trial visibility in UI; if we ever want "Free trial — 7 days left" copy, schema doesn't support it |
-| **B. ALTER CHECK to add `trialing` now** | Future-proof; full Stripe fidelity | Adds a state the UI doesn't render at MVP — wasted columns |
+**Founder decision:** Ship the templating as specced. Plan-card Free-tier bullets land in `@/constants/billing-plans.ts` with 4 lines:
+- "1 brand kit"
+- "Unlimited canvases"
+- "AI design assistant"
+- "Image export (PNG slices)"
 
-**Recommendation: A at MVP** (current spec); ALTER CHECK to add `trialing` only if founder activates trials. ALTER CHECK is reversibility-TRIVIAL.
-
-### 12.4 OPEN QUESTION — Plan-name placeholder strategy at MVP
-
-Q14 defers pricing. Plan-card and Stripe-return-landing show `{{ planName }}` from `users.plan`. At MVP everyone is on `'free'` — copy reads "You're on **Free**" which is technically correct but uninspiring after a paid checkout completes.
-
-**Recommendation:** Ship the templating as specced. Founder activates prices → users start having `plan='solo'|'agency'` → copy reads "You're on **Solo**" / "You're on **Agency**" — works without code change.
+Solo / Agency bullets land Phase B when pricing locks. Founder activates prices → users start having `plan='solo'|'agency'` → copy reads "You're on **Solo**" / "You're on **Agency**" — works without code change.
 
 ### 12.5 RISK (Low) — Stripe Customer Portal "new tab" UX vs in-page expectation
 
@@ -1443,19 +1460,12 @@ Users may expect Manage billing to open inline (Figma + Linear + Notion all use 
 
 **Mitigation:** Button label "Manage billing" suggests an external action. On click, transient toast ("Opening Stripe portal in a new tab…") clarifies. Customer Portal session URL is one-time-use per Stripe docs, so new tab is functionally cleaner than embed anyway (no risk of stale-tab issues).
 
-### 12.6 OPEN QUESTION — Past-due banner copy
+### 12.6 RESOLVED 2026-05-17 — Past-due banner copy locked
 
-Hi-fi A7.2 does not have an explicit past-due variant drawn. §3.3 specs banner copy "Your last payment didn't go through. Update your card before {{ current_period_end + 7 days }} to keep your subscription."
+**Founder decision:** Option A. Banner copy:
+> "Your last payment didn't go through. Update your card before {{ deadline }} to keep your subscription."
 
-**Founder decision required:**
-
-| Option | Copy |
-|---|---|
-| **A (current spec)** | "Your last payment didn't go through. Update your card before {{ deadline }} to keep your subscription." |
-| **B (softer)** | "We couldn't process your last payment. Update your card to keep using Kova." |
-| **C (urgency)** | "Action required: update your payment method by {{ deadline }} or your subscription will be cancelled." |
-
-**Recommendation: A.** Concrete + specific + non-alarmist.
+Deadline = `current_period_end + 7 days`. Single CTA "Update payment method" → Stripe Portal new tab.
 
 ### 12.7 RISK (Low) — Realtime subscription count
 
@@ -1463,11 +1473,11 @@ Hi-fi A7.2 does not have an explicit past-due variant drawn. §3.3 specs banner 
 
 **Mitigation:** Subscription unsubscribed on route leave (Vue `onBeforeRouteLeave` lifecycle).
 
-### 12.8 OPEN QUESTION — Webhook event for non-subscription Stripe accounts
+### 12.8 RESOLVED — Webhook event for non-subscription Stripe accounts
 
 If a user creates a Stripe Customer via `customers.create` but never completes Checkout (e.g., starts upgrade then abandons), `users.stripe_customer_id` is set but `users.stripe_subscription_id` stays NULL. Cluster 01's `delete-account-cron` 'stripe' step needs to delete the Customer even without a subscription.
 
-**Resolution:** PRD 01's step `stripe` handler already calls `stripe.subscriptions.cancel` (no-op if NULL — already-canceled treated as success) then `stripe.customers.del` (no-op if already-deleted). Both API calls handle the missing-subscription edge cleanly. No changes needed.
+**Resolution:** PRD 01's step `stripe` handler calls `stripe.subscriptions.cancel` (no-op if NULL — already-canceled treated as success) then `stripe.customers.del` (no-op if already-deleted). Both API calls handle the missing-subscription edge cleanly. **D-2 amendment 2026-05-17** confirms Cluster 01 cron deletes the Stripe Customer on account-deletion (vs. originally "kept forever"). Invoice history persists in Stripe 7 yrs per their docs.
 
 ### 12.9 RISK (Low) — Concurrent avatar upload race
 
@@ -1487,11 +1497,13 @@ Stripe fires `invoice.payment_failed` → our webhook → Resend send. If Resend
 
 **Mitigation:** Configure Stripe's built-in dunning email AS WELL ("payment failed" Stripe Customer email — enabled in Stripe Dashboard → Settings → Customer emails). Our Resend email is supplementary, branded as Kova; Stripe's is the authoritative trail. If Resend fails, Stripe still sent its own. Webhook handler logs Resend failure to Sentry but does NOT 500 (we already returned 200 to Stripe).
 
-### 12.12 OPEN QUESTION — Brand picker behavior when user has zero active brands
+### 12.12 RESOLVED 2026-05-17 — Brand picker zero/single/multi behavior locked
 
-If user just signed up and hasn't created a brand yet, `useBrandsStore.brands[]` is empty. `<BrandPicker>` would render an empty state.
-
-**Recommendation:** Brand Kit + Integrations sections render Cluster 11 `<EmptyState>` with copy "No brands yet. Create one from your dashboard first." + CTA "Go to dashboard" → `/dashboard`. Pre-empts confusion. (Unblocks: user can't reach `/account` from onboarding because Cluster 02 routes them through brand-creation first — but defensive code is cheap.)
+**Founder decision:**
+- **Zero brands** (edge case — Cluster 02 normally blocks this path): Brand Kit + Integrations render Cluster 11 `<EmptyState>` with copy "No brands yet. Create one from your dashboard first." + CTA "Go to dashboard" → `/dashboard`.
+- **One brand** (most freelancers at MVP): `<BrandPicker>` renders as **static label** (brand name, no dropdown chevron) — Figma pattern.
+- **2+ brands**: full dropdown with chevron.
+- **Default selection** when route lands: precedence is `?brand=:brandId` URL param > `users.preferences.lastActiveBrandId` (Q5 Layer 2) > first brand alphabetically.
 
 ---
 
@@ -1505,13 +1517,49 @@ If user just signed up and hasn't created a brand yet, `useBrandsStore.brands[]`
 
 ### 13.2 Q-decisions baked in
 
-- **Q12** — `/account` full-page route with 5 sidebar sections (better than Figma's modal; matches Linear/Notion). This PRD ships the route + sidebar + 4 sections (Profile, Plan & billing, Brand Kit shell, Integrations); 5th (Danger zone) mounts Cluster 01 component.
-- **Q13** — user-level scope for Profile + Plan & billing + Danger zone; per-brand for Brand Kit + Integrations (brand-picker dropdown). One Stripe Customer per user (D-2 ratification).
+- **Q12** — `/account` full-page route with **6 sidebar sections** as of B12 reversal 2026-05-17 (better than Figma's modal; matches Linear/Notion). This PRD ships the route + sidebar chrome + 4 sections (Profile, Plan & billing, Brand Kit shell, Integrations); 5th (Danger zone) mounts Cluster 01 component; 6th (**Brands**) mounts PRD 03's `<BrandsArchiveView>` component (PRD 03 owns content, PRD 04 owns the route + sidebar entry).
+- **Q13** — user-level scope for Profile + Plan & billing + Danger zone; per-brand for Brand Kit + Integrations (brand-picker dropdown). One Stripe Customer per user (D-2 amended 2026-05-17 — Customer deleted on account-deletion via Cluster 01 GDPR cron; was "kept forever").
 - **Q14** — Stripe foundation now (Checkout + Customer Portal + webhooks). Launch strategy + pricing intentionally out of scope. Plan structure deferred.
 - **Q15** — partial cross-cut. Cluster 01 owns the GDPR cascade; we provide the Stripe SDK + env vars + Customer-deletion logic via PRD 01 §5.1.4.1.
 - **§5.6 item 1** — M9 light→dark refactor (`IntegrationsCard`, `SettingsBrandIntegrationsView`). Implemented in §6.4.5.
 - **§5.6 item 4** — M9 Integrations IA aligned to Q12/Q13 (route from `/dashboard/:brandId/settings/integrations` → `/account/integrations` with brand picker).
 - **§5.6 item 8** — `shopify_connection_history` table built; accordion wired.
+
+### 13.2.1 Founder decisions 2026-05-17 (20 PRD-04 amendments)
+
+| # | Topic | Decision |
+|---|---|---|
+| 1 | SVG avatar | DROP. PNG/JPG only. XSS surface eliminated. |
+| 2 | Trialing status | ADD to plan_status CHECK. Stored as-is (no mapping). |
+| 3 | Compare plans button | Visible + toast "Pricing coming soon." |
+| 4 | Free plan bullets | 4 lines in `@/constants/billing-plans.ts`: "1 brand kit", "Unlimited canvases", "AI design assistant", "Image export (PNG slices)". |
+| 5 | Past-due copy | "Your last payment didn't go through. Update your card before {{ deadline }} to keep your subscription." |
+| 6 | Resend Kova-branded emails at MVP | ALL 4 events (payment-failed + new-sub + upgraded + cancelled). See §5.4.3 for copy. |
+| 7 | Avatar fallback | Initials on per-user-stable hashed color tile. |
+| 8 | Stripe Portal Cancellation | `at_period_end` mode. |
+| 9 | Email copy authoring | All 4 Resend subject + body templates drafted in §5.4.3. |
+| 10 | Compare plans toast copy | "Pricing coming soon." |
+| 11 | Webhook bad-signature response | HTTP 400 Bad Request explicitly. |
+| 12 | Brand picker default | `?brand=:brandId` URL param > `users.preferences.lastActiveBrandId` > first brand alphabetically. |
+| 13 | Past-due CTA | Single "Update payment method" button → Stripe Portal new tab. |
+| 14 | Webhook handler internal errors | Return 500 → Stripe retries (idempotent). |
+| 15 | **D-2 AMENDMENT** | Stripe Customer DELETED on account-deletion via Cluster 01 GDPR cron (was "kept forever"). |
+| 16 | Avatar storage path | Normalize to PNG (`sharp` dep), fixed path `users/{user_id}/avatar.png`. |
+| 17 | Single-brand UX | Static label when 1 brand; full dropdown when 2+. (Figma pattern) |
+| 18 | Trial UI scaffold | Status pill "Trial" variant + "Trial — X days left" banner ship hidden, conditional render. |
+| 19 | D-2 reversal confirmation | LOCKED. Memory updated. |
+| 20 | Avatar max upload size | 5 MB (was 2 MB). Server resizes to 256×256 PNG regardless. |
+
+### 13.2.2 B12 archive reversal 2026-05-17 — `/account/brands` added
+
+Separate decision dispatched same day. B12 archived Brands page promoted from Phase 2 → MVP. **PRD 03 owns the page content** (active+archived inventory grid + B12.3 Restore + B12.4 Delete-archived modals); **PRD 04 owns** the route registration + auth meta + sidebar nav entry. Deltas applied to PRD 04:
+
+- **§3.1 chrome** — sidebar 5 → 6 sections; Brands inserted between Profile and Plan & billing (icon: `layers`). Verified against `Kova Hi-Fi B12 Brands page - Dark.html` lines 554–560.
+- **§3.2 sidebar item list** — row updated to 6 items including Brands.
+- **§6.1 routes** — `:section` enum expanded: `(profile|brands|billing|brand-kit|integrations|danger)`. Auth meta inherits from parent account route. Cross-cluster ownership note added.
+- **§6.4.1 SectionResolver** — maps `'brands'` → PRD 03's `<BrandsArchiveView>` via dynamic import.
+- **§8.x acceptance** — sidebar test now asserts 6 items (Profile, Brands, Plan & billing, Brand Kit, Integrations, Danger zone).
+- Source: `kova-open-pencil-1/docs/kova-final-prds/00f-B12_REVERSAL_DISPATCH.md` (Prompt B).
 
 ### 13.3 Hi-fi files
 
@@ -1519,6 +1567,7 @@ If user just signed up and hasn't created a brand yet, `useBrandsStore.brands[]`
 - `main-main-kova-scope/batch-a-additions/dark/Kova Hi-Fi B10 Stripe Returns - Dark.html` — 2 scenes (B10.1 success, B10.2 cancel) + plan-name annotation
 - `main-main-kova-scope/batch-a/dark/Kova Hi-Fi A4+A9+A10 Modals - Dark.html` — A9.1 delete-account modal + A9.3 deletion-pending landing (both owned by Cluster 01; we mount A9.1 via `<DangerZoneCard>`)
 - `main-main-kova-scope/batch-a-additions/light/Kova Hi-Fi B5 Email Change Landing - Light.html` — cross-cut; B5.1 primary CTA target is `/account/profile` (Cluster 01 ships landing; we provide the destination route)
+- `main-main-kova-scope/batch-a-additions/dark/Kova Hi-Fi B12 Brands page - Dark.html` — cross-cut; B12.1–B12.4 covers the Brands archive page. Content owned by **PRD 03**; PRD 04 uses lines 554–560 to verify sidebar order (Profile / Brands / Plan & billing / Brand Kit / Integrations / Danger zone). B12 reversal 2026-05-17 promoted MVP. Dispatch: `docs/kova-final-prds/00f-B12_REVERSAL_DISPATCH.md` Prompt B.
 
 ### 13.4 Design system
 

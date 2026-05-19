@@ -29,11 +29,12 @@ Engine miss few things. Slice. Measurement. Mask render. Aspect-ratio. Page expo
 
 After this PRD ships:
 
-1. A SLICE NodeType + a MEASUREMENT NodeType exist in `packages/core/src/scene-graph.ts`'s union; both round-trip through Kiwi+Zstd serialization without loss; both survive Yjs document load/reload; both are listable via `figma.findAll({ type: 'SLICE' | 'MEASUREMENT' })`; both can be cloned, removed, reparented, and renamed via the standard `FigmaNodeProxy` API.
+1. A SLICE NodeType exists in `packages/core/src/scene-graph.ts`'s union (the 18th NodeType — only new NodeType added by this PRD); it round-trips through Kiwi+Zstd serialization without loss; survives Yjs document load/reload; is listable via `figma.findAll({ type: 'SLICE' })`; can be cloned, removed, reparented, and renamed via the standard `FigmaNodeProxy` API.
+   - Measurements are **not** a NodeType — per Figma's data model (verified against `developers.figma.com/docs/plugins/api/Measurement/`, decision 2026-05-17), measurements live on the CANVAS (page-level) as a separate collection of `Measurement` records anchored to SceneNodes by side. Q11's "MEASUREMENT = 18th NodeType" is superseded by this PRD's Match-Figma-exactly decision (§12.10); the founder ratified the Figma-aligned model on 2026-05-17 during PRD revision.
 2. `SceneNode.aspectRatio` (number | null), `SceneNode.includeInExports` (boolean, CANVAS-type semantic only), `SceneNode.pageBackgroundVisible` (boolean, CANVAS-type semantic only) ship as fields; all three survive serialization round-trip; all three are reachable through `figma-api-proxy`.
 3. `CharacterStyleOverride` carries the OpenType-feature wiring (font features list) and per-text-run list-marker + link-href metadata; `StyleRun` propagates them through the Kiwi schema.
 4. `tools/modify.ts` exports `scaleNode(id: string, factor: number)`; the function is registered in `tools/registry.ts` (EXTENDED_TOOLS); it scales width, height, font-size, corner-radius, stroke-weight, and effect radius/offset proportionally — matching Figma's "K"-key scale tool semantics.
-5. `tools/create.ts` `createSlice` no longer fabricates a Frame; it creates a true SLICE NodeType. A new `createMeasurement` ships alongside.
+5. `tools/create.ts` `createSlice` no longer fabricates a Frame; it creates a true SLICE NodeType. The CANVAS-typed SceneNode gains five page-level measurement methods (`addMeasurement`, `getMeasurements`, `getMeasurementsForNode`, `editMeasurement`, `deleteMeasurement`) matching Figma's PageNode signature exactly; an `addMeasurement` ToolDef wrapper (in EXTENDED_TOOLS) lets the AI invoke it on explicit prompt.
 6. `renderer/scene.ts` `renderChildren` performs sibling-traversal mask compositing for all three `MaskType` values (`ALPHA`, `VECTOR`, `LUMINANCE`); masks render correctly on Skia/CanvasKit and on the headless renderer; mask propagation stops at the next mask, the parent frame/group, or a clip-content container — matching Figma's mask propagation rule (verified against help.figma.com).
 7. `packages/core/src/kiwi/kiwi-schema/schema.ts` carries a schema version bump; the corresponding kiwi converters serialize/deserialize the new NodeTypes + fields; the version-bump is documented in `CHANGELOG-KOVA.md`.
 8. `figma-api-proxy.ts` exposes `figma.createSlice()`, `figma.createMeasurement()`, the new SceneNode fields, the OpenType run metadata, and `scaleNode()` on `FigmaNodeProxy`.
@@ -51,33 +52,53 @@ The engine surface in this PRD is **invisible to a customer opening the app**: a
 **`packages/core/` modifications (lift the core lock per CLAUDE.md amendment — ratified in `00c §895`, not yet documented in CLAUDE.md prose; this PRD's merge surfaces the amendment text — see §12.3 + §12.7):**
 
 - `scene-graph.ts`:
-  - Append `'SLICE'` and `'MEASUREMENT'` to the `NodeType` union.
+  - Append `'SLICE'` to the `NodeType` union (the 18th NodeType — the only new NodeType added by this PRD; measurements are stored separately per the new measurement system, see below).
   - Add `SceneNode.aspectRatio: number | null` (default `null`; non-null means width/height ratio is locked during interactive resize — semantics consumed by 07b inspector + drag handles).
   - Add `SceneNode.includeInExports: boolean` (default `true`; CANVAS-type semantic — per-page export inclusion flag for the Slice-batch ZIP path).
   - Add `SceneNode.pageBackgroundVisible: boolean` (default `true`; CANVAS-type semantic — toggles the page background fill in editor view only; export pipeline ignores this).
   - Extend `CharacterStyleOverride` with `openTypeFeatures?: string[]` (e.g. `['liga', 'kern', 'tnum']` — CSS `font-feature-settings` vocabulary) and `linkHref?: string` for hyperlink runs.
   - Extend the structure with `ListMarker` per-text-run metadata (`ListType = 'NONE' | 'BULLETED' | 'NUMBERED'`, indent level int) carried on `StyleRun`.
-  - Update `createDefaultNode` to include defaults for the new fields.
-  - Add `SLICE` + `MEASUREMENT` to `CONTAINER_TYPES` evaluation if either should be selectable but **not** allow children — both are leaf nodes (verified: Figma's SliceNode + MeasurementNode are leaf nodes); explicitly **not** added to `CONTAINER_TYPES`.
+  - Add new types — `MeasurementSide = 'TOP' | 'RIGHT' | 'BOTTOM' | 'LEFT'` (matches Figma `MeasurementSide` verbatim) and `MeasurementOffset = { type: 'INNER'; relative: number /* -1..1 */ } | { type: 'OUTER'; fixed: number /* non-zero */ }` (matches Figma `MeasurementOffset` union shape verbatim).
+  - Add `Measurement` record interface — `{ id: string; start: { nodeId: string; side: MeasurementSide }; end: { nodeId: string; side: MeasurementSide }; offset: MeasurementOffset; freeText: string }`. `freeText: ''` (empty string) means "use computed label" — engine writes empty by default; user overrides via `editMeasurement`. Matches Figma's `freeText` semantic (decision 2026-05-17 founder ratification).
+  - Add `SceneNode.measurements?: Measurement[]` field — populated only on `type === 'CANVAS'` nodes; semantically a page-level collection (matches Figma's `PageNode.getMeasurements()` shape). Non-CANVAS nodes ignore this field. Default `[]` on CANVAS-typed factory; field absent on all other types.
+  - Add five **CANVAS-only** methods on `SceneGraph` (the engine class that wraps the scene tree, mounted on `figma-api-proxy.ts` as `figma.currentPage.*` per Figma's PageNode API parity):
+    - `addMeasurement(canvasId: string, start: { nodeId: string; side: MeasurementSide }, end: { nodeId: string; side: MeasurementSide }, options?: { offset?: MeasurementOffset; freeText?: string }): Measurement` — creates a new Measurement on the named CANVAS, fails if `start.nodeId` or `end.nodeId` is not a descendant of the target CANVAS (cross-canvas anchor refs are rejected). Generates `Measurement.id` via `crypto.getRandomValues()` per CLAUDE.md randomness rule.
+    - `getMeasurements(canvasId: string): Measurement[]` — returns the CANVAS's measurement collection (matches Figma).
+    - `getMeasurementsForNode(nodeId: string): Measurement[]` — returns all measurements anchored to the given node (either start or end anchor) anywhere on its parent CANVAS.
+    - `editMeasurement(canvasId: string, id: string, newValue: { offset?: MeasurementOffset; freeText?: string }): Measurement` — only `offset` and `freeText` are editable per Figma's `editMeasurement` signature (start/end anchors are **immutable** post-creation — to change anchors, delete + re-add). Returns the updated record.
+    - `deleteMeasurement(canvasId: string, id: string): void` — removes the measurement.
+  - **Orphan-on-anchor-delete semantic** (decision 2026-05-17 founder ratification): when a SceneNode that has measurements anchored to it is removed via `removeNode`, the measurements are **not** auto-deleted; their anchor refs become "broken" (the `nodeId` still references the deleted node ID). 07b's render layer detects broken anchors and renders the measurement in a degraded "broken-anchor" state (e.g. gray dashed line + ⚠ glyph; specific UI in 07b PRD). Engine emits a `measurement:broken` event on `SceneGraphEvents` when an anchor breaks so 07b can subscribe.
+  - **Drop-on-cross-canvas-move semantic** (decision 2026-05-17 founder ratification): when a SceneNode is moved to a different CANVAS (parent reparented to a different CANVAS ancestor), all measurements anchored to it on the source CANVAS are **deleted** (not orphaned, not moved — explicit drop). Cross-canvas measurement anchors are disallowed by `addMeasurement`'s validation, so the move-and-drop is the only path. Engine emits a `measurement:dropped` event with the deleted IDs.
+  - Update `createDefaultNode` to include defaults for the new SceneNode fields (`aspectRatio: null`, `includeInExports: true`, `pageBackgroundVisible: true`, `measurements: []` for CANVAS-type only).
+  - Add `SLICE` to `CONTAINER_TYPES` evaluation if it should be selectable but **not** allow children — `SLICE` is a leaf node per Figma's `SliceNode` interface; explicitly **not** added to `CONTAINER_TYPES`. (Measurement is no longer a NodeType — does not appear in `CONTAINER_TYPES` discussion.)
 - `tools/modify.ts`:
   - Export `scaleNode(id: string, factor: number)`: scales `width`, `height`, `fontSize` (TEXT), all four corner radii (independent + uniform), per-side stroke weights, effect `radius` + `offset.x` + `offset.y`. Does **not** scale `x`, `y`, or `rotation` (matches Figma's "K"-key scale-tool which scales geometry while keeping the node anchored).
   - Recursive scale applies to descendant nodes if `node.childIds.length > 0` (consistent with Figma's scale tool descending the tree).
   - Reuses existing geometry helpers; no new geometry math.
 - `tools/create.ts`:
   - Refactor `createSlice` (currently fabricates a fill-less Frame) to instantiate a real SLICE NodeType via `figma.createSlice()` proxy, falling through to the `createDefaultNode('SLICE')` factory after the new NodeType lands.
-  - Add `createMeasurement` tool definition (params: `start_x`, `start_y`, `end_x`, `end_y`, `name?`, `parent_id?`).
+  - `createMeasurement` is **not** a NodeType-creation tool (measurements are not NodeTypes per the Figma-aligned model). Instead, add `addMeasurement` ToolDef in `tools/measurement.ts` (NEW file) — params: `canvas_id`, `start_node_id`, `start_side` (`'TOP' | 'RIGHT' | 'BOTTOM' | 'LEFT'`), `end_node_id`, `end_side`, optional `offset_type` (`'INNER' | 'OUTER'`), optional `offset_value` (number — `relative` for INNER, `fixed` for OUTER), optional `free_text` (empty by default). The tool wraps `figma.currentPage.addMeasurement(...)` and returns the new Measurement's `id`.
 - `tools/registry.ts`:
-  - Export the new tools; add `createMeasurement` and `scaleNode` to `EXTENDED_TOOLS` (kept out of `CORE_TOOLS` to avoid schema-token bloat — AI invokes them on explicit prompt only).
+  - Export the new tools; add `addMeasurement` and `scaleNode` to `EXTENDED_TOOLS` (kept out of `CORE_TOOLS` to avoid schema-token bloat — AI invokes them on explicit prompt only). `createSlice` already lives in EXTENDED_TOOLS (existing slot — refactor only).
 - `figma-api-proxy.ts`:
-  - Expose `figma.createSlice(): FigmaNodeProxy` and `figma.createMeasurement(): FigmaNodeProxy`.
+  - Expose `figma.createSlice(): FigmaNodeProxy` (returns a proxy for the new SLICE NodeType).
   - Expose `FigmaNodeProxy.scale(factor: number): void` (proxy method that calls `modify.scaleNode`).
+  - Expose **PageNode-equivalent** measurement methods on the CANVAS proxy (`figma.currentPage.*` — Kova's `currentPage` is the active CANVAS):
+    - `currentPage.addMeasurement(start, end, options?): Measurement`
+    - `currentPage.getMeasurements(): Measurement[]`
+    - `currentPage.getMeasurementsForNode(node: FigmaNodeProxy): Measurement[]`
+    - `currentPage.editMeasurement(id, newValue): Measurement`
+    - `currentPage.deleteMeasurement(id): void`
+    - Method signatures match Figma's PageNode API exactly (verified `developers.figma.com/docs/plugins/api/PageNode/`).
   - Surface the new SceneNode fields (`aspectRatio`, `includeInExports`, `pageBackgroundVisible`, `openTypeFeatures` via `StyleRun.style`) on the proxy property getters/setters.
 - `kiwi/kiwi-schema/schema.ts` + `kiwi/kiwi-convert.ts`:
   - Schema **major version bump** (Kova-side; the upstream OpenPencil schema is untouched in the proto definition by Kova's mods until upstream accepts the PR — see §12.5 dual-schema risk).
-  - Add `SLICE` + `MEASUREMENT` enum variants to the NodeType field.
+  - Add `SLICE` enum variant to the NodeType field (MEASUREMENT is **not** added — measurements are a separate kiwi struct, not a NodeType).
   - Add `aspect_ratio`, `include_in_exports`, `page_background_visible` fields to the SceneNode struct.
+  - Add `measurements` field to the SceneNode struct (typed as a list of `Measurement` kiwi structs; populated only on CANVAS-typed nodes).
+  - Add **new kiwi structs**: `Measurement { id: string; start: MeasurementAnchor; end: MeasurementAnchor; offset: MeasurementOffset; free_text: string }`, `MeasurementAnchor { node_id: string; side: MeasurementSide_enum }` (with `MeasurementSide_enum = TOP | RIGHT | BOTTOM | LEFT`), `MeasurementOffset` (kiwi tagged-union with two variants per Figma's union: `INNER { relative: float }` and `OUTER { fixed: float }`).
   - Add `open_type_features` (string-list) + `link_href` + `list_marker_*` to the StyleRun + CharacterStyleOverride structures.
-  - `kiwi-convert.ts` maps both directions; an unknown-NodeType backwards-compat fallback flips an old-build reader into "render as INTERNAL_ONLY frame stub" rather than crashing (downgrade path documented in CHANGELOG).
+  - `kiwi-convert.ts` maps both directions; an unknown-NodeType backwards-compat fallback flips an old-build reader into "render as INTERNAL_ONLY frame stub" rather than crashing (downgrade path documented in CHANGELOG). Unknown measurement records (e.g. a v3 reader encountering a v2-prefix measurement type) are skipped + logged; do not crash.
 - `renderer/scene.ts`:
   - Refactor `renderChildren` (lines 85–114 today) to perform sibling-traversal mask compositing per Q2 + the help.figma.com mask propagation rule.
   - All three `MaskType` branches ship in this PRD: `ALPHA` (default — full alpha-channel mask), `VECTOR` (mask shape stroked outline ignores opacity, treats every visible-in-mask pixel as 100%), `LUMINANCE` (brightness-based reveal — pure black hides, pure white reveals).
@@ -91,7 +112,7 @@ The engine surface in this PRD is **invisible to a customer opening the app**: a
 **Tool registry slots reserved for 07b (engine ships the underlying ops; 07b wires the interactive tool modes):**
 
 - Slice tool (S key) — drag-on-canvas creation → calls `figma.createSlice()` (07a) then sets pos+size from the drag rectangle.
-- Measurement tool (⇧M) — click-drag from origin to target node → calls `figma.createMeasurement()` (07a) with the two-point geometry.
+- Measurement tool (⇧M) — click-drag from source-node edge to target-node edge → 07b resolves the two clicked node + side hits, then calls `figma.currentPage.addMeasurement({ nodeId: srcId, side: srcSide }, { nodeId: dstId, side: dstSide })` (07a). Cross-canvas drag is rejected at the engine layer per the validation rule above.
 - Eyedropper tool (^C) — canvas-only MVP per Q20; uses the engine's existing color-sampling API (no engine work needed in 07a).
 - Scale tool (K) — drag a handle → calls `FigmaNodeProxy.scale(factor)` (07a) with the factor derived from drag distance.
 - Arrow stub — Phase-2-deferred per scope plan §3; registry slot reserved by 07a (a no-op `arrowStub` ToolDef entry); 07b's keyboard registry will hide it until the Phase-2 arrow primitive ships in a later PRD.
@@ -109,8 +130,8 @@ The engine surface in this PRD is **invisible to a customer opening the app**: a
 | Export pipeline: `use-export-pipeline.ts` composable that iterates SLICE nodes + batches into a ZIP via JSZip + JPG-quality dropdown UX (Q22 — 3 levels: High 0.92 / Medium 0.80 / Low 0.65) | **07b** |
 | Effects renderer wiring | **N/A — already shipped** per Q3 #12 (verified: `renderEffects` exists at `renderer/scene.ts:412`; drop-shadow, inner-shadow, all blurs render today; 07a does not modify) |
 | OpenType per-text-run application to glyph rendering (Skia textPicture pre-rasterization + CanvasKit ParagraphBuilder feature-set wiring) | **07b** — applies the per-run feature-set this PRD adds to `CharacterStyleOverride`; the data model lands here, the rendering call lands in the inspector-paragraph rebuilder owned by 07b |
-| Layer tree icons for SLICE + MEASUREMENT, auto-name strings ("Slice N" / "Measurement N") in the layers panel | **07b** (layer-tree owns name display; engine factory just emits the default `type.charAt(0) + type.slice(1).toLowerCase()`-style name — kept as "Slice" / "Measurement" verbatim) |
-| Visual rendering of the Slice region (dashed bounding-box) + Measurement annotation (dashed line + label) | **07b** (B8 overlay components — engine surface in this PRD just persists the geometry; rendering belongs to the overlay layer) |
+| Layer tree icon for SLICE + auto-name string ("Slice N") in the layers panel | **07b** (layer-tree owns name display; engine factory just emits the default `'Slice'`-style name string). Measurements do **not** appear in the layer tree (they are page-level annotations, not scene-tree nodes) — 07b's measurement panel renders them in a separate UI surface (specifics in 07b PRD). |
+| Visual rendering of the Slice region (dashed bounding-box) + Measurement annotation (dashed line + auto-distance label + broken-anchor warning state) | **07b** (B8 overlay components — engine surface in this PRD just persists the geometry and anchor refs; rendering, broken-anchor detection UI, and double-click-to-edit-text interaction belong to the overlay layer) |
 
 ### 2.3 Deferred to Phase 2
 
@@ -142,7 +163,7 @@ This section exists for traceability — it maps each engine-surface change to t
 | Engine surface | Visual evidence (07b) | Hi-fi file | Scene IDs |
 |---|---|---|---|
 | SLICE NodeType (geometry + name persisted) | Dashed-line bounding box on canvas + entry in layers panel + entry in Export panel batched into ZIP | `main-main-kova-scope/batch-b/Kova Hi-Fi 09 Canvas Overlays - Dark.html` (B8.x slice region overlay) + `batch-b/chunk-b4/Kova Hi-Fi 11 Inspector - Dark.html` (Export section batching) | B8 export-preview + B8 slice region (visual evidence owned by 07b) |
-| MEASUREMENT NodeType (start/end + name persisted) | Dashed line + auto-distance label rendered as overlay; selectable; double-click to edit text | `main-main-kova-scope/batch-b/Kova Hi-Fi 09 Canvas Overlays - Dark.html` | B8.9 Measurement annotation (visual evidence owned by 07b) |
+| Measurement system (page-level on CANVAS — `Measurement` records anchored to nodes by side; not a NodeType) | Dashed line + auto-distance label rendered as overlay; selectable; double-click to edit `freeText`; broken-anchor state when an anchor node is deleted | `main-main-kova-scope/batch-b/Kova Hi-Fi 09 Canvas Overlays - Dark.html` | B8.9 Measurement annotation (visual evidence owned by 07b — including the broken-anchor render which 07b PRD will spec) |
 | Mask compositing (Q2 — all 3 maskType branches) | Mask outlines render with corner glyph indicating type; masked child renders correctly on canvas | `main-main-kova-scope/batch-b/Kova Hi-Fi 09 Canvas Overlays - Dark.html` | B8.4 Mask outlines (overlay UI owned by 07b; **mask compositing on the actual canvas pixels is the change this PRD ships**) |
 | `aspectRatio` field | Aspect-ratio lock icon in the Position/Layout inspector section; drag-resize honors locked ratio | `batch-b/chunk-b4/Kova Hi-Fi 11 Inspector - Dark.html` | Inspector layout section (owned by 07b) |
 | `includeInExports` + `pageBackgroundVisible` | Page-row toggle in the no-selection Pages section of the inspector | `batch-b/chunk-b4/Kova Hi-Fi 11 Inspector - Dark.html` | Inspector no-selection / Pages section (owned by 07b) |
@@ -228,7 +249,7 @@ N/A — drag-drop semantics for color/font/logo/saved-block are owned by Cluster
 
 This is the load-bearing section of the PRD. Every change lifts the `packages/core/` lock per the CLAUDE.md amendment ratified in `00c §895`. Each subsection lists the affected file, the exact line range where the change lands (current line numbers from the snapshot of `packages/core/src/scene-graph.ts` as of 2026-05-15), the field/method shape, the upstream-PR posture, and the Kiwi serialization implication.
 
-### 7.1 NodeType additions — SLICE + MEASUREMENT
+### 7.1 NodeType additions — SLICE only
 
 **File:** `packages/core/src/scene-graph.ts`, lines 66–83.
 
@@ -254,10 +275,11 @@ export type NodeType =
   | 'SHAPE_WITH_TEXT'
   // — new in 07a —
   | 'SLICE'
-  | 'MEASUREMENT'
 ```
 
-**Numbering note (§12.2 documents):** the audit and Q1/Q11 refer to "SLICE = 17th NodeType" and "MEASUREMENT = 18th NodeType." The existing union already lists 17 members. SLICE becomes the **18th** member in the union literal order; MEASUREMENT the **19th**. The Q1/Q11 "17th/18th" wording is preserved for traceability with the founder decision log, but the implementation count is +2 on the existing 17. Documented for engineering clarity.
+**Numbering note (§12.2 documents):** the audit and Q1 refer to "SLICE = 17th NodeType." The existing union already lists 17 members. SLICE becomes the **18th** member in the union literal order. The Q1 "17th" wording is preserved for traceability with the founder decision log, but the implementation count is +1 on the existing 17. Documented for engineering clarity.
+
+**MEASUREMENT note:** Q11 originally specified "MEASUREMENT = 18th NodeType" with Path 1 (lift core lock). This PRD **does not** add MEASUREMENT to `NodeType` — per the Figma-aligned data model verified 2026-05-17, measurements are not a NodeType; they live on the CANVAS (page-level) as a separate `Measurement[]` collection, anchored to SceneNodes by side. This is the single largest divergence from the audit + Q-decisions, ratified by founder on 2026-05-17 during PRD revision; documented in §12.10. SLICE remains a NodeType because Figma's `SliceNode` is genuinely a scene-tree node (not a page-level annotation).
 
 **Figma alignment (verified 2026-05-15 against developers.figma.com/docs/plugins/api/SliceNode/):**
 
@@ -271,11 +293,98 @@ SliceNode in Figma's plugin API:
 
 Kova's SLICE NodeType uses the existing `SceneNode` interface — slices inherit the full `SceneNode` shape (most fields irrelevant for a slice; they hold their defaults — `fills: []`, `strokes: []`, etc.). The `width`/`height` are not marked readonly at the type level (Kova's `SceneNode` keeps them mutable for the proxy setter); the runtime constraint that slice geometry is set only through drag-on-canvas + manual handle resize lives in 07b's slice tool. Slice nodes are leaf nodes — `createDefaultNode('SLICE')` returns a node with `childIds: []`; the `appendChild` proxy method on a slice rejects with `Error('Slice nodes cannot have children')` (consistent with Figma — slices are leaf nodes).
 
-**Figma alignment (verified 2026-05-15 against help.figma.com/hc/en-us/articles/20774752502935-Add-measurements-and-annotate-designs):**
+### 7.1b Measurement system — page-level, anchored to nodes by side
 
-Figma's measurement tool: Shift+M shortcut, click-drag from origin to layer, persisted, selectable, deletable via Delete/Backspace, double-clickable to edit text. Distinct from the ephemeral Alt/Option hover-distance measurement which is not saved.
+**File:** `packages/core/src/scene-graph.ts` (additions adjacent to the existing NodeType + SceneNode declarations).
 
-Kova's MEASUREMENT NodeType uses the existing `SceneNode` shape plus two semantic fields stored in the `SceneNode` proper: the start/end geometry is encoded in `x`, `y`, `width`, `height` (start point = `x`, `y`; end point = `x + width`, `y + height`); the displayed label text lives in `text` (default = the auto-computed distance string, computed at render time in 07b — engine stores the **override** label only, empty string means "use computed"). The `name` field is "Measurement N" auto-incremented. The leaf-node constraint applies: `createDefaultNode('MEASUREMENT')` returns `childIds: []`; `appendChild` rejects.
+**Figma alignment (verified 2026-05-17 against developers.figma.com/docs/plugins/api/Measurement/ + .../MeasurementSide/ + .../MeasurementOffset/ + .../PageNode/):**
+
+Per Figma's plugin API, a `Measurement` is **not a SceneNode**. It lives on `PageNode` (Kova's CANVAS-typed SceneNode is the PageNode equivalent), accessed via 5 PageNode methods, anchored to two SceneNodes by side. Shape:
+
+```typescript
+// — new types in 07a —
+export type MeasurementSide = 'TOP' | 'RIGHT' | 'BOTTOM' | 'LEFT'
+
+export type MeasurementOffset =
+  | { type: 'INNER'; relative: number }   // relative in [-1, 1]
+  | { type: 'OUTER'; fixed: number }       // fixed non-zero
+
+export interface MeasurementAnchor {
+  /** ID of the SceneNode this side of the measurement is anchored to. */
+  nodeId: string
+  /** Which edge of the anchor node. */
+  side: MeasurementSide
+}
+
+export interface Measurement {
+  /** Stable ID, generated via crypto.getRandomValues() per CLAUDE.md randomness rule. */
+  id: string
+  /** Start anchor — { nodeId, side }. */
+  start: MeasurementAnchor
+  /** End anchor — { nodeId, side }. */
+  end: MeasurementAnchor
+  /** Position offset. Default { type: 'INNER', relative: 0 }. */
+  offset: MeasurementOffset
+  /**
+   * Override label string. Empty string ('') means "use computed value" — 07b's
+   * render layer computes the displayed label from anchor geometry at draw time.
+   * Per Figma's freeText semantic (verified 2026-05-17).
+   */
+  freeText: string
+}
+```
+
+**`SceneNode.measurements?: Measurement[]` field** — added to the existing `SceneNode` interface. Semantically populated only when `node.type === 'CANVAS'`; non-CANVAS nodes leave the field absent (or empty array — implementation choice). Default for CANVAS-typed `createDefaultNode` is `measurements: []`.
+
+**Five CANVAS-level methods** added to `SceneGraph` (the engine class wrapping the scene tree) — surfaced on `figma.currentPage.*` via the proxy in §7.7. Method signatures match Figma's PageNode API exactly:
+
+```typescript
+class SceneGraph {
+  // … existing methods …
+
+  /**
+   * Add a measurement on the named CANVAS, anchored to two SceneNodes by side.
+   * Throws if start.nodeId or end.nodeId is not a descendant of canvasId.
+   * Generates Measurement.id via crypto.getRandomValues().
+   */
+  addMeasurement(
+    canvasId: string,
+    start: MeasurementAnchor,
+    end: MeasurementAnchor,
+    options?: { offset?: MeasurementOffset; freeText?: string }
+  ): Measurement
+
+  /** Return all measurements on the named CANVAS. */
+  getMeasurements(canvasId: string): Measurement[]
+
+  /** Return all measurements anchored (start or end) to a given node. */
+  getMeasurementsForNode(nodeId: string): Measurement[]
+
+  /**
+   * Edit offset and/or freeText on a measurement. start/end anchors are
+   * immutable post-creation (matches Figma's editMeasurement signature).
+   */
+  editMeasurement(
+    canvasId: string,
+    id: string,
+    newValue: { offset?: MeasurementOffset; freeText?: string }
+  ): Measurement
+
+  /** Remove a measurement by id. */
+  deleteMeasurement(canvasId: string, id: string): void
+}
+```
+
+**Lifecycle semantics (founder ratified 2026-05-17):**
+
+1. **Cross-canvas anchor rejected at create time.** `addMeasurement` validates that both `start.nodeId` and `end.nodeId` are descendants of `canvasId`; throws `Error('Measurement anchor node not on target canvas')` if not.
+2. **Orphan-on-anchor-delete.** When a SceneNode that has measurements anchored to it is `removeNode`'d, the measurements are **not** auto-deleted — their anchor `nodeId` continues to reference the deleted node ID. 07b's render layer detects this (anchor `getNodeById` returns `null`) and renders the measurement in a "broken-anchor" state (UI spec lives in 07b PRD). Engine emits `measurement:broken` event on `SceneGraphEvents` (payload: `{ measurementId: string; brokenAnchorNodeId: string; canvasId: string }`).
+3. **Drop-on-cross-canvas-move.** When a SceneNode is reparented to a different CANVAS ancestor (e.g. cut + paste to another canvas), all measurements anchored to it on the source CANVAS are **deleted** from `SceneGraph` (not moved, not orphaned — explicit drop). Engine emits `measurement:dropped` event (payload: `{ measurementIds: string[]; sourceCanvasId: string; movedNodeId: string }`).
+4. **Same-canvas reparent is OK.** Reparenting within the same CANVAS (e.g. dragging a node into a different FRAME on the same CANVAS) does **not** drop measurements — anchors remain valid.
+
+**Why this matches Figma:** Figma's MeasurementSide = `'TOP' | 'RIGHT' | 'BOTTOM' | 'LEFT'` (verified — cardinal-only, no midpoints/corners). MeasurementOffset is a tagged union with the same INNER/OUTER variants (verified). PageNode has the exact 5 methods Kova ships (verified). `freeText` semantic for "empty = auto-computed" verified against help.figma.com double-click-to-edit pattern.
+
+**Why this differs from Q11:** Q11 specified "MEASUREMENT = 18th NodeType." Figma's data model places measurements as a page-level collection (not a scene-tree node). Per CLAUDE.md "What Figma does, Kova does," the PRD adopts Figma's model. Founder ratified 2026-05-17.
 
 ### 7.2 SceneNode field additions — aspectRatio, includeInExports, pageBackgroundVisible
 
@@ -347,7 +456,7 @@ export interface CharacterStyleOverride {
 
 **07b consumer:** the inspector text section reads `selectedNode.styleRuns[run].style.openTypeFeatures`/`linkHref`/`listType` and renders the OpenType-features popover + link-href modal + list-toggle buttons. 07b's paragraph-rebuilder is the one that passes the features into Skia's `ParagraphBuilder` via the `fontFeatures` field of `TextStyle`.
 
-### 7.4 Tool registrations — scaleNode, createSlice refactor, createMeasurement, arrowStub
+### 7.4 Tool registrations — scaleNode, createSlice refactor, addMeasurement, arrowStub
 
 **File:** `packages/core/src/tools/modify.ts` — add `scaleNode`.
 
@@ -431,29 +540,58 @@ export const createSlice = defineTool({
   }
 })
 
-export const createMeasurement = defineTool({
-  name: 'create_measurement',
+// addMeasurement lives in tools/measurement.ts (new file), not create.ts —
+// measurements aren't NodeTypes; they're page-level records anchored to nodes.
+export const addMeasurement = defineTool({
+  name: 'add_measurement',
   mutates: true,
-  description: 'Create a measurement annotation between two points on the canvas.',
+  description:
+    'Add a measurement annotation between two SceneNodes on a CANVAS, anchored ' +
+    'by side. Both anchor nodes must be descendants of the target canvas.',
   params: {
-    start_x: { type: 'number', description: 'Start X', required: true },
-    start_y: { type: 'number', description: 'Start Y', required: true },
-    end_x: { type: 'number', description: 'End X', required: true },
-    end_y: { type: 'number', description: 'End Y', required: true },
-    name: { type: 'string', description: 'Measurement name' },
-    parent_id: { type: 'string', description: 'Parent node ID' }
+    canvas_id: { type: 'string', description: 'CANVAS node ID', required: true },
+    start_node_id: { type: 'string', description: 'Anchor node ID for measurement start', required: true },
+    start_side: {
+      type: 'string',
+      description: 'Edge of the start anchor: TOP, RIGHT, BOTTOM, or LEFT',
+      required: true,
+      enum: ['TOP', 'RIGHT', 'BOTTOM', 'LEFT']
+    },
+    end_node_id: { type: 'string', description: 'Anchor node ID for measurement end', required: true },
+    end_side: {
+      type: 'string',
+      description: 'Edge of the end anchor: TOP, RIGHT, BOTTOM, or LEFT',
+      required: true,
+      enum: ['TOP', 'RIGHT', 'BOTTOM', 'LEFT']
+    },
+    offset_type: {
+      type: 'string',
+      description: 'Offset variant — INNER (relative to anchor bounds) or OUTER (fixed pixel distance)',
+      enum: ['INNER', 'OUTER']
+    },
+    offset_value: {
+      type: 'number',
+      description: 'Offset magnitude — INNER expects -1..1, OUTER expects a non-zero pixel distance'
+    },
+    free_text: { type: 'string', description: 'Override label (empty = use auto-computed value)' }
   },
   execute: (figma, args) => {
-    const node = figma.createMeasurement()
-    node.x = args.start_x
-    node.y = args.start_y
-    node.resize(args.end_x - args.start_x, args.end_y - args.start_y)
-    node.name = args.name ?? 'Measurement'
-    if (args.parent_id) {
-      const parent = figma.getNodeById(args.parent_id)
-      if (parent) parent.appendChild(node)
+    try {
+      const offset: MeasurementOffset | undefined =
+        args.offset_type === 'INNER'
+          ? { type: 'INNER', relative: args.offset_value ?? 0 }
+          : args.offset_type === 'OUTER'
+          ? { type: 'OUTER', fixed: args.offset_value ?? 8 }
+          : undefined
+      const m = figma.currentPage.addMeasurement(
+        { nodeId: args.start_node_id, side: args.start_side as MeasurementSide },
+        { nodeId: args.end_node_id, side: args.end_side as MeasurementSide },
+        { offset, freeText: args.free_text ?? '' }
+      )
+      return { measurement_id: m.id }
+    } catch (e) {
+      return { error: (e as Error).message }
     }
-    return nodeSummary(node)
   }
 })
 ```
@@ -461,13 +599,14 @@ export const createMeasurement = defineTool({
 **File:** `packages/core/src/tools/registry.ts` — re-export + extend EXTENDED_TOOLS.
 
 ```typescript
-import { /* existing imports */, createMeasurement } from './create'
+import { /* existing imports */ } from './create'      // createSlice refactored in-place
 import { /* existing imports */, scaleNode } from './modify'
+import { addMeasurement } from './measurement'         // NEW file
 
 export const EXTENDED_TOOLS: ToolDef[] = [
   // … existing entries …
-  createSlice,           // already present
-  createMeasurement,     // NEW
+  createSlice,           // already present — refactored to back real SLICE NodeType
+  addMeasurement,        // NEW — page-level measurement creation tool (NOT a NodeType creator)
   scaleNode,             // NEW
   // arrowStub deferred to Phase 2 — registry slot reserved as a no-op ToolDef
   arrowStub,
@@ -609,16 +748,24 @@ Both paints initialized in `SkiaRenderer.init` next to the existing `opacityPain
 **Change set:**
 
 - `protocol.ts` — bump `SCHEMA_VERSION` constant (Kova-side major bump). Format: `MAJOR.MINOR.PATCH`. This PRD shifts MAJOR (breaks forward-compat with old readers). Pre-bump version was `1.X.Y`; this PRD lands at `2.0.0`.
-- Add `SLICE` + `MEASUREMENT` enum members to the NodeType serialization. Enum tags are append-only — never renumber existing entries. SLICE = next integer after the existing 17; MEASUREMENT = SLICE+1.
+- Add `SLICE` enum member to the NodeType serialization. Enum tags are append-only — never renumber existing entries. SLICE = next integer after the existing 17. (MEASUREMENT is **not** an enum value — measurements are not a NodeType per the Figma-aligned model; they are serialized as a separate struct on CANVAS-typed nodes; see below.)
 - Add `aspect_ratio: float?` (nullable), `include_in_exports: bool`, `page_background_visible: bool` fields to the SceneNode struct.
+- Add `measurements: Measurement[]?` field to the SceneNode struct (populated only on CANVAS-typed nodes; nullable + defaults to empty for backwards-compat).
+- Add new kiwi structs in `schema.ts`:
+  - `MeasurementSide` enum: `TOP = 0; RIGHT = 1; BOTTOM = 2; LEFT = 3`.
+  - `MeasurementOffsetInner` struct: `relative: float`.
+  - `MeasurementOffsetOuter` struct: `fixed: float`.
+  - `MeasurementOffset` message wraps both variants as a kiwi tagged union (matches the TypeScript discriminated union).
+  - `MeasurementAnchor` struct: `node_id: string; side: MeasurementSide`.
+  - `Measurement` struct: `id: string; start: MeasurementAnchor; end: MeasurementAnchor; offset: MeasurementOffset; free_text: string`.
 - Add `open_type_features: string[]?`, `link_href: string?`, `list_type: ListType?`, `list_indent: int32?` fields to the CharacterStyleOverride struct.
-- `kiwi-convert.ts` maps SceneNode <-> kiwi struct bidirectionally; the new fields use the same field-name <-> field-index mapping kiwi uses.
+- `kiwi-convert.ts` maps SceneNode <-> kiwi struct bidirectionally; the new fields use the same field-name <-> field-index mapping kiwi uses. Measurement records map through their own converter pair.
 
 **Backwards-compat fallback:**
 
 When a Kova build reads a pre-bump (v1.X.Y) snapshot: missing fields fall through to their default values (`aspectRatio = null`, `includeInExports = true`, etc.) — the kiwi reader is forgiving of trailing-field-omission.
 
-When a pre-bump build reads a Kova-built (v2.0.0) snapshot: kiwi's "unknown NodeType enum value" fallback fires — the old reader cannot deserialize SLICE/MEASUREMENT nodes; it skips them (logs a warning) and continues. This is acceptable because:
+When a pre-bump build reads a Kova-built (v2.0.0) snapshot: kiwi's "unknown NodeType enum value" fallback fires — the old reader cannot deserialize SLICE nodes; it skips them (logs a warning) and continues. The `measurements` field on CANVAS nodes deserializes as "unknown trailing field" and is silently dropped by an old reader (kiwi's standard forward-compat behavior for added struct fields). A bad measurement record inside the `measurements` array fails-soft to "skip this measurement" rather than crashing the load. This is acceptable because:
 1. Kova ships v2.0.0 as the only production reader; pre-bump readers exist only in OpenPencil upstream until the PR lands.
 2. Skipping unknown nodes is the conservative degrade — better than crashing.
 
@@ -639,13 +786,57 @@ figma.createSlice = (): FigmaNodeProxy => {
   return new FigmaNodeProxy(node.id, graph)
 }
 
-figma.createMeasurement = (): FigmaNodeProxy => {
-  const node = createDefaultNode('MEASUREMENT')
-  graph.nodes.set(node.id, node)
-  graph.emitter.emit('node:created', node)
-  return new FigmaNodeProxy(node.id, graph)
+// MEASUREMENT is not a NodeType — no figma.createMeasurement() factory.
+// Measurements are created via figma.currentPage.addMeasurement(...) below.
+```
+
+**PageNode-equivalent measurement methods** on `figma.currentPage` (matches Figma's PageNode API exactly):
+
+```typescript
+// figma.currentPage is the active CANVAS-typed FigmaNodeProxy.
+// Measurement methods on the proxy delegate to SceneGraph.
+
+class FigmaPageProxy extends FigmaNodeProxy {
+  /** Add a measurement on this CANVAS. Throws if anchors are not on this canvas. */
+  addMeasurement(
+    start: { node: FigmaNodeProxy; side: MeasurementSide },
+    end: { node: FigmaNodeProxy; side: MeasurementSide },
+    options?: { offset?: MeasurementOffset; freeText?: string }
+  ): Measurement {
+    return graph.addMeasurement(
+      this.id,
+      { nodeId: start.node.id, side: start.side },
+      { nodeId: end.node.id, side: end.side },
+      options
+    )
+  }
+
+  /** Return all measurements on this CANVAS. */
+  getMeasurements(): Measurement[] {
+    return graph.getMeasurements(this.id)
+  }
+
+  /** Return measurements anchored to the given node (either start or end). */
+  getMeasurementsForNode(node: FigmaNodeProxy): Measurement[] {
+    return graph.getMeasurementsForNode(node.id)
+  }
+
+  /** Edit offset and/or freeText. Anchors are immutable. */
+  editMeasurement(
+    id: string,
+    newValue: { offset?: MeasurementOffset; freeText?: string }
+  ): Measurement {
+    return graph.editMeasurement(this.id, id, newValue)
+  }
+
+  /** Remove a measurement. */
+  deleteMeasurement(id: string): void {
+    graph.deleteMeasurement(this.id, id)
+  }
 }
 ```
+
+**Method signature parity check** (verified 2026-05-17 against developers.figma.com/docs/plugins/api/PageNode/): Figma's PageNode exposes `addMeasurement(start, end, options?)`, `getMeasurements()`, `getMeasurementsForNode(node)`, `editMeasurement(id, newValue)`, `deleteMeasurement(id)`. Kova ships the same 5 method names with the same signatures (with Figma's plugin `SceneNode` reference replaced by Kova's `FigmaNodeProxy` reference — equivalent runtime semantics, type-system convenience).
 
 Additions to `FigmaNodeProxy`:
 
@@ -667,7 +858,7 @@ class FigmaNodeProxy {
 }
 ```
 
-The setter implementations emit `node:updated` events as the existing setters do.
+The setter implementations emit `node:updated` events as the existing setters do. Measurement methods emit new events: `measurement:created`, `measurement:updated`, `measurement:deleted`, plus the lifecycle events `measurement:broken` (anchor-delete orphan) and `measurement:dropped` (cross-canvas-move drop) defined in §7.1b.
 
 ### 7.8 CHANGELOG-KOVA.md — upstream-PR pipeline
 
@@ -699,7 +890,8 @@ Statuses:
 
 | Change | File(s) | Upstream-PR |
 |---|---|---|
-| Add SLICE + MEASUREMENT NodeTypes; default factories; leaf-node `appendChild` rejection | `src/scene-graph.ts` | drafted (one PR per NodeType — split to ease upstream review) |
+| Add SLICE NodeType; default factory; leaf-node `appendChild` rejection | `src/scene-graph.ts` | drafted |
+| Add page-level Measurement system on CANVAS (Measurement/MeasurementSide/MeasurementOffset types; SceneNode.measurements field; 5 SceneGraph methods + lifecycle events) | `src/scene-graph.ts` | drafted (separate PR — verbatim port of Figma's PageNode API; orphan + cross-canvas-drop semantics in commit body) |
 | Add `aspectRatio` / `includeInExports` / `pageBackgroundVisible` fields on SceneNode | `src/scene-graph.ts` | drafted (single PR — small change set) |
 | Extend `CharacterStyleOverride` with `openTypeFeatures` + `linkHref` + `listType` + `listIndent` | `src/scene-graph.ts` | drafted (single PR) |
 | Add `scaleNode` modify tool; recursive scale walk | `src/tools/modify.ts`, `src/tools/registry.ts` | drafted |
@@ -724,20 +916,36 @@ Every line is testable in code or an engine smoke. No "feels right." Engineers v
 
 ### 8.1 Scene-graph types
 
-- [ ] `NodeType` union contains `'SLICE'` and `'MEASUREMENT'` (TypeScript type test: assignment to a variable of `NodeType` compiles)
-- [ ] `SceneNode` interface contains `aspectRatio`, `includeInExports`, `pageBackgroundVisible` with the declared types
+- [ ] `NodeType` union contains `'SLICE'` (TypeScript type test: assignment to a variable of `NodeType` compiles); `MEASUREMENT` is **not** in `NodeType` (measurements are not a NodeType per the Figma-aligned data model)
+- [ ] `MeasurementSide` type = `'TOP' | 'RIGHT' | 'BOTTOM' | 'LEFT'`
+- [ ] `MeasurementOffset` type is a tagged union with `INNER { type: 'INNER'; relative: number }` and `OUTER { type: 'OUTER'; fixed: number }` variants
+- [ ] `Measurement` interface has `id: string`, `start: { nodeId: string; side: MeasurementSide }`, `end: { nodeId: string; side: MeasurementSide }`, `offset: MeasurementOffset`, `freeText: string`
+- [ ] `SceneNode` interface contains `aspectRatio`, `includeInExports`, `pageBackgroundVisible`, `measurements` with the declared types
 - [ ] `CharacterStyleOverride` contains `openTypeFeatures`, `linkHref`, `listType`, `listIndent`
 - [ ] `createDefaultNode('SLICE')` returns a node with `type === 'SLICE'`, `childIds: []`, `aspectRatio: null`, `includeInExports: true`, `pageBackgroundVisible: true`
-- [ ] `createDefaultNode('MEASUREMENT')` returns the analogous shape
-- [ ] `createDefaultNode('CANVAS')` defaults `includeInExports: true`, `pageBackgroundVisible: true`
-- [ ] `appendChild` on a SLICE or MEASUREMENT throws `Error('Slice nodes cannot have children')` / `('Measurement nodes cannot have children')`
-- [ ] `SLICE` and `MEASUREMENT` are NOT in `CONTAINER_TYPES`
+- [ ] `createDefaultNode('CANVAS')` defaults `includeInExports: true`, `pageBackgroundVisible: true`, `measurements: []`
+- [ ] `appendChild` on a SLICE throws `Error('Slice nodes cannot have children')`
+- [ ] `SLICE` is NOT in `CONTAINER_TYPES`
+
+### 8.1b Measurement system (CANVAS-page-level methods)
+
+- [ ] `SceneGraph.addMeasurement(canvasId, start, end)` returns a `Measurement` with a unique `id` (asserted via `crypto.getRandomValues()` mock check), `freeText: ''`, `offset: { type: 'INNER', relative: 0 }` defaults
+- [ ] `SceneGraph.addMeasurement` rejects when `start.nodeId` is not a descendant of `canvasId` (throws `Error('Measurement anchor node not on target canvas')`)
+- [ ] `SceneGraph.addMeasurement` rejects when `end.nodeId` is not a descendant of `canvasId` (same error)
+- [ ] `SceneGraph.getMeasurements(canvasId)` returns the array of measurements on that CANVAS
+- [ ] `SceneGraph.getMeasurementsForNode(nodeId)` returns measurements anchored to that node (either start or end)
+- [ ] `SceneGraph.editMeasurement(canvasId, id, { offset, freeText })` updates only `offset` and `freeText` — `start`/`end` are immutable (TypeScript type-test asserts the `newValue` parameter shape excludes `start`/`end`)
+- [ ] `SceneGraph.deleteMeasurement(canvasId, id)` removes the record
+- [ ] When a node anchored to a measurement is `removeNode`'d, the measurement's anchor `nodeId` remains pointing at the deleted ID (orphan-not-cascade); a `measurement:broken` event fires on `SceneGraphEvents` with the affected `Measurement.id`
+- [ ] When a node anchored to a measurement is reparented to a different CANVAS, the measurement on the source CANVAS is deleted (drop-on-cross-canvas-move); a `measurement:dropped` event fires with the deleted `Measurement.id` and the source `canvasId`
 
 ### 8.2 Tool layer
 
 - [ ] `tools/modify.ts` exports `scaleNode`
-- [ ] `EXTENDED_TOOLS` registry contains `scaleNode`, `createMeasurement`, `arrowStub`
+- [ ] `EXTENDED_TOOLS` registry contains `scaleNode`, `addMeasurement`, `arrowStub`; the legacy stub-`createMeasurement` name is **not** present (renamed per the Figma-aligned model)
 - [ ] `createSlice` execute() now backs a real SLICE NodeType (assertion: `result.type === 'SLICE'`, not `'FRAME'`)
+- [ ] `addMeasurement` execute() — given valid `canvas_id`, `start_node_id`, `start_side`, `end_node_id`, `end_side` — calls `figma.currentPage.addMeasurement(...)` and returns `{ measurement_id: string }`
+- [ ] `addMeasurement` execute() — given a cross-canvas anchor (start or end node not on target canvas) — returns `{ error: 'Measurement anchor node not on target canvas' }`
 - [ ] `scaleNode(id, 2.0)` on a 100×100 rect yields width=200, height=200, but `x`/`y` unchanged
 - [ ] `scaleNode(id, 0.5)` on a TEXT node with fontSize=14 yields fontSize=7
 - [ ] `scaleNode(id, 2.0)` recurses into child nodes — a parent 100×100 with a child 50×50 yields parent 200×200 / child 100×100
@@ -757,14 +965,20 @@ Every line is testable in code or an engine smoke. No "feels right." Engineers v
 ### 8.4 Kiwi serialization
 
 - [ ] `SCHEMA_VERSION` constant is `'2.0.0'` (or whatever the next major increment is from the pre-bump value)
-- [ ] A scene-graph containing 1 SLICE + 1 MEASUREMENT + 1 TEXT with `openTypeFeatures: ['liga', 'tnum']` + 1 mask round-trips through Kiwi serialize→deserialize with byte-for-byte equality on a second serialize (assertion: `kiwi.serialize(kiwi.deserialize(bytes)) === bytes`)
-- [ ] A pre-bump (v1.x) snapshot is deserializable by the v2.0.0 reader — new fields default in, no error
-- [ ] A v2.0.0 snapshot containing SLICE/MEASUREMENT is deserialized by a synthesized "old reader" mock (used in test only) with the unknown NodeType skipped + a console warning logged
+- [ ] A scene-graph containing 1 SLICE + 1 CANVAS with 2 measurements (one with `freeText: ''`, one with `freeText: '120px'`) + 1 TEXT with `openTypeFeatures: ['liga', 'tnum']` + 1 mask round-trips through Kiwi serialize→deserialize with byte-for-byte equality on a second serialize (assertion: `kiwi.serialize(kiwi.deserialize(bytes)) === bytes`)
+- [ ] A pre-bump (v1.x) snapshot is deserializable by the v2.0.0 reader — new fields default in (`measurements: []`, `aspectRatio: null`, etc.), no error
+- [ ] A v2.0.0 snapshot containing SLICE is deserialized by a synthesized "old reader" mock (used in test only) with the unknown SLICE NodeType skipped + a console warning logged
+- [ ] A v2.0.0 snapshot's `Measurement` records preserve `MeasurementOffset` tagged-union variant on round-trip (test both INNER and OUTER variants)
+- [ ] An invalid `MeasurementSide` enum value (e.g. corrupted byte) deserializes as a fail-soft "skip" rather than crash — the parent CANVAS still loads, the bad measurement is dropped, a warning is logged
 
 ### 8.5 figma-api-proxy
 
 - [ ] `figma.createSlice()` returns a `FigmaNodeProxy` wrapping a SLICE node
-- [ ] `figma.createMeasurement()` returns a `FigmaNodeProxy` wrapping a MEASUREMENT node
+- [ ] `figma.currentPage.addMeasurement(start, end)` returns a `Measurement` record (not a `FigmaNodeProxy` — measurements are not nodes)
+- [ ] `figma.currentPage.getMeasurements()` returns the CANVAS's measurement collection as an array
+- [ ] `figma.currentPage.getMeasurementsForNode(nodeProxy)` returns measurements anchored to the proxied node
+- [ ] `figma.currentPage.editMeasurement(id, { offset, freeText })` returns the updated Measurement; TypeScript type signature excludes `start`/`end` from `newValue` (immutability enforced at compile time)
+- [ ] `figma.currentPage.deleteMeasurement(id)` returns `void` and the subsequent `getMeasurements()` no longer includes that id
 - [ ] `nodeProxy.aspectRatio = 1.5` mutates the scene-graph node + emits `node:updated`
 - [ ] `nodeProxy.scale(2.0)` calls the underlying scaleNode logic + emits a `node:updated` per affected descendant
 
@@ -800,12 +1014,13 @@ Target coverage: ≥85% on the changed files (`scene-graph.ts`, `tools/modify.ts
 
 | Test file | Covers |
 |---|---|
-| `tests/engine/scene-graph/node-types.test.ts` | NodeType union exhaustiveness check; `createDefaultNode('SLICE')` / `('MEASUREMENT')` shape; `appendChild` rejection on SLICE/MEASUREMENT; CONTAINER_TYPES exclusion |
+| `tests/engine/scene-graph/node-types.test.ts` | NodeType union exhaustiveness check; `createDefaultNode('SLICE')` shape; `appendChild` rejection on SLICE; CONTAINER_TYPES exclusion; `@ts-expect-error` MEASUREMENT-not-in-NodeType compile-time check |
+| `tests/engine/scene-graph/measurement-system.test.ts` | All 5 CANVAS-level measurement methods; orphan-on-anchor-delete; drop-on-cross-canvas-move; same-canvas reparent preserves measurements; cross-canvas anchor rejection at create time |
 | `tests/engine/scene-graph/new-fields.test.ts` | Default values for `aspectRatio`, `includeInExports`, `pageBackgroundVisible`; mutability via proxy setters; mutation emits `node:updated` |
 | `tests/engine/scene-graph/character-style.test.ts` | `CharacterStyleOverride.openTypeFeatures` propagates via `StyleRun`; default empty; serialization round-trip |
 | `tests/engine/tools/scale-node.test.ts` | Idempotency at factor=1; non-uniform geometry (corner radii independent); TEXT fontSize scaling; nested recursion; effect-radius/offset/spread scaling; stroke-weight per-side; rejection of factor<=0 via min constraint |
 | `tests/engine/tools/create-slice-refactor.test.ts` | Old createSlice would return a FRAME; new createSlice returns a SLICE NodeType; the test imports the tool, invokes execute, asserts result type |
-| `tests/engine/tools/create-measurement.test.ts` | createMeasurement execute → MEASUREMENT NodeType with correct x/y/width/height from start/end |
+| `tests/engine/tools/add-measurement-tool.test.ts` | `addMeasurement` ToolDef execute → returns `{ measurement_id }` and adds a Measurement to the CANVAS's collection (NOT a SceneNode); cross-canvas anchor error path; offset variant plumbing (INNER/OUTER) |
 | `tests/engine/tools/registry.test.ts` | `EXTENDED_TOOLS` contains `scaleNode`, `createMeasurement`, `arrowStub`; `CORE_TOOLS` does not (token-bloat avoidance) |
 | `tests/engine/renderer/mask-compositing-alpha.test.ts` | 3-node group, ALPHA mask; pixel snapshot via headless renderer |
 | `tests/engine/renderer/mask-compositing-vector.test.ts` | Same with VECTOR mask; mask opacity overridden to 1.0 inside mask shape |
@@ -813,7 +1028,7 @@ Target coverage: ≥85% on the changed files (`scene-graph.ts`, `tools/modify.ts
 | `tests/engine/renderer/mask-compositing-multi.test.ts` | 4-node group with two masks; each scopes its own siblings |
 | `tests/engine/renderer/mask-compositing-clip-content.test.ts` | Mask nested inside `clipsContent: true` Frame; mask doesn't bleed beyond frame edge |
 | `tests/engine/kiwi/version-bump.test.ts` | `SCHEMA_VERSION === '2.0.0'`; previous-version snapshot loads with defaults; new-version snapshot loads completely |
-| `tests/engine/kiwi/round-trip-slice-measurement.test.ts` | Build graph with 1 SLICE + 1 MEASUREMENT + 1 TEXT + 1 mask; serialize → deserialize → re-serialize → byte-equality |
+| `tests/engine/kiwi/round-trip-slice-measurement.test.ts` | Build graph with 1 SLICE + 2 page-level measurements (one default freeText, one OUTER offset override) + 1 TEXT + 1 mask; serialize → deserialize → re-serialize → byte-equality; both MeasurementOffset variants; corrupted MeasurementSide enum fails-soft |
 | `tests/engine/kiwi/unknown-node-type-fallback.test.ts` | Synthesized "old reader" mock encounters SLICE in bytes; skips + logs; no crash |
 | `tests/engine/figma-api-proxy/create-methods.test.ts` | `figma.createSlice()` + `figma.createMeasurement()` return proxies wrapping correct NodeType |
 | `tests/engine/figma-api-proxy/new-properties.test.ts` | Get/set for `aspectRatio`, `includeInExports`, `pageBackgroundVisible`, `openTypeFeatures` via proxy |
@@ -883,7 +1098,7 @@ Founder visual sign-off lives in 07b once the dashed-line slice region + measure
 
 - Within 14 days of Phase A merging, the SLICE NodeType PR is submitted to upstream `open-pencil/main` (smallest, lowest-risk first)
 - CHANGELOG row for SLICE flips to `submitted`
-- Subsequent PRs (MEASUREMENT, mask compositing, scaleNode, kiwi schema bump, etc.) are submitted on a 1-per-week cadence to keep upstream reviewer load manageable
+- Subsequent PRs (page-level Measurement system + 5 PageNode-equivalent methods + new types, mask compositing, scaleNode, kiwi schema bump, etc.) are submitted on a 1-per-week cadence to keep upstream reviewer load manageable
 - CHANGELOG rows update as upstream feedback lands
 
 There is no production-side feature flag for 07a — the engine surface is foundational and the kiwi schema bump means there is no "rollback to v1.x" once a customer saves a snapshot. Risk-mitigation here lives in the unknown-NodeType fallback (§7.6) + the comprehensive engine unit-test suite, not a runtime toggle.
@@ -899,10 +1114,10 @@ None. The engine surface is binary: either the build contains the new NodeTypes 
 | Other PRD | What we depend on (from them) | What they depend on us for |
 |---|---|---|
 | **06 — Canvas Editor Core Chrome** | Editor route `/canvas/:canvasId` hosts the engine; bottom toolbar reserves the Slice/Measurement/Scale/Eyedropper/Arrow button slots (07a registers, 06 mounts the buttons) | Engine surface — `figma.*` proxy methods + new NodeTypes available to the toolbar buttons |
-| **07b — Canvas Engine Inspector + Overlays** | Inspector wiring for all 9 Q3 engine-ready surfaces + B8.1–B8.10 app-level overlays + interactive tool modes (Slice/Measurement/Eyedropper/Scale drag-on-canvas UX) + Effects inspector wiring; the visible UI for everything this PRD ships data-side for | Engine surface — every field/method this PRD adds is consumed by 07b's UI |
-| **08 — Menus + Popovers + Shortcuts** | Keyboard shortcut registry (`use-keyboard.ts`); 08 consumes the registered tool slots and binds S / ⇧M / ^C / K bindings via `e.code` per CLAUDE.md keyboard rule | Tool registry slots — 07a reserves `slice`, `measurement`, `eyedropper`, `scale`, `arrow_stub` (no-op) |
+| **07b — Canvas Engine Inspector + Overlays** | Inspector wiring for all 9 Q3 engine-ready surfaces + B8.1–B8.10 app-level overlays + interactive tool modes (Slice/Measurement/Eyedropper/Scale drag-on-canvas UX) + Effects inspector wiring; the visible UI for everything this PRD ships data-side for. **Plus** a new "broken-anchor" UI state for measurements whose anchor SceneNodes have been deleted (gray dashed line + ⚠ glyph + click-to-repair affordance — 07b PRD owns the visual + interaction spec) — consumes the `measurement:broken` engine event added in §7.1b | Engine surface — every field/method this PRD adds is consumed by 07b's UI |
+| **08 — Menus + Popovers + Shortcuts** | Keyboard shortcut registry (`use-keyboard.ts`); 08 consumes the registered tool slots and binds S / ⇧M / ^C / K bindings via `e.code` per CLAUDE.md keyboard rule. ⇧M binding dispatches to 07b's measurement-tool mode (which calls `figma.currentPage.addMeasurement`); the engine does not need a `measurement` ToolDef in the create-tool sense | Tool registry slots — 07a reserves `slice`, `add_measurement` (page-level method wrapper), `eyedropper`, `scale`, `arrow_stub` (no-op) |
 | **09 — Version History + Trash** | `canvas_snapshots` table — Cluster 09 owns; this PRD's kiwi v2.0.0 forces a `canvas_snapshots.format_version int` column (action item flagged in `00c` Q7) | Stable scene-graph kiwi format; the byte-equal round-trip guarantee underpins snapshot integrity |
-| **10 — AI Chat + Memory + Tools** | ToolLoopAgent + `@ai-sdk/anthropic` integration (per CLAUDE.md); Cluster 10 PRD §13 References should cite this PRD's `tools/registry.ts` extension | New AI-callable tools (`scaleNode`, `createMeasurement`, refactored `createSlice`) available via EXTENDED_TOOLS registry |
+| **10 — AI Chat + Memory + Tools** | ToolLoopAgent + `@ai-sdk/anthropic` integration (per CLAUDE.md); Cluster 10 PRD §13 References should cite this PRD's `tools/registry.ts` extension | New AI-callable tools (`scaleNode`, `addMeasurement` — note: page-level method wrapper, not a NodeType creator — and the refactored `createSlice`) available via EXTENDED_TOOLS registry |
 | **11 — Shared UI Infrastructure** | Toast variant `error` is fired when the kiwi reader logs a "skipped unknown NodeType" warning; toast displays "Canvas contains content from a newer Kova build — some nodes hidden." Cluster 11 owns the toast primitive | `node:errored` event payload shape — added to `SceneGraphEvents` for 11's `useToast()` subscription |
 | **12 — Settings & User Preferences** | None at runtime — engine has no user prefs | None — engine is preference-free |
 
@@ -933,9 +1148,11 @@ But items 9 (`figma-api-proxy.ts` expose), 10 (`kiwi/schema.ts` version bump), a
 
 Per CLAUDE.md "Demand Elegance — Balanced": the right split is engine-internals-as-shippable-unit (07a) vs. UI-on-top-of-engine (07b). The auditor's literal item numbering accidentally cut across the shippable boundary; we correct it here. Founder review confirms or pushes back.
 
-### 12.2 NodeType count nit (Q1/Q11 wording)
+### 12.2 NodeType count nit (Q1 wording — SLICE only post-2026-05-17 revision)
 
-Q1 says "SLICE = 17th NodeType." Q11 says "MEASUREMENT = 18th NodeType." The existing `NodeType` union already contains 17 members (CANVAS through SHAPE_WITH_TEXT). SLICE becomes the **18th** in the union literal order; MEASUREMENT the **19th**. Q-decision wording is preserved verbatim for traceability with the founder decision log; engineering count is "+2 on the existing 17." Documented for engineering clarity. No founder action needed — pure documentation nit.
+Q1 says "SLICE = 17th NodeType." The existing `NodeType` union already contains 17 members (CANVAS through SHAPE_WITH_TEXT). SLICE becomes the **18th** in the union literal order. Q1 wording is preserved verbatim for traceability with the founder decision log; engineering count is "+1 on the existing 17."
+
+Q11's "MEASUREMENT = 18th NodeType" is **superseded** by the 2026-05-17 founder ratification of the Figma-aligned measurement model (§12.10). MEASUREMENT is no longer a NodeType. Documented for engineering clarity. No founder action needed — pure documentation nit.
 
 ### 12.3 CLAUDE.md amendment text — pending publication
 
@@ -960,7 +1177,7 @@ Adding `includeInExports` + `pageBackgroundVisible` as fields on the flat `Scene
 When the Kova-side Kiwi schema is at v2.0.0 but the upstream PR to OpenPencil has not yet merged:
 
 - A Kova build can read both v1.x and v2.0.0 snapshots correctly.
-- An upstream-only build (someone consuming OpenPencil's `packages/core/` without Kova's fork) reading a v2.0.0 snapshot skips the unknown SLICE/MEASUREMENT enum values + warns.
+- An upstream-only build (someone consuming OpenPencil's `packages/core/` without Kova's fork) reading a v2.0.0 snapshot skips the unknown SLICE enum value + skips the new `measurements` array field on CANVAS nodes (kiwi's standard forward-compat behavior for added struct fields) + warns.
 - Kova production users see no issue (everyone is on Kova's build).
 - The risk surfaces only if someone outside Kova consumes a Kova-built file.
 
@@ -988,37 +1205,39 @@ Adding `openTypeFeatures` + `linkHref` + `listType` + `listIndent` as optional f
 
 ### 12.8 Risk (Low) — upstream PR rejection on any of the 7 PR threads
 
-If OpenPencil upstream declines any of the 7 planned PRs (SLICE NodeType, MEASUREMENT NodeType, new SceneNode fields, CharacterStyleOverride extension, scaleNode, mask compositing, kiwi schema bump), the Kova fork stays as a permanent fork delta.
+If OpenPencil upstream declines any of the 7 planned PRs (SLICE NodeType, **page-level Measurement system** [the 5 PageNode methods + Measurement/MeasurementSide/MeasurementOffset types + `SceneNode.measurements` field], new SceneNode fields, CharacterStyleOverride extension, scaleNode, mask compositing, kiwi schema bump), the Kova fork stays as a permanent fork delta.
 
-**Mitigation:** PR posture is "small + focused + well-tested + clear upstream value." Mask compositing has the strongest upstream argument (the data shape was already there; only the renderer was missing). SLICE + MEASUREMENT are first-class Figma NodeTypes — upstream OpenPencil likely wants them. The risk is asymmetric but the downside is "stay on permanent fork," not "feature broken."
+**Mitigation:** PR posture is "small + focused + well-tested + clear upstream value." Mask compositing has the strongest upstream argument (the data shape was already there; only the renderer was missing). SLICE is a first-class Figma NodeType, and the page-level Measurement system is a verbatim port of Figma's PageNode measurement API — upstream OpenPencil likely wants both, since the Figma-API-parity is OpenPencil's stated north star. The risk is asymmetric but the downside is "stay on permanent fork," not "feature broken."
 
-### 12.9 OPEN QUESTION — measurement-label rendering store
+### 12.9 RESOLVED 2026-05-17 — measurement label store = match Figma (auto-compute + freeText override)
 
-The measurement annotation displays a label string (e.g. "120 px"). The label is either:
+The measurement annotation displays a label string (e.g. "120 px"). Decision: **match Figma's `freeText` semantic** — engine stores `Measurement.freeText: ''` (empty string) by default, meaning "use computed label"; 07b's render loop computes the label from anchor geometry at draw time. When a user double-clicks to customize the label, the override string is stored in `freeText` and the renderer respects it.
 
-(a) **Auto-computed at render time** from the geometry (`Math.hypot(end_x - start_x, end_y - start_y)` rounded to the active unit's precision), and the engine stores only the geometry + an optional user-override label.
+**Why:** matches Figma's `freeText` field behavior exactly (verified against `developers.figma.com/docs/plugins/api/Measurement/` 2026-05-17); ties the live label to live anchor geometry (label stays correct when anchored nodes move/resize without engine intervention); keeps the engine schema minimal (no compute logic in the engine); matches Figma's "double-click to customize text" UX pattern (verified against `help.figma.com/hc/en-us/articles/20774752502935`). Founder ratified 2026-05-17.
 
-(b) **Stored explicitly** on the MEASUREMENT node — engine writes the label on creation + recompute on resize.
+### 12.10 RESOLVED 2026-05-17 — measurement data model = match Figma exactly (page-level, anchored)
 
-**This PRD defaults to (a):** the engine stores `text: ''` by default (empty = "use computed label"); 07b's render loop computes the label string at draw time. A user-override sets `text` to a non-empty string, and the engine respects the override.
+Measurements are **not** a NodeType. They are page-level records on CANVAS-typed SceneNodes, anchored to two other SceneNodes by side. Decision rationale below.
 
-**Why (a):** keeps the engine schema minimal; ties the label to live geometry; matches Figma's "double-click to customize text" pattern (verified against `help.figma.com/hc/en-us/articles/20774752502935`) — Figma's measurement label is auto-computed until a user overrides via double-click.
+**Original Q11 spec (superseded):** treat MEASUREMENT as the 18th NodeType in the scene-graph union, with start/end stored as `x, y, width, height` (start = `(x, y)`, end = `(x + width, y + height)`).
 
-**Founder confirms or pushes back.** Default `(a)` ships if no pushback.
+**2026-05-17 Figma-docs research finding:** `developers.figma.com/docs/plugins/api/Measurement/` shows Figma's Measurement is not a SceneNode. It lives on PageNode as a separate object, with anchors keyed by `{ node: SceneNode, side: MeasurementSide }`. Side is cardinal-only (`TOP | RIGHT | BOTTOM | LEFT`). Offset is a tagged union (`INNER { relative: number ∈ [-1, 1] }` or `OUTER { fixed: number ≠ 0 }`). 5 PageNode methods (`addMeasurement`, `getMeasurements`, `getMeasurementsForNode`, `editMeasurement`, `deleteMeasurement`) expose the API. `editMeasurement` only allows editing `offset` + `freeText` — start/end anchors are immutable post-creation.
 
-### 12.10 OPEN QUESTION — measurement node 2-point geometry encoding
+**Founder decision (2026-05-17):** match Figma exactly. Worth the ~2 days extra engineering effort over the simpler x/y/w/h NodeType model, because:
 
-The MEASUREMENT NodeType represents a 2-point line. The encoding in this PRD uses `x, y, width, height`: start point = `(x, y)`, end point = `(x + width, y + height)`. Negative width/height handle the case where the user drags right-to-left or bottom-to-top.
+1. **Per CLAUDE.md "What Figma does, Kova does":** Figma is the reference. The Figma-aligned model auto-anchors measurements to the nodes they document — when a marketer moves a button, the spacing label moves with it. The x/y/w/h NodeType model would lose that.
+2. **No retrofit cost:** if we shipped x/y/w/h first and tried to add anchoring later, we'd need a migration. Better to do it right once.
+3. **Long-term product fidelity:** the anchored model is what a Figma-trained marketer expects. Shipping the simpler model would feel "almost-Figma" — exactly the failure mode CLAUDE.md `feedback_build_better_not_easier` exists to prevent.
 
-**Alternative:** add `startX, startY, endX, endY` as new fields on `SceneNode` (or specifically on MEASUREMENT-typed nodes).
+**Lifecycle decisions** (2026-05-17 founder ratification):
+- **Anchor-delete → orphan + broken-anchor state** (not cascade-delete) — preserves user intent. 07b renders broken-anchor measurements in a degraded state with a click-to-repair affordance.
+- **Cross-canvas move → drop measurement** — when a node is moved to a different CANVAS, its measurements on the source canvas are deleted.
 
-**This PRD defaults to the existing-field encoding** — keeps the schema lean. The downside is `width`/`height` semantics differ for MEASUREMENT vs. RECTANGLE (rectangle width is always positive; measurement width can be negative). Documented in the JSDoc on the MEASUREMENT default factory.
-
-**Founder confirms or pushes back.** Default (existing-field encoding) ships if no pushback.
+**Implementation scope:** see §7.1b for the full type declarations + method signatures + lifecycle events.
 
 ### 12.11 RESOLVED 2026-05-15 — split items #9–#11 sit in 07a not 07b
 
-Per §12.1 above. Founder approves the auditor-split correction during PRD review.
+Per §12.1 above. Founder approves the auditor-split correction during PRD review (re-confirmed 2026-05-17 during the measurement-model revision pass).
 
 ### 12.12 RESOLVED 2026-05-15 — mask-shape NOT rendered as a visible layer
 
@@ -1028,6 +1247,22 @@ Per Figma docs (verified §13.6): "The mask object itself creates a visible grou
 
 Figma's K-tool semantics: scale geometry while keeping rotation + position. Verified against the audit + Figma's own scale-tool documentation. This PRD's `scaleNode` preserves `x`, `y`, `rotation` per the spec in §7.4.
 
+### 12.14 RESOLVED 2026-05-17 — CLAUDE.md amendment text lands in same merge group as 07a
+
+Per §12.3 above. Founder decision (2026-05-17): land the CLAUDE.md "lift-the-lock policy" amendment paragraph (text in §12.3) in the same PR/merge as the 07a engine code lands. Cleanest history. Plan Task 10 (per the implementation-plan revision) owns the CLAUDE.md edit.
+
+### 12.15 RESOLVED 2026-05-17 — measurement anchor-delete semantic = orphan (not cascade)
+
+When a SceneNode that has measurements anchored to it is `removeNode`'d, the measurements are **not** auto-deleted. Their anchor `nodeId` continues to reference the deleted ID. The engine emits a `measurement:broken` event on `SceneGraphEvents`; 07b's render layer detects the broken anchor (via `figma.getNodeById(anchorId)` returning `null`) and renders the measurement in a "broken-anchor" state — gray dashed line + ⚠ glyph + click-to-repair affordance (full UI spec lives in 07b PRD).
+
+**Why orphan, not cascade:** preserves user intent — they may want to undo the delete + see the measurement re-render. Also enables "click to re-anchor" repair UX without first re-creating the measurement. Founder ratified 2026-05-17 (chose Orphan over the Claude-recommended Cascade).
+
+### 12.16 RESOLVED 2026-05-17 — measurement cross-canvas-move semantic = drop
+
+When a SceneNode is reparented to a different CANVAS, all measurements anchored to it on the source CANVAS are deleted. Engine emits `measurement:dropped` event (payload: `{ measurementIds: string[]; sourceCanvasId: string; movedNodeId: string }`).
+
+**Why drop:** the anchored-measurement model only supports same-canvas anchors (`addMeasurement` rejects cross-canvas anchors at create time). Moving a node across canvases would otherwise leave the measurement with a half-valid anchor pair (one on source canvas, one pointing to a node now on a different canvas). Drop is the conservative + intuitive resolution. Founder ratified 2026-05-17.
+
 ---
 
 ## 13. References
@@ -1035,7 +1270,7 @@ Figma's K-tool semantics: scale geometry while keeping rotation + position. Veri
 ### 13.1 03-doc rows covered
 
 - §2.7 Canvas-engine extensions (33 rows total; this PRD owns the §3C #1a + #1b buckets — core mods + renderer-only — and the four "missing" engine-side Q3 items: aspectRatio, page-export flag, page-bg-vis, scale tool)
-- §3C #1a — core mods (SLICE NodeType, MEASUREMENT NodeType, aspectRatio, page-export flag, page-bg-vis, scale tool, OpenType per-text-run wiring, list/link per-text-run attrs, tool registration in `tools/`)
+- §3C #1a — core mods (SLICE NodeType; page-level Measurement system on CANVAS [NOT a NodeType — see §12.10]; aspectRatio, page-export flag, page-bg-vis, scale tool, OpenType per-text-run wiring, list/link per-text-run attrs, tool registration in `tools/`)
 - §3C #1b — renderer-only (mask compositing in `renderer/scene.ts`)
 
 Note: §3C #1c (Inspector wiring) and §3C #1d (App-level overlays) belong to 07b.
@@ -1046,7 +1281,7 @@ Note: §3C #1c (Inspector wiring) and §3C #1d (App-level overlays) belong to 07
 - **Q2** — Mask compositing in `renderer/scene.ts`. Data model `isMask` + `maskType` already in `scene-graph.ts:298–299`. All 3 maskTypes ship MVP.
 - **Q3** — 9 features engine-ready (vertical text align, all 4 gradient types, POLYGON/STAR/LINE, stroke align, all 5 effect types, boolean operations, vector network field). 1 partial (OpenType — needs SceneNode wiring — this PRD ships the wiring). 4 missing — this PRD ships 3: aspectRatio, page-export flag, page-bg-vis. Scale tool ships as an engine-side modify operation here; the K-tool UX wires in 07b.
 - **Q4** — Engine has zero extension hooks. Canvas-extensions (product-variant) work via external Pinia + public FigmaAPI only. **Lift the lock per CLAUDE.md amendment for foundational primitives matching Figma's data model** — this PRD's mandate.
-- **Q11** — MEASUREMENT = first-class 18th (literal 19th) NodeType in `scene-graph.ts`. Path 1 (lift core lock). New `packages/core/src/renderer/measurements.ts` is **owned by 07b** for the dashed-line + auto-distance label rendering (overlay); this PRD's engine surface stores the geometry only.
+- **Q11** — Originally specified MEASUREMENT as 18th NodeType. **Superseded 2026-05-17** by founder ratification of the Figma-aligned page-level model (§12.10). Path 1 (lift core lock) remains the implementation strategy. New `packages/core/src/renderer/measurements.ts` is **owned by 07b** for the dashed-line + auto-distance label rendering (overlay); this PRD's engine surface stores the anchored geometry (start/end `{ nodeId, side }`) + offset + freeText only.
 
 ### 13.3 Hi-fi files referenced
 
@@ -1073,14 +1308,18 @@ Light CSS not referenced — canvas is always dark per `feedback_app_dark_websit
 - `kova-open-pencil-1/docs/superpowers/handoffs/design-overhaul/q1-5-answers-03-implied-surfaces-and-backend.md` (Q1, Q2)
 - `kova-open-pencil-1/docs/superpowers/handoffs/design-overhaul/q6-25-answers-03-implied-surfaces-and-backend.md` (Q3, Q4, Q11)
 
-### 13.6 External sources cited (verified 2026-05-15 per `feedback_verify_with_docs`)
+### 13.6 External sources cited (verified 2026-05-15 + 2026-05-17 per `feedback_verify_with_docs`)
 
 | Claim | URL | Verification |
 |---|---|---|
-| SliceNode interface (type, name, exportSettings, geometry, methods) | `https://developers.figma.com/docs/plugins/api/SliceNode/` | Confirms — `type: 'SLICE'` readonly; `name`; `exportSettings: ReadonlyArray<ExportSettings>`; geometry fields; `clone()`, `exportAsync()`, `remove()`; "An invisible object with a bounding box, represented as dashed lines in the editor" |
-| Measurement tool keyboard + persistence + selectability + edit | `https://help.figma.com/hc/en-us/articles/20774752502935-Add-measurements-and-annotate-designs` | Confirms — "Shift+M"; "click and drag from your starting point to the layer where you want the measurement to end"; persisted ("visible measurements for others to view"); "to delete a measurement, click it and press the Delete or Backspace key"; "double-click on the measurement to customize its text" |
-| Mask types (3 — Alpha/Vector/Luminance), propagation rule, default, shortcut, mask-object not rendered | `https://help.figma.com/hc/en-us/articles/360040450253-Masks` | Confirms — "All masks in Figma support alpha channels"; "Vector — ignore the translucency—or opacity value of more than zero percent"; "Luminance — the brighter the area of a mask, the more that is revealed"; "to all siblings above it until it reaches: Another mask or mask object, The mask's parent frame or group, A frame or component with clip content on"; "By default, the mask type is set to Alpha"; shortcut Control+Command+M (Mac) / Ctrl+Alt+M (Win); "doesn't render as a separate visible element—it functions structurally to control what displays beneath it" |
-| Slice = invisible export region; drag-on-canvas to create; content within bounds is what exports | `https://help.figma.com/hc/en-us/articles/360040028114-Export-from-Figma` | Confirms — "Slice tool located under the Region tools dropdown"; "To create a slice, click and drag the Slice tool around the region you want to export"; "only content within the slice's boundaries will be exported"; padding control on slices |
+| SliceNode interface (type, name, exportSettings, geometry, methods) | `https://developers.figma.com/docs/plugins/api/SliceNode/` | Confirms — `type: 'SLICE'` readonly; `name`; `exportSettings: ReadonlyArray<ExportSettings>`; geometry fields; `clone()`, `exportAsync()`, `remove()`; "An invisible object with a bounding box, represented as dashed lines in the editor" (verified 2026-05-15) |
+| Measurement tool keyboard + persistence + selectability + edit | `https://help.figma.com/hc/en-us/articles/20774752502935-Add-measurements-and-annotate-designs` | Confirms — "Shift+M"; "click and drag from your starting point to the layer where you want the measurement to end"; persisted ("visible measurements for others to view"); "to delete a measurement, click it and press the Delete or Backspace key"; "double-click on the measurement to customize its text" (verified 2026-05-15) |
+| Mask types (3 — Alpha/Vector/Luminance), propagation rule, default, shortcut, mask-object not rendered | `https://help.figma.com/hc/en-us/articles/360040450253-Masks` | Confirms — "All masks in Figma support alpha channels"; "Vector — ignore the translucency—or opacity value of more than zero percent"; "Luminance — the brighter the area of a mask, the more that is revealed"; "to all siblings above it until it reaches: Another mask or mask object, The mask's parent frame or group, A frame or component with clip content on"; "By default, the mask type is set to Alpha"; shortcut Control+Command+M (Mac) / Ctrl+Alt+M (Win); "doesn't render as a separate visible element—it functions structurally to control what displays beneath it" (verified 2026-05-15) |
+| Slice = invisible export region; drag-on-canvas to create; content within bounds is what exports | `https://help.figma.com/hc/en-us/articles/360040028114-Export-from-Figma` | Confirms — "Slice tool located under the Region tools dropdown"; "To create a slice, click and drag the Slice tool around the region you want to export"; "only content within the slice's boundaries will be exported"; padding control on slices (verified 2026-05-15) |
+| Measurement data shape — page-level (NOT a SceneNode); 5 fields (id, start, end, offset, freeText) | `https://developers.figma.com/docs/plugins/api/Measurement/` | Confirms — `Measurement { id: string; start: { node: SceneNode; side: MeasurementSide }; end: { node: SceneNode; side: MeasurementSide }; offset: MeasurementOffset; freeText: string }`; lives on PageNode (not SceneNode); 5 PageNode methods (`addMeasurement`, `getMeasurements`, `getMeasurementsForNode`, `editMeasurement`, `deleteMeasurement`); `editMeasurement` allows only `offset` + `freeText` (start/end immutable) (verified 2026-05-17) |
+| MeasurementSide enum values | `https://developers.figma.com/docs/plugins/api/MeasurementSide/` | Confirms — exactly four cardinal values: `'TOP'`, `'RIGHT'`, `'BOTTOM'`, `'LEFT'`. No midpoint or corner options (verified 2026-05-17) |
+| MeasurementOffset tagged union shape | `https://developers.figma.com/docs/plugins/api/MeasurementOffset/` | Confirms — `MeasurementOffset = { type: 'INNER'; relative: number /* ∈ [-1, 1] */ } \| { type: 'OUTER'; fixed: number /* ≠ 0 */ }` (verified 2026-05-17) |
+| PageNode measurement-method signatures | `https://developers.figma.com/docs/plugins/api/PageNode/` | Confirms — `addMeasurement(start, end, options?)`, `getMeasurements(): Measurement[]`, `getMeasurementsForNode(node: SceneNode): Measurement[]`, `editMeasurement(id, newValue): Measurement`, `deleteMeasurement(id): void`. All measurement methods are exclusively on PageNode (verified 2026-05-17) |
 
 ### 13.7 Memory pointers consulted
 

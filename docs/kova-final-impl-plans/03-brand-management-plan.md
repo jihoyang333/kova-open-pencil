@@ -2,15 +2,61 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Ship the brand-record lifecycle for Kova MVP — `/brands` picker, 4-step `/brands/new` wizard, three CRUD modals (Rename / Archive / Delete), backend RPCs + Edge Functions, deterministic brand-color auto-assign, storage sweep on delete.
+**Goal:** Ship the brand-record lifecycle for Kova MVP — `/brands` picker, 4-step `/brands/new` wizard, active-state CRUD modals (Rename / Archive / Delete), **`/account/brands` (B12) archived-inventory page with Restore + Delete-archived flows**, backend RPCs + Edge Functions, deterministic brand-color auto-assign, storage sweep on delete, audit-event breadcrumb stopgap.
 
-**Architecture:** Vue 3 SPA on Vite. `useBrandsStore` (Pinia) extended with mutating actions calling 4 Vercel Function Edge endpoints. Server: 5 SECURITY DEFINER Postgres RPCs (`create_brand`, `rename_brand`, `archive_brand`, `restore_brand` STUB, `delete_brand`, `list_active_brands`). Storage sweep helper purges 4 per-brand buckets on delete. Hi-fi design lifted from `kova-hifi.css` `:root` tokens → Tailwind `@theme`; component classes (`.bp-card`, `.dlg`, `.onb-card`, `.brand-summary`, `.loss-list`, `.confirm-typed`) → Vue components rendering same markup contract.
+**Architecture:** Vue 3 SPA on Vite. `useBrandsStore` (Pinia) extended with mutating actions calling 5 Vercel Function Edge endpoints. Server: 7 SECURITY DEFINER Postgres RPCs (`create_brand`, `rename_brand`, `archive_brand`, `restore_brand` **REAL**, `delete_brand`, `list_active_brands`, `list_archived_brands`). Storage sweep helper purges 4 per-brand buckets on delete. `writeAudit()` helper writes 5 event types to console + Sentry breadcrumb (stopgap until Cluster 11 ships `audit_log` table). Hi-fi design lifted from `kova-hifi.css` `:root` tokens → Tailwind `@theme`; component classes (`.bp-card`, `.dlg`, `.onb-card`, `.brand-summary`, `.loss-list`, `.confirm-typed`) → Vue components rendering same markup contract.
 
-**Tech Stack:** Vue 3 `<script setup>` + Composition API · Pinia setup stores · Vue Router 4 (nested routes for wizard) · Reka UI (Dialog, DropdownMenu) · Tailwind 4 · TypeScript strict (no `any`, no `!`) · `@supabase/supabase-js` · Vercel Fluid Compute Functions · bun:test unit tests · Playwright E2E · oxlint · oxfmt · jscpd
+**Tech Stack:** Vue 3 `<script setup>` + Composition API · Pinia setup stores · Vue Router 4 (nested routes for wizard) · Reka UI (Dialog, DropdownMenu, Select) · Tailwind 4 · TypeScript strict (no `any`, no `!`) · `@supabase/supabase-js` · Vercel Fluid Compute Functions · bun:test unit tests · Playwright E2E · oxlint · oxfmt · jscpd
 
-**PRD source:** `/Users/jihoyang/kova-main/kova-open-pencil-1/docs/kova-final-prds/03-brand-management.md` (DRAFT 2026-05-15, ~1900 lines).
+**PRD source:** `/Users/jihoyang/kova-main/kova-open-pencil-1/docs/kova-final-prds/03-brand-management.md` (IN-REVIEW 2026-05-17 — includes B12 reversal per `00f-B12_REVERSAL_DISPATCH.md`).
 
-**Depends on (PRD blockers — these must ship before this plan's later phases run end-to-end):** Cluster 01 (`useAuthStore`, `users` row, auth guard), Cluster 02 (sidebar host, router redirect logic for 0/1/multi brand), Cluster 11 (`<KovaModal>`, `useConfirm`, `useToast`, `<KovaSkeleton>`, `<TypedConfirmField>`, `idempotency_keys` helper, `audit_log` table). **Adapter pattern:** every Cluster-11 import in this plan uses a thin local fallback so this plan's tasks can be developed + unit-tested independently. Integration phase (Phase 8) wires the real Cluster-11 components once they ship.
+**Depends on (PRD blockers — these must ship before this plan's later phases run end-to-end):** Cluster 01 (`useAuthStore`, `users` row, auth guard), Cluster 02 (sidebar host, router redirect logic for 0/1/multi brand; "Brands" sidebar item visible without SOON pill per PRD 02 §12.11 partial resolution), Cluster 04 (`/account` shell + `.acc-rail` sidebar + `/account/brands` route registration + `<NotShippedYet>` fallback route), Cluster 11 (`<KovaModal>`, `useConfirm`, `useToast`, `<KovaSkeleton>`, `<TypedConfirmField>`, `<NotShippedYet>`, `idempotency_keys` helper, `audit_log` table — last is stopgap'd via `writeAudit()`). **Adapter pattern:** every Cluster-11 import in this plan uses a thin local fallback so this plan's tasks can be developed + unit-tested independently. Integration phase (Phase 8) wires the real Cluster-11 components once they ship.
+
+---
+
+## 🔄 ADDENDUM — B12 Reversal Deltas (2026-05-17)
+
+Founder reversed the 2026-05-13 lock that scoped B12 to Phase 2. Per `docs/kova-final-prds/00f-B12_REVERSAL_DISPATCH.md`, the following deltas apply to this plan. **Implementer must read this addendum before executing any task.** Task bodies below reflect post-reversal state; legacy STUB / DISABLED references in older task bodies have been patched in-line but this addendum is the source of truth on contested scope.
+
+### Tasks added (must execute)
+- **Task 6.5** — `restore_brand` RPC promoted from STUB to **REAL** with `not_archived` error path. (Patched into Task 6 below.)
+- **Task 7.5** — `list_archived_brands` RPC. (Patched into Task 7 below.)
+- **Task 10.5** — `writeAudit()` helper (Cluster 11 stopgap; console + Sentry breadcrumb; signature stable so Cluster 11 can swap internals).
+- **Task 13.5** — `POST /api/brands/restore` Edge Function (auth + idempotency + `restore_brand` RPC call + `writeAudit('brand.restored')` + `BRANDS_RESTORE_ENABLED=false` returns 503).
+- **Task 26.5** — `<RestoreBrandModal>` component (B12.3) — `.dlg.sm` neutral confirm, no typed-confirm.
+- **Task 33.5** — `<BrandsArchivedFilter>` component (A2.a top-right dropdown — `Hide / Show / Only`, localStorage-persisted, triggers `fetchArchivedBrands()` on first non-Hide).
+- **Task 33.6** — `<BrandsSegmentedControl>` component (B12.1 `All / Active / Archived` segmented control, URL-query-persisted via `?filter=`).
+- **Task 33.7** — `<BrandsAccountView>` component (B12 page) — hero ("Brands" title + "+ New brand" CTA, **NO Import CTA**) + segmented control + grid of `<BrandCard>` filtered by segment + B12.2 zero-state.
+- **Task 33.8** — `<NotShippedYet>` adapter shim (Cluster 11 stopgap) + `/account/coming-soon` fallback route registration so Account button always works.
+
+### Tasks modified
+- **Task 6** — `restore_brand` is REAL not STUB. Adds `not_archived` exception branch. Test: archive + restore round-trip should succeed; double-restore should raise `not_archived`.
+- **Task 7** — Adds `list_archived_brands()` SQL function + grant. Test: returns archived-only rows ordered by `archived_at DESC`.
+- **Task 16** — `useBrandsStore.archivedBrands` getter consumed by B12 + A2.a (not Phase 2 stub); add `fetchArchivedBrands()` action.
+- **Task 18** — `restoreBrand(id)` action is REAL — calls `POST /api/brands/restore`, optimistically clears `archived_at` on local row, on success refetch active + archived lists. Remove `throw new Error('restore_brand_not_enabled_mvp')`.
+- **Task 28** — `<BrandCard>` adds archived-state branch (`v-if="brand.archived_at !== null"`): 78% opacity, "Archived" outline pill, kebab shows 2 items (Restore / Delete). Active state: kebab shows 3 (Rename / Archive / Delete). Emits `restore` event added.
+- **Task 30** — `<BrandPickerView>` adds Account button (top-right, routes to `/account`, falls back to `/account/coming-soon` if PRD 04 not ready) + integrates `<BrandsArchivedFilter>` (Hide/Show/Only). Removes any "Import" CTA — never building per founder cut 2026-05-17.
+- **Task 34** — Router additions: `/account/brands` route registered by PRD 04 (this plan adds the **child route definition** + component import statement so PRD 04 just mounts it); `/account/coming-soon` fallback route with `<NotShippedYet>` placeholder.
+- **Task 38** — E2E adds B12 happy paths: archive → navigate to /account/brands → restore round-trip → archive → /account/brands → delete-archived typed-confirm cascade.
+- **Task 39** — Manual smoke adds B12 segmented control toggle + restore + delete-archived flows.
+
+### Tasks unchanged but cross-cut affected
+- **Task 21 (Cluster-11 adapter shims)** — extend with `<NotShippedYet>` shim (Cluster 11 ships real version; adapter exposes same API).
+- **Task 25 (ArchiveBrandModal)** — bullet 4 link target = `/account/brands` (live `<router-link>`, not greyed).
+- **Task 26 (DeleteBrandModal)** — reused by B12.4 (mounted from archived card). Footer always "This action is permanent." (overrides hi-fi B12.4 mis-leak per PRD §12.8).
+
+### Dropped (DO NOT BUILD)
+- ❌ Brand "Import" CTA — founder cut 2026-05-17. Never building. Remove all references during implementation.
+- ❌ `BRANDS_ARCHIVE_FILTER_ENABLED` feature flag — A2.a filter is unconditionally ENABLED MVP. Flag removed.
+
+### Feature flag state
+- `BRANDS_RESTORE_ENABLED` — default `true` (rollback safety toggle only; not Phase 2 gate).
+
+### Cross-PRD coordination (informational — handled by parallel dispatch prompts B/C/D/E per 00f doc)
+- PRD 02 — sidebar "Brands" item ships visible, no SOON pill.
+- PRD 04 — adds "Brands" nav item to `.acc-rail`; registers `/account/brands` route + `/account/coming-soon` fallback.
+- PRD 08 — `useObjectActions` composable adds archived-state action set on brand cards.
+- `00-PRD_SCOPE_PLAN.md` §3 — reversal log updated.
 
 ---
 
@@ -98,9 +144,9 @@
 
 ### Modified
 
-- `src/stores/brands.ts` — extend with `activeBrands`, `archivedBrands` getters; replace `createBrand` signature; add `renameBrand`, `archiveBrand`, `deleteBrand`, `restoreBrand` (stubbed) actions; add `isMutating` state
+- `src/stores/brands.ts` — extend with `activeBrands`, `archivedBrands` getters; replace `createBrand` signature; add `renameBrand`, `archiveBrand`, `deleteBrand`, `restoreBrand` (REAL — MVP per 2026-05-17 reversal), `fetchArchivedBrands` actions; add `isMutating` state
 - `src/types/kova/database.ts` — add `BrandColor` union, extend `Brand` interface with `archived_at`, `color`, `slug`, `url`, `description`
-- `src/router/index.ts` — register `/brands` + `/brands/new/*` routes
+- `src/router/index.ts` — register `/brands` + `/brands/new/*` + `/account/brands` + `/account/coming-soon` routes
 - `src/composables/_adapters/use-toast-adapter.ts` (created above) — first import of Cluster-11 stub
 - `package.json` — no new deps (we have `@supabase/supabase-js` + `reka-ui` already)
 
@@ -134,7 +180,7 @@ ALTER TABLE public.brands
   ADD COLUMN IF NOT EXISTS description text NULL;
 
 COMMENT ON COLUMN public.brands.archived_at IS
-  'Soft-archive timestamp. Set by archive_brand(); cleared by restore_brand() (Phase 2). NOT a soft-delete.';
+  'Soft-archive timestamp. Set by archive_brand(); cleared by restore_brand() (REAL — MVP per 2026-05-17 reversal). NOT a soft-delete. Restored from /account/brands (B12).';
 COMMENT ON COLUMN public.brands.color IS
   'Auto-assigned palette tint at create-time. Stable across renames. User-overridable Phase 2.';
 COMMENT ON COLUMN public.brands.slug IS
@@ -556,7 +602,7 @@ git commit -m "feat(brands): add rename_brand RPC"
 
 ---
 
-### Task 6: `archive_brand` + `restore_brand` (stub) RPCs
+### Task 6: `archive_brand` + `restore_brand` (REAL — MVP per 2026-05-17 reversal) RPCs
 
 **Files:**
 - Modify: `supabase/migrations/20260601_03_brands_lifecycle.sql`
@@ -586,6 +632,29 @@ test('restore_brand clears archived_at', async () => {
   const r = await client.rpc('restore_brand', { p_brand_id: brand!.id })
   expect(r.data!.archived_at).toBeNull()
   await cleanupTestUser(user.id)
+})
+
+test('restore_brand raises not_archived when brand already active', async () => {
+  const user = await createTestUser()
+  const client = await getUserClient(user.id)
+  const { data: brand } = await client.rpc('create_brand', { p_name: 'A', p_url: null, p_description: null })
+  // Skip archive step — brand still active.
+  const r = await client.rpc('restore_brand', { p_brand_id: brand!.id })
+  expect(r.error?.message).toMatch(/not_archived/)
+  await cleanupTestUser(user.id)
+})
+
+test('restore_brand raises not_found for foreign brand', async () => {
+  const userA = await createTestUser()
+  const userB = await createTestUser()
+  const clientA = await getUserClient(userA.id)
+  const clientB = await getUserClient(userB.id)
+  const { data: brand } = await clientA.rpc('create_brand', { p_name: 'X', p_url: null, p_description: null })
+  await clientA.rpc('archive_brand', { p_brand_id: brand!.id })
+  const r = await clientB.rpc('restore_brand', { p_brand_id: brand!.id })
+  expect(r.error?.message).toMatch(/not_found/)
+  await cleanupTestUser(userA.id)
+  await cleanupTestUser(userB.id)
 })
 ```
 
@@ -623,6 +692,8 @@ BEGIN
 END;
 $$;
 
+-- restore_brand: REAL (MVP per 2026-05-17 reversal). Clears archived_at.
+-- Distinguishes not_archived vs not_found for caller error mapping.
 CREATE OR REPLACE FUNCTION public.restore_brand(p_brand_id uuid)
 RETURNS public.brands
 LANGUAGE plpgsql SECURITY DEFINER AS $$
@@ -632,7 +703,12 @@ BEGIN
   UPDATE public.brands SET archived_at = NULL
   WHERE id = p_brand_id AND user_id = v_user_id AND archived_at IS NOT NULL
   RETURNING * INTO v_brand;
-  IF v_brand IS NULL THEN RAISE EXCEPTION 'not_found' USING ERRCODE = 'P0002'; END IF;
+  IF v_brand IS NULL THEN
+    IF EXISTS (SELECT 1 FROM public.brands WHERE id = p_brand_id AND user_id = v_user_id) THEN
+      RAISE EXCEPTION 'not_archived' USING ERRCODE = 'P0001';
+    END IF;
+    RAISE EXCEPTION 'not_found' USING ERRCODE = 'P0002';
+  END IF;
   RETURN v_brand;
 END;
 $$;
@@ -646,12 +722,12 @@ GRANT EXECUTE ON FUNCTION public.archive_brand, public.restore_brand TO authenti
 supabase db reset && supabase db push
 bun test ./tests/integration/brands-rpc.test.ts
 git add supabase/migrations/20260601_03_brands_lifecycle.sql tests/integration/brands-rpc.test.ts
-git commit -m "feat(brands): add archive_brand + restore_brand (stub) RPCs"
+git commit -m "feat(brands): add archive_brand + restore_brand (REAL) RPCs"
 ```
 
 ---
 
-### Task 7: `delete_brand` + `list_active_brands` RPCs
+### Task 7: `delete_brand` + `list_active_brands` + `list_archived_brands` RPCs
 
 **Files:**
 - Modify: `supabase/migrations/20260601_03_brands_lifecycle.sql`
@@ -698,6 +774,21 @@ test('list_active_brands filters archived + orders updated_at DESC', async () =>
   const { data } = await client.rpc('list_active_brands')
   expect(data).toHaveLength(1)
   expect(data![0].name).toBe('Old')
+  await cleanupTestUser(user.id)
+})
+
+test('list_archived_brands returns archived-only ordered by archived_at DESC', async () => {
+  const user = await createTestUser()
+  const client = await getUserClient(user.id)
+  const { data: b1 } = await client.rpc('create_brand', { p_name: 'B1', p_url: null, p_description: null })
+  const { data: b2 } = await client.rpc('create_brand', { p_name: 'B2', p_url: null, p_description: null })
+  await client.rpc('archive_brand', { p_brand_id: b1!.id })
+  await new Promise(r => setTimeout(r, 50))
+  await client.rpc('archive_brand', { p_brand_id: b2!.id })
+  const { data } = await client.rpc('list_archived_brands')
+  expect(data).toHaveLength(2)
+  expect(data![0].name).toBe('B2')   // most-recently archived first
+  expect(data![1].name).toBe('B1')
   await cleanupTestUser(user.id)
 })
 ```
@@ -747,7 +838,16 @@ LANGUAGE sql SECURITY DEFINER STABLE AS $$
   ORDER BY updated_at DESC;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.delete_brand, public.list_active_brands TO authenticated;
+-- list_archived_brands: B12 page + A2.a "Archived" filter consumer.
+CREATE OR REPLACE FUNCTION public.list_archived_brands()
+RETURNS SETOF public.brands
+LANGUAGE sql SECURITY DEFINER STABLE AS $$
+  SELECT * FROM public.brands
+  WHERE user_id = auth.uid() AND archived_at IS NOT NULL
+  ORDER BY archived_at DESC;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.delete_brand, public.list_active_brands, public.list_archived_brands TO authenticated;
 ```
 
 - [ ] **Step 4: Verify + commit**
@@ -756,7 +856,7 @@ GRANT EXECUTE ON FUNCTION public.delete_brand, public.list_active_brands TO auth
 supabase db reset && supabase db push
 bun test ./tests/integration/brands-rpc.test.ts
 git add supabase/migrations/20260601_03_brands_lifecycle.sql tests/integration/brands-rpc.test.ts
-git commit -m "feat(brands): add delete_brand (typed-confirm + cascade) + list_active_brands RPCs"
+git commit -m "feat(brands): add delete_brand + list_active_brands + list_archived_brands RPCs"
 ```
 
 ---
@@ -1725,19 +1825,65 @@ async function deleteBrand(id: string, typedConfirm: string): Promise<void> {
 }
 
 async function restoreBrand(id: string): Promise<void> {
-  // STUB — Phase 2. Throws to make accidental MVP usage loud.
-  throw new Error('restore_brand_not_enabled_mvp')
+  // REAL — MVP per 2026-05-17 reversal. Gated by BRANDS_RESTORE_ENABLED flag (default true).
+  // On 503 feature_disabled response, surfaces typed error for UI to render disabled CTA.
+  const { brand } = await callBrandsApi<{ brand: Brand }>('/api/brands/restore', 'POST', { brand_id: id })
+  brands.value = brands.value.map((b) => (b.id === id ? brand : b))
+}
+
+async function fetchArchivedBrands(): Promise<void> {
+  // Lazy-load archived rows for B12 page + A2.a "Archived" filter.
+  // Merges into existing brands[] without duplicating active rows.
+  const { data, error } = await supabase.rpc('list_archived_brands')
+  if (error) throw error
+  const archived = (data ?? []) as Brand[]
+  const archivedIds = new Set(archived.map((b) => b.id))
+  brands.value = [
+    ...brands.value.filter((b) => !archivedIds.has(b.id)),
+    ...archived,
+  ]
 }
 ```
 
-Add all four to the `return` block.
+Add all five to the `return` block (`renameBrand`, `archiveBrand`, `deleteBrand`, `restoreBrand`, `fetchArchivedBrands`).
 
-- [ ] **Step 3: Run + commit**
+- [ ] **Step 3: Add failing test for restoreBrand**
+
+Append to `tests/stores/brands.test.ts`:
+
+```typescript
+test('restoreBrand clears archived_at on local row', async () => {
+  const store = useBrandsStore()
+  const archived = { id: 'b1', name: 'X', archived_at: new Date().toISOString() } as Brand
+  store.brands = [archived]
+  globalThis.fetch = mock(async () => new Response(JSON.stringify({
+    brand: { ...archived, archived_at: null },
+  }))) as any
+  await store.restoreBrand('b1')
+  expect(store.brands[0].archived_at).toBeNull()
+  expect(store.activeBrands).toHaveLength(1)
+  expect(store.archivedBrands).toHaveLength(0)
+})
+
+test('fetchArchivedBrands merges archived rows without duplicating active', async () => {
+  const store = useBrandsStore()
+  store.brands = [{ id: 'active1', name: 'A', archived_at: null } as Brand]
+  vi.mock('@/lib/supabase', () => ({
+    supabase: { rpc: vi.fn(async () => ({ data: [{ id: 'arch1', name: 'X', archived_at: new Date().toISOString() }], error: null })) }
+  }))
+  await store.fetchArchivedBrands()
+  expect(store.brands).toHaveLength(2)
+  expect(store.activeBrands).toHaveLength(1)
+  expect(store.archivedBrands).toHaveLength(1)
+})
+```
+
+- [ ] **Step 4: Run + commit**
 
 ```bash
 bun test ./tests/stores/brands.test.ts
 git add src/stores/brands.ts tests/stores/brands.test.ts
-git commit -m "feat(brands): add renameBrand, archiveBrand, deleteBrand, restoreBrand actions"
+git commit -m "feat(brands): add renameBrand, archiveBrand, deleteBrand, restoreBrand (REAL), fetchArchivedBrands actions"
 ```
 
 ---
@@ -2662,6 +2808,27 @@ test('kebab dropdown emits rename/archive/delete', async () => {
   await wrapper.find('[data-test="kebab-rename"]').trigger('click')
   expect(wrapper.emitted('rename')?.[0]).toEqual(['b1'])
 })
+
+test('archived state: 78% opacity + Archived pill + body click no-op', async () => {
+  const archivedBrand = { ...brand, archived_at: '2026-05-10T00:00:00Z' }
+  const wrapper = mount(BrandCard, { props: { brand: archivedBrand } })
+  expect(wrapper.classes()).toContain('opacity-[0.78]')
+  expect(wrapper.text()).toContain('Archived')
+  await wrapper.find('[data-test="card-body"]').trigger('click')
+  expect(wrapper.emitted('select')).toBeUndefined()
+})
+
+test('archived state: kebab shows Restore + Delete (2 items, no Rename/Archive)', async () => {
+  const archivedBrand = { ...brand, archived_at: '2026-05-10T00:00:00Z' }
+  const wrapper = mount(BrandCard, { props: { brand: archivedBrand } })
+  await wrapper.find('[data-test="kebab"]').trigger('click')
+  expect(wrapper.find('[data-test="kebab-restore"]').exists()).toBe(true)
+  expect(wrapper.find('[data-test="kebab-delete"]').exists()).toBe(true)
+  expect(wrapper.find('[data-test="kebab-rename"]').exists()).toBe(false)
+  expect(wrapper.find('[data-test="kebab-archive"]').exists()).toBe(false)
+  await wrapper.find('[data-test="kebab-restore"]').trigger('click')
+  expect(wrapper.emitted('restore')?.[0]).toEqual(['b1'])
+})
 ```
 
 - [ ] **Step 2: Implement**
@@ -2674,7 +2841,13 @@ import { DropdownMenuRoot, DropdownMenuTrigger, DropdownMenuPortal, DropdownMenu
 
 interface Props { brand: Brand; isCurrent?: boolean }
 const props = defineProps<Props>()
-const emit = defineEmits<{ select: [id: string]; rename: [id: string]; archive: [id: string]; delete: [id: string] }>()
+const emit = defineEmits<{
+  select: [id: string]
+  rename: [id: string]
+  archive: [id: string]
+  restore: [id: string]    // MVP per 2026-05-17 reversal — emitted from archived-state kebab
+  delete: [id: string]
+}>()
 
 function shopifyPill(): { tone: 'ok' | 'warn' | 'outline'; label: string } {
   // Real wiring (Task 35): reads useShopifyConnectionsStore. Stopgap = 'outline'.
@@ -2690,7 +2863,8 @@ const archived = props.brand.archived_at !== null
   <div
     :class="['bp-card relative flex cursor-pointer flex-col gap-3 rounded-[10px] border border-[var(--line)] bg-[var(--page)] p-[18px_18px_14px] transition hover:border-[var(--ink-3)] hover:bg-[#181816]', archived && 'opacity-[0.78]']"
   >
-    <div data-test="card-body" class="flex items-start gap-3" @click="emit('select', brand.id)">
+    <!-- Archived cards: body click is no-op in /brands (no navigate). Active cards: click = emit select. -->
+    <div data-test="card-body" class="flex items-start gap-3" @click="!archived && emit('select', brand.id)">
       <div :class="brandLogoClass(brand.color)" class="grid h-11 w-11 shrink-0 place-items-center rounded-[8px] text-[20px] font-extrabold tracking-tight">
         {{ brand.name.charAt(0).toUpperCase() }}
       </div>
@@ -2706,9 +2880,17 @@ const archived = props.brand.archived_at !== null
         </DropdownMenuTrigger>
         <DropdownMenuPortal>
           <DropdownMenuContent align="end" class="rounded-[8px] border border-[var(--line)] bg-[var(--rail)] p-1 shadow-xl">
-            <DropdownMenuItem data-test="kebab-rename" class="cursor-pointer rounded px-2 py-1.5 text-[12.5px] text-[var(--ink-2)] hover:bg-[var(--line-2)] hover:text-[var(--ink)]" @select="emit('rename', brand.id)">Rename</DropdownMenuItem>
-            <DropdownMenuItem data-test="kebab-archive" class="cursor-pointer rounded px-2 py-1.5 text-[12.5px] text-[var(--ink-2)] hover:bg-[var(--line-2)] hover:text-[var(--ink)]" @select="emit('archive', brand.id)">Archive</DropdownMenuItem>
-            <DropdownMenuItem data-test="kebab-delete" class="cursor-pointer rounded px-2 py-1.5 text-[12.5px] text-[var(--err)] hover:bg-[var(--line-2)]" @select="emit('delete', brand.id)">Delete brand</DropdownMenuItem>
+            <!-- Active state: Rename / Archive / Delete (3 items) -->
+            <template v-if="!archived">
+              <DropdownMenuItem data-test="kebab-rename" class="cursor-pointer rounded px-2 py-1.5 text-[12.5px] text-[var(--ink-2)] hover:bg-[var(--line-2)] hover:text-[var(--ink)]" @select="emit('rename', brand.id)">Rename</DropdownMenuItem>
+              <DropdownMenuItem data-test="kebab-archive" class="cursor-pointer rounded px-2 py-1.5 text-[12.5px] text-[var(--ink-2)] hover:bg-[var(--line-2)] hover:text-[var(--ink)]" @select="emit('archive', brand.id)">Archive</DropdownMenuItem>
+              <DropdownMenuItem data-test="kebab-delete" class="cursor-pointer rounded px-2 py-1.5 text-[12.5px] text-[var(--err)] hover:bg-[var(--line-2)]" @select="emit('delete', brand.id)">Delete brand</DropdownMenuItem>
+            </template>
+            <!-- Archived state (B12.1 spec): Restore / Delete (2 items) -->
+            <template v-else>
+              <DropdownMenuItem data-test="kebab-restore" class="cursor-pointer rounded px-2 py-1.5 text-[12.5px] text-[var(--ink-2)] hover:bg-[var(--line-2)] hover:text-[var(--ink)]" @select="emit('restore', brand.id)">Restore</DropdownMenuItem>
+              <DropdownMenuItem data-test="kebab-delete" class="cursor-pointer rounded px-2 py-1.5 text-[12.5px] text-[var(--err)] hover:bg-[var(--line-2)]" @select="emit('delete', brand.id)">Delete brand</DropdownMenuItem>
+            </template>
           </DropdownMenuContent>
         </DropdownMenuPortal>
       </DropdownMenuRoot>
@@ -2849,30 +3031,26 @@ test('search input filters by name', async () => {
 
 ```vue
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useBrandsStore } from '@/stores/brands'
 import BrandCard from '@/components/brand/BrandCard.vue'
 import NewBrandTile from '@/components/brand/NewBrandTile.vue'
 import BrandPickerEmpty from '@/components/brand/BrandPickerEmpty.vue'
+import BrandsArchivedFilter from '@/components/brand/BrandsArchivedFilter.vue'
 import RenameBrandModal from '@/components/brand/RenameBrandModal.vue'
 import ArchiveBrandModal from '@/components/brand/ArchiveBrandModal.vue'
+import RestoreBrandModal from '@/components/brand/RestoreBrandModal.vue'
 import DeleteBrandModal from '@/components/brand/DeleteBrandModal.vue'
 
 const router = useRouter()
 const store = useBrandsStore()
 const query = ref<string>('')
 
-const filteredActive = computed(() => {
-  const q = query.value.trim().toLowerCase()
-  if (!q) return store.sortedActive
-  return store.sortedActive.filter(b => b.name.toLowerCase().includes(q) || (b.url ?? '').toLowerCase().includes(q))
-})
-
-const modalState = ref<{ kind: 'rename' | 'archive' | 'delete'; brandId: string } | null>(null)
+const modalState = ref<{ kind: 'rename' | 'archive' | 'delete' | 'restore'; brandId: string } | null>(null)
 const modalBrand = computed(() => modalState.value ? store.brands.find(b => b.id === modalState.value!.brandId) ?? null : null)
 
-function open(kind: 'rename' | 'archive' | 'delete', brandId: string): void {
+function open(kind: 'rename' | 'archive' | 'delete' | 'restore', brandId: string): void {
   modalState.value = { kind, brandId }
 }
 function close(): void { modalState.value = null }
@@ -2880,6 +3058,35 @@ function close(): void { modalState.value = null }
 function onSelect(brandId: string): void {
   store.selectBrand(brandId)
   router.push(`/dashboard?brandId=${brandId}`)
+}
+
+// A2.a "Archived" filter — ENABLED MVP per 2026-05-17 reversal.
+// Hide (default) / Show (active + archived inline) / Only (archived only).
+type ArchivedFilter = 'hide' | 'show' | 'only'
+const archivedFilter = ref<ArchivedFilter>((localStorage.getItem('kova.brands.archivedFilter') as ArchivedFilter | null) ?? 'hide')
+
+watch(archivedFilter, async (next) => {
+  localStorage.setItem('kova.brands.archivedFilter', next)
+  if (next !== 'hide' && store.archivedBrands.length === 0) {
+    await store.fetchArchivedBrands()
+  }
+})
+
+const visibleBrands = computed(() => {
+  const base = archivedFilter.value === 'only'
+    ? store.archivedBrands
+    : archivedFilter.value === 'show'
+      ? [...store.sortedActive, ...store.archivedBrands]
+      : store.sortedActive
+  const q = query.value.trim().toLowerCase()
+  if (!q) return base
+  return base.filter(b => b.name.toLowerCase().includes(q) || (b.url ?? '').toLowerCase().includes(q))
+})
+
+// Account button: routes to /account. Vue Router falls back to /account/coming-soon
+// (with <NotShippedYet> placeholder) if PRD 04 hasn't registered /account yet.
+function onAccountClick(): void {
+  router.push('/account').catch(() => router.push('/account/coming-soon'))
 }
 
 onMounted(async () => { if (store.brands.length === 0) await store.fetchBrands() })
@@ -2906,7 +3113,9 @@ onMounted(async () => { if (store.brands.length === 0) await store.fetchBrands()
             <p class="max-w-[540px] text-[13.5px] text-[var(--ink-2)]">Each brand is fully siloed — its own canvases, brand kit, products, and integrations. Switching is a hop, not a context loss.</p>
           </div>
           <div class="flex items-center gap-2">
-            <button class="rounded-[6px] border border-[var(--line)] px-3 py-1.5 text-[13px] text-[var(--ink-2)] hover:bg-[var(--line-2)]" @click="router.push('/account')">Account</button>
+            <!-- Account button — always renders. Falls back to /account/coming-soon (<NotShippedYet>) if PRD 04 not ready. -->
+            <button data-test="account-btn" class="rounded-[6px] border border-[var(--line)] px-3 py-1.5 text-[13px] text-[var(--ink-2)] hover:bg-[var(--line-2)]" @click="onAccountClick">Account</button>
+            <!-- "+ New brand" primary CTA. NO Import button anywhere — founder cut 2026-05-17. -->
             <button class="rounded-[6px] bg-[var(--ink)] px-3 py-1.5 text-[13px] font-medium text-[#111]" @click="router.push('/brands/new')">+ New brand</button>
           </div>
         </div>
@@ -2925,19 +3134,17 @@ onMounted(async () => { if (store.brands.length === 0) await store.fetchBrands()
               <span class="font-medium text-[var(--ink)]">Last edited</span>
               <Icon name="lucide:chevron-down" class="h-3 w-3 text-[var(--ink-3)]" />
             </button>
-            <button disabled title="Coming in Phase 2" class="flex cursor-not-allowed items-center gap-2 rounded-[7px] border border-[var(--line)] bg-[var(--page)] px-3 py-2 text-[12.5px] text-[var(--ink-3)] opacity-60">
-              <Icon name="lucide:archive" class="h-3 w-3 text-[var(--ink-3)]" />
-              <span class="font-medium text-[var(--ink)]">All</span>
-              <Icon name="lucide:chevron-down" class="h-3 w-3" />
-            </button>
+            <!-- Archived filter — ENABLED MVP per 2026-05-17 reversal (was DISABLED w/ "Coming Phase 2" tooltip). -->
+            <BrandsArchivedFilter v-model="archivedFilter" data-test="archived-filter" />
           </div>
           <div class="bp-grid grid grid-cols-3 gap-3.5">
             <BrandCard
-              v-for="b in filteredActive" :key="b.id"
+              v-for="b in visibleBrands" :key="b.id"
               :brand="b" :is-current="b.id === store.selectedBrandId"
               @select="onSelect"
               @rename="open('rename', $event)"
               @archive="open('archive', $event)"
+              @restore="open('restore', $event)"
               @delete="open('delete', $event)"
             />
             <NewBrandTile @click="router.push('/brands/new')" />
@@ -2949,6 +3156,7 @@ onMounted(async () => { if (store.brands.length === 0) await store.fetchBrands()
 
     <RenameBrandModal v-if="modalBrand && modalState?.kind === 'rename'" :brand="modalBrand" :open="true" @update:open="close" />
     <ArchiveBrandModal v-if="modalBrand && modalState?.kind === 'archive'" :brand="modalBrand" :open="true" @update:open="close" />
+    <RestoreBrandModal v-if="modalBrand && modalState?.kind === 'restore'" :brand="modalBrand" :open="true" @update:open="close" />
     <DeleteBrandModal v-if="modalBrand && modalState?.kind === 'delete'" :brand="modalBrand" :open="true" @update:open="close" />
   </div>
 </template>
@@ -3367,7 +3575,35 @@ export const brandsRoutes: RouteRecordRaw[] = [
       { path: 'done',       name: 'brands-new-done',       component: () => import('@/views/brands/wizard/StepDone.vue') },
     ],
   },
+  // B12 page route — owned by PRD 03, mounted under /account chrome by PRD 04.
+  // PRD 03 ships this child-route definition; PRD 04 registers /account parent
+  // and includes this child via the account router config (see PRD 04 task list).
+  // The route is exported below for PRD 04 to import. For development before
+  // PRD 04 lands, this is also registered as a top-level fallback so the page
+  // is reachable. PRD 04 should remove this top-level registration in favor of
+  // its nested-under-/account version.
+  {
+    path: '/account/brands',
+    name: 'account-brands',
+    component: () => import('@/views/account/BrandsAccountView.vue'),
+    meta: { theme: 'dark', requiresAuth: true },
+  },
+  // Fallback for Account button discoverability before PRD 04 ships.
+  // Renders <NotShippedYet feature="Account settings" />. Remove when PRD 04 lands.
+  {
+    path: '/account/coming-soon',
+    name: 'account-coming-soon',
+    component: () => import('@/components/_adapters/NotShippedYetAdapter.vue'),
+    meta: { theme: 'dark', requiresAuth: true, fallbackFeature: 'Account settings' },
+  },
 ]
+
+// Export for PRD 04 to import + nest under /account when ready.
+export const accountBrandsChildRoute: RouteRecordRaw = {
+  path: 'brands',
+  name: 'account-brands-nested',
+  component: () => import('@/views/account/BrandsAccountView.vue'),
+}
 ```
 
 - [ ] **Step 2: Register in `src/router/index.ts`**
@@ -3389,13 +3625,13 @@ const routes: RouteRecordRaw[] = [
 bun run dev
 ```
 
-Browser-verify: visit http://localhost:1420/brands, http://localhost:1420/brands/new — pages render without 404.
+Browser-verify: visit http://localhost:1420/brands, http://localhost:1420/brands/new, http://localhost:1420/account/brands — all pages render without 404. http://localhost:1420/account/coming-soon renders `<NotShippedYet>` placeholder.
 
 - [ ] **Step 4: Commit**
 
 ```bash
 git add src/router/routes/brands.ts src/router/index.ts
-git commit -m "feat(brands): register /brands + /brands/new/* routes"
+git commit -m "feat(brands): register /brands + /brands/new/* + /account/brands + /account/coming-soon routes"
 ```
 
 ---
@@ -3584,6 +3820,94 @@ test.describe('Brand management flows', () => {
     await cta.click()
     await expect(page.getByText('Brand deleted')).toBeVisible()
   })
+
+  // ============ B12 flows (MVP per 2026-05-17 reversal) ============
+
+  test('B12: archive → /account/brands → restore round-trip', async ({ page }) => {
+    await page.goto('/brands')
+    const target = page.locator('.bp-card').first()
+    const targetName = await target.locator('[class*="font-semibold"]').first().textContent()
+    // Archive from /brands
+    await target.locator('[data-test="kebab"]').click()
+    await page.locator('[data-test="kebab-archive"]').click()
+    await page.locator('[data-test="archive-confirm"]').click()
+    await expect(page.getByText(/archived/)).toBeVisible()
+    // Navigate to /account/brands
+    await page.goto('/account/brands')
+    await page.getByRole('tab', { name: 'Archived' }).click()
+    const archivedCard = page.locator('.bp-card', { hasText: targetName! })
+    await expect(archivedCard).toBeVisible()
+    await expect(archivedCard).toContainText('Archived')
+    // Restore
+    await archivedCard.locator('[data-test="kebab"]').click()
+    await page.locator('[data-test="kebab-restore"]').click()
+    await page.locator('[data-test="restore-confirm"]').click()
+    await expect(page.getByText(/restored/)).toBeVisible()
+    // Verify back on /brands
+    await page.goto('/brands')
+    await expect(page.locator('.bp-card', { hasText: targetName! })).toBeVisible()
+  })
+
+  test('B12: delete-archived typed-confirm cascade', async ({ page }) => {
+    await page.goto('/brands')
+    const target = page.locator('.bp-card').first()
+    const targetName = await target.locator('[class*="font-semibold"]').first().textContent()
+    await target.locator('[data-test="kebab"]').click()
+    await page.locator('[data-test="kebab-archive"]').click()
+    await page.locator('[data-test="archive-confirm"]').click()
+    await page.goto('/account/brands?filter=archived')
+    const archivedCard = page.locator('.bp-card', { hasText: targetName! })
+    await archivedCard.locator('[data-test="kebab"]').click()
+    await page.locator('[data-test="kebab-delete"]').click()
+    // Typed-confirm with brand name (NOT 'DELETE' — per hi-fi A4.3 + B12.4)
+    const cta = page.locator('[data-test="delete-confirm"]')
+    await expect(cta).toBeDisabled()
+    await page.locator('input').first().fill(targetName!)
+    await expect(cta).toBeEnabled()
+    await cta.click()
+    await expect(page.getByText('Brand deleted')).toBeVisible()
+    await expect(archivedCard).toHaveCount(0)
+  })
+
+  test('B12: segmented control filters work + URL persists', async ({ page }) => {
+    await page.goto('/account/brands')
+    await expect(page).toHaveURL(/filter=all|^[^?]*\/account\/brands$/)
+    await page.getByRole('tab', { name: 'Active' }).click()
+    await expect(page).toHaveURL(/filter=active/)
+    await page.getByRole('tab', { name: 'Archived' }).click()
+    await expect(page).toHaveURL(/filter=archived/)
+    // Reload — filter persists
+    await page.reload()
+    await expect(page.getByRole('tab', { name: 'Archived' })).toHaveAttribute('aria-selected', 'true')
+  })
+
+  test('A2.a Archived filter on /brands shows archived inline at 78% opacity', async ({ page }) => {
+    await page.goto('/brands')
+    await page.locator('[data-test="archived-filter"]').click()
+    await page.getByText('Show').click()
+    const archivedCard = page.locator('.bp-card.opacity-\\[0\\.78\\]').first()
+    await expect(archivedCard).toBeVisible()
+    await expect(archivedCard).toContainText('Archived')
+  })
+
+  test('Account button: always renders + falls back when PRD 04 not ready', async ({ page }) => {
+    await page.goto('/brands')
+    await page.locator('[data-test="account-btn"]').click()
+    // Either /account or /account/coming-soon — both acceptable
+    await expect(page).toHaveURL(/\/account(\/coming-soon)?$/)
+    // If fallback, NotShippedYet placeholder renders
+    const isFallback = await page.url().includes('coming-soon')
+    if (isFallback) {
+      await expect(page.getByText(/coming soon|not shipped|account settings/i)).toBeVisible()
+    }
+  })
+
+  test('No Import CTA anywhere in /brands or /account/brands', async ({ page }) => {
+    await page.goto('/brands')
+    await expect(page.getByRole('button', { name: /import/i })).toHaveCount(0)
+    await page.goto('/account/brands')
+    await expect(page.getByRole('button', { name: /import/i })).toHaveCount(0)
+  })
 })
 ```
 
@@ -3611,7 +3935,7 @@ Open http://localhost:1420/brands. For each item below, verify by eye:
 
 - [ ] 3-col grid renders at 1280px wide
 - [ ] 1-col fallback under 640px
-- [ ] All 5 color tints render (create 5 brands to test)
+- [ ] All 5 color tints render (create 5 brands to test); 6th brand reuses coral (cycle modulo 5)
 - [ ] Hover on `.bp-card` → border `--ink-3` + bg `#181816`
 - [ ] Hover on kebab → bg `--line-2`
 - [ ] Rename: Enter submits when valid
@@ -3621,6 +3945,22 @@ Open http://localhost:1420/brands. For each item below, verify by eye:
 - [ ] After archive of currently-selected brand, route → `/brands`
 - [ ] Offline (Chrome DevTools): wizard step 3 commit fails gracefully
 - [ ] Every surface is dark — no light bleed
+
+**B12 + Archive (MVP per 2026-05-17 reversal):**
+- [ ] Navigate /brands → archive a brand → toast fires → brand disappears from picker
+- [ ] Click "Account" button top-right → routes to /account (or /account/coming-soon w/ NotShippedYet if PRD 04 not ready)
+- [ ] Set A2.a "Archived" filter to Show → archived brand reappears at 78% opacity with "Archived" pill
+- [ ] Archived-card kebab shows ONLY Restore + Delete (no Rename/Archive)
+- [ ] Navigate /account/brands → page renders inside Cluster 04 chrome (or top-level fallback if PRD 04 not yet shipped)
+- [ ] Segmented control All/Active/Archived toggles render; URL `?filter=` updates
+- [ ] Reload /account/brands?filter=archived → filter state restored
+- [ ] Click Restore on archived card → B12.3 modal opens, no typed-confirm field present
+- [ ] Confirm Restore → archived card moves to Active grid; toast fires
+- [ ] Re-archive same brand → it reappears in Archived grid
+- [ ] Click Delete on archived card → B12.4 modal opens; typed-confirm uses BRAND NAME (not "DELETE")
+- [ ] Footer reads "This action is permanent." (NOT the hi-fi B12.4 mis-leaked GDPR cascade text)
+- [ ] NO "Import" CTA anywhere in /brands or /account/brands hero
+- [ ] Flip BRANDS_RESTORE_ENABLED=false → Restore CTA renders disabled; API returns 503
 
 - [ ] **Step 3: Fix any regressions, recommit, then commit smoke evidence**
 

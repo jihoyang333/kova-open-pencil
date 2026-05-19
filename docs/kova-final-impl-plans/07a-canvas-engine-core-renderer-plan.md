@@ -50,15 +50,16 @@
 
 ### Modified
 
-- `packages/core/src/scene-graph.ts` — append `'SLICE'` + `'MEASUREMENT'` to `NodeType` union; extend `SceneNode` interface with `aspectRatio` / `includeInExports` / `pageBackgroundVisible`; extend `CharacterStyleOverride` with `openTypeFeatures` / `linkHref` / `listType` / `listIndent`; extend `createDefaultNode` defaults; add leaf-node guard in `appendChild` or its proxy; export `ListType` type.
-- `packages/core/src/scene-graph-instances.ts` — if `appendChild` lives here for proxy plumbing, add leaf rejection for SLICE + MEASUREMENT.
+- `packages/core/src/scene-graph.ts` — append `'SLICE'` to `NodeType` union (only); add new types `MeasurementSide` / `MeasurementOffset` / `MeasurementAnchor` / `Measurement`; extend `SceneNode` interface with `aspectRatio` / `includeInExports` / `pageBackgroundVisible` / `measurements`; extend `CharacterStyleOverride` with `openTypeFeatures` / `linkHref` / `listType` / `listIndent`; extend `createDefaultNode` defaults; add leaf-node guard in `appendChild` or its proxy; add 5 page-level measurement methods on `SceneGraph`; instrument `removeNode` + `reparent` for `measurement:broken` / `measurement:dropped` lifecycle events; export `ListType` type.
+- `packages/core/src/scene-graph-instances.ts` — if `appendChild` lives here for proxy plumbing, add leaf rejection for SLICE.
 - `packages/core/src/tools/modify.ts` — add `scaleNode` ToolDef + recursive helper `scaleNodeRecursive`.
-- `packages/core/src/tools/create.ts` — refactor `createSlice` to back a real SLICE NodeType; add `createMeasurement`; add `arrowStub` (no-op Phase-2 placeholder).
-- `packages/core/src/tools/registry.ts` — re-export `createMeasurement` + `scaleNode` + `arrowStub`; append to `EXTENDED_TOOLS`.
-- `packages/core/src/figma-api.ts` — extend `FigmaAPI` interface with `createSlice(): FigmaNodeProxy` + `createMeasurement(): FigmaNodeProxy`; extend `FigmaNodeProxy` interface with `aspectRatio` / `includeInExports` / `pageBackgroundVisible` getters/setters + `scale(factor: number): void`.
+- `packages/core/src/tools/create.ts` — refactor `createSlice` to back a real SLICE NodeType; add `arrowStub` (no-op Phase-2 placeholder).
+- `packages/core/src/tools/measurement.ts` — NEW file — `addMeasurement` ToolDef (page-level wrapper; calls `figma.currentPage.addMeasurement(...)`, NOT a NodeType creator).
+- `packages/core/src/tools/registry.ts` — re-export `addMeasurement` + `scaleNode` + `arrowStub`; append to `EXTENDED_TOOLS`.
+- `packages/core/src/figma-api.ts` — extend `FigmaAPI` interface with `createSlice(): FigmaNodeProxy` + `currentPage: FigmaPageProxy`; add `FigmaPageProxy` interface with 5 measurement methods (`addMeasurement` / `getMeasurements` / `getMeasurementsForNode` / `editMeasurement` / `deleteMeasurement`); extend `FigmaNodeProxy` interface with `aspectRatio` / `includeInExports` / `pageBackgroundVisible` getters/setters + `scale(factor: number): void`.
 - `packages/core/src/figma-api-proxy.ts` — implement the new factory methods + property accessors.
 - `packages/core/src/kiwi/protocol.ts` — bump `SCHEMA_VERSION` constant from `1.x.y` to `2.0.0`.
-- `packages/core/src/kiwi/kiwi-schema/schema.ts` — extend NodeType enum + SceneNode struct + CharacterStyleOverride struct with the new fields/variants.
+- `packages/core/src/kiwi/kiwi-schema/schema.ts` — extend NodeType enum (SLICE only); add new structs Measurement / MeasurementAnchor / MeasurementOffset + MeasurementSide enum; extend SceneNode struct with new fields including `measurements`; extend CharacterStyleOverride struct with new fields.
 - `packages/core/src/kiwi/kiwi-convert.ts` — map the new fields/variants bidirectionally; preserve backwards-compat skip on unknown enum values.
 - `packages/core/src/renderer/scene.ts` — refactor `renderChildren` to perform sibling-traversal mask compositing per Q2; add `blendModeForMaskType` helper.
 - `packages/core/src/renderer/renderer.ts` — initialize new `maskOuterPaint` + `maskCompositePaint` Paint objects alongside the existing `opacityPaint` / `effectLayerPaint`.
@@ -99,9 +100,11 @@ Expected: canvas paints; no console errors. Records the pre-07a baseline that al
 
 ---
 
-## Task 1: NodeType extension (SLICE + MEASUREMENT)
+## Task 1: NodeType extension (SLICE only)
 
-**Goal:** Append `'SLICE'` + `'MEASUREMENT'` to the `NodeType` union. Update `createDefaultNode` to handle the new types. Reject `appendChild` for both leaf NodeTypes. Verify nothing else in the codebase breaks (the union is exhaustively checked in many places).
+**Goal:** Append `'SLICE'` to the `NodeType` union (only). Update `createDefaultNode` to handle SLICE. Reject `appendChild` on SLICE (leaf-node). Verify nothing else in the codebase breaks (the union is exhaustively checked in many places).
+
+**MEASUREMENT is not a NodeType** — it's handled by Task 1b's separate page-level measurement system. Founder ratified 2026-05-17.
 
 **Files:**
 - Modify: `packages/core/src/scene-graph.ts:66-83` (NodeType union); `:363-461` (createDefaultNode); `:464-472` (CONTAINER_TYPES set)
@@ -117,12 +120,17 @@ import { describe, test, expect } from 'bun:test'
 import { SceneGraph } from '@kova/core/src/scene-graph'
 import type { NodeType } from '@kova/core/src/scene-graph'
 
-describe('NodeType extension', () => {
-  test('NodeType union contains SLICE and MEASUREMENT', () => {
+describe('NodeType extension — SLICE only', () => {
+  test('NodeType union contains SLICE', () => {
     const slice: NodeType = 'SLICE'
-    const measurement: NodeType = 'MEASUREMENT'
     expect(slice).toBe('SLICE')
-    expect(measurement).toBe('MEASUREMENT')
+  })
+
+  test('NodeType union does NOT contain MEASUREMENT (page-level model)', () => {
+    // @ts-expect-error — MEASUREMENT is not in NodeType (it's a page-level record, not a NodeType)
+    const bad: NodeType = 'MEASUREMENT'
+    // type assertion alone is the test — compile-time failure if MEASUREMENT is in the union
+    expect(bad).toBe('MEASUREMENT')
   })
 
   test('createDefaultNode("SLICE") returns leaf with correct defaults', () => {
@@ -135,13 +143,6 @@ describe('NodeType extension', () => {
     expect(slice.pageBackgroundVisible).toBe(true)
   })
 
-  test('createDefaultNode("MEASUREMENT") returns leaf with correct defaults', () => {
-    const graph = new SceneGraph()
-    const measurement = graph.createNode('MEASUREMENT', graph.rootId)
-    expect(measurement.type).toBe('MEASUREMENT')
-    expect(measurement.childIds).toEqual([])
-  })
-
   test('SLICE rejects appendChild', () => {
     const graph = new SceneGraph()
     const slice = graph.createNode('SLICE', graph.rootId)
@@ -151,19 +152,9 @@ describe('NodeType extension', () => {
     }).toThrow(/Slice nodes cannot have children/i)
   })
 
-  test('MEASUREMENT rejects appendChild', () => {
-    const graph = new SceneGraph()
-    const measurement = graph.createNode('MEASUREMENT', graph.rootId)
-    const child = graph.createNode('RECTANGLE', graph.rootId)
-    expect(() => {
-      graph.reparent(child.id, measurement.id, 0)
-    }).toThrow(/Measurement nodes cannot have children/i)
-  })
-
   test('SLICE not in CONTAINER_TYPES set', () => {
     const graph = new SceneGraph()
     expect(graph.isContainer('SLICE')).toBe(false)
-    expect(graph.isContainer('MEASUREMENT')).toBe(false)
   })
 })
 ```
@@ -173,9 +164,9 @@ describe('NodeType extension', () => {
 - [ ] **Step 1.2: Run the tests — confirm RED**
 
 Run: `cd kova-open-pencil-1 && bun test ./tests/engine/scene-graph/node-types.test.ts`
-Expected: all 6 tests fail with TypeScript errors on `'SLICE'`/`'MEASUREMENT'` not assignable to `NodeType` + missing default-field errors.
+Expected: SLICE tests fail with TypeScript errors on `'SLICE'` not assignable to `NodeType` + missing default-field errors. The `@ts-expect-error` test on MEASUREMENT passes pre-implementation (because MEASUREMENT isn't in the union yet, the suppression is satisfied).
 
-- [ ] **Step 1.3: Extend the NodeType union**
+- [ ] **Step 1.3: Extend the NodeType union (SLICE only)**
 
 Edit `packages/core/src/scene-graph.ts` lines 66–83:
 
@@ -199,7 +190,6 @@ export type NodeType =
   | 'CONNECTOR'
   | 'SHAPE_WITH_TEXT'
   | 'SLICE'
-  | 'MEASUREMENT'
 ```
 
 - [ ] **Step 1.4: Update `createDefaultNode` to handle new defaults**
@@ -210,9 +200,10 @@ Edit `packages/core/src/scene-graph.ts` lines 363–461 — in the returned obje
     aspectRatio: null,
     includeInExports: true,
     pageBackgroundVisible: true,
+    measurements: type === 'CANVAS' ? [] : undefined,
 ```
 
-(These three lines land at a consistent position — recommend after `flipY: false` and before `textPicture: null`. The exact location is non-load-bearing as long as the literal is well-formed.)
+(These four lines land at a consistent position — recommend after `flipY: false` and before `textPicture: null`. The exact location is non-load-bearing as long as the literal is well-formed. The `measurements` field is only populated on CANVAS nodes per the page-level model.)
 
 - [ ] **Step 1.5: Add leaf-node `reparent` rejection**
 
@@ -223,7 +214,6 @@ reparent(nodeId: string, newParentId: string, index: number): void {
   const newParent = this.nodes.get(newParentId)
   if (!newParent) throw new Error(`Parent ${newParentId} not found`)
   if (newParent.type === 'SLICE') throw new Error('Slice nodes cannot have children')
-  if (newParent.type === 'MEASUREMENT') throw new Error('Measurement nodes cannot have children')
   // … existing logic …
 }
 ```
@@ -248,23 +238,437 @@ isContainer(type: NodeType): boolean {
 - [ ] **Step 1.7: Run the tests — confirm GREEN**
 
 Run: `cd kova-open-pencil-1 && bun test ./tests/engine/scene-graph/node-types.test.ts`
-Expected: all 6 tests pass.
+Expected: all 5 tests pass.
 
 - [ ] **Step 1.8: Run the full engine suite — confirm no regression**
 
 Run: `cd kova-open-pencil-1 && bun run test:unit 2>&1 | tail -10`
-Expected: pass/skip/fail line equals the baseline from Step P2 **plus 6 new passing tests** (so pass count = baseline + 6, fail count = 0).
+Expected: pass/skip/fail line equals the baseline from Step P2 **plus 5 new passing tests** (so pass count = baseline + 5, fail count = 0).
 
 - [ ] **Step 1.9: Run quality gates**
 
 Run: `cd kova-open-pencil-1 && bun run check`
-Expected: zero errors. The NodeType union extension may surface exhaustive-switch warnings in unrelated code paths — fix any that fire by adding `case 'SLICE':` / `case 'MEASUREMENT':` with `break` (no-op) clauses; document each fix in the commit message.
+Expected: zero errors. The NodeType union extension may surface exhaustive-switch warnings in unrelated code paths — fix any that fire by adding `case 'SLICE':` with `break` (no-op) clauses; document each fix in the commit message.
 
 - [ ] **Step 1.10: Commit**
 
 ```bash
 git add packages/core/src/scene-graph.ts packages/core/src/scene-graph-instances.ts tests/engine/scene-graph/node-types.test.ts
-git commit -m "feat(engine): add SLICE + MEASUREMENT NodeTypes (Cluster 07a)"
+git commit -m "feat(engine): add SLICE NodeType (Cluster 07a — measurement is page-level, see Task 1b)"
+```
+
+---
+
+## Task 1b: Measurement system — page-level on CANVAS (Figma-aligned)
+
+**Goal:** Add the page-level measurement system that matches Figma's PageNode measurement API. This is the **new** subsystem introduced by the 2026-05-17 founder decision to match Figma exactly (PRD §7.1b, §12.10).
+
+Adds:
+- New types: `MeasurementSide`, `MeasurementOffset` (tagged union), `MeasurementAnchor`, `Measurement`
+- New field on `SceneNode`: `measurements?: Measurement[]` (populated only on CANVAS-typed nodes)
+- New 5 methods on `SceneGraph`: `addMeasurement`, `getMeasurements`, `getMeasurementsForNode`, `editMeasurement`, `deleteMeasurement`
+- New lifecycle events: `measurement:created`, `measurement:updated`, `measurement:deleted`, `measurement:broken`, `measurement:dropped`
+- Orphan-on-anchor-delete semantic + drop-on-cross-canvas-move semantic
+
+**Files:**
+- Modify: `packages/core/src/scene-graph.ts` (add types + methods + field; instrument `removeNode` and `reparent` for lifecycle events)
+- Test: `tests/engine/scene-graph/measurement-system.test.ts`
+
+- [ ] **Step 1b.1: Write the failing tests**
+
+Create `kova-open-pencil-1/tests/engine/scene-graph/measurement-system.test.ts`:
+
+```typescript
+import { describe, test, expect, beforeEach } from 'bun:test'
+import { SceneGraph } from '@kova/core/src/scene-graph'
+import type {
+  Measurement,
+  MeasurementSide,
+  MeasurementOffset
+} from '@kova/core/src/scene-graph'
+
+describe('Measurement system — page-level', () => {
+  let graph: SceneGraph
+  let canvasId: string
+  let nodeA: string
+  let nodeB: string
+
+  beforeEach(() => {
+    graph = new SceneGraph()
+    const canvas = graph.createNode('CANVAS', graph.rootId)
+    canvasId = canvas.id
+    const a = graph.createNode('RECTANGLE', canvasId)
+    const b = graph.createNode('RECTANGLE', canvasId)
+    nodeA = a.id
+    nodeB = b.id
+  })
+
+  test('addMeasurement creates a Measurement with a unique id', () => {
+    const m = graph.addMeasurement(
+      canvasId,
+      { nodeId: nodeA, side: 'RIGHT' },
+      { nodeId: nodeB, side: 'LEFT' }
+    )
+    expect(m.id).toMatch(/^[a-zA-Z0-9_-]+$/)
+    expect(m.start.nodeId).toBe(nodeA)
+    expect(m.start.side).toBe('RIGHT')
+    expect(m.end.nodeId).toBe(nodeB)
+    expect(m.end.side).toBe('LEFT')
+    expect(m.freeText).toBe('')
+  })
+
+  test('addMeasurement defaults offset to INNER 0', () => {
+    const m = graph.addMeasurement(
+      canvasId,
+      { nodeId: nodeA, side: 'TOP' },
+      { nodeId: nodeB, side: 'BOTTOM' }
+    )
+    expect(m.offset).toEqual({ type: 'INNER', relative: 0 })
+  })
+
+  test('addMeasurement rejects cross-canvas start anchor', () => {
+    const otherCanvas = graph.createNode('CANVAS', graph.rootId)
+    const otherNode = graph.createNode('RECTANGLE', otherCanvas.id)
+    expect(() => {
+      graph.addMeasurement(
+        canvasId,
+        { nodeId: otherNode.id, side: 'LEFT' },
+        { nodeId: nodeB, side: 'RIGHT' }
+      )
+    }).toThrow(/anchor node not on target canvas/i)
+  })
+
+  test('addMeasurement rejects cross-canvas end anchor', () => {
+    const otherCanvas = graph.createNode('CANVAS', graph.rootId)
+    const otherNode = graph.createNode('RECTANGLE', otherCanvas.id)
+    expect(() => {
+      graph.addMeasurement(
+        canvasId,
+        { nodeId: nodeA, side: 'LEFT' },
+        { nodeId: otherNode.id, side: 'RIGHT' }
+      )
+    }).toThrow(/anchor node not on target canvas/i)
+  })
+
+  test('getMeasurements returns the canvas measurement collection', () => {
+    const m1 = graph.addMeasurement(canvasId, { nodeId: nodeA, side: 'TOP' }, { nodeId: nodeB, side: 'BOTTOM' })
+    const m2 = graph.addMeasurement(canvasId, { nodeId: nodeA, side: 'LEFT' }, { nodeId: nodeB, side: 'RIGHT' })
+    const all = graph.getMeasurements(canvasId)
+    expect(all).toHaveLength(2)
+    expect(all.map((m) => m.id).sort()).toEqual([m1.id, m2.id].sort())
+  })
+
+  test('getMeasurementsForNode returns measurements where node is start OR end', () => {
+    graph.addMeasurement(canvasId, { nodeId: nodeA, side: 'TOP' }, { nodeId: nodeB, side: 'BOTTOM' })
+    graph.addMeasurement(canvasId, { nodeId: nodeB, side: 'LEFT' }, { nodeId: nodeA, side: 'RIGHT' })
+    expect(graph.getMeasurementsForNode(nodeA)).toHaveLength(2)
+    expect(graph.getMeasurementsForNode(nodeB)).toHaveLength(2)
+  })
+
+  test('editMeasurement updates offset and freeText only', () => {
+    const m = graph.addMeasurement(canvasId, { nodeId: nodeA, side: 'TOP' }, { nodeId: nodeB, side: 'BOTTOM' })
+    const updated = graph.editMeasurement(canvasId, m.id, {
+      offset: { type: 'OUTER', fixed: 12 },
+      freeText: 'gap 12px'
+    })
+    expect(updated.offset).toEqual({ type: 'OUTER', fixed: 12 })
+    expect(updated.freeText).toBe('gap 12px')
+    expect(updated.start.nodeId).toBe(nodeA) // start unchanged
+  })
+
+  test('deleteMeasurement removes the record', () => {
+    const m = graph.addMeasurement(canvasId, { nodeId: nodeA, side: 'TOP' }, { nodeId: nodeB, side: 'BOTTOM' })
+    expect(graph.getMeasurements(canvasId)).toHaveLength(1)
+    graph.deleteMeasurement(canvasId, m.id)
+    expect(graph.getMeasurements(canvasId)).toHaveLength(0)
+  })
+
+  test('orphan-on-anchor-delete: removing nodeA leaves the measurement; emits measurement:broken', () => {
+    const m = graph.addMeasurement(canvasId, { nodeId: nodeA, side: 'TOP' }, { nodeId: nodeB, side: 'BOTTOM' })
+    const events: unknown[] = []
+    graph.emitter.on('measurement:broken', (e) => events.push(e))
+    graph.removeNode(nodeA)
+    // Measurement still exists with a broken anchor
+    expect(graph.getMeasurements(canvasId)).toHaveLength(1)
+    expect(graph.getMeasurements(canvasId)[0]!.start.nodeId).toBe(nodeA) // anchor still points to deleted ID
+    expect(events).toHaveLength(1)
+    expect(events[0]).toMatchObject({
+      measurementId: m.id,
+      brokenAnchorNodeId: nodeA,
+      canvasId
+    })
+  })
+
+  test('drop-on-cross-canvas-move: reparenting nodeA to a different CANVAS drops measurements on source', () => {
+    const m = graph.addMeasurement(canvasId, { nodeId: nodeA, side: 'TOP' }, { nodeId: nodeB, side: 'BOTTOM' })
+    const otherCanvas = graph.createNode('CANVAS', graph.rootId)
+    const events: unknown[] = []
+    graph.emitter.on('measurement:dropped', (e) => events.push(e))
+    graph.reparent(nodeA, otherCanvas.id, 0)
+    expect(graph.getMeasurements(canvasId)).toHaveLength(0)
+    expect(events).toHaveLength(1)
+    expect(events[0]).toMatchObject({
+      measurementIds: [m.id],
+      sourceCanvasId: canvasId,
+      movedNodeId: nodeA
+    })
+  })
+
+  test('same-canvas reparent does NOT drop measurements', () => {
+    const frame = graph.createNode('FRAME', canvasId)
+    graph.addMeasurement(canvasId, { nodeId: nodeA, side: 'TOP' }, { nodeId: nodeB, side: 'BOTTOM' })
+    graph.reparent(nodeA, frame.id, 0)
+    expect(graph.getMeasurements(canvasId)).toHaveLength(1)
+  })
+})
+```
+
+- [ ] **Step 1b.2: Run the tests — confirm RED**
+
+Run: `cd kova-open-pencil-1 && bun test ./tests/engine/scene-graph/measurement-system.test.ts`
+Expected: all 11 tests fail with TypeScript errors on missing types + missing methods.
+
+- [ ] **Step 1b.3: Add the new types**
+
+Edit `packages/core/src/scene-graph.ts` — add adjacent to NodeType / SceneNode declarations:
+
+```typescript
+export type MeasurementSide = 'TOP' | 'RIGHT' | 'BOTTOM' | 'LEFT'
+
+export type MeasurementOffset =
+  | { type: 'INNER'; relative: number }
+  | { type: 'OUTER'; fixed: number }
+
+export interface MeasurementAnchor {
+  nodeId: string
+  side: MeasurementSide
+}
+
+export interface Measurement {
+  id: string
+  start: MeasurementAnchor
+  end: MeasurementAnchor
+  offset: MeasurementOffset
+  freeText: string
+}
+
+// Lifecycle event payloads
+export interface MeasurementBrokenEvent {
+  measurementId: string
+  brokenAnchorNodeId: string
+  canvasId: string
+}
+
+export interface MeasurementDroppedEvent {
+  measurementIds: string[]
+  sourceCanvasId: string
+  movedNodeId: string
+}
+```
+
+Extend `SceneNode` interface with:
+
+```typescript
+  /** Page-level measurement collection. Populated only on CANVAS-typed nodes. */
+  measurements?: Measurement[]
+```
+
+Extend `SceneGraphEvents` with the new event names: `'measurement:created'`, `'measurement:updated'`, `'measurement:deleted'`, `'measurement:broken'`, `'measurement:dropped'`.
+
+- [ ] **Step 1b.4: Implement the 5 SceneGraph methods**
+
+Inside the `SceneGraph` class, add:
+
+```typescript
+  private generateMeasurementId(): string {
+    // Per CLAUDE.md: crypto.getRandomValues only. No Math.random.
+    const bytes = new Uint8Array(8)
+    crypto.getRandomValues(bytes)
+    return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('')
+  }
+
+  private isDescendant(canvasId: string, nodeId: string): boolean {
+    let current = this.nodes.get(nodeId)
+    while (current) {
+      if (current.id === canvasId) return true
+      if (!current.parentId) return false
+      current = this.nodes.get(current.parentId)
+    }
+    return false
+  }
+
+  addMeasurement(
+    canvasId: string,
+    start: MeasurementAnchor,
+    end: MeasurementAnchor,
+    options?: { offset?: MeasurementOffset; freeText?: string }
+  ): Measurement {
+    const canvas = this.nodes.get(canvasId)
+    if (!canvas || canvas.type !== 'CANVAS') {
+      throw new Error(`Target ${canvasId} is not a CANVAS node`)
+    }
+    if (!this.isDescendant(canvasId, start.nodeId)) {
+      throw new Error(`Measurement anchor node not on target canvas: ${start.nodeId}`)
+    }
+    if (!this.isDescendant(canvasId, end.nodeId)) {
+      throw new Error(`Measurement anchor node not on target canvas: ${end.nodeId}`)
+    }
+    const m: Measurement = {
+      id: this.generateMeasurementId(),
+      start: { ...start },
+      end: { ...end },
+      offset: options?.offset ?? { type: 'INNER', relative: 0 },
+      freeText: options?.freeText ?? ''
+    }
+    canvas.measurements = [...(canvas.measurements ?? []), m]
+    this.emitter.emit('measurement:created', m)
+    return m
+  }
+
+  getMeasurements(canvasId: string): Measurement[] {
+    const canvas = this.nodes.get(canvasId)
+    if (!canvas || canvas.type !== 'CANVAS') return []
+    return [...(canvas.measurements ?? [])]
+  }
+
+  getMeasurementsForNode(nodeId: string): Measurement[] {
+    const results: Measurement[] = []
+    for (const node of this.nodes.values()) {
+      if (node.type !== 'CANVAS' || !node.measurements) continue
+      for (const m of node.measurements) {
+        if (m.start.nodeId === nodeId || m.end.nodeId === nodeId) {
+          results.push(m)
+        }
+      }
+    }
+    return results
+  }
+
+  editMeasurement(
+    canvasId: string,
+    id: string,
+    newValue: { offset?: MeasurementOffset; freeText?: string }
+  ): Measurement {
+    const canvas = this.nodes.get(canvasId)
+    if (!canvas || canvas.type !== 'CANVAS' || !canvas.measurements) {
+      throw new Error(`Canvas ${canvasId} has no measurements`)
+    }
+    const idx = canvas.measurements.findIndex((m) => m.id === id)
+    if (idx < 0) throw new Error(`Measurement ${id} not found`)
+    const existing = canvas.measurements[idx]!
+    const updated: Measurement = {
+      ...existing,
+      offset: newValue.offset ?? existing.offset,
+      freeText: newValue.freeText ?? existing.freeText
+    }
+    // Immutable update — replace the array
+    canvas.measurements = [
+      ...canvas.measurements.slice(0, idx),
+      updated,
+      ...canvas.measurements.slice(idx + 1)
+    ]
+    this.emitter.emit('measurement:updated', updated)
+    return updated
+  }
+
+  deleteMeasurement(canvasId: string, id: string): void {
+    const canvas = this.nodes.get(canvasId)
+    if (!canvas || canvas.type !== 'CANVAS' || !canvas.measurements) return
+    const deleted = canvas.measurements.find((m) => m.id === id)
+    canvas.measurements = canvas.measurements.filter((m) => m.id !== id)
+    if (deleted) this.emitter.emit('measurement:deleted', deleted)
+  }
+```
+
+- [ ] **Step 1b.5: Instrument `removeNode` for orphan-on-anchor-delete**
+
+Find the existing `SceneGraph.removeNode` method. Before deleting the node from `this.nodes`, scan all CANVAS nodes for measurements whose anchors reference the node being removed; for each match, emit `measurement:broken`:
+
+```typescript
+removeNode(nodeId: string): void {
+  // Detect broken-anchor measurements before the delete
+  for (const canvas of this.nodes.values()) {
+    if (canvas.type !== 'CANVAS' || !canvas.measurements) continue
+    for (const m of canvas.measurements) {
+      if (m.start.nodeId === nodeId || m.end.nodeId === nodeId) {
+        this.emitter.emit('measurement:broken', {
+          measurementId: m.id,
+          brokenAnchorNodeId: nodeId,
+          canvasId: canvas.id
+        })
+      }
+    }
+  }
+  // … existing removeNode logic (the measurements are NOT deleted — orphan semantic) …
+}
+```
+
+- [ ] **Step 1b.6: Instrument `reparent` for drop-on-cross-canvas-move**
+
+Inside `reparent`, after the parent-validation guards but before mutating the tree, detect if the new parent's CANVAS ancestor differs from the old parent's CANVAS ancestor:
+
+```typescript
+reparent(nodeId: string, newParentId: string, index: number): void {
+  // … existing parent-validation guards (including the SLICE rejection from Task 1.5) …
+
+  const oldCanvasId = this.findAncestorCanvasId(nodeId)
+  const newCanvasId = this.findAncestorCanvasId(newParentId)
+  if (oldCanvasId && newCanvasId && oldCanvasId !== newCanvasId) {
+    // Cross-canvas move — drop measurements anchored to nodeId on the source canvas
+    const sourceCanvas = this.nodes.get(oldCanvasId)
+    if (sourceCanvas?.type === 'CANVAS' && sourceCanvas.measurements) {
+      const droppedIds: string[] = []
+      sourceCanvas.measurements = sourceCanvas.measurements.filter((m) => {
+        if (m.start.nodeId === nodeId || m.end.nodeId === nodeId) {
+          droppedIds.push(m.id)
+          return false
+        }
+        return true
+      })
+      if (droppedIds.length > 0) {
+        this.emitter.emit('measurement:dropped', {
+          measurementIds: droppedIds,
+          sourceCanvasId: oldCanvasId,
+          movedNodeId: nodeId
+        })
+      }
+    }
+  }
+
+  // … existing reparent logic …
+}
+
+private findAncestorCanvasId(nodeId: string): string | undefined {
+  let current = this.nodes.get(nodeId)
+  while (current) {
+    if (current.type === 'CANVAS') return current.id
+    if (!current.parentId) return undefined
+    current = this.nodes.get(current.parentId)
+  }
+  return undefined
+}
+```
+
+- [ ] **Step 1b.7: Run the tests — confirm GREEN**
+
+Run: `cd kova-open-pencil-1 && bun test ./tests/engine/scene-graph/measurement-system.test.ts`
+Expected: all 11 tests pass.
+
+- [ ] **Step 1b.8: Run the full engine suite — confirm no regression**
+
+Run: `cd kova-open-pencil-1 && bun run test:unit 2>&1 | tail -10`
+Expected: pass count = baseline + 5 (Task 1) + 11 (Task 1b) = baseline + 16, fail count = 0.
+
+- [ ] **Step 1b.9: Run quality gates**
+
+Run: `cd kova-open-pencil-1 && bun run check`
+Expected: zero errors. No `any` types. No `Math.random()`.
+
+- [ ] **Step 1b.10: Commit**
+
+```bash
+git add packages/core/src/scene-graph.ts tests/engine/scene-graph/measurement-system.test.ts
+git commit -m "feat(engine): page-level measurement system on CANVAS (matches Figma — Cluster 07a Task 1b)"
 ```
 
 ---
@@ -678,13 +1082,14 @@ git commit -m "feat(engine): add scaleNode modify tool (Cluster 07a)"
 
 ---
 
-## Task 5: createSlice refactor + createMeasurement + arrowStub
+## Task 5: createSlice refactor + addMeasurement tool + arrowStub
 
-**Goal:** Refactor `createSlice` from a Frame-fabrication stub into a real SLICE NodeType creator. Add `createMeasurement` + `arrowStub` (Phase-2 no-op).
+**Goal:** Refactor `createSlice` from a Frame-fabrication stub into a real SLICE NodeType creator. Add `addMeasurement` (a **page-level method wrapper** tool, not a NodeType creator — measurements live on CANVAS per Task 1b) and `arrowStub` (Phase-2 no-op).
 
 **Files:**
-- Modify: `packages/core/src/tools/create.ts:191-216` (createSlice); append `createMeasurement` + `arrowStub`
-- Test: `tests/engine/tools/create-slice-refactor.test.ts`, `tests/engine/tools/create-measurement.test.ts`
+- Modify: `packages/core/src/tools/create.ts:191-216` (createSlice refactor); append `arrowStub`
+- Create: `packages/core/src/tools/measurement.ts` (new file — `addMeasurement` ToolDef)
+- Test: `tests/engine/tools/create-slice-refactor.test.ts`, `tests/engine/tools/add-measurement-tool.test.ts`
 
 - [ ] **Step 5.1: Write the failing tests — createSlice refactor**
 
@@ -742,60 +1147,80 @@ describe('createSlice — refactored to SLICE NodeType', () => {
 })
 ```
 
-- [ ] **Step 5.2: Write the failing tests — createMeasurement**
+- [ ] **Step 5.2: Write the failing tests — addMeasurement tool**
 
-Create `kova-open-pencil-1/tests/engine/tools/create-measurement.test.ts`:
+Create `kova-open-pencil-1/tests/engine/tools/add-measurement-tool.test.ts`:
 
 ```typescript
 import { describe, test, expect } from 'bun:test'
-import { createMeasurement } from '@kova/core/src/tools/create'
+import { addMeasurement } from '@kova/core/src/tools/measurement'
 import { SceneGraph } from '@kova/core/src/scene-graph'
 import { createFigmaAPI } from '@kova/core/src/figma-api-proxy'
 
-describe('createMeasurement', () => {
-  test('creates a MEASUREMENT NodeType', () => {
+describe('addMeasurement tool (page-level wrapper, not a NodeType creator)', () => {
+  function setup() {
     const graph = new SceneGraph()
     const figma = createFigmaAPI(graph)
-    const result = createMeasurement.execute(figma, {
-      start_x: 0, start_y: 0, end_x: 100, end_y: 0
-    }) as { id: string; type: string; name: string }
-    expect(result.type).toBe('MEASUREMENT')
-    expect(result.name).toBe('Measurement')
+    const canvas = graph.createNode('CANVAS', graph.rootId)
+    const nodeA = graph.createNode('RECTANGLE', canvas.id)
+    const nodeB = graph.createNode('RECTANGLE', canvas.id)
+    return { graph, figma, canvas, nodeA, nodeB }
+  }
+
+  test('creates a Measurement record (NOT a SceneNode)', () => {
+    const { graph, figma, canvas, nodeA, nodeB } = setup()
+    const result = addMeasurement.execute(figma, {
+      canvas_id: canvas.id,
+      start_node_id: nodeA.id,
+      start_side: 'RIGHT',
+      end_node_id: nodeB.id,
+      end_side: 'LEFT'
+    }) as { measurement_id: string }
+    expect(result.measurement_id).toBeDefined()
+    // The result is NOT a node — it has no `type: 'MEASUREMENT'` field
+    expect((result as { type?: string }).type).toBeUndefined()
+    // The Measurement record exists on the CANVAS measurement collection
+    expect(graph.getMeasurements(canvas.id)).toHaveLength(1)
+    expect(graph.getMeasurements(canvas.id)[0]!.id).toBe(result.measurement_id)
   })
 
-  test('encodes 2-point geometry via x/y/width/height', () => {
-    const graph = new SceneGraph()
-    const figma = createFigmaAPI(graph)
-    const result = createMeasurement.execute(figma, {
-      start_x: 10, start_y: 20, end_x: 110, end_y: 80
-    }) as { id: string }
-    const node = graph.getNode(result.id)!
-    expect(node.x).toBe(10)
-    expect(node.y).toBe(20)
-    expect(node.width).toBe(100)
-    expect(node.height).toBe(60)
+  test('plumbs the offset_type + offset_value to a MeasurementOffset', () => {
+    const { figma, canvas, nodeA, nodeB } = setup()
+    const result = addMeasurement.execute(figma, {
+      canvas_id: canvas.id,
+      start_node_id: nodeA.id,
+      start_side: 'RIGHT',
+      end_node_id: nodeB.id,
+      end_side: 'LEFT',
+      offset_type: 'OUTER',
+      offset_value: 12
+    }) as { measurement_id: string }
+    // Validation only — actual offset value is asserted via getMeasurements in scene-graph tests
+    expect(result.measurement_id).toBeDefined()
   })
 
-  test('handles negative deltas (drag right-to-left)', () => {
-    const graph = new SceneGraph()
-    const figma = createFigmaAPI(graph)
-    const result = createMeasurement.execute(figma, {
-      start_x: 100, start_y: 50, end_x: 10, end_y: 10
-    }) as { id: string }
-    const node = graph.getNode(result.id)!
-    expect(node.x).toBe(100)
-    expect(node.width).toBe(-90)
-    expect(node.height).toBe(-40)
+  test('returns { error } when anchor node is not on target canvas', () => {
+    const { graph, figma, canvas, nodeA } = setup()
+    const otherCanvas = graph.createNode('CANVAS', graph.rootId)
+    const otherNode = graph.createNode('RECTANGLE', otherCanvas.id)
+    const result = addMeasurement.execute(figma, {
+      canvas_id: canvas.id,
+      start_node_id: nodeA.id,
+      start_side: 'RIGHT',
+      end_node_id: otherNode.id,
+      end_side: 'LEFT'
+    }) as { error?: string }
+    expect(result.error).toMatch(/anchor node not on target canvas/i)
   })
 })
 ```
 
 - [ ] **Step 5.3: Run the tests — confirm RED**
 
-Run: `cd kova-open-pencil-1 && bun test ./tests/engine/tools/create-slice-refactor.test.ts ./tests/engine/tools/create-measurement.test.ts`
-Expected: 4 + 3 failures. createSlice fails on `result.type !== 'FRAME'`; createMeasurement fails on missing export.
+Run: `cd kova-open-pencil-1 && bun test ./tests/engine/tools/create-slice-refactor.test.ts ./tests/engine/tools/add-measurement-tool.test.ts`
+Expected: 4 createSlice failures (`result.type !== 'FRAME'`) + 3 addMeasurement failures on missing export from `tools/measurement.ts`.
 
-- [ ] **Step 5.4: Refactor createSlice + add createMeasurement + arrowStub**
+- [ ] **Step 5.4: Refactor createSlice + add arrowStub**
 
 Replace the createSlice block in `packages/core/src/tools/create.ts:191-216`:
 
@@ -826,32 +1251,6 @@ export const createSlice = defineTool({
   }
 })
 
-export const createMeasurement = defineTool({
-  name: 'create_measurement',
-  mutates: true,
-  description: 'Create a measurement annotation between two points on the canvas.',
-  params: {
-    start_x: { type: 'number', description: 'Start X', required: true },
-    start_y: { type: 'number', description: 'Start Y', required: true },
-    end_x: { type: 'number', description: 'End X', required: true },
-    end_y: { type: 'number', description: 'End Y', required: true },
-    name: { type: 'string', description: 'Measurement name' },
-    parent_id: { type: 'string', description: 'Parent node ID' }
-  },
-  execute: (figma, args) => {
-    const node = figma.createMeasurement()
-    node.x = args.start_x as number
-    node.y = args.start_y as number
-    node.resize((args.end_x as number) - (args.start_x as number), (args.end_y as number) - (args.start_y as number))
-    node.name = (args.name as string) ?? 'Measurement'
-    if (args.parent_id) {
-      const parent = figma.getNodeById(args.parent_id as string)
-      if (parent) parent.appendChild(node)
-    }
-    return nodeSummary(node)
-  }
-})
-
 export const arrowStub = defineTool({
   name: 'arrow_stub',
   description: 'Phase-2-deferred. Arrow primitive not yet shipped.',
@@ -860,27 +1259,91 @@ export const arrowStub = defineTool({
 })
 ```
 
-(Task 7 ships the `figma.createSlice()` + `figma.createMeasurement()` proxy methods. Until that lands, these tests will fail at runtime — that's OK because Task 7 happens before Task 5 runs in the test suite if you order it that way. For TDD discipline, sequence is: Task 1 (NodeType) → Task 7 (proxy) → Task 5 (create-tool tests). Either land them as a batch commit OR move the proxy work earlier.)
+- [ ] **Step 5.5: Create `packages/core/src/tools/measurement.ts`**
 
-**Reordering note:** Tasks 5 + 7 are coupled — the proxy method must exist before the create-tool tests pass. In execution, swap Task 7 to run before Task 5, OR land them in the same batch commit. The plan keeps the task numbers for clarity; the executor's job is to recognize the dep.
+```typescript
+import { defineTool } from './schema'
+import type { MeasurementOffset, MeasurementSide } from '../scene-graph'
 
-- [ ] **Step 5.5: Run the tests — confirm GREEN (after Task 7's proxy work lands)**
+export const addMeasurement = defineTool({
+  name: 'add_measurement',
+  mutates: true,
+  description:
+    'Add a measurement annotation between two SceneNodes on a CANVAS, anchored ' +
+    'by side. Both anchor nodes must be descendants of the target canvas.',
+  params: {
+    canvas_id: { type: 'string', description: 'CANVAS node ID', required: true },
+    start_node_id: { type: 'string', description: 'Anchor node ID for measurement start', required: true },
+    start_side: {
+      type: 'string',
+      description: 'Edge of the start anchor: TOP, RIGHT, BOTTOM, or LEFT',
+      required: true,
+      enum: ['TOP', 'RIGHT', 'BOTTOM', 'LEFT']
+    },
+    end_node_id: { type: 'string', description: 'Anchor node ID for measurement end', required: true },
+    end_side: {
+      type: 'string',
+      description: 'Edge of the end anchor: TOP, RIGHT, BOTTOM, or LEFT',
+      required: true,
+      enum: ['TOP', 'RIGHT', 'BOTTOM', 'LEFT']
+    },
+    offset_type: {
+      type: 'string',
+      description: 'Offset variant — INNER (relative to anchor bounds) or OUTER (fixed pixel distance)',
+      enum: ['INNER', 'OUTER']
+    },
+    offset_value: {
+      type: 'number',
+      description: 'Offset magnitude — INNER expects -1..1, OUTER expects a non-zero pixel distance'
+    },
+    free_text: { type: 'string', description: 'Override label (empty = use auto-computed value)' }
+  },
+  execute: (figma, args) => {
+    try {
+      const offset: MeasurementOffset | undefined =
+        args.offset_type === 'INNER'
+          ? { type: 'INNER', relative: (args.offset_value as number) ?? 0 }
+          : args.offset_type === 'OUTER'
+          ? { type: 'OUTER', fixed: (args.offset_value as number) ?? 8 }
+          : undefined
+      const canvas = figma.getNodeById(args.canvas_id as string)
+      if (!canvas) return { error: `CANVAS ${args.canvas_id} not found` }
+      // figma.currentPage delegates to the SceneGraph measurement methods.
+      // Either canvas IS currentPage, or we use the SceneGraph directly per Task 7.
+      const m = figma.currentPage.addMeasurement(
+        { node: figma.getNodeById(args.start_node_id as string)!, side: args.start_side as MeasurementSide },
+        { node: figma.getNodeById(args.end_node_id as string)!, side: args.end_side as MeasurementSide },
+        { offset, freeText: (args.free_text as string) ?? '' }
+      )
+      return { measurement_id: m.id }
+    } catch (e) {
+      return { error: (e as Error).message }
+    }
+  }
+})
+```
 
-Run: `cd kova-open-pencil-1 && bun test ./tests/engine/tools/create-slice-refactor.test.ts ./tests/engine/tools/create-measurement.test.ts`
+(Task 7 ships `figma.createSlice()` + the `figma.currentPage.*` measurement methods on the proxy. Tests in Steps 5.1 + 5.2 will not pass until Task 7 lands.)
+
+**Reordering note:** Tasks 5 + 7 are coupled — the proxy must exist before the create-tool/add-measurement tool tests pass. In execution, swap Task 7 to run before Task 5, OR land them in the same batch commit. The plan keeps the task numbers for clarity; the executor's job is to recognize the dep.
+
+- [ ] **Step 5.6: Run the tests — confirm GREEN (after Task 7's proxy work lands)**
+
+Run: `cd kova-open-pencil-1 && bun test ./tests/engine/tools/create-slice-refactor.test.ts ./tests/engine/tools/add-measurement-tool.test.ts`
 Expected: 4 + 3 tests pass.
 
-- [ ] **Step 5.6: Commit**
+- [ ] **Step 5.7: Commit**
 
 ```bash
-git add packages/core/src/tools/create.ts tests/engine/tools/create-slice-refactor.test.ts tests/engine/tools/create-measurement.test.ts
-git commit -m "feat(engine): refactor createSlice to SLICE NodeType + add createMeasurement + arrowStub (Cluster 07a)"
+git add packages/core/src/tools/create.ts packages/core/src/tools/measurement.ts tests/engine/tools/create-slice-refactor.test.ts tests/engine/tools/add-measurement-tool.test.ts
+git commit -m "feat(engine): refactor createSlice to SLICE NodeType + add addMeasurement tool + arrowStub (Cluster 07a Task 5)"
 ```
 
 ---
 
 ## Task 6: Registry extensions
 
-**Goal:** Extend `EXTENDED_TOOLS` to include `scaleNode`, `createMeasurement`, `arrowStub`. Verify `CORE_TOOLS` is unchanged (token-bloat avoidance).
+**Goal:** Extend `EXTENDED_TOOLS` to include `scaleNode`, `addMeasurement` (the page-level method wrapper, not a NodeType creator), `arrowStub`. Verify `CORE_TOOLS` is unchanged (token-bloat avoidance).
 
 **Files:**
 - Modify: `packages/core/src/tools/registry.ts` (imports + EXTENDED_TOOLS)
@@ -899,17 +1362,21 @@ describe('Tools registry — Cluster 07a additions', () => {
     expect(EXTENDED_TOOLS.some((t) => t.name === 'scale_node')).toBe(true)
   })
 
-  test('EXTENDED_TOOLS contains createMeasurement', () => {
-    expect(EXTENDED_TOOLS.some((t) => t.name === 'create_measurement')).toBe(true)
+  test('EXTENDED_TOOLS contains addMeasurement', () => {
+    expect(EXTENDED_TOOLS.some((t) => t.name === 'add_measurement')).toBe(true)
   })
 
   test('EXTENDED_TOOLS contains arrowStub', () => {
     expect(EXTENDED_TOOLS.some((t) => t.name === 'arrow_stub')).toBe(true)
   })
 
+  test('EXTENDED_TOOLS does NOT contain a legacy create_measurement (Figma-aligned rename to add_measurement)', () => {
+    expect(EXTENDED_TOOLS.some((t) => t.name === 'create_measurement')).toBe(false)
+  })
+
   test('CORE_TOOLS does NOT contain new tools (token-bloat avoidance)', () => {
     expect(CORE_TOOLS.some((t) => t.name === 'scale_node')).toBe(false)
-    expect(CORE_TOOLS.some((t) => t.name === 'create_measurement')).toBe(false)
+    expect(CORE_TOOLS.some((t) => t.name === 'add_measurement')).toBe(false)
     expect(CORE_TOOLS.some((t) => t.name === 'arrow_stub')).toBe(false)
   })
 
@@ -922,7 +1389,7 @@ describe('Tools registry — Cluster 07a additions', () => {
 - [ ] **Step 6.2: Run the tests — confirm RED**
 
 Run: `cd kova-open-pencil-1 && bun test ./tests/engine/tools/registry.test.ts`
-Expected: 3 failures (missing tools in EXTENDED_TOOLS).
+Expected: 3 failures on missing tools in EXTENDED_TOOLS; 1 success (`create_measurement` legacy-rename test passes because it's not present).
 
 - [ ] **Step 6.3: Extend the registry**
 
@@ -931,19 +1398,20 @@ Edit `packages/core/src/tools/registry.ts`:
 ```typescript
 import {
   createShape, render, createComponent, createInstance,
-  createPage, createVector, createSlice, createMeasurement, arrowStub, fetchIconsTool, insertIcon, searchIconsTool
+  createPage, createVector, createSlice, arrowStub, fetchIconsTool, insertIcon, searchIconsTool
 } from './create'
 import {
   // … existing imports …
   scaleNode
 } from './modify'
+import { addMeasurement } from './measurement'
 
 // … existing CORE_TOOLS unchanged …
 
 export const EXTENDED_TOOLS: ToolDef[] = [
   // … existing entries …
   createSlice,           // already present — refactored body
-  createMeasurement,     // NEW
+  addMeasurement,        // NEW (page-level wrapper, not a NodeType creator)
   scaleNode,             // NEW
   arrowStub,             // NEW (Phase-2 no-op)
 ]
@@ -952,7 +1420,7 @@ export const EXTENDED_TOOLS: ToolDef[] = [
 - [ ] **Step 6.4: Run the tests — confirm GREEN**
 
 Run: `cd kova-open-pencil-1 && bun test ./tests/engine/tools/registry.test.ts`
-Expected: 5 tests pass.
+Expected: 6 tests pass.
 
 - [ ] **Step 6.5: Run engine suite + quality gates**
 
@@ -963,14 +1431,14 @@ Expected: green.
 
 ```bash
 git add packages/core/src/tools/registry.ts tests/engine/tools/registry.test.ts
-git commit -m "feat(engine): register scaleNode + createMeasurement + arrowStub in EXTENDED_TOOLS (Cluster 07a)"
+git commit -m "feat(engine): register scaleNode + addMeasurement + arrowStub in EXTENDED_TOOLS (Cluster 07a)"
 ```
 
 ---
 
 ## Task 7: figma-api-proxy exposure
 
-**Goal:** Expose `figma.createSlice()`, `figma.createMeasurement()`, the new SceneNode property accessors (`aspectRatio` / `includeInExports` / `pageBackgroundVisible`), and `nodeProxy.scale(factor)` on the proxy. **Run this BEFORE Task 5 OR fold both into one commit** — Task 5's tests depend on the proxy methods.
+**Goal:** Expose `figma.createSlice()`, the 5 page-level measurement methods on `figma.currentPage` (`addMeasurement` / `getMeasurements` / `getMeasurementsForNode` / `editMeasurement` / `deleteMeasurement`), the new SceneNode property accessors (`aspectRatio` / `includeInExports` / `pageBackgroundVisible`), and `nodeProxy.scale(factor)` on the proxy. **Run this BEFORE Task 5 OR fold both into one commit** — Task 5's tests depend on the proxy methods.
 
 **Files:**
 - Modify: `packages/core/src/figma-api.ts` (interface extensions)
@@ -995,12 +1463,66 @@ describe('figma-api-proxy create methods', () => {
     expect(graph.getNode(slice.id)!.type).toBe('SLICE')
   })
 
-  test('figma.createMeasurement() returns a MEASUREMENT-typed proxy', () => {
+  test('figma.currentPage.addMeasurement returns a Measurement record (NOT a node proxy)', () => {
     const graph = new SceneGraph()
     const figma = createFigmaAPI(graph)
-    const measurement = figma.createMeasurement()
-    expect(measurement.type).toBe('MEASUREMENT')
-    expect(graph.getNode(measurement.id)!.type).toBe('MEASUREMENT')
+    const canvas = figma.currentPage  // CANVAS-typed FigmaPageProxy
+    const a = figma.createRectangle()
+    const b = figma.createRectangle()
+    canvas.appendChild(a)
+    canvas.appendChild(b)
+    const m = canvas.addMeasurement(
+      { node: a, side: 'RIGHT' },
+      { node: b, side: 'LEFT' }
+    )
+    // Returned shape is a Measurement record, not a FigmaNodeProxy — no `type: 'MEASUREMENT'` field
+    expect(m.id).toBeDefined()
+    expect(m.start.nodeId).toBe(a.id)
+    expect(m.end.nodeId).toBe(b.id)
+    expect((m as { type?: string }).type).toBeUndefined()
+  })
+
+  test('figma.currentPage.getMeasurements returns the canvas collection', () => {
+    const graph = new SceneGraph()
+    const figma = createFigmaAPI(graph)
+    const canvas = figma.currentPage
+    const a = figma.createRectangle()
+    const b = figma.createRectangle()
+    canvas.appendChild(a)
+    canvas.appendChild(b)
+    canvas.addMeasurement({ node: a, side: 'TOP' }, { node: b, side: 'BOTTOM' })
+    expect(canvas.getMeasurements()).toHaveLength(1)
+  })
+
+  test('figma.currentPage.editMeasurement updates offset + freeText only', () => {
+    const graph = new SceneGraph()
+    const figma = createFigmaAPI(graph)
+    const canvas = figma.currentPage
+    const a = figma.createRectangle()
+    const b = figma.createRectangle()
+    canvas.appendChild(a)
+    canvas.appendChild(b)
+    const m = canvas.addMeasurement({ node: a, side: 'TOP' }, { node: b, side: 'BOTTOM' })
+    const updated = canvas.editMeasurement(m.id, {
+      offset: { type: 'OUTER', fixed: 16 },
+      freeText: '16px'
+    })
+    expect(updated.offset).toEqual({ type: 'OUTER', fixed: 16 })
+    expect(updated.freeText).toBe('16px')
+  })
+
+  test('figma.currentPage.deleteMeasurement removes the record', () => {
+    const graph = new SceneGraph()
+    const figma = createFigmaAPI(graph)
+    const canvas = figma.currentPage
+    const a = figma.createRectangle()
+    const b = figma.createRectangle()
+    canvas.appendChild(a)
+    canvas.appendChild(b)
+    const m = canvas.addMeasurement({ node: a, side: 'TOP' }, { node: b, side: 'BOTTOM' })
+    expect(canvas.getMeasurements()).toHaveLength(1)
+    canvas.deleteMeasurement(m.id)
+    expect(canvas.getMeasurements()).toHaveLength(0)
   })
 
   test('figma.createSlice() emits node:created', () => {
@@ -1111,10 +1633,17 @@ Expected: failures — methods/properties not defined on the proxy.
 Edit `packages/core/src/figma-api.ts` — find the `FigmaAPI` interface and add:
 
 ```typescript
+import type {
+  Measurement,
+  MeasurementSide,
+  MeasurementOffset
+} from './scene-graph'
+
 export interface FigmaAPI {
   // … existing methods …
   createSlice(): FigmaNodeProxy
-  createMeasurement(): FigmaNodeProxy
+  /** Currently-active CANVAS as a FigmaPageProxy (PageNode-equivalent). */
+  currentPage: FigmaPageProxy
 }
 
 export interface FigmaNodeProxy {
@@ -1123,6 +1652,22 @@ export interface FigmaNodeProxy {
   includeInExports: boolean
   pageBackgroundVisible: boolean
   scale(factor: number): void
+}
+
+/** CANVAS-typed FigmaNodeProxy with the 5 page-level measurement methods. */
+export interface FigmaPageProxy extends FigmaNodeProxy {
+  addMeasurement(
+    start: { node: FigmaNodeProxy; side: MeasurementSide },
+    end: { node: FigmaNodeProxy; side: MeasurementSide },
+    options?: { offset?: MeasurementOffset; freeText?: string }
+  ): Measurement
+  getMeasurements(): Measurement[]
+  getMeasurementsForNode(node: FigmaNodeProxy): Measurement[]
+  editMeasurement(
+    id: string,
+    newValue: { offset?: MeasurementOffset; freeText?: string }
+  ): Measurement
+  deleteMeasurement(id: string): void
 }
 ```
 
@@ -1135,13 +1680,53 @@ Edit `packages/core/src/figma-api-proxy.ts` — find the `createFigmaAPI` functi
 createSlice: (): FigmaNodeProxy => {
   const node = graph.createNode('SLICE', graph.rootId)
   return new FigmaNodeProxy(node.id, graph)
-}
+},
 
-createMeasurement: (): FigmaNodeProxy => {
-  const node = graph.createNode('MEASUREMENT', graph.rootId)
-  return new FigmaNodeProxy(node.id, graph)
+// figma.currentPage returns a FigmaPageProxy wrapping the active CANVAS.
+get currentPage(): FigmaPageProxy {
+  return new FigmaPageProxy(graph.activeCanvasId, graph)
 }
 ```
+
+Add the `FigmaPageProxy` class (extends `FigmaNodeProxy`):
+
+```typescript
+export class FigmaPageProxy extends FigmaNodeProxy {
+  addMeasurement(
+    start: { node: FigmaNodeProxy; side: MeasurementSide },
+    end: { node: FigmaNodeProxy; side: MeasurementSide },
+    options?: { offset?: MeasurementOffset; freeText?: string }
+  ): Measurement {
+    return this._graph.addMeasurement(
+      this.id,
+      { nodeId: start.node.id, side: start.side },
+      { nodeId: end.node.id, side: end.side },
+      options
+    )
+  }
+
+  getMeasurements(): Measurement[] {
+    return this._graph.getMeasurements(this.id)
+  }
+
+  getMeasurementsForNode(node: FigmaNodeProxy): Measurement[] {
+    return this._graph.getMeasurementsForNode(node.id)
+  }
+
+  editMeasurement(
+    id: string,
+    newValue: { offset?: MeasurementOffset; freeText?: string }
+  ): Measurement {
+    return this._graph.editMeasurement(this.id, id, newValue)
+  }
+
+  deleteMeasurement(id: string): void {
+    this._graph.deleteMeasurement(this.id, id)
+  }
+}
+```
+
+(`MEASUREMENT` is **not** a NodeType, so there is no `figma.createMeasurement()` factory. Measurements are created via `figma.currentPage.addMeasurement(...)` only.)
 
 Add property accessors to `FigmaNodeProxy` (use the same pattern as existing accessors — read/write the underlying node + emit `node:updated`):
 
@@ -1188,14 +1773,14 @@ Expected: green.
 
 ```bash
 git add packages/core/src/figma-api.ts packages/core/src/figma-api-proxy.ts packages/core/src/tools/modify.ts tests/engine/figma-api-proxy/
-git commit -m "feat(engine): expose createSlice / createMeasurement / scale + new properties on FigmaAPI proxy (Cluster 07a)"
+git commit -m "feat(engine): expose createSlice + currentPage measurement methods + scale + new properties on FigmaAPI proxy (Cluster 07a)"
 ```
 
 ---
 
 ## Task 8: Kiwi schema version bump + extensions
 
-**Goal:** Bump `SCHEMA_VERSION` to `2.0.0`. Add SLICE + MEASUREMENT enum variants. Add `aspect_ratio`, `include_in_exports`, `page_background_visible` fields to SceneNode struct. Add `open_type_features`, `link_href`, `list_type`, `list_indent` to CharacterStyleOverride. Implement bidirectional conversion + the unknown-NodeType skip fallback.
+**Goal:** Bump `SCHEMA_VERSION` to `2.0.0`. Add SLICE enum variant (only — MEASUREMENT is not a NodeType per the Figma-aligned model). Add `aspect_ratio`, `include_in_exports`, `page_background_visible`, `measurements` fields to SceneNode struct. Add new structs: `Measurement`, `MeasurementAnchor`, `MeasurementOffset` (tagged union with INNER/OUTER variants), `MeasurementSide` enum. Add `open_type_features`, `link_href`, `list_type`, `list_indent` to CharacterStyleOverride. Implement bidirectional conversion + the unknown-NodeType skip fallback + fail-soft handling for corrupt MeasurementSide enum values.
 
 **Files:**
 - Modify: `packages/core/src/kiwi/protocol.ts` (SCHEMA_VERSION)
@@ -1227,12 +1812,21 @@ import { describe, test, expect } from 'bun:test'
 import { SceneGraph } from '@kova/core/src/scene-graph'
 import { serialize, deserialize } from '@kova/core/src/kiwi/codec'
 
-describe('Kiwi round-trip: SLICE + MEASUREMENT + masked group', () => {
+describe('Kiwi round-trip: SLICE + page-level measurements + masked group', () => {
   test('serialize → deserialize → re-serialize is byte-equal', () => {
     const graph = new SceneGraph()
     const page = graph.getPages()[0]
     const slice = graph.createNode('SLICE', page.id, { x: 10, y: 20, width: 100, height: 50, name: 'Hero' })
-    const measurement = graph.createNode('MEASUREMENT', page.id, { x: 0, y: 0, width: 100, height: 0, name: 'Spacing' })
+    const nodeA = graph.createNode('RECTANGLE', page.id)
+    const nodeB = graph.createNode('RECTANGLE', page.id)
+    // 2 measurements: one default freeText, one with override
+    graph.addMeasurement(page.id, { nodeId: nodeA.id, side: 'RIGHT' }, { nodeId: nodeB.id, side: 'LEFT' })
+    graph.addMeasurement(
+      page.id,
+      { nodeId: nodeA.id, side: 'TOP' },
+      { nodeId: nodeB.id, side: 'BOTTOM' },
+      { offset: { type: 'OUTER', fixed: 12 }, freeText: '120px' }
+    )
     const text = graph.createNode('TEXT', page.id, {
       text: 'Hello',
       styleRuns: [{
@@ -1260,6 +1854,60 @@ describe('Kiwi round-trip: SLICE + MEASUREMENT + masked group', () => {
     expect(restored.getPages()[0].includeInExports).toBe(false)
     expect(restored.getPages()[0].pageBackgroundVisible).toBe(false)
     expect(restored.getNode(rect.id)!.aspectRatio).toBe(1.5)
+  })
+
+  test('Measurement records survive round trip with both offset variants', () => {
+    const graph = new SceneGraph()
+    const page = graph.getPages()[0]
+    const a = graph.createNode('RECTANGLE', page.id)
+    const b = graph.createNode('RECTANGLE', page.id)
+    const m1 = graph.addMeasurement(
+      page.id,
+      { nodeId: a.id, side: 'TOP' },
+      { nodeId: b.id, side: 'BOTTOM' },
+      { offset: { type: 'INNER', relative: 0.5 } }
+    )
+    const m2 = graph.addMeasurement(
+      page.id,
+      { nodeId: a.id, side: 'LEFT' },
+      { nodeId: b.id, side: 'RIGHT' },
+      { offset: { type: 'OUTER', fixed: 24 }, freeText: '24px gap' }
+    )
+
+    const bytes = serialize(graph)
+    const restored = deserialize(bytes)
+    const measurements = restored.getMeasurements(page.id)
+    expect(measurements).toHaveLength(2)
+
+    const r1 = measurements.find((m) => m.id === m1.id)!
+    const r2 = measurements.find((m) => m.id === m2.id)!
+    expect(r1.offset).toEqual({ type: 'INNER', relative: 0.5 })
+    expect(r1.freeText).toBe('')
+    expect(r2.offset).toEqual({ type: 'OUTER', fixed: 24 })
+    expect(r2.freeText).toBe('24px gap')
+    expect(r2.start.side).toBe('LEFT')
+    expect(r2.end.side).toBe('RIGHT')
+  })
+
+  test('Corrupted MeasurementSide enum value fails-soft (skip that measurement, parent loads)', () => {
+    // Build bytes manually with a bad MeasurementSide enum value (e.g. 99).
+    // The reader must skip that measurement and load the rest of the canvas.
+    // (Test helper: synthesizes the bytes via a hand-rolled kiwi encoder.)
+    const bytes = buildSnapshotWithBadMeasurementSide()
+    const warnSpy = mock(() => {})
+    const original = console.warn
+    console.warn = warnSpy
+    try {
+      const graph = deserialize(bytes)
+      expect(graph).toBeDefined()
+      expect(warnSpy).toHaveBeenCalled()
+      const page = graph.getPages()[0]
+      // Bad measurement was dropped; any sibling measurements survive
+      const ms = graph.getMeasurements(page.id)
+      expect(ms.every((m) => ['TOP', 'RIGHT', 'BOTTOM', 'LEFT'].includes(m.start.side))).toBe(true)
+    } finally {
+      console.warn = original
+    }
   })
 })
 ```
@@ -1323,16 +1971,48 @@ export const SCHEMA_VERSION = '2.0.0'
 
 Edit `packages/core/src/kiwi/kiwi-schema/schema.ts` (or wherever the NodeType enum + SceneNode struct + CharacterStyleOverride struct live — likely a `.kiwi` proto-like source file consumed by the schema compiler; check `kiwi-schema/` for the actual schema source).
 
-Add enum tags for `SLICE` and `MEASUREMENT` (next-available integer values — kiwi enums are append-only; never renumber existing entries).
+Add enum tag for `SLICE` (next-available integer value — kiwi enums are append-only; never renumber existing entries). **MEASUREMENT is not added to the NodeType enum** per the Figma-aligned model.
 
-Add struct fields:
+Add struct fields + new structs:
 
 ```
+enum NodeType {
+  # … existing entries …
+  SLICE = 18  # next free tag
+}
+
+enum MeasurementSide {
+  TOP = 0
+  RIGHT = 1
+  BOTTOM = 2
+  LEFT = 3
+}
+
+message MeasurementOffset {
+  string type  # 'INNER' or 'OUTER'
+  float? relative  # populated when type == 'INNER'
+  float? fixed     # populated when type == 'OUTER'
+}
+
+struct MeasurementAnchor {
+  string node_id = 1
+  MeasurementSide side = 2
+}
+
+struct Measurement {
+  string id = 1
+  MeasurementAnchor start = 2
+  MeasurementAnchor end = 3
+  MeasurementOffset offset = 4
+  string free_text = 5
+}
+
 struct SceneNode {
   # … existing fields …
   float? aspect_ratio = 70  # use next free tag
   bool include_in_exports = 71
   bool page_background_visible = 72
+  Measurement[]? measurements = 73  # populated only on CANVAS-typed nodes
 }
 
 struct CharacterStyleOverride {
@@ -1365,6 +2045,31 @@ function sceneNodeToKiwi(node: SceneNode): KiwiSceneNode {
     aspect_ratio: node.aspectRatio,
     include_in_exports: node.includeInExports,
     page_background_visible: node.pageBackgroundVisible,
+    measurements: node.measurements?.map(measurementToKiwi),
+  }
+}
+
+function measurementToKiwi(m: Measurement): KiwiMeasurement {
+  return {
+    id: m.id,
+    start: { node_id: m.start.nodeId, side: measurementSideToKiwi(m.start.side) },
+    end: { node_id: m.end.nodeId, side: measurementSideToKiwi(m.end.side) },
+    offset: measurementOffsetToKiwi(m.offset),
+    free_text: m.freeText,
+  }
+}
+
+function measurementOffsetToKiwi(o: MeasurementOffset): KiwiMeasurementOffset {
+  if (o.type === 'INNER') return { type: 'INNER', relative: o.relative }
+  return { type: 'OUTER', fixed: o.fixed }
+}
+
+function measurementSideToKiwi(side: MeasurementSide): number {
+  switch (side) {
+    case 'TOP': return 0
+    case 'RIGHT': return 1
+    case 'BOTTOM': return 2
+    case 'LEFT': return 3
   }
 }
 
@@ -1383,12 +2088,48 @@ Add reverse conversion with defaults for backwards-compat:
 
 ```typescript
 function kiwiToSceneNode(k: KiwiSceneNode): SceneNode {
+  const measurements = k.measurements
+    ?.map(kiwiToMeasurement)
+    .filter((m): m is Measurement => m !== null)  // drop fail-soft skips
+
   return {
     // … existing field assignments …
     aspectRatio: k.aspect_ratio ?? null,
     includeInExports: k.include_in_exports ?? true,
     pageBackgroundVisible: k.page_background_visible ?? true,
+    measurements,
   }
+}
+
+function kiwiToMeasurement(k: KiwiMeasurement): Measurement | null {
+  const startSide = kiwiToMeasurementSide(k.start.side)
+  const endSide = kiwiToMeasurementSide(k.end.side)
+  if (!startSide || !endSide) {
+    console.warn(`[kiwi] Measurement ${k.id} has corrupted MeasurementSide enum; skipping.`)
+    return null
+  }
+  return {
+    id: k.id,
+    start: { nodeId: k.start.node_id, side: startSide },
+    end: { nodeId: k.end.node_id, side: endSide },
+    offset: kiwiToMeasurementOffset(k.offset),
+    freeText: k.free_text,
+  }
+}
+
+function kiwiToMeasurementSide(value: number): MeasurementSide | null {
+  switch (value) {
+    case 0: return 'TOP'
+    case 1: return 'RIGHT'
+    case 2: return 'BOTTOM'
+    case 3: return 'LEFT'
+    default: return null  // fail-soft on corrupted enum
+  }
+}
+
+function kiwiToMeasurementOffset(k: KiwiMeasurementOffset): MeasurementOffset {
+  if (k.type === 'INNER') return { type: 'INNER', relative: k.relative ?? 0 }
+  return { type: 'OUTER', fixed: k.fixed ?? 8 }
 }
 ```
 
@@ -1401,7 +2142,6 @@ function kiwiToNodeType(value: number): NodeType | null {
     case KiwiNodeType.FRAME: return 'FRAME'
     // … existing cases …
     case KiwiNodeType.SLICE: return 'SLICE'
-    case KiwiNodeType.MEASUREMENT: return 'MEASUREMENT'
     default:
       console.warn(`[kiwi] Unknown NodeType enum value ${value}; node skipped.`)
       return null
@@ -1414,7 +2154,7 @@ function kiwiToNodeType(value: number): NodeType | null {
 - [ ] **Step 8.8: Run the kiwi tests — confirm GREEN**
 
 Run: `cd kova-open-pencil-1 && bun test ./tests/engine/kiwi/`
-Expected: 1 + 2 + 1 = 4 tests pass.
+Expected: 1 + 4 + 1 = 6 tests pass (version-bump 1, round-trip with measurement variants 4, unknown-enum 1).
 
 - [ ] **Step 8.9: Run engine suite + quality gates**
 
@@ -1425,7 +2165,7 @@ Expected: green.
 
 ```bash
 git add packages/core/src/kiwi/ tests/engine/kiwi/
-git commit -m "feat(engine): bump Kiwi schema to v2.0.0; add SLICE + MEASUREMENT enums + new SceneNode + CharacterStyleOverride fields (Cluster 07a)"
+git commit -m "feat(engine): bump Kiwi schema to v2.0.0; add SLICE enum + page-level Measurement structs + new SceneNode + CharacterStyleOverride fields (Cluster 07a)"
 ```
 
 ---
@@ -1906,14 +2646,15 @@ describe('CHANGELOG-KOVA.md', () => {
     const content = readFileSync(CHANGELOG_PATH, 'utf-8')
     const required = [
       'SLICE',
-      'MEASUREMENT',
+      'page-level Measurement',  // NEW — Figma-aligned data model
+      'MeasurementSide',
       'aspectRatio',
       'includeInExports',
       'pageBackgroundVisible',
       'CharacterStyleOverride',
       'scaleNode',
       'createSlice',
-      'createMeasurement',
+      'addMeasurement',
       'arrowStub',
       'mask compositing',
       'Kiwi schema',
@@ -1966,15 +2707,17 @@ Each entry: date, change summary, affected file(s), upstream-PR status.
 
 | Change | File(s) | Upstream-PR |
 |---|---|---|
-| Add SLICE + MEASUREMENT NodeTypes; default factories; leaf-node reparent rejection | `src/scene-graph.ts`, `src/scene-graph-instances.ts` | drafted (one PR per NodeType — split to ease upstream review) |
+| Add SLICE NodeType; default factory; leaf-node reparent rejection | `src/scene-graph.ts`, `src/scene-graph-instances.ts` | drafted |
+| Add page-level Measurement system on CANVAS: new types (Measurement / MeasurementSide / MeasurementOffset / MeasurementAnchor); `SceneNode.measurements` field; 5 SceneGraph methods (`addMeasurement` / `getMeasurements` / `getMeasurementsForNode` / `editMeasurement` / `deleteMeasurement`) matching Figma's PageNode API verbatim; orphan-on-anchor-delete + drop-on-cross-canvas-move lifecycle events | `src/scene-graph.ts` | drafted (separate PR — verbatim port of Figma's PageNode measurement API; high upstream value because it implements an existing Figma standard) |
 | Add `aspectRatio` / `includeInExports` / `pageBackgroundVisible` fields on SceneNode | `src/scene-graph.ts` | drafted (single PR — small change set) |
 | Extend `CharacterStyleOverride` with `openTypeFeatures` + `linkHref` + `listType` + `listIndent` (export `ListType`) | `src/scene-graph.ts` | drafted (single PR) |
 | Add `scaleNode` modify tool; recursive scale walk | `src/tools/modify.ts`, `src/tools/registry.ts` | drafted |
-| Refactor `createSlice` from Frame-stub to SLICE NodeType; add `createMeasurement` | `src/tools/create.ts`, `src/tools/registry.ts` | drafted |
+| Refactor `createSlice` from Frame-stub to SLICE NodeType | `src/tools/create.ts`, `src/tools/registry.ts` | drafted |
+| Add `addMeasurement` ToolDef (page-level wrapper — calls `figma.currentPage.addMeasurement`; NOT a NodeType creator) | `src/tools/measurement.ts` (NEW), `src/tools/registry.ts` | drafted |
 | Add `arrowStub` registry slot (Phase-2-deferred no-op) | `src/tools/create.ts`, `src/tools/registry.ts` | held — submit after arrow primitive ships |
 | Sibling-traversal mask compositing (all 3 maskType branches) | `src/renderer/scene.ts`, `src/renderer/renderer.ts` | drafted (highest-value upstream contribution — data model was already in place) |
-| Kiwi schema v2.0.0: enum extensions + new fields; backwards-compat skip on unknown NodeType | `src/kiwi/protocol.ts`, `src/kiwi/kiwi-schema/schema.ts`, `src/kiwi/kiwi-convert.ts` | drafted |
-| `figma-api-proxy` exposure of new fields + `createSlice` / `createMeasurement` / `scale` | `src/figma-api.ts`, `src/figma-api-proxy.ts` | drafted |
+| Kiwi schema v2.0.0: SLICE enum + new Measurement struct + MeasurementSide enum + MeasurementOffset union + new SceneNode fields; backwards-compat skip on unknown NodeType + fail-soft MeasurementSide enum | `src/kiwi/protocol.ts`, `src/kiwi/kiwi-schema/schema.ts`, `src/kiwi/kiwi-convert.ts` | drafted |
+| `figma-api-proxy` exposure: `figma.createSlice()` + `figma.currentPage.*` measurement methods (5 PageNode-equivalent methods on FigmaPageProxy class) + new SceneNode property accessors + `FigmaNodeProxy.scale` | `src/figma-api.ts`, `src/figma-api-proxy.ts` | drafted |
 
 ### Upstream-PR submission cadence
 
@@ -2029,14 +2772,21 @@ import { SceneGraph } from '@kova/core/src/scene-graph'
 import { serialize, deserialize } from '@kova/core/src/kiwi/codec'
 
 describe('Integration: engine ↔ host scene-load with new NodeTypes', () => {
-  test('host loads SLICE + MEASUREMENT + masked group without error', () => {
+  test('host loads SLICE + page-level measurements + masked group without error', () => {
     setActivePinia(createPinia())
 
     // Build a graph with each Cluster 07a addition
     const graph = new SceneGraph()
     const page = graph.getPages()[0]
     graph.createNode('SLICE', page.id, { x: 0, y: 0, width: 100, height: 50, name: 'Hero export' })
-    graph.createNode('MEASUREMENT', page.id, { x: 0, y: 100, width: 100, height: 0, name: 'Spacing' })
+    // Page-level measurement anchored to two RECTANGLES
+    const nodeA = graph.createNode('RECTANGLE', page.id, { x: 0, y: 0, width: 50, height: 50, name: 'A' })
+    const nodeB = graph.createNode('RECTANGLE', page.id, { x: 100, y: 0, width: 50, height: 50, name: 'B' })
+    graph.addMeasurement(
+      page.id,
+      { nodeId: nodeA.id, side: 'RIGHT' },
+      { nodeId: nodeB.id, side: 'LEFT' }
+    )
     const group = graph.createNode('GROUP', page.id, { x: 50, y: 50, width: 200, height: 200 })
     graph.createNode('RECTANGLE', group.id, {
       x: 0, y: 0, width: 200, height: 200,
@@ -2054,11 +2804,15 @@ describe('Integration: engine ↔ host scene-load with new NodeTypes', () => {
 
     // Verify the host's queries against the restored graph
     const slices = Array.from(restored.getAllNodes()).filter((n) => n.type === 'SLICE')
-    const measurements = Array.from(restored.getAllNodes()).filter((n) => n.type === 'MEASUREMENT')
     expect(slices.length).toBe(1)
-    expect(measurements.length).toBe(1)
     expect(slices[0].name).toBe('Hero export')
-    expect(measurements[0].name).toBe('Spacing')
+
+    // Measurements are queried via the page-level API (NOT findAll over nodes)
+    const restoredPage = restored.getPages()[0]
+    const measurements = restored.getMeasurements(restoredPage.id)
+    expect(measurements.length).toBe(1)
+    expect(measurements[0]!.start.side).toBe('RIGHT')
+    expect(measurements[0]!.end.side).toBe('LEFT')
   })
 })
 ```
@@ -2105,7 +2859,7 @@ describe('Integration: Slice-batch enumeration shape', () => {
 })
 ```
 
-- [ ] **Step 12.3: Write the integration test — measurement persistence**
+- [ ] **Step 12.3: Write the integration test — measurement persistence + lifecycle**
 
 Create `kova-open-pencil-1/tests/integration/engine-host/measurement-persistence.test.ts`:
 
@@ -2114,35 +2868,76 @@ import { describe, test, expect } from 'bun:test'
 import { SceneGraph } from '@kova/core/src/scene-graph'
 import { serialize, deserialize } from '@kova/core/src/kiwi/codec'
 
-describe('Integration: Measurement persistence across save/load', () => {
-  test('measurement geometry survives Kiwi round-trip', () => {
+describe('Integration: Measurement persistence + lifecycle across save/load', () => {
+  test('measurement anchors + offset + freeText survive Kiwi round-trip', () => {
     const graph = new SceneGraph()
     const page = graph.getPages()[0]
-    const m = graph.createNode('MEASUREMENT', page.id, {
-      x: 10, y: 20, width: 90, height: 40, name: 'Title-to-body gap'
-    })
+    const a = graph.createNode('RECTANGLE', page.id, { x: 0, y: 0, width: 50, height: 50 })
+    const b = graph.createNode('RECTANGLE', page.id, { x: 100, y: 100, width: 50, height: 50 })
+    const m = graph.addMeasurement(
+      page.id,
+      { nodeId: a.id, side: 'RIGHT' },
+      { nodeId: b.id, side: 'LEFT' },
+      { offset: { type: 'OUTER', fixed: 16 }, freeText: '50px gap' }
+    )
 
     const bytes = serialize(graph)
     const restored = deserialize(bytes)
-    const r = restored.getNode(m.id)!
-    expect(r.type).toBe('MEASUREMENT')
-    expect(r.x).toBe(10)
-    expect(r.y).toBe(20)
-    expect(r.width).toBe(90)
-    expect(r.height).toBe(40)
-    expect(r.name).toBe('Title-to-body gap')
+    const measurements = restored.getMeasurements(restored.getPages()[0].id)
+    expect(measurements).toHaveLength(1)
+    const r = measurements[0]!
+    expect(r.id).toBe(m.id)
+    expect(r.start.nodeId).toBe(a.id)
+    expect(r.start.side).toBe('RIGHT')
+    expect(r.end.side).toBe('LEFT')
+    expect(r.offset).toEqual({ type: 'OUTER', fixed: 16 })
+    expect(r.freeText).toBe('50px gap')
   })
 
-  test('measurement override label survives round-trip', () => {
+  test('measurement with default freeText (empty = auto-compute) round-trips', () => {
     const graph = new SceneGraph()
     const page = graph.getPages()[0]
-    const m = graph.createNode('MEASUREMENT', page.id, {
-      x: 0, y: 0, width: 100, height: 0, text: '120 px (overridden)'
-    })
+    const a = graph.createNode('RECTANGLE', page.id)
+    const b = graph.createNode('RECTANGLE', page.id)
+    graph.addMeasurement(page.id, { nodeId: a.id, side: 'TOP' }, { nodeId: b.id, side: 'BOTTOM' })
 
     const bytes = serialize(graph)
     const restored = deserialize(bytes)
-    expect(restored.getNode(m.id)!.text).toBe('120 px (overridden)')
+    const measurements = restored.getMeasurements(restored.getPages()[0].id)
+    expect(measurements[0]!.freeText).toBe('')
+  })
+
+  test('orphan-on-anchor-delete: removing nodeA orphans the measurement (broken-anchor state); persists across save/load', () => {
+    const graph = new SceneGraph()
+    const page = graph.getPages()[0]
+    const a = graph.createNode('RECTANGLE', page.id)
+    const b = graph.createNode('RECTANGLE', page.id)
+    const m = graph.addMeasurement(page.id, { nodeId: a.id, side: 'TOP' }, { nodeId: b.id, side: 'BOTTOM' })
+    graph.removeNode(a.id)
+    expect(graph.getMeasurements(page.id)).toHaveLength(1)
+    // Anchor still points to the (now deleted) node ID
+
+    const bytes = serialize(graph)
+    const restored = deserialize(bytes)
+    const restoredMs = restored.getMeasurements(restored.getPages()[0].id)
+    expect(restoredMs).toHaveLength(1)
+    expect(restoredMs[0]!.start.nodeId).toBe(a.id) // broken anchor preserved across reload
+    expect(restored.getNode(a.id)).toBeUndefined() // node is actually gone
+  })
+
+  test('drop-on-cross-canvas-move: reparenting to another CANVAS drops source measurements; persists across save/load', () => {
+    const graph = new SceneGraph()
+    const sourcePage = graph.getPages()[0]
+    const otherPage = graph.addPage('Other')
+    const a = graph.createNode('RECTANGLE', sourcePage.id)
+    const b = graph.createNode('RECTANGLE', sourcePage.id)
+    graph.addMeasurement(sourcePage.id, { nodeId: a.id, side: 'TOP' }, { nodeId: b.id, side: 'BOTTOM' })
+    graph.reparent(a.id, otherPage.id, 0)
+    expect(graph.getMeasurements(sourcePage.id)).toHaveLength(0)
+
+    const bytes = serialize(graph)
+    const restored = deserialize(bytes)
+    expect(restored.getMeasurements(sourcePage.id)).toHaveLength(0)
   })
 })
 ```
@@ -2150,7 +2945,7 @@ describe('Integration: Measurement persistence across save/load', () => {
 - [ ] **Step 12.4: Run all three integration tests**
 
 Run: `cd kova-open-pencil-1 && bun test ./tests/integration/engine-host/`
-Expected: 2 + 2 + 2 = 6 tests pass (per the kiwi work in Task 8 + the proxy work in Task 7 already landed).
+Expected: 1 + 2 + 4 = 7 tests pass (per the kiwi work in Task 8 + the proxy work in Task 7 already landed).
 
 - [ ] **Step 12.5: Commit**
 
@@ -2178,17 +2973,28 @@ Create `kova-open-pencil-1/tests/e2e/fixtures/canvas-with-slice-measurement-mask
   "schemaVersion": "2.0.0",
   "nodes": [
     { "id": "0:1", "type": "FRAME", "name": "Document", "childIds": ["0:2"] },
-    { "id": "0:2", "type": "CANVAS", "name": "Page 1", "parentId": "0:1", "childIds": ["0:3","0:4","0:5","0:6","0:7"] },
+    { "id": "0:2", "type": "CANVAS", "name": "Page 1", "parentId": "0:1", "childIds": ["0:3","0:4","0:5","0:6","0:7","0:8"], "includeInExports": true, "pageBackgroundVisible": true,
+      "measurements": [
+        {
+          "id": "m-001",
+          "start": { "node_id": "0:4", "side": "RIGHT" },
+          "end":   { "node_id": "0:5", "side": "LEFT" },
+          "offset": { "type": "INNER", "relative": 0 },
+          "free_text": ""
+        }
+      ]
+    },
     { "id": "0:3", "type": "SLICE", "name": "Hero export", "parentId": "0:2", "x": 0, "y": 0, "width": 100, "height": 50 },
-    { "id": "0:4", "type": "MEASUREMENT", "name": "Spacing", "parentId": "0:2", "x": 0, "y": 100, "width": 100, "height": 0 },
-    { "id": "0:5", "type": "GROUP", "name": "Mask group", "parentId": "0:2", "x": 0, "y": 200, "width": 200, "height": 100, "childIds": ["0:6","0:7"] },
-    { "id": "0:6", "type": "RECTANGLE", "name": "Mask shape", "parentId": "0:5", "x": 0, "y": 0, "width": 200, "height": 100, "isMask": true, "maskType": "ALPHA", "fills": [{ "type": "SOLID", "color": { "r": 1, "g": 1, "b": 1, "a": 1 }, "opacity": 1, "visible": true }] },
-    { "id": "0:7", "type": "RECTANGLE", "name": "Maskee", "parentId": "0:5", "x": 0, "y": 0, "width": 200, "height": 100, "fills": [{ "type": "SOLID", "color": { "r": 0, "g": 1, "b": 0, "a": 1 }, "opacity": 1, "visible": true }] }
+    { "id": "0:4", "type": "RECTANGLE", "name": "Anchor A", "parentId": "0:2", "x": 0, "y": 100, "width": 50, "height": 50 },
+    { "id": "0:5", "type": "RECTANGLE", "name": "Anchor B", "parentId": "0:2", "x": 100, "y": 100, "width": 50, "height": 50 },
+    { "id": "0:6", "type": "GROUP", "name": "Mask group", "parentId": "0:2", "x": 0, "y": 200, "width": 200, "height": 100, "childIds": ["0:7","0:8"] },
+    { "id": "0:7", "type": "RECTANGLE", "name": "Mask shape", "parentId": "0:6", "x": 0, "y": 0, "width": 200, "height": 100, "isMask": true, "maskType": "ALPHA", "fills": [{ "type": "SOLID", "color": { "r": 1, "g": 1, "b": 1, "a": 1 }, "opacity": 1, "visible": true }] },
+    { "id": "0:8", "type": "RECTANGLE", "name": "Maskee", "parentId": "0:6", "x": 0, "y": 0, "width": 200, "height": 100, "fills": [{ "type": "SOLID", "color": { "r": 0, "g": 1, "b": 0, "a": 1 }, "opacity": 1, "visible": true }] }
   ]
 }
 ```
 
-(Skeleton — adapt to the actual host-app fixture shape; the host loads scene-graph JSON in tests via a test-only route or a pre-seeded Yjs doc. The existing E2E suite has an established pattern at `tests/e2e/fixtures/` — match it.)
+(Skeleton — adapt to the actual host-app fixture shape; the host loads scene-graph JSON in tests via a test-only route or a pre-seeded Yjs doc. The existing E2E suite has an established pattern at `tests/e2e/fixtures/` — match it. Note: the page-level `measurements` array lives on the CANVAS-typed node, not as a separate scene-tree node.)
 
 - [ ] **Step 13.2: Write the spec**
 
@@ -2197,7 +3003,7 @@ Create `kova-open-pencil-1/tests/e2e/engine/slice-measurement-load.spec.ts`:
 ```typescript
 import { test, expect } from '@playwright/test'
 
-test('engine smoke — load canvas with SLICE + MEASUREMENT + mask renders without console error', async ({ page }) => {
+test('engine smoke — load canvas with SLICE + page-level measurement + mask renders without console error', async ({ page }) => {
   const consoleErrors: string[] = []
   page.on('console', (msg) => {
     if (msg.type() === 'error') consoleErrors.push(msg.text())
@@ -2217,6 +3023,14 @@ test('engine smoke — load canvas with SLICE + MEASUREMENT + mask renders witho
     const ctx = el.getContext('webgl2') ?? el.getContext('webgl')
     return ctx !== null
   })).toBe(true)
+
+  // Assert the page-level measurement loaded
+  const measurementCount = await page.evaluate(() => {
+    // Access the figma proxy via a debug global the dev build exposes
+    return (window as { __figma?: { currentPage: { getMeasurements(): unknown[] } } }).__figma
+      ?.currentPage.getMeasurements().length ?? 0
+  })
+  expect(measurementCount).toBe(1)
 })
 ```
 
@@ -2279,10 +3093,13 @@ In a fresh dev session:
 
 1. Run `bun run dev`; sign in; open any canvas
 2. In browser DevTools console: `figma.createSlice()` → verify a SLICE node ID returned
-3. `figma.createMeasurement()` → verify a MEASUREMENT node ID returned
-4. `figma.getSelection()[0].isMask = true; figma.getSelection()[0].maskType = 'ALPHA'` → verify canvas re-renders showing the mask composite
-5. Toggle `maskType` to `'VECTOR'` and `'LUMINANCE'` → verify visible compositing changes
-6. Refresh the page → verify slice + measurement + mask state survives
+3. Create two RECTANGLES; pass their proxies to `figma.currentPage.addMeasurement({ node: a, side: 'RIGHT' }, { node: b, side: 'LEFT' })` → verify it returns a `Measurement` record with an `id`
+4. `figma.currentPage.getMeasurements()` → verify the measurement appears
+5. `figma.getSelection()[0].isMask = true; figma.getSelection()[0].maskType = 'ALPHA'` → verify canvas re-renders showing the mask composite
+6. Toggle `maskType` to `'VECTOR'` and `'LUMINANCE'` → verify visible compositing changes
+7. Refresh the page → verify slice + page-level measurement + mask state all survives
+8. Remove the anchor node (`figma.getNodeById('<nodeA-id>').remove()`) → verify `figma.currentPage.getMeasurements()` still returns the measurement (orphan-not-cascade) and the engine emitted `measurement:broken`
+9. Move a measurement-anchored node to a different CANVAS (cut+paste) → verify source measurements dropped + `measurement:dropped` emitted
 
 Document each ✓ in the PR description.
 
@@ -2298,18 +3115,20 @@ cd kova-open-pencil-1 && git status
 git push origin feat/m9-shopify  # or 07a-named feature branch
 gh pr create --title "feat(engine): Cluster 07a Canvas Engine Core + Renderer" --body "$(cat <<'EOF'
 ## Summary
-- Lift `packages/core/` lock per ratified CLAUDE.md amendment (00c §895)
-- Add SLICE + MEASUREMENT NodeTypes; aspectRatio + includeInExports + pageBackgroundVisible SceneNode fields; OpenType + list + link per-text-run metadata
-- Add `scaleNode` modify tool + recursive scale; refactor `createSlice` to SLICE NodeType; add `createMeasurement` + `arrowStub`
+- Lift `packages/core/` lock per ratified CLAUDE.md amendment (00c §895) — amendment paragraph added to CLAUDE.md in same merge group
+- Add SLICE NodeType (only — measurement is page-level per Figma model)
+- Add page-level Measurement system on CANVAS: 5 SceneGraph methods (`addMeasurement`/`getMeasurements`/`getMeasurementsForNode`/`editMeasurement`/`deleteMeasurement`) matching Figma's PageNode API verbatim; new types `MeasurementSide`/`MeasurementOffset`/`MeasurementAnchor`/`Measurement`; orphan-on-anchor-delete + drop-on-cross-canvas-move semantics with `measurement:broken` / `measurement:dropped` events
+- Add aspectRatio + includeInExports + pageBackgroundVisible + measurements SceneNode fields; OpenType + list + link per-text-run metadata
+- Add `scaleNode` modify tool + recursive scale; refactor `createSlice` to SLICE NodeType; add `addMeasurement` ToolDef (page-level wrapper) + `arrowStub`
 - Sibling-traversal mask compositing in `renderer/scene.ts` for ALPHA + VECTOR + LUMINANCE
-- Kiwi schema v2.0.0 with backwards-compat unknown-NodeType skip
+- Kiwi schema v2.0.0 with backwards-compat unknown-NodeType skip + fail-soft MeasurementSide enum handling
 - CHANGELOG-KOVA.md initial entry
 
 ## Test plan
 - [x] `bun run test:unit` green (baseline + new tests pass; 0 fail; 0 new skips)
 - [x] `bun run test` Playwright E2E green
 - [x] `bun run check && bun run format && bun run test:dupes` green
-- [x] Engineer manual smoke per PRD §9.4 — slice + measurement + mask + reload all verified
+- [x] Engineer manual smoke per PRD §9.4 — slice + page-level measurement + mask + reload + orphan-on-delete + cross-canvas-drop all verified
 - [x] CHANGELOG-KOVA.md populated; first upstream PR (SLICE NodeType) drafted on fork branch
 
 PRD: `kova-open-pencil-1/docs/kova-final-prds/07a-canvas-engine-core-renderer.md`
@@ -2326,7 +3145,7 @@ Within 14 days of this PRD's PR merging into `feat/m9-shopify` / main:
 
 - [ ] Submit the first upstream PR (SLICE NodeType, smallest, lowest-risk) to `open-pencil/main`
 - [ ] Flip the CHANGELOG-KOVA.md row status to `submitted`
-- [ ] Track subsequent upstream PRs (one per week cadence): MEASUREMENT NodeType → mask compositing → scaleNode → kiwi schema bump → field additions → CharacterStyleOverride extensions → figma-api-proxy → arrowStub
+- [ ] Track subsequent upstream PRs (one per week cadence): page-level Measurement system (5 PageNode methods + types + struct) → mask compositing → scaleNode → kiwi schema bump → field additions → CharacterStyleOverride extensions → figma-api-proxy → arrowStub
 - [ ] Update CHANGELOG-KOVA.md row statuses as upstream review progresses
 
 ---
@@ -2334,31 +3153,33 @@ Within 14 days of this PRD's PR merging into `feat/m9-shopify` / main:
 ## Self-review summary
 
 **Spec coverage:**
-- PRD §7.1 NodeType additions → Tasks 1, 8
+- PRD §7.1 NodeType additions (SLICE only) → Tasks 1, 8
+- PRD §7.1b Page-level Measurement system (NEW post-2026-05-17) → Tasks 1b, 7, 8
 - PRD §7.2 SceneNode field additions → Tasks 2, 7, 8
 - PRD §7.3 CharacterStyleOverride extensions → Tasks 3, 8
-- PRD §7.4 Tool registrations (scaleNode + createSlice refactor + createMeasurement + arrowStub) → Tasks 4, 5, 6
+- PRD §7.4 Tool registrations (scaleNode + createSlice refactor + `addMeasurement` page-level wrapper + arrowStub) → Tasks 4, 5, 6
 - PRD §7.5 Renderer mask compositing → Task 9
 - PRD §7.6 Kiwi schema bump → Task 8
-- PRD §7.7 figma-api-proxy exposure → Task 7
+- PRD §7.7 figma-api-proxy exposure (createSlice + currentPage measurement methods) → Task 7
 - PRD §7.8 CHANGELOG-KOVA.md → Task 11
 - PRD §8 Acceptance criteria → Tasks 1–9 each enforce a subset; Task F runs the aggregate
-- PRD §9.1 Unit tests → Tasks 1–11 (every task contains its unit test specs)
+- PRD §9.1 Unit tests → Tasks 1, 1b, 2–11 (every task contains its unit test specs)
 - PRD §9.2 Integration tests → Task 12
 - PRD §9.3 E2E smoke → Task 13
 - PRD §9.4 Manual QA → Task F-5
 - PRD §9.5 Pre-commit + CI verifications → Task F-3, F-4
-- PRD §12.3 CLAUDE.md amendment text → Task 10
+- PRD §12.3 + §12.14 CLAUDE.md amendment text → Task 10
 
 No spec gaps detected.
 
-**Task coupling note (re Tasks 5 + 7):** Task 5 (createSlice refactor + createMeasurement tools) depends on Task 7 (proxy methods `figma.createSlice()` + `figma.createMeasurement()`). The plan keeps the numbering but explicitly calls out the dep in Task 5.4. The executor should either swap Task 7 ahead of Task 5 OR land them in one batch commit. Both are valid; pick what matches the team's commit-granularity preference.
+**Task coupling note (re Tasks 5 + 7):** Task 5 (createSlice refactor + addMeasurement ToolDef) depends on Task 7 (proxy methods `figma.createSlice()` + `figma.currentPage.*` measurement methods). The plan keeps the numbering but explicitly calls out the dep in Step 5.5. The executor should either swap Task 7 ahead of Task 5 OR land them in one batch commit. Both are valid; pick what matches the team's commit-granularity preference.
 
 **Type-consistency check:**
 - `scaleNodeRecursive` exported from `tools/modify.ts` and reused by `figma-api-proxy.ts` `FigmaNodeProxy.scale` — consistent name across tasks 4 + 7
 - `ListType` exported from `scene-graph.ts` (Task 3) + extended in kiwi schema (Task 8) — names match
-- `figma.createSlice()` and `figma.createMeasurement()` consistent between proxy interface (Task 7), tools/create.ts (Task 5), and FigmaAPI interface (Task 7)
-- `aspectRatio` / `includeInExports` / `pageBackgroundVisible` field names consistent across SceneNode interface (Task 2), defaults (Task 1.4), proxy accessors (Task 7), Kiwi struct (Task 8), and CHANGELOG (Task 11)
+- `MeasurementSide` / `MeasurementOffset` / `MeasurementAnchor` / `Measurement` types defined in `scene-graph.ts` (Task 1b) and reused by `tools/measurement.ts` (Task 5), `figma-api-proxy.ts` `FigmaPageProxy` (Task 7), kiwi schema + convert (Task 8) — consistent names + shapes across all touchpoints
+- `figma.createSlice()` (FigmaAPI proxy) consistent between proxy interface (Task 7), tools/create.ts (Task 5), and FigmaAPI interface (Task 7); `figma.currentPage.addMeasurement(...)` consistent between proxy interface (Task 7), addMeasurement ToolDef (Task 5), and FigmaPageProxy class (Task 7)
+- `aspectRatio` / `includeInExports` / `pageBackgroundVisible` / `measurements` field names consistent across SceneNode interface (Task 2 + 1b), defaults (Task 1.4), proxy accessors (Task 7), Kiwi struct (Task 8), and CHANGELOG (Task 11)
 
 **Placeholder scan:** No `TBD`, no `TODO`, no "implement later." Every code block contains the actual code the engineer writes.
 

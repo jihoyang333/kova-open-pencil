@@ -155,7 +155,7 @@ kova-open-pencil-1/src/
 // kova-open-pencil-1/src/constants/overlays.ts
 
 /**
- * Z-index stacking order for canvas overlays (sourced from hi-fi 09 §3.4).
+ * Z-index stacking order for canvas overlays (sourced from hi-fi 09 §3.4 + PRD §12.12 find re-scope).
  * Lower numbers paint underneath higher numbers.
  */
 export const OVERLAY_Z = {
@@ -164,12 +164,13 @@ export const OVERLAY_Z = {
   LAYOUT_GUIDES: 3,
   HOVER_CONTOUR: 4,
   MASK_OUTLINES: 4,
-  FIND_HIGHLIGHT: 4,
   SNAP_PIXEL: 5,
   SELECTION_BOX: 5,
   MEASUREMENT_LINE: 5,
   SLICE_REGION: 5,
   SELECTION_HANDLE: 6,
+  DIM_LAYER: 6,                  // find focus mode backdrop over non-matching nodes (PRD §12.12)
+  FIND_OVERLAY: 6,               // find clickthrough handler — same layer as DIM_LAYER
   SPACING_TAG: 7,
   FRAME_LABEL: 7,
   SIZE_CHIP: 7,
@@ -179,7 +180,7 @@ export const OVERLAY_Z = {
 } as const
 
 /**
- * Canonical overlay color tokens (sourced from hi-fi 09 §3.5).
+ * Canonical overlay color tokens (sourced from hi-fi 09 §3.5 + PRD §12.12).
  * `var(--select)` resolved at runtime via design-system tokens.
  */
 export const OVERLAY_COLOR = {
@@ -192,11 +193,12 @@ export const OVERLAY_COLOR = {
   EYEDROPPER_BORDER_WHITE: '#ffffff',
   EYEDROPPER_SHADOW: '#1e1e1e',
   EYEDROPPER_HEX_CHIP_BG: '#2c2c2c',
+  FIND_DIM: 'rgba(0, 0, 0, 0.6)',  // PRD §12.12 founder decision — dim backdrop over non-matching nodes during find
   AI_KOVA_BLUE: '#5a7dff', // EXCLUSIVE to AI assist panel — never used elsewhere
 } as const
 
 /**
- * Pixel-grid auto-show threshold per hi-fi B8.5.
+ * Pixel-grid auto-show threshold per hi-fi B8.5 + PRD §12.7.
  */
 export const PIXEL_GRID_ZOOM_THRESHOLD = 8.0 // 800%
 
@@ -210,15 +212,62 @@ export const JPG_QUALITY = {
 } as const
 
 /**
+ * Camera-pan animation parameters per PRD §12.12 (find focus mode).
+ */
+export const CAMERA_PAN = {
+  DURATION_MS: 250,
+  EASING: 'cubic-bezier(0.4, 0, 0.2, 1)',
+  PADDING_PCT: 10,
+} as const
+
+/**
+ * Find feature config per PRD §12.12.
+ */
+export const FIND_CONFIG = {
+  RESULTS_MAX: 200,
+  QUERY_DEBOUNCE_MS: 80,
+} as const
+
+/**
+ * Gradient editor modes enabled in MVP per PRD §12.5 founder decision (all 4 — match Figma).
+ */
+export const GRADIENT_MODES = ['linear', 'radial', 'angular', 'diamond'] as const
+export type GradientMode = typeof GRADIENT_MODES[number]
+
+/**
+ * Multiple-fills cap per PRD §12 round 4 founder decision (match Figma — no cap).
+ */
+export const MULTIPLE_FILLS_CAP = Infinity
+
+/**
+ * Keyboard shortcut bindings (registered via Cluster 08 registry when available, otherwise local fallback handler).
+ * Boolean ops per PRD §12.5 founder decision (Option+Shift, matches Figma exactly).
+ * Pixel grid per PRD §12.7 founder decision.
+ * Find per PRD §12.12 founder decision (07b owns end-to-end).
+ */
+export const SHORTCUTS = {
+  BOOLEAN_UNION:      'alt+shift+u',
+  BOOLEAN_SUBTRACT:   'alt+shift+s',
+  BOOLEAN_INTERSECT:  'alt+shift+i',
+  BOOLEAN_EXCLUDE:    'alt+shift+e',
+  PROPS_COPY:         'cmd+alt+c',
+  PROPS_PASTE:        'cmd+alt+v',
+  EYEDROPPER:         'control+c',
+  PIXEL_GRID_TOGGLE:  'shift+quote',  // Shift+' — matches Figma
+  FIND_OPEN:          'cmd+f',
+  FIND_CLOSE:         'escape',
+} as const
+
+/**
  * Hardcoded feature gates per 00d 2.B (no runtime feature-flag service in MVP).
  */
 export const FEATURE_GATES = {
-  KEYBOARD_SHORTCUTS_REGISTRY_AVAILABLE: false,  // flips true when Cluster 08 ships
+  KEYBOARD_SHORTCUTS_REGISTRY_AVAILABLE: false,  // flips true when Cluster 08 ships; Phase A uses local fallback
   EXPORT_PIPELINE_ZIP_BATCHING: false,           // flips true when JSZip in deps (Phase B)
-  FIND_OVERLAY_DORMANT: true,                    // flips false when Cluster 08 ships useFind
+  FIND_FEATURE_ENABLED: true,                    // PRD §12.12 — 07b ships find end-to-end in Phase A; always on
   LAYOUT_GUIDES_DEFAULT_ON: true,                // Q24-locked
   EYEDROPPER_CANVAS_ONLY: true,                  // Q20-locked for MVP
-  EFFECTS_SECTION_DEFAULT_COLLAPSED: true,
+  EFFECTS_SECTION_DEFAULT_COLLAPSED: true,       // PRD §12 round 4 founder confirm
 } as const
 ```
 
@@ -231,7 +280,14 @@ Expected: zero errors.
 
 ```bash
 git add kova-open-pencil-1/src/constants/overlays.ts
-git commit -m "feat(07b): add overlay z-index, color tokens + feature gates"
+git commit -m "feat(07b): add overlay z-index, color tokens, find config + feature gates
+
+Bakes in PRD §12 founder decisions (2026-05-17):
+- Boolean ops shortcuts: alt+shift+U/S/I/E (matches Figma, supersedes Q3 #14)
+- Pixel grid: shift+' shortcut, auto-show > 800% zoom
+- Find: 07b owns end-to-end, dim rgba(0,0,0,0.6), camera pan 250ms 10% padding
+- Gradient: all 4 modes (linear+radial+angular+diamond)
+- Multiple fills: no cap"
 ```
 
 ---
@@ -591,6 +647,197 @@ Expected: all previously-green tests still green.
 ```bash
 git add kova-open-pencil-1/src/stores/editor.ts kova-open-pencil-1/tests/unit/stores/editor-overlays.test.ts
 git commit -m "feat(07b): extend useEditorStore with overlay flags + activeTool union"
+```
+
+---
+
+### Task 1.6: useFindStore — failing test (PRD §12.12 — 07b owns find end-to-end)
+
+**Files:**
+- Test: `kova-open-pencil-1/tests/unit/stores/find.test.ts`
+
+- [ ] **Step 1: Write failing test**
+
+```typescript
+// kova-open-pencil-1/tests/unit/stores/find.test.ts
+import { describe, expect, it, beforeEach } from 'bun:test'
+import { setActivePinia, createPinia } from 'pinia'
+import { useFindStore } from '@/stores/find'
+
+describe('useFindStore', () => {
+  beforeEach(() => setActivePinia(createPinia()))
+
+  it('defaults: active=false, query="", matchedNodeIds=[], focusedNodeId=null', () => {
+    const store = useFindStore()
+    expect(store.active).toBe(false)
+    expect(store.query).toBe('')
+    expect(store.matchedNodeIds).toEqual([])
+    expect(store.focusedNodeId).toBeNull()
+  })
+
+  it('open() sets active=true, clears prior state', () => {
+    const store = useFindStore()
+    store.matchedNodeIds = ['stale']
+    store.focusedNodeId = 'stale'
+    store.query = 'stale'
+    store.open()
+    expect(store.active).toBe(true)
+    expect(store.query).toBe('')
+    expect(store.matchedNodeIds).toEqual([])
+    expect(store.focusedNodeId).toBeNull()
+  })
+
+  it('close() sets active=false + clears all', () => {
+    const store = useFindStore()
+    store.open()
+    store.query = 'frame'
+    store.matchedNodeIds = ['a', 'b']
+    store.focusedNodeId = 'a'
+    store.close()
+    expect(store.active).toBe(false)
+    expect(store.query).toBe('')
+    expect(store.matchedNodeIds).toEqual([])
+    expect(store.focusedNodeId).toBeNull()
+  })
+
+  it('isMultiMatch is true when matchedNodeIds.length > 1 AND focusedNodeId === null', () => {
+    const store = useFindStore()
+    store.open()
+    store.matchedNodeIds = ['a', 'b', 'c']
+    expect(store.isMultiMatch).toBe(true)
+    store.focusedNodeId = 'a'
+    expect(store.isMultiMatch).toBe(false)
+  })
+
+  it('isFocused is true when focusedNodeId !== null OR matchedNodeIds.length === 1', () => {
+    const store = useFindStore()
+    store.open()
+    store.matchedNodeIds = ['a']
+    expect(store.isFocused).toBe(true)
+    store.matchedNodeIds = ['a', 'b']
+    expect(store.isFocused).toBe(false)
+    store.focusedNodeId = 'b'
+    expect(store.isFocused).toBe(true)
+  })
+
+  it('focusNode(id) sets focusedNodeId — useCameraPan integration tested in composable test', () => {
+    const store = useFindStore()
+    store.open()
+    store.matchedNodeIds = ['a', 'b']
+    store.focusNode('b')
+    expect(store.focusedNodeId).toBe('b')
+  })
+
+  it('exitOnDimClick(id) closes find + sets new selection (via useEditorStore mock)', () => {
+    const store = useFindStore()
+    store.open()
+    store.matchedNodeIds = ['a']
+    store.exitOnDimClick('other')
+    expect(store.active).toBe(false)
+    // Note: actual selection write tested in integration suite where editorStore is wired.
+  })
+})
+```
+
+- [ ] **Step 2: Run test to verify failure**
+
+Run: `bun test tests/unit/stores/find.test.ts`
+Expected: FAIL — `@/stores/find` not found.
+
+---
+
+### Task 1.7: useFindStore — implementation
+
+**Files:**
+- Create: `kova-open-pencil-1/src/stores/find.ts`
+
+- [ ] **Step 1: Write implementation**
+
+```typescript
+// kova-open-pencil-1/src/stores/find.ts
+import { defineStore } from 'pinia'
+import { ref, computed } from 'vue'
+
+export const useFindStore = defineStore('find', () => {
+  const active = ref(false)
+  const query = ref('')
+  const matchedNodeIds = ref<string[]>([])
+  const focusedNodeId = ref<string | null>(null)
+
+  const isMultiMatch = computed(
+    () => matchedNodeIds.value.length > 1 && focusedNodeId.value === null,
+  )
+
+  const isFocused = computed(
+    () => focusedNodeId.value !== null || matchedNodeIds.value.length === 1,
+  )
+
+  const dimmedNodeIds = computed(() => {
+    if (!active.value) return []
+    // The set of all visible scene-graph node IDs minus matchedNodeIds.
+    // Computed lazily inside DimLayerOverlay against figma.currentPage.children
+    // — keep this computed thin here; the overlay does the traversal so it can use viewport culling.
+    return matchedNodeIds.value
+  })
+
+  function open(): void {
+    active.value = true
+    query.value = ''
+    matchedNodeIds.value = []
+    focusedNodeId.value = null
+  }
+
+  function close(): void {
+    active.value = false
+    query.value = ''
+    matchedNodeIds.value = []
+    focusedNodeId.value = null
+  }
+
+  function setQuery(q: string): void {
+    query.value = q
+    // useFindSearch composable watches `query` and writes `matchedNodeIds`.
+  }
+
+  function focusNode(id: string): void {
+    focusedNodeId.value = id
+    // useCameraPan watches `focusedNodeId` and triggers panToNode(id).
+  }
+
+  function exitOnDimClick(clickedNodeId: string): void {
+    close()
+    // Selection write: useEditorStore.setSelection([clickedNodeId])
+    // Wired by FindOverlay's click handler; store stays decoupled from editor here.
+    // See FindOverlay test for selection integration.
+  }
+
+  return {
+    active,
+    query,
+    matchedNodeIds,
+    focusedNodeId,
+    isMultiMatch,
+    isFocused,
+    dimmedNodeIds,
+    open,
+    close,
+    setQuery,
+    focusNode,
+    exitOnDimClick,
+  }
+})
+```
+
+- [ ] **Step 2: Run test to verify pass**
+
+Run: `bun test tests/unit/stores/find.test.ts`
+Expected: all PASS.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add kova-open-pencil-1/src/stores/find.ts kova-open-pencil-1/tests/unit/stores/find.test.ts
+git commit -m "feat(07b): add useFindStore for canvas focus mode (PRD §12.12)"
 ```
 
 ---
@@ -1113,6 +1360,351 @@ git commit -m "feat(07b): add useCopyPasteProps for Q23 full-set"
 
 ---
 
+### Task 2.11: useFindSearch — failing test (PRD §12.12)
+
+**Files:**
+- Test: `kova-open-pencil-1/tests/unit/composables/use-find-search.test.ts`
+
+- [ ] **Step 1: Write failing test**
+
+```typescript
+import { describe, expect, it, beforeEach, mock } from 'bun:test'
+import { setActivePinia, createPinia } from 'pinia'
+import { useFindStore } from '@/stores/find'
+import { useFindSearch } from '@/composables/use-find-search'
+
+const buildSceneGraph = (names: string[]) => ({
+  findAll: (predicate: (n: { name: string }) => boolean) =>
+    names.map((name, i) => ({ id: `n${i}`, name })).filter(predicate),
+})
+
+describe('useFindSearch', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    ;(globalThis as any).figma = {
+      currentPage: buildSceneGraph(['Frame 1', 'Frame 4', 'Frame 5', 'Header', 'Footer']),
+    }
+  })
+
+  it('runQuery("frame") matches case-insensitively on node.name', async () => {
+    const store = useFindStore()
+    const { runQuery } = useFindSearch()
+    runQuery('frame')
+    await new Promise(r => setTimeout(r, 100)) // wait debounce 80ms
+    expect(store.matchedNodeIds).toHaveLength(3)
+    expect(store.matchedNodeIds).toEqual(['n0', 'n1', 'n2'])
+  })
+
+  it('runQuery("FRAME") = runQuery("frame") (case-insensitive)', async () => {
+    const store = useFindStore()
+    const { runQuery } = useFindSearch()
+    runQuery('FRAME')
+    await new Promise(r => setTimeout(r, 100))
+    expect(store.matchedNodeIds).toHaveLength(3)
+  })
+
+  it('runQuery narrows to 1 match → auto-focusNode that match', async () => {
+    const store = useFindStore()
+    const { runQuery } = useFindSearch()
+    runQuery('frame 4')
+    await new Promise(r => setTimeout(r, 100))
+    expect(store.matchedNodeIds).toEqual(['n1'])
+    expect(store.focusedNodeId).toBe('n1')
+  })
+
+  it('runQuery debounces by 80ms (rapid calls collapse to 1 invocation)', async () => {
+    const store = useFindStore()
+    const { runQuery } = useFindSearch()
+    runQuery('f')
+    runQuery('fr')
+    runQuery('fra')
+    runQuery('fram')
+    runQuery('frame')
+    await new Promise(r => setTimeout(r, 100))
+    expect(store.matchedNodeIds).toHaveLength(3) // final 'frame' result
+  })
+
+  it('runQuery returns max 200 results', async () => {
+    const manyNames = Array.from({ length: 500 }, (_, i) => `Frame ${i}`)
+    ;(globalThis as any).figma.currentPage = buildSceneGraph(manyNames)
+    const store = useFindStore()
+    const { runQuery } = useFindSearch()
+    runQuery('frame')
+    await new Promise(r => setTimeout(r, 100))
+    expect(store.matchedNodeIds).toHaveLength(200)
+  })
+})
+```
+
+- [ ] **Step 2: Run test to verify failure**
+
+Run: `bun test tests/unit/composables/use-find-search.test.ts`
+Expected: FAIL — `@/composables/use-find-search` not found.
+
+---
+
+### Task 2.12: useFindSearch — implementation
+
+**Files:**
+- Create: `kova-open-pencil-1/src/composables/use-find-search.ts`
+
+- [ ] **Step 1: Write implementation**
+
+```typescript
+// kova-open-pencil-1/src/composables/use-find-search.ts
+import { watch } from 'vue'
+import { useFindStore } from '@/stores/find'
+import { FIND_CONFIG } from '@/constants/overlays'
+
+declare const figma: {
+  currentPage: { findAll: (predicate: (n: { id: string; name: string }) => boolean) => Array<{ id: string; name: string }> }
+}
+
+let debounceTimer: ReturnType<typeof setTimeout> | null = null
+
+export function useFindSearch() {
+  const findStore = useFindStore()
+
+  function runQuery(query: string): void {
+    if (debounceTimer !== null) clearTimeout(debounceTimer)
+    debounceTimer = setTimeout(() => {
+      const trimmed = query.trim().toLowerCase()
+      if (trimmed.length === 0) {
+        findStore.matchedNodeIds = []
+        findStore.focusedNodeId = null
+        return
+      }
+      const matches = figma.currentPage
+        .findAll((n) => n.name.toLowerCase().includes(trimmed))
+        .slice(0, FIND_CONFIG.RESULTS_MAX)
+      findStore.matchedNodeIds = matches.map((n) => n.id)
+      if (matches.length === 1) {
+        findStore.focusNode(matches[0].id)
+      } else {
+        findStore.focusedNodeId = null
+      }
+    }, FIND_CONFIG.QUERY_DEBOUNCE_MS)
+  }
+
+  function cancel(): void {
+    if (debounceTimer !== null) {
+      clearTimeout(debounceTimer)
+      debounceTimer = null
+    }
+  }
+
+  // Auto-wire: when findStore.query changes, run the query.
+  watch(
+    () => findStore.query,
+    (q) => runQuery(q),
+  )
+
+  return { runQuery, cancel }
+}
+```
+
+- [ ] **Step 2: Run test to verify pass**
+
+Run: `bun test tests/unit/composables/use-find-search.test.ts`
+Expected: 5 PASS.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add kova-open-pencil-1/src/composables/use-find-search.ts kova-open-pencil-1/tests/unit/composables/use-find-search.test.ts
+git commit -m "feat(07b): add useFindSearch composable (PRD §12.12 — query → matchedNodeIds)"
+```
+
+---
+
+### Task 2.13: useCameraPan — failing test (PRD §12.12)
+
+**Files:**
+- Test: `kova-open-pencil-1/tests/unit/composables/use-camera-pan.test.ts`
+
+- [ ] **Step 1: Write failing test**
+
+```typescript
+import { describe, expect, it, beforeEach } from 'bun:test'
+import { useCameraPan } from '@/composables/use-camera-pan'
+
+describe('useCameraPan', () => {
+  let viewport: { center: { x: number; y: number }; zoom: number }
+
+  beforeEach(() => {
+    viewport = { center: { x: 0, y: 0 }, zoom: 1 }
+    ;(globalThis as any).figma = {
+      viewport,
+      getNodeById: (id: string) => ({
+        id,
+        absoluteBoundingBox: { x: 1000, y: 500, width: 200, height: 100 },
+      }),
+    }
+  })
+
+  it('panToNode(id) animates over 250ms then resolves', async () => {
+    const { panToNode } = useCameraPan()
+    const start = performance.now()
+    await panToNode('n1')
+    const elapsed = performance.now() - start
+    expect(elapsed).toBeGreaterThanOrEqual(245)
+    expect(elapsed).toBeLessThan(320)
+  })
+
+  it('panToNode writes viewport.center to node bbox center', async () => {
+    const { panToNode } = useCameraPan()
+    await panToNode('n1')
+    // bbox center: (1000 + 100, 500 + 50) = (1100, 550)
+    expect(viewport.center.x).toBeCloseTo(1100, 0)
+    expect(viewport.center.y).toBeCloseTo(550, 0)
+  })
+
+  it('panToNode applies 10% padding to zoom calculation', async () => {
+    // viewport assumed 1000×600; node bbox 200×100; fit with 10% padding
+    // → effective viewport target: 1000 * 0.9 = 900 × 600 * 0.9 = 540
+    // → zoom = min(900/200, 540/100) = min(4.5, 5.4) = 4.5
+    const { panToNode } = useCameraPan()
+    ;(globalThis as any).window = { innerWidth: 1000, innerHeight: 600 }
+    await panToNode('n1')
+    expect(viewport.zoom).toBeCloseTo(4.5, 1)
+  })
+
+  it('cancel-safe: second panToNode interrupts first', async () => {
+    const { panToNode } = useCameraPan()
+    const p1 = panToNode('n1')
+    await new Promise(r => setTimeout(r, 50)) // mid-flight
+    ;(globalThis as any).figma.getNodeById = (id: string) => ({
+      id,
+      absoluteBoundingBox: { x: 0, y: 0, width: 100, height: 100 },
+    })
+    const p2 = panToNode('n2')
+    await Promise.all([p1, p2])
+    // Final position should be n2's, not n1's
+    expect(viewport.center.x).toBeCloseTo(50, 0)
+    expect(viewport.center.y).toBeCloseTo(50, 0)
+  })
+
+  it('isAnimating is true during pan, false after', async () => {
+    const { panToNode, isAnimating } = useCameraPan()
+    expect(isAnimating.value).toBe(false)
+    const p = panToNode('n1')
+    await new Promise(r => setTimeout(r, 50))
+    expect(isAnimating.value).toBe(true)
+    await p
+    expect(isAnimating.value).toBe(false)
+  })
+})
+```
+
+- [ ] **Step 2: Run test to verify failure**
+
+Run: `bun test tests/unit/composables/use-camera-pan.test.ts`
+Expected: FAIL — `@/composables/use-camera-pan` not found.
+
+---
+
+### Task 2.14: useCameraPan — implementation
+
+**Files:**
+- Create: `kova-open-pencil-1/src/composables/use-camera-pan.ts`
+
+- [ ] **Step 1: Write implementation**
+
+```typescript
+// kova-open-pencil-1/src/composables/use-camera-pan.ts
+import { ref, computed } from 'vue'
+import { CAMERA_PAN } from '@/constants/overlays'
+
+declare const figma: {
+  viewport: { center: { x: number; y: number }; zoom: number }
+  getNodeById: (id: string) => { absoluteBoundingBox: { x: number; y: number; width: number; height: number } } | null
+}
+
+const animating = ref(false)
+let currentRAF: number | null = null
+let currentCancelToken = 0
+
+function easeOutCubic(t: number): number {
+  // cubic-bezier(0.4, 0, 0.2, 1) approximation
+  return 1 - Math.pow(1 - t, 3)
+}
+
+export function useCameraPan() {
+  const isAnimating = computed(() => animating.value)
+
+  function cancel(): void {
+    if (currentRAF !== null) {
+      cancelAnimationFrame(currentRAF)
+      currentRAF = null
+    }
+    currentCancelToken += 1
+    animating.value = false
+  }
+
+  function panToNode(nodeId: string): Promise<void> {
+    cancel()
+    const myToken = ++currentCancelToken
+    const node = figma.getNodeById(nodeId)
+    if (node === null) return Promise.resolve()
+
+    const bbox = node.absoluteBoundingBox
+    const targetCenter = { x: bbox.x + bbox.width / 2, y: bbox.y + bbox.height / 2 }
+
+    const viewportW = (globalThis as any).window?.innerWidth ?? 1000
+    const viewportH = (globalThis as any).window?.innerHeight ?? 600
+    const paddingFactor = 1 - CAMERA_PAN.PADDING_PCT / 100
+    const targetZoom = Math.min(
+      (viewportW * paddingFactor) / bbox.width,
+      (viewportH * paddingFactor) / bbox.height,
+    )
+
+    const startCenter = { ...figma.viewport.center }
+    const startZoom = figma.viewport.zoom
+    const startTime = performance.now()
+
+    return new Promise<void>((resolve) => {
+      animating.value = true
+
+      function step(now: number): void {
+        if (myToken !== currentCancelToken) return // superseded
+        const t = Math.min(1, (now - startTime) / CAMERA_PAN.DURATION_MS)
+        const eased = easeOutCubic(t)
+        figma.viewport.center = {
+          x: startCenter.x + (targetCenter.x - startCenter.x) * eased,
+          y: startCenter.y + (targetCenter.y - startCenter.y) * eased,
+        }
+        figma.viewport.zoom = startZoom + (targetZoom - startZoom) * eased
+        if (t < 1) {
+          currentRAF = requestAnimationFrame(step)
+        } else {
+          animating.value = false
+          currentRAF = null
+          resolve()
+        }
+      }
+
+      currentRAF = requestAnimationFrame(step)
+    })
+  }
+
+  return { panToNode, cancel, isAnimating }
+}
+```
+
+- [ ] **Step 2: Run test to verify pass**
+
+Run: `bun test tests/unit/composables/use-camera-pan.test.ts`
+Expected: 5 PASS.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add kova-open-pencil-1/src/composables/use-camera-pan.ts kova-open-pencil-1/tests/unit/composables/use-camera-pan.test.ts
+git commit -m "feat(07b): add useCameraPan composable (PRD §12.12 — 250ms ease-out, 10% padding)"
+```
+
+---
+
 ## Phase 3: Inspector components (10 NEW)
 
 > **Pattern:** every component task is identical shape — write failing test, write component, run test, commit. The components themselves are small leaf Vue files. Each one cites its hi-fi scene.
@@ -1615,6 +2207,8 @@ git commit -m "feat(07b): add GradientStopList component (hi-fi 12.6/12.7)"
 
 Hi-fi: 12.6 / 12.7 / 12.8 / 12.9–12.11 / 12.12–12.14 (anchor contexts). Composes `<GradientStopList>`.
 
+**Per PRD §12.5 founder decision (2026-05-17):** ship ALL 4 gradient types — Linear, Radial, Angular, Diamond. 6 mode tabs total (Solid / Linear / Radial / Angular / Diamond / Image). Match Figma exactly.
+
 - [ ] **Step 1: Write failing test**
 
 ```typescript
@@ -1623,14 +2217,18 @@ import { mount } from '@vue/test-utils'
 import PaintEditor from '@/components/inspector/PaintEditor.vue'
 
 describe('PaintEditor', () => {
-  it('renders 4 mode tabs in default context', () => {
+  it('renders 6 mode tabs in default context (PRD §12.5 — all 4 gradient types + solid + image)', () => {
     const wrapper = mount(PaintEditor, {
       props: {
         modelValue: { type: 'SOLID', color: { r: 0, g: 0, b: 0, a: 1 } },
         mode: 'solid',
       },
     })
-    expect(wrapper.findAll('[data-test="mode-tab"]')).toHaveLength(4)
+    const tabs = wrapper.findAll('[data-test="mode-tab"]')
+    expect(tabs).toHaveLength(6)
+    expect(tabs.map(t => t.attributes('data-mode'))).toEqual([
+      'solid', 'linear', 'radial', 'angular', 'diamond', 'image',
+    ])
   })
 
   it('renders only solid mode in page-bg context', () => {
@@ -1654,6 +2252,40 @@ describe('PaintEditor', () => {
     await wrapper.findAll('[data-test="mode-tab"]')[1].trigger('click')
     expect(wrapper.emitted('update:mode')![0]).toEqual(['linear'])
   })
+
+  it('renders gradient-stops UI for any of the 4 gradient modes', () => {
+    for (const m of ['linear', 'radial', 'angular', 'diamond'] as const) {
+      const wrapper = mount(PaintEditor, {
+        props: {
+          modelValue: { type: `GRADIENT_${m.toUpperCase()}`, gradientStops: [] } as any,
+          mode: m,
+        },
+      })
+      expect(wrapper.find('[data-test="gradient-stops"]').exists()).toBe(true)
+    }
+  })
+
+  it('renders angle input for Linear + Angular (not for Radial + Diamond)', () => {
+    const linearWrap = mount(PaintEditor, {
+      props: { modelValue: { type: 'GRADIENT_LINEAR', gradientStops: [] } as any, mode: 'linear' },
+    })
+    expect(linearWrap.find('[data-test="gradient-angle"]').exists()).toBe(true)
+
+    const angularWrap = mount(PaintEditor, {
+      props: { modelValue: { type: 'GRADIENT_ANGULAR', gradientStops: [] } as any, mode: 'angular' },
+    })
+    expect(angularWrap.find('[data-test="gradient-angle"]').exists()).toBe(true)
+
+    const radialWrap = mount(PaintEditor, {
+      props: { modelValue: { type: 'GRADIENT_RADIAL', gradientStops: [] } as any, mode: 'radial' },
+    })
+    expect(radialWrap.find('[data-test="gradient-angle"]').exists()).toBe(false)
+
+    const diamondWrap = mount(PaintEditor, {
+      props: { modelValue: { type: 'GRADIENT_DIAMOND', gradientStops: [] } as any, mode: 'diamond' },
+    })
+    expect(diamondWrap.find('[data-test="gradient-angle"]').exists()).toBe(false)
+  })
 })
 ```
 
@@ -1670,9 +2302,10 @@ Expected: FAIL.
 import { computed } from 'vue'
 import GradientStopList from './GradientStopList.vue'
 import { useEyedropper } from '@/composables/use-eyedropper'
+import { GRADIENT_MODES, type GradientMode } from '@/constants/overlays'
 import type { Paint, GradientPaint, ImagePaint } from '@open-pencil/core'
 
-type Mode = 'solid' | 'linear' | 'radial' | 'image'
+type Mode = 'solid' | GradientMode | 'image'
 type AnchorContext = 'fill' | 'stroke' | 'effect' | 'page-bg'
 
 const props = defineProps<{
@@ -1685,15 +2318,21 @@ const emit = defineEmits<{
   'update:mode': [value: Mode]
 }>()
 
-const TABS: Array<{ value: Mode; label: string }> = [
-  { value: 'solid',  label: 'Solid' },
-  { value: 'linear', label: 'Linear' },
-  { value: 'radial', label: 'Radial' },
-  { value: 'image',  label: 'Image' },
+// PRD §12.5 founder decision (2026-05-17): all 4 gradient types in MVP — match Figma.
+const TABS: Array<{ value: Mode; label: string; icon: string }> = [
+  { value: 'solid',   label: 'Solid',   icon: 'i-lucide-square' },
+  { value: 'linear',  label: 'Linear',  icon: 'i-lucide-move-right' },
+  { value: 'radial',  label: 'Radial',  icon: 'i-lucide-circle' },
+  { value: 'angular', label: 'Angular', icon: 'i-lucide-pie-chart' },
+  { value: 'diamond', label: 'Diamond', icon: 'i-lucide-diamond' },
+  { value: 'image',   label: 'Image',   icon: 'i-lucide-image' },
 ]
 
 // Hi-fi 12.12: page-bg context hides mode tabs (single-mode picker)
 const showTabs = computed(() => props.anchorContext !== 'page-bg')
+
+const isGradient = computed(() => GRADIENT_MODES.includes(props.mode as GradientMode))
+const showAngleInput = computed(() => props.mode === 'linear' || props.mode === 'angular')
 
 const { activate: activateEyedropper } = useEyedropper()
 
@@ -1708,32 +2347,49 @@ function pickColor(): void {
 <template>
   <div class="flex w-64 flex-col gap-2 rounded border border-border bg-panel p-2">
     <!-- Mode tabs (hidden in page-bg context per hi-fi 12.12) -->
-    <div v-if="showTabs" class="flex items-center gap-1">
+    <!-- 6 icon-only tabs to fit 280px popover width per PRD §12.5 -->
+    <div v-if="showTabs" class="flex items-center gap-0.5">
       <button
         v-for="tab in TABS"
         :key="tab.value"
         type="button"
         data-test="mode-tab"
-        class="flex-1 rounded px-2 py-1 text-xs"
-        :class="mode === tab.value ? 'bg-accent-soft text-accent-ink' : 'text-ink3'"
+        :data-mode="tab.value"
+        :title="tab.label"
+        class="flex-1 rounded p-1.5 text-ink3 hover:text-ink"
+        :class="mode === tab.value ? 'bg-accent-soft text-accent-ink' : ''"
         @click="emit('update:mode', tab.value)"
       >
-        {{ tab.label }}
+        <span :class="`${tab.icon} size-4 mx-auto block`" />
       </button>
     </div>
 
-    <!-- Linear / Radial: gradient stops -->
-    <GradientStopList
-      v-if="mode === 'linear' || mode === 'radial'"
-      :stops="(modelValue as GradientPaint).gradientStops || [
-        { position: 0, color: { r: 0, g: 0, b: 0, a: 1 } },
-        { position: 1, color: { r: 1, g: 1, b: 1, a: 1 } },
-      ]"
-      :selected-index="0"
-      @update:stops="emit('update:modelValue', { ...(modelValue as GradientPaint), gradientStops: $event })"
-      @update:selected-index="() => {}"
-      @add="() => {}"
-      @remove="() => {}"
+    <!-- Gradient stops (all 4 gradient modes share the stops UI) -->
+    <div v-if="isGradient" data-test="gradient-stops">
+      <GradientStopList
+        :stops="(modelValue as GradientPaint).gradientStops || [
+          { position: 0, color: { r: 0, g: 0, b: 0, a: 1 } },
+          { position: 1, color: { r: 1, g: 1, b: 1, a: 1 } },
+        ]"
+        :selected-index="0"
+        @update:stops="emit('update:modelValue', { ...(modelValue as GradientPaint), gradientStops: $event })"
+        @update:selected-index="() => {}"
+        @add="() => {}"
+        @remove="() => {}"
+      />
+    </div>
+
+    <!-- Angle input — only Linear + Angular per Figma (Radial + Diamond use handle dragging instead) -->
+    <input
+      v-if="showAngleInput"
+      data-test="gradient-angle"
+      type="number"
+      min="-360"
+      max="360"
+      step="1"
+      class="rounded border border-border bg-surface px-2 py-1 text-xs"
+      :value="(modelValue as any).rotation ?? 90"
+      @input="emit('update:modelValue', { ...(modelValue as any), rotation: Number(($event.target as HTMLInputElement).value) })"
     />
 
     <!-- Eyedropper trigger (always visible — hi-fi 12.5) -->
@@ -1754,7 +2410,10 @@ function pickColor(): void {
 ```bash
 bun test tests/unit/components/inspector/PaintEditor.test.ts
 git add kova-open-pencil-1/src/components/inspector/PaintEditor.vue kova-open-pencil-1/tests/unit/components/inspector/PaintEditor.test.ts
-git commit -m "feat(07b): add PaintEditor (Solid/Linear/Radial/Image)"
+git commit -m "feat(07b): add PaintEditor with all 6 modes (Solid/Linear/Radial/Angular/Diamond/Image)
+
+PRD §12.5 founder decision (2026-05-17): ship all 4 gradient types in MVP
+to match Figma exactly. Supersedes prior 'Linear+Radial only' baseline."
 ```
 
 ### Task 3.7: ImageFillPicker
@@ -2398,12 +3057,14 @@ import SnapIndicatorsOverlay from './SnapIndicatorsOverlay.vue'
 import LayoutGuidesOverlay from './LayoutGuidesOverlay.vue'
 import PixelGridOverlay from './PixelGridOverlay.vue'
 import HoverContourOverlay from './HoverContourOverlay.vue'
-import FindHighlightOverlay from './FindHighlightOverlay.vue'
+import FindOverlay from './FindOverlay.vue'
 import EyedropperCrosshair from './EyedropperCrosshair.vue'
 import MeasurementAnnotations from './MeasurementAnnotations.vue'
 import { useEditorStore } from '@/stores/editor'
+import { useFindStore } from '@/stores/find'
 
 const editor = useEditorStore()
+const findStore = useFindStore()
 </script>
 
 <template>
@@ -2415,7 +3076,8 @@ const editor = useEditorStore()
     <PixelGridOverlay v-if="editor.overlays.pixelGrid" />
     <HoverContourOverlay v-if="editor.overlays.hoverContour" />
     <SnapIndicatorsOverlay />
-    <FindHighlightOverlay />
+    <!-- FindOverlay re-enables pointer-events on itself when active for clickthrough handling (PRD §12.12) -->
+    <FindOverlay v-if="findStore.active" />
     <EyedropperCrosshair />
     <MeasurementAnnotations v-if="editor.overlays.measurements" />
   </div>
@@ -2761,13 +3423,21 @@ Each follows the same pattern as 4.2–4.4. The component files mirror the spec 
 - [ ] Component reads snap-state from `useCanvas` (existing OpenPencil hook; 07a confirms API).
 - [ ] Commit: `feat(07b): add SnapIndicatorsOverlay (hi-fi B8.1)`
 
-#### Task 4.9: FindHighlightOverlay
+#### Task 4.9: DimLayerOverlay (PRD §12.12 — primitive for find focus mode)
 
-- [ ] Test asserts: empty render when `matchedNodeIds` empty (Phase A — `useFind` not yet shipped); 1.5px golden contour when populated.
-- [ ] Component reads from `useFind` if `FEATURE_GATES.FIND_OVERLAY_DORMANT === false`; else returns null.
-- [ ] Commit: `feat(07b): add FindHighlightOverlay (dormant pre-08)`
+- [ ] Test asserts: pure-render component; `dimmedNodeIds: string[]` prop drives output; renders absolute-positioned div with `rgba(0, 0, 0, 0.6)` (from `OVERLAY_COLOR.FIND_DIM`) over each dimmed node's screen-space bbox; empty array → renders nothing; z-index = `OVERLAY_Z.DIM_LAYER` (6); pointer-events: none on the dim layer itself (input handling lives on FindOverlay).
+- [ ] Component reads node bbox via `figma.getNodeById(id).absoluteBoundingBox` for each ID in prop; transforms world coords → screen coords via `figma.viewport.center` + `figma.viewport.zoom`.
+- [ ] Commit: `feat(07b): add DimLayerOverlay (PRD §12.12 — primitive for find focus mode)`
 
-#### Task 4.10: EyedropperCrosshair
+#### Task 4.10: FindOverlay (PRD §12.12 — orchestrator + clickthrough)
+
+- [ ] Test asserts: mounts only when `useFindStore.active === true`; composes `<DimLayerOverlay :dimmedNodeIds="findStore.dimmedNodeIds">`; attaches `@click` on canvas-overlay-layer that, if click position hits a node NOT in `findStore.matchedNodeIds`, calls `findStore.exitOnDimClick(clickedNodeId)` + sets new selection on `useEditorStore`; if click hits a matched node, does NOT exit find (lets event bubble for normal selection).
+- [ ] Component test mocks `useFindStore` and `useEditorStore`; simulates click at screen coords that resolve to a known node ID; asserts `findStore.exitOnDimClick` called with correct ID for dim click, NOT called for matched click.
+- [ ] Component code: `dimmedNodeIds` is computed from the inverse of `findStore.matchedNodeIds` within the viewport — done in the overlay (not the store) so it can use viewport culling + scene-graph traversal.
+- [ ] Re-enables pointer-events: `class="pointer-events-auto"` on the wrapper (overrides parent `pointer-events: none`).
+- [ ] Commit: `feat(07b): add FindOverlay (PRD §12.12 — clickthrough orchestrator)`
+
+#### Task 4.10b: EyedropperCrosshair
 
 - [ ] Test asserts: hidden when `useEyedropperStore.active=false`; renders 96px magnifier + 16px reticle + hex chip when active.
 - [ ] Component reads pointer position via `useCanvasInput`. Hex sample via `figma.canvas.readPixel(x, y)` (07a API per PRD §12.9).
@@ -2780,6 +3450,317 @@ Each follows the same pattern as 4.2–4.4. The component files mirror the spec 
 - [ ] Commit: `feat(07b): add MeasurementAnnotations (hi-fi B8.9)`
 
 (Each task above gets its own failing test → component → pass test → commit cycle, identical in shape to Tasks 4.2–4.4. Listed concise here to avoid plan bloat — when executing, follow the 4-step pattern from 4.2.)
+
+---
+
+### Task 4.12: SearchPanel (PRD §12.12 — find feature, NEW under `src/components/find/`)
+
+**Files:**
+- Create: `kova-open-pencil-1/src/components/find/SearchPanel.vue`
+- Test: `kova-open-pencil-1/tests/unit/components/find/SearchPanel.test.ts`
+
+- [ ] **Step 1: Write failing test**
+
+```typescript
+import { describe, expect, it, beforeEach } from 'bun:test'
+import { mount } from '@vue/test-utils'
+import { setActivePinia, createPinia } from 'pinia'
+import SearchPanel from '@/components/find/SearchPanel.vue'
+import { useFindStore } from '@/stores/find'
+
+describe('SearchPanel', () => {
+  beforeEach(() => setActivePinia(createPinia()))
+
+  it('renders nothing when findStore.active=false', () => {
+    const wrapper = mount(SearchPanel)
+    expect(wrapper.find('[data-test="search-panel"]').exists()).toBe(false)
+  })
+
+  it('renders panel when findStore.active=true', async () => {
+    const store = useFindStore()
+    store.open()
+    const wrapper = mount(SearchPanel)
+    expect(wrapper.find('[data-test="search-panel"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="search-input"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="close-button"]').exists()).toBe(true)
+  })
+
+  it('input bound v-model to findStore.query', async () => {
+    const store = useFindStore()
+    store.open()
+    const wrapper = mount(SearchPanel)
+    const input = wrapper.find('[data-test="search-input"]')
+    await input.setValue('frame')
+    expect(store.query).toBe('frame')
+  })
+
+  it('Esc on input closes find', async () => {
+    const store = useFindStore()
+    store.open()
+    const wrapper = mount(SearchPanel)
+    await wrapper.find('[data-test="search-input"]').trigger('keydown.esc')
+    expect(store.active).toBe(false)
+  })
+
+  it('× button closes find', async () => {
+    const store = useFindStore()
+    store.open()
+    const wrapper = mount(SearchPanel)
+    await wrapper.find('[data-test="close-button"]').trigger('click')
+    expect(store.active).toBe(false)
+  })
+
+  it('result count line shows "N results · This page"', async () => {
+    const store = useFindStore()
+    store.open()
+    store.matchedNodeIds = ['a', 'b', 'c']
+    const wrapper = mount(SearchPanel)
+    expect(wrapper.find('[data-test="result-count"]').text()).toBe('3 results · This page')
+  })
+})
+```
+
+- [ ] **Step 2: Run test to verify failure**
+
+Run: `bun test tests/unit/components/find/SearchPanel.test.ts`
+Expected: FAIL.
+
+- [ ] **Step 3: Write component**
+
+```vue
+<!-- kova-open-pencil-1/src/components/find/SearchPanel.vue -->
+<script setup lang="ts">
+import { computed, nextTick, ref, watch } from 'vue'
+import { useFindStore } from '@/stores/find'
+import SearchResultRow from './SearchResultRow.vue'
+
+const findStore = useFindStore()
+const inputRef = ref<HTMLInputElement | null>(null)
+
+watch(
+  () => findStore.active,
+  async (active) => {
+    if (active) {
+      await nextTick()
+      inputRef.value?.focus()
+    }
+  },
+)
+
+const resultCountLabel = computed(() => {
+  const n = findStore.matchedNodeIds.length
+  if (n === 0) return 'No results'
+  return `${n} result${n === 1 ? '' : 's'} · This page`
+})
+</script>
+
+<template>
+  <div
+    v-if="findStore.active"
+    data-test="search-panel"
+    class="absolute left-0 top-0 z-30 flex h-full w-64 flex-col border-r border-border bg-panel"
+  >
+    <!-- Header row -->
+    <div class="flex items-center justify-between border-b border-border p-2">
+      <span class="text-xs font-medium text-ink">Find on this page</span>
+      <button
+        type="button"
+        data-test="close-button"
+        class="text-ink3 hover:text-ink"
+        @click="findStore.close()"
+      >
+        <span class="i-lucide-x size-4" />
+      </button>
+    </div>
+
+    <!-- Search input -->
+    <div class="p-2">
+      <input
+        ref="inputRef"
+        data-test="search-input"
+        type="search"
+        placeholder="Search layers..."
+        class="w-full rounded border border-border bg-surface px-2 py-1.5 text-xs text-ink placeholder:text-ink3"
+        :value="findStore.query"
+        @input="findStore.setQuery(($event.target as HTMLInputElement).value)"
+        @keydown.esc="findStore.close()"
+      />
+    </div>
+
+    <!-- Result count -->
+    <div
+      data-test="result-count"
+      class="px-2 pb-1 text-[11px] text-ink3"
+    >
+      {{ resultCountLabel }}
+    </div>
+
+    <!-- Result list -->
+    <div class="flex-1 overflow-y-auto">
+      <SearchResultRow
+        v-for="nodeId in findStore.matchedNodeIds"
+        :key="nodeId"
+        :node-id="nodeId"
+        :is-focused="findStore.focusedNodeId === nodeId"
+        @click="findStore.focusNode(nodeId)"
+      />
+    </div>
+  </div>
+</template>
+```
+
+- [ ] **Step 4: Run test + commit**
+
+```bash
+bun test tests/unit/components/find/SearchPanel.test.ts
+git add kova-open-pencil-1/src/components/find/SearchPanel.vue kova-open-pencil-1/tests/unit/components/find/SearchPanel.test.ts
+git commit -m "feat(07b): add SearchPanel for find feature (PRD §12.12)"
+```
+
+---
+
+### Task 4.13: SearchResultRow (PRD §12.12)
+
+**Files:**
+- Create: `kova-open-pencil-1/src/components/find/SearchResultRow.vue`
+- Test: `kova-open-pencil-1/tests/unit/components/find/SearchResultRow.test.ts`
+
+- [ ] **Step 1: Write failing test**
+
+```typescript
+import { describe, expect, it, beforeEach } from 'bun:test'
+import { mount } from '@vue/test-utils'
+import { setActivePinia, createPinia } from 'pinia'
+import SearchResultRow from '@/components/find/SearchResultRow.vue'
+
+beforeEach(() => {
+  ;(globalThis as any).figma = {
+    getNodeById: (id: string) => ({ id, name: `Node ${id}`, type: 'FRAME', parent: { name: 'Page' } }),
+  }
+})
+
+describe('SearchResultRow', () => {
+  beforeEach(() => setActivePinia(createPinia()))
+
+  it('renders node-type icon + name + breadcrumb', () => {
+    const wrapper = mount(SearchResultRow, { props: { nodeId: 'n1', isFocused: false } })
+    expect(wrapper.find('[data-test="node-icon"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="node-name"]').text()).toBe('Node n1')
+    expect(wrapper.find('[data-test="breadcrumb"]').text()).toContain('Page')
+  })
+
+  it('applies focused class when isFocused=true', () => {
+    const wrapper = mount(SearchResultRow, { props: { nodeId: 'n1', isFocused: true } })
+    expect(wrapper.find('[data-test="row"]').classes()).toContain('bg-surface-3')
+  })
+
+  it('emits click', async () => {
+    const wrapper = mount(SearchResultRow, { props: { nodeId: 'n1', isFocused: false } })
+    await wrapper.find('[data-test="row"]').trigger('click')
+    expect(wrapper.emitted('click')).toBeTruthy()
+  })
+})
+```
+
+- [ ] **Step 2: Run test to verify failure**
+
+Run: `bun test tests/unit/components/find/SearchResultRow.test.ts`
+Expected: FAIL.
+
+- [ ] **Step 3: Write component**
+
+```vue
+<!-- kova-open-pencil-1/src/components/find/SearchResultRow.vue -->
+<script setup lang="ts">
+import { computed } from 'vue'
+
+declare const figma: {
+  getNodeById: (id: string) => { id: string; name: string; type: string; parent?: { name: string } } | null
+}
+
+const props = defineProps<{
+  nodeId: string
+  isFocused: boolean
+}>()
+defineEmits<{ click: [] }>()
+
+const node = computed(() => figma.getNodeById(props.nodeId))
+
+const ICON_BY_TYPE: Record<string, string> = {
+  FRAME: 'i-lucide-frame',
+  TEXT: 'i-lucide-type',
+  RECTANGLE: 'i-lucide-square',
+  ELLIPSE: 'i-lucide-circle',
+  VECTOR: 'i-lucide-pen-tool',
+  IMAGE: 'i-lucide-image',
+  GROUP: 'i-lucide-folder',
+}
+const icon = computed(() => ICON_BY_TYPE[node.value?.type ?? ''] ?? 'i-lucide-box')
+</script>
+
+<template>
+  <button
+    v-if="node"
+    type="button"
+    data-test="row"
+    class="flex w-full items-center gap-2 px-2 py-1.5 text-left hover:bg-surface-2"
+    :class="isFocused ? 'bg-surface-3' : ''"
+    @click="$emit('click')"
+  >
+    <span :class="`${icon} size-4 shrink-0 text-ink3`" data-test="node-icon" />
+    <span data-test="node-name" class="flex-1 truncate text-xs text-ink">{{ node.name }}</span>
+    <span data-test="breadcrumb" class="text-[10px] text-ink3">{{ node.parent?.name ?? '' }}</span>
+  </button>
+</template>
+```
+
+- [ ] **Step 4: Run test + commit**
+
+```bash
+bun test tests/unit/components/find/SearchResultRow.test.ts
+git add kova-open-pencil-1/src/components/find/SearchResultRow.vue kova-open-pencil-1/tests/unit/components/find/SearchResultRow.test.ts
+git commit -m "feat(07b): add SearchResultRow for find result list (PRD §12.12)"
+```
+
+---
+
+### Task 4.14: Mount SearchPanel inside EditorView
+
+**Files:**
+- Modify: `kova-open-pencil-1/src/views/EditorView.vue` (Cluster 06 owns this file — 07b adds one import + one sibling element)
+
+- [ ] **Step 1: Read existing EditorView.vue layout**
+
+Find the layers-panel mount point. SearchPanel sits as a left-side sibling, slides in over the layers panel.
+
+- [ ] **Step 2: Add SearchPanel mount**
+
+```vue
+<!-- inside the editor root layout in EditorView.vue -->
+<template>
+  <!-- existing top chrome, canvas, right panel ... -->
+
+  <!-- 07b: SearchPanel slides in over layers panel when find active (PRD §12.12) -->
+  <SearchPanel />
+</template>
+
+<script setup lang="ts">
+// add import:
+import SearchPanel from '@/components/find/SearchPanel.vue'
+</script>
+```
+
+- [ ] **Step 3: Run full test suite + manual smoke**
+
+Run: `bun run test:unit`
+Manual: `bun run dev` → press Cmd+F → confirm panel slides in.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add kova-open-pencil-1/src/views/EditorView.vue
+git commit -m "feat(07b): mount SearchPanel inside EditorView (find feature, PRD §12.12)"
+```
 
 ---
 
@@ -3126,12 +4107,20 @@ git commit -m "feat(07b): mount CanvasOverlayLayer inside EditorView"
 
 ---
 
-## Phase 7: Keyboard shortcut registration (gated)
+## Phase 7: Keyboard shortcut registration
 
-### Task 7.1: Register Boolean ops + copy/paste shortcuts behind feature gate
+> **Per PRD §12.5 + §12.7 + §12.12 founder decisions (2026-05-17):**
+> - Boolean ops: ⌥⇧U / ⌥⇧S / ⌥⇧I / ⌥⇧E (matches Figma — supersedes Q3 #14 ⌘⌥U/S/I/X baseline)
+> - Pixel grid toggle: Shift+'
+> - Find open / close: Cmd+F / Esc (07b owns find end-to-end per §12.12)
+> - Phase A: if Cluster 08 registry not yet shipped, register via local fallback handler attached to EditorView keydown — shortcuts WORK at Phase A close, not deferred
+> - Phase B: when 08 lands, the local fallback retires; same bindings re-register through the central registry
+
+### Task 7.1: Register all shortcuts (registry OR fallback)
 
 **Files:**
 - Create: `kova-open-pencil-1/src/composables/use-shortcut-registration.ts` (NEW — 07b's registration site)
+- Create: `kova-open-pencil-1/src/composables/use-shortcuts-fallback.ts` (NEW — Phase A keydown handler)
 - Test: `kova-open-pencil-1/tests/unit/composables/use-shortcut-registration.test.ts` (NEW)
 
 - [ ] **Step 1: Write failing test**
@@ -3147,14 +4136,44 @@ mock.module('@/stores/shortcuts', () => ({
 
 mock.module('@/constants/overlays', () => ({
   FEATURE_GATES: { KEYBOARD_SHORTCUTS_REGISTRY_AVAILABLE: true },
+  SHORTCUTS: {
+    BOOLEAN_UNION: 'alt+shift+u',
+    BOOLEAN_SUBTRACT: 'alt+shift+s',
+    BOOLEAN_INTERSECT: 'alt+shift+i',
+    BOOLEAN_EXCLUDE: 'alt+shift+e',
+    PROPS_COPY: 'cmd+alt+c',
+    PROPS_PASTE: 'cmd+alt+v',
+    EYEDROPPER: 'control+c',
+    PIXEL_GRID_TOGGLE: 'shift+quote',
+    FIND_OPEN: 'cmd+f',
+    FIND_CLOSE: 'escape',
+  },
 }))
 
 import { useShortcutRegistration } from '@/composables/use-shortcut-registration'
 
 describe('useShortcutRegistration', () => {
-  it('registers 7 shortcuts when registry available', () => {
+  it('registers 10 shortcuts when registry available (4 boolean + 2 props + 1 eyedropper + 1 pixel-grid + 2 find)', () => {
     useShortcutRegistration()
-    expect(registerMock).toHaveBeenCalledTimes(7)
+    expect(registerMock).toHaveBeenCalledTimes(10)
+  })
+
+  it('Boolean ops registered with alt+shift+letter (PRD §12.5 — match Figma)', () => {
+    useShortcutRegistration()
+    const calls = registerMock.mock.calls
+    const keys = calls.map((c: any) => c[0].keys)
+    expect(keys).toContain('alt+shift+u')
+    expect(keys).toContain('alt+shift+s')
+    expect(keys).toContain('alt+shift+i')
+    expect(keys).toContain('alt+shift+e')
+  })
+
+  it('Find shortcuts registered (PRD §12.12 — 07b owns find)', () => {
+    useShortcutRegistration()
+    const calls = registerMock.mock.calls
+    const ids = calls.map((c: any) => c[0].id)
+    expect(ids).toContain('find.open')
+    expect(ids).toContain('find.close')
   })
 })
 ```
@@ -3164,48 +4183,124 @@ describe('useShortcutRegistration', () => {
 Run: `bun test tests/unit/composables/use-shortcut-registration.test.ts`
 Expected: FAIL.
 
-- [ ] **Step 3: Write composable**
+- [ ] **Step 3: Write registration composable**
 
 ```typescript
 // kova-open-pencil-1/src/composables/use-shortcut-registration.ts
 import { figma } from '@open-pencil/core'
-import { FEATURE_GATES } from '@/constants/overlays'
+import { FEATURE_GATES, SHORTCUTS } from '@/constants/overlays'
 import { useEyedropper } from '@/composables/use-eyedropper'
 import { useCopyPasteProps } from '@/composables/use-copy-paste-props'
+import { useEditorStore } from '@/stores/editor'
+import { useFindStore } from '@/stores/find'
 
 /**
  * Registers 07b's keyboard shortcuts into Cluster 08's useShortcutsStore.
- * Skipped if FEATURE_GATES.KEYBOARD_SHORTCUTS_REGISTRY_AVAILABLE === false (Phase A pre-08).
+ * If FEATURE_GATES.KEYBOARD_SHORTCUTS_REGISTRY_AVAILABLE === false (Phase A pre-08),
+ * delegates to useShortcutsFallback() which attaches a keydown handler directly to EditorView.
  *
  * Call once in setup hook of a long-lived parent (e.g., EditorView).
  */
 export function useShortcutRegistration(): void {
-  if (!FEATURE_GATES.KEYBOARD_SHORTCUTS_REGISTRY_AVAILABLE) return
-
-  // Lazy-import to avoid hard dependency on Cluster 08's store before it ships
-  // (Phase B: replace with static import once 08 lands)
-  const { useShortcutsStore } = require('@/stores/shortcuts') as typeof import('@/stores/shortcuts')
-  const store = useShortcutsStore()
-
+  const editorStore = useEditorStore()
+  const findStore = useFindStore()
   const eyedropper = useEyedropper()
   const cpProps = useCopyPasteProps()
 
-  store.register({ id: 'boolean.union',     category: 'edit',  keys: 'cmd+alt+u', description: 'Union selection',     action: () => figma.booleanOperation('UNION') })
-  store.register({ id: 'boolean.subtract',  category: 'edit',  keys: 'cmd+alt+s', description: 'Subtract selection',  action: () => figma.booleanOperation('SUBTRACT') })
-  store.register({ id: 'boolean.intersect', category: 'edit',  keys: 'cmd+alt+i', description: 'Intersect selection', action: () => figma.booleanOperation('INTERSECT') })
-  store.register({ id: 'boolean.exclude',   category: 'edit',  keys: 'cmd+alt+x', description: 'Exclude selection',   action: () => figma.booleanOperation('EXCLUDE') })
-  store.register({ id: 'props.copy',        category: 'edit',  keys: 'cmd+alt+c', description: 'Copy properties',     action: () => cpProps.copy() })
-  store.register({ id: 'props.paste',       category: 'edit',  keys: 'cmd+alt+v', description: 'Paste properties',    action: () => cpProps.paste() })
-  store.register({ id: 'tool.eyedropper',   category: 'tools', keys: 'control+c', description: 'Eyedropper tool',     action: () => eyedropper.activate(() => {}) })
+  // Action map — shared by registry path and fallback path
+  const actions = {
+    'boolean.union':     () => { if (figma.currentPage.selection.length >= 2) figma.booleanOperation('UNION') },
+    'boolean.subtract':  () => { if (figma.currentPage.selection.length >= 2) figma.booleanOperation('SUBTRACT') },
+    'boolean.intersect': () => { if (figma.currentPage.selection.length >= 2) figma.booleanOperation('INTERSECT') },
+    'boolean.exclude':   () => { if (figma.currentPage.selection.length >= 2) figma.booleanOperation('EXCLUDE') },
+    'props.copy':        () => cpProps.copy(),
+    'props.paste':       () => cpProps.paste(),
+    'tool.eyedropper':   () => eyedropper.activate(() => {}),
+    'view.pixelGrid':    () => { editorStore.overlays.pixelGrid = !editorStore.overlays.pixelGrid },
+    'find.open':         () => findStore.open(),
+    'find.close':        () => { if (findStore.active) findStore.close() },
+  } as const
+
+  if (!FEATURE_GATES.KEYBOARD_SHORTCUTS_REGISTRY_AVAILABLE) {
+    // Phase A: local fallback handler
+    const { useShortcutsFallback } = require('@/composables/use-shortcuts-fallback') as typeof import('@/composables/use-shortcuts-fallback')
+    useShortcutsFallback(actions)
+    return
+  }
+
+  // Phase B: register through Cluster 08's central registry
+  const { useShortcutsStore } = require('@/stores/shortcuts') as typeof import('@/stores/shortcuts')
+  const store = useShortcutsStore()
+
+  store.register({ id: 'boolean.union',     category: 'edit',  keys: SHORTCUTS.BOOLEAN_UNION,     description: 'Union selection',     action: actions['boolean.union'] })
+  store.register({ id: 'boolean.subtract',  category: 'edit',  keys: SHORTCUTS.BOOLEAN_SUBTRACT,  description: 'Subtract selection',  action: actions['boolean.subtract'] })
+  store.register({ id: 'boolean.intersect', category: 'edit',  keys: SHORTCUTS.BOOLEAN_INTERSECT, description: 'Intersect selection', action: actions['boolean.intersect'] })
+  store.register({ id: 'boolean.exclude',   category: 'edit',  keys: SHORTCUTS.BOOLEAN_EXCLUDE,   description: 'Exclude selection',   action: actions['boolean.exclude'] })
+  store.register({ id: 'props.copy',        category: 'edit',  keys: SHORTCUTS.PROPS_COPY,        description: 'Copy properties',     action: actions['props.copy'] })
+  store.register({ id: 'props.paste',       category: 'edit',  keys: SHORTCUTS.PROPS_PASTE,       description: 'Paste properties',    action: actions['props.paste'] })
+  store.register({ id: 'tool.eyedropper',   category: 'tools', keys: SHORTCUTS.EYEDROPPER,        description: 'Eyedropper tool',     action: actions['tool.eyedropper'] })
+  store.register({ id: 'view.pixelGrid',    category: 'view',  keys: SHORTCUTS.PIXEL_GRID_TOGGLE, description: 'Toggle pixel grid',   action: actions['view.pixelGrid'] })
+  store.register({ id: 'find.open',         category: 'view',  keys: SHORTCUTS.FIND_OPEN,         description: 'Find on canvas',      action: actions['find.open'] })
+  store.register({ id: 'find.close',        category: 'view',  keys: SHORTCUTS.FIND_CLOSE,        description: 'Close find',          action: actions['find.close'] })
 }
 ```
 
-- [ ] **Step 4: Run test to verify pass**
+- [ ] **Step 4: Write Phase A fallback handler**
+
+```typescript
+// kova-open-pencil-1/src/composables/use-shortcuts-fallback.ts
+import { onMounted, onUnmounted } from 'vue'
+import { SHORTCUTS } from '@/constants/overlays'
+
+type ActionMap = Record<string, () => void>
+
+const KEY_TO_ACTION_ID: Record<string, string> = {
+  [SHORTCUTS.BOOLEAN_UNION]:     'boolean.union',
+  [SHORTCUTS.BOOLEAN_SUBTRACT]:  'boolean.subtract',
+  [SHORTCUTS.BOOLEAN_INTERSECT]: 'boolean.intersect',
+  [SHORTCUTS.BOOLEAN_EXCLUDE]:   'boolean.exclude',
+  [SHORTCUTS.PROPS_COPY]:        'props.copy',
+  [SHORTCUTS.PROPS_PASTE]:       'props.paste',
+  [SHORTCUTS.EYEDROPPER]:        'tool.eyedropper',
+  [SHORTCUTS.PIXEL_GRID_TOGGLE]: 'view.pixelGrid',
+  [SHORTCUTS.FIND_OPEN]:         'find.open',
+  [SHORTCUTS.FIND_CLOSE]:        'find.close',
+}
+
+function keysFromEvent(e: KeyboardEvent): string {
+  const parts: string[] = []
+  if (e.metaKey)  parts.push('cmd')
+  if (e.ctrlKey)  parts.push('control')
+  if (e.altKey)   parts.push('alt')
+  if (e.shiftKey) parts.push('shift')
+  // e.code preferred over e.key per CLAUDE.md (Option key transforms chars on Mac)
+  const codeKey = e.code === 'Quote' ? 'quote'
+                : e.code === 'Escape' ? 'escape'
+                : e.code.replace(/^Key/, '').toLowerCase()
+  parts.push(codeKey)
+  return parts.join('+')
+}
+
+export function useShortcutsFallback(actions: ActionMap): void {
+  function onKeydown(e: KeyboardEvent): void {
+    const keys = keysFromEvent(e)
+    const actionId = KEY_TO_ACTION_ID[keys]
+    if (actionId === undefined) return
+    e.preventDefault()
+    actions[actionId]?.()
+  }
+
+  onMounted(() => window.addEventListener('keydown', onKeydown))
+  onUnmounted(() => window.removeEventListener('keydown', onKeydown))
+}
+```
+
+- [ ] **Step 5: Run test to verify pass**
 
 Run: `bun test tests/unit/composables/use-shortcut-registration.test.ts`
-Expected: 1 PASS.
+Expected: 3 PASS.
 
-- [ ] **Step 5: Wire into EditorView setup**
+- [ ] **Step 6: Wire into EditorView setup**
 
 Inside `kova-open-pencil-1/src/views/EditorView.vue`:
 
@@ -3216,11 +4311,20 @@ import { useShortcutRegistration } from '@/composables/use-shortcut-registration
 useShortcutRegistration()
 ```
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
-git add kova-open-pencil-1/src/composables/use-shortcut-registration.ts kova-open-pencil-1/tests/unit/composables/use-shortcut-registration.test.ts kova-open-pencil-1/src/views/EditorView.vue
-git commit -m "feat(07b): gated shortcut registration (Boolean ops + copy/paste + eyedropper)"
+git add kova-open-pencil-1/src/composables/use-shortcut-registration.ts kova-open-pencil-1/src/composables/use-shortcuts-fallback.ts kova-open-pencil-1/tests/unit/composables/use-shortcut-registration.test.ts kova-open-pencil-1/src/views/EditorView.vue
+git commit -m "feat(07b): shortcut registration with Phase A fallback
+
+Per PRD §12.5 + §12.7 + §12.12 founder decisions (2026-05-17):
+- Boolean ops alt+shift+U/S/I/E (matches Figma)
+- Pixel grid shift+quote
+- Find cmd+f / escape (07b owns find end-to-end)
+- Copy/paste props cmd+alt+c/v
+- Eyedropper control+c
+
+Phase A: local keydown fallback. Phase B: central 08 registry."
 ```
 
 ---

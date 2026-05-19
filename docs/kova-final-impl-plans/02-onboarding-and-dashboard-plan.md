@@ -1940,7 +1940,7 @@ import type { Brand } from '@/types/kova/database'
 
 const router = useRouter()
 defineProps<{ currentBrand: Brand }>()
-function onSearchOpen() { /* dispatches to Cluster 11 command-palette via event bus */ }
+const searchQuery = ref('')
 </script>
 
 <template>
@@ -1949,11 +1949,10 @@ function onSearchOpen() { /* dispatches to Cluster 11 command-palette via event 
                    @select="(id) => router.push(`/brand/${id}`)"
                    @new-brand="() => { /* TODO: opens Cluster 03 modal */ }"
                    @manage-brands="() => router.push('/account/brands')" />
-    <button class="side-search" @click="onSearchOpen">
+    <label class="side-search">
       <icon-lucide-search class="w-3 h-3" />
-      <span>Search</span>
-      <span class="kbd">⌘K</span>
-    </button>
+      <input v-model="searchQuery" type="search" placeholder="Search" />
+    </label>
     <SideNav @nav="(name) => router.push({ name })" />
     <SideFooter />
   </aside>

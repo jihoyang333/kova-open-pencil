@@ -16,11 +16,12 @@
 
 ## File structure
 
-### Backend (migrations only)
+### Backend (migrations + edge function)
 
 | File | Purpose |
 |---|---|
 | `supabase/migrations/20260603_12_user_preferences_rpc.sql` | `update_user_pref(p_path text[], p_value jsonb)` SECURITY INVOKER RPC + GRANT to `authenticated`. Pairs with Cluster 01's `users.preferences` column. [PRD §4.1 + §5.2] |
+| `supabase/functions/send-sync-alert/index.ts` | NEW — env-guarded Supabase Edge Function. Called by Cluster 06's Yjs sync-retry hook after retry 3. Reads `prefs.notifications.syncAlerts` (gates send); imports Cluster 01's `_shared/resend-client.ts`; wraps Resend call in `if (!Deno.env.get('RESEND_API_KEY'))` guard so dev runs without secret. [PRD §5.4] |
 
 ### Frontend — types
 
@@ -87,7 +88,8 @@ Before Task 1, verify:
 
 - `git status` clean on `feat/m9-shopify`, OR working changes are unrelated to the files in this plan.
 - Cluster 01 migration `20260520_01_users_account_lifecycle.sql` is **merged or staged for the same release** — `users.preferences jsonb NOT NULL DEFAULT '{}'::jsonb` MUST exist before this plan's RPC migration runs. If not present locally, the plan still authors files but Task 1 step "run migration locally" will fail until Cluster 01 lands. Coordinate with Cluster 01 implementer.
-- Cluster 11 primitives (`KovaModal`, `KovaSegmented`, `KovaToggle`, `KovaButton`, `useToast`) exist in `src/components/ui/` AND in `src/composables/use-toast.ts`. If not (Cluster 11 PRD still PENDING), Task 10–12 are blocked until they ship. Workaround: shim minimal versions in this plan as Task 10a / 11a / 12a; remove and import properly when Cluster 11 lands. Decision: defer Tasks 10–12 until Cluster 11 merges. Tasks 1–9 + 13–15 are unblocked.
+- Cluster 11 primitives (`KovaModal`, `KovaSegmented`, `KovaToggle`, `KovaButton`, `useToast`) exist in `src/components/ui/` AND in `src/composables/use-toast.ts`. If not (Cluster 11 PRD still PENDING), Task 10–12 are blocked until they ship. Workaround: shim minimal versions in this plan as Task 10a / 11a / 12a; remove and import properly when Cluster 11 lands. Decision: defer Tasks 10–12 until Cluster 11 merges. Tasks 1–9 + 13–16 are unblocked.
+- Cluster 01 ships `supabase/functions/_shared/resend-client.ts` (shared Resend SDK wrapper). Task 16 (edge function) imports it. If Cluster 01 has not landed, stub a local `_shared/resend-client.ts` in this plan and replace when Cluster 01 merges. Resend ACCOUNT setup (signup, domain verification, DNS, `RESEND_API_KEY` secret) is **deferred to pre-launch per founder decision 2026-05-17** — see `docs/kova-final-prds/00-PRD_SCOPE_PLAN.md §11` + memory `project_external_accounts_deferred`. Edge function ships with env-var guard so dev runs without Resend (toast is always-on safety net).
 - Bun + Vite + Playwright already installed (per `bun install` in `kova-open-pencil-1/`).
 
 ---
@@ -307,7 +309,7 @@ export interface UserPreferences {
 
 export const DEFAULTS: UserPreferences = {
   accessibility: { textSize: 'medium', reduceMotion: false, highContrast: false },
-  ai: { showTextSuggestions: true },
+  ai: { showTextSuggestions: false }, // founder ratified 2026-05-17: reserved flag default OFF, no UI in MVP
   view: {
     showRuler: false,
     showLayoutGuide: true,
@@ -451,14 +453,15 @@ describe('useUIStateStore', () => {
     expect(s.recentColors).toEqual(['#ff00aa'])
   })
 
-  test('pushRecentColor caps at 24 with FIFO eviction', () => {
+  test('pushRecentColor caps at 12 with FIFO eviction (founder ratified 2026-05-17)', () => {
     const s = useUIStateStore()
     for (let i = 0; i < 30; i++) {
       s.pushRecentColor(`#${i.toString(16).padStart(6, '0')}`)
     }
-    expect(s.recentColors.length).toBe(24)
+    expect(s.recentColors.length).toBe(12)
+    // 30 pushes 0..29; after cap at 12, kept = last 12 = 18..29; head = newest = 29 (0x1d), tail = oldest in window = 18 (0x12)
     expect(s.recentColors[0]).toBe('#00001d')
-    expect(s.recentColors[23]).toBe('#000006')
+    expect(s.recentColors[11]).toBe('#000012')
   })
 
   test('dismissToast is idempotent', () => {
@@ -508,7 +511,7 @@ export const useUIStateStore = defineStore('ui-state', () => {
   function pushRecentColor(hex: string): void {
     const next = hex.toLowerCase()
     const filtered = recentColors.value.filter((c) => c.toLowerCase() !== next)
-    recentColors.value = [next, ...filtered].slice(0, 24)
+    recentColors.value = [next, ...filtered].slice(0, 12)
   }
 
   function dismissToast(toastId: string): void {
@@ -1119,14 +1122,24 @@ Create `src/styles/accessibility.css`:
    ============================================================ */
 
 /* ---------- Text size ---------- */
-:root[data-text-size='small']  { --text-base: 13px; }
-:root[data-text-size='medium'] { --text-base: 14.5px; }
-:root[data-text-size='large']  { --text-base: 16.5px; }
-:root:not([data-text-size])    { --text-base: 14.5px; }
+/* Founder ratified 2026-05-17 — 87.5% / 100% / 112.5% scale on <html> font-size.
+   All rem-based sizing scales automatically. 16px baseline → 14 / 16 / 18px body. */
+html[data-text-size='small']  { font-size: 87.5%;  }  /* 14px body */
+html[data-text-size='medium'] { font-size: 100%;   }  /* 16px body (default) */
+html[data-text-size='large']  { font-size: 112.5%; }  /* 18px body */
+html:not([data-text-size])    { font-size: 100%;   }  /* fallback before prefs load */
 
-/* Canvas chrome stays fixed (per A7.1 annotation). Override --text-base
-   inside .kc scope so OpenPencil-derived chrome ignores the user pref. */
-.kc { --text-base: 12.5px; }
+/* Optional explicit token for `font-size: var(--text-base)` declarations. */
+:root[data-text-size='small']  { --text-base: 14px; }
+:root[data-text-size='medium'] { --text-base: 16px; }
+:root[data-text-size='large']  { --text-base: 18px; }
+:root:not([data-text-size])    { --text-base: 16px; }
+
+/* Canvas chrome stays fixed (per A7.1 annotation). Inside .kc scope,
+   chrome elements declare font-size in absolute px (not rem / not --text-base)
+   so OpenPencil-derived chrome ignores the user pref. Override exposed for
+   any chrome element that does reference --text-base. */
+.kc { --text-base: 12px; font-size: 12px; }
 
 body { font-size: var(--text-base); }
 
@@ -1150,16 +1163,17 @@ body { font-size: var(--text-base); }
   }
 }
 
-/* ---------- High contrast ---------- */
+/* ---------- High contrast ----------
+   Founder ratified 2026-05-17: scope = "Borders + dividers stronger (matches Figma)".
+   Text contrast NOT bumped. Focus ring NOT enlarged. Match Figma's behavior 1:1. */
 :root[data-high-contrast='true'] {
-  --ink-2: #d8d8dd;
-  --ink-3: #b6b6bd;
-  --border: #6e6e73;
-  --ring: #ffffff;
+  --border: #4a4a4a;  /* OFF: #2a2a2a subtle → ON: #4a4a4a strong (~25% contrast) */
 }
-:root[data-high-contrast='true'] *:focus-visible {
-  outline: 2px solid var(--ring) !important;
-  outline-offset: 2px !important;
+/* Buttons get explicit outline so they're distinguishable from background. */
+:root[data-high-contrast='true'] button,
+:root[data-high-contrast='true'] [role='button'] {
+  outline: 1px solid currentColor;
+  outline-offset: -1px;
 }
 ```
 
@@ -1197,10 +1211,11 @@ Expected: body text grows; borders strengthen; CSS transitions become near-insta
 git add src/styles/accessibility.css src/app.css
 git commit -m "feat(prefs): accessibility CSS layer
 
-[data-text-size] -> --text-base; .kc scope keeps canvas chrome
-fixed. [data-reduce-motion='true'] forces ~0ms transitions globally
-with @media prefers-reduced-motion OS fallback. [data-high-contrast='true']
-overrides --ink-2/--ink-3/--border/--ring + focus-visible outline."
+html[data-text-size] scales font-size 87.5/100/112.5%. .kc canvas
+chrome locked to 12px. [data-reduce-motion='true'] forces ~0ms
+transitions globally with @media prefers-reduced-motion OS fallback.
+[data-high-contrast='true'] swaps --border to higher contrast and
+adds button outline (founder-scope: borders only, matches Figma)."
 ```
 
 ---
@@ -1947,7 +1962,192 @@ opt-out persistence."
 
 ---
 
-## Task 16: Manual QA + PRD tracker bump
+## Task 16: `send-sync-alert` Supabase Edge Function (env-guarded)
+
+**Files:**
+- Create: `supabase/functions/send-sync-alert/index.ts`
+- Create: `supabase/functions/send-sync-alert/index.test.ts`
+- Coordinate (do NOT create from this cluster): `supabase/functions/_shared/resend-client.ts` — owned by Cluster 01. If missing, stub locally then replace when Cluster 01 lands.
+
+**Reason:** Cluster 06's Yjs sync-retry hook calls `POST /functions/v1/send-sync-alert` after retry 3 fails (1s+5s+15s backoff = ~21s after first failure). This task ships the endpoint with the env-guard pattern (founder ratified 2026-05-17). Resend account setup deferred to pre-launch — endpoint must run without `RESEND_API_KEY` set.
+
+- [ ] **Step 1: Write failing test — `supabase/functions/send-sync-alert/index.test.ts`**
+
+```typescript
+// Deno test (run via `supabase functions serve` + curl, or via bun:test with mocked fetch).
+// Pattern: import handler, invoke with mock Request, assert response shape.
+
+import { assertEquals } from 'jsr:@std/assert'
+
+const ORIGINAL_ENV = { ...Deno.env.toObject() }
+
+function resetEnv() {
+  Deno.env.delete('RESEND_API_KEY')
+  for (const [k, v] of Object.entries(ORIGINAL_ENV)) Deno.env.set(k, v)
+}
+
+Deno.test('send-sync-alert: missing RESEND_API_KEY returns skipped:no_api_key', async () => {
+  resetEnv()
+  Deno.env.delete('RESEND_API_KEY')
+
+  const { default: handler } = await import('./index.ts')
+  const req = new Request('http://localhost/send-sync-alert', {
+    method: 'POST',
+    headers: { 'authorization': 'Bearer test-jwt', 'content-type': 'application/json' },
+    body: JSON.stringify({ userId: 'user-1', canvasId: 'canvas-1', lastSyncAt: '2026-05-17T20:00:00Z' }),
+  })
+  const res = await handler(req)
+  const json = await res.json()
+  assertEquals(res.status, 200)
+  assertEquals(json.ok, true)
+  assertEquals(json.skipped, 'no_api_key')
+})
+
+Deno.test('send-sync-alert: opted-out user returns skipped:opted_out', async () => {
+  resetEnv()
+  Deno.env.set('RESEND_API_KEY', 're_test_dummy')
+  // Mock supabase client to return prefs.notifications.syncAlerts = false
+  // (impl detail: handler reads via authed createClient — test stubs createClient)
+  // ... see implementation step for full stub pattern
+})
+
+Deno.test('send-sync-alert: opted-in user with API key calls Resend client', async () => {
+  resetEnv()
+  Deno.env.set('RESEND_API_KEY', 're_test_dummy')
+  // Mock supabase client → syncAlerts=true. Mock _shared/resend-client send() → resolves.
+  // Assert send() called with from/to/subject/text payload.
+})
+```
+
+- [ ] **Step 2: Run test — expect FAIL**
+
+```bash
+cd supabase/functions/send-sync-alert
+deno test --allow-env --allow-net
+```
+
+Expected: `Cannot find module './index.ts'`.
+
+- [ ] **Step 3: Implement `supabase/functions/send-sync-alert/index.ts`**
+
+```typescript
+import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { sendEmail } from '../_shared/resend-client.ts' // owned by Cluster 01
+
+interface Payload {
+  userId: string
+  canvasId: string
+  lastSyncAt: string
+}
+
+export default async function handler(req: Request): Promise<Response> {
+  if (req.method !== 'POST') {
+    return new Response('Method not allowed', { status: 405 })
+  }
+
+  // Env-guard (founder ratified 2026-05-17 — defer Resend signup to pre-launch).
+  const apiKey = Deno.env.get('RESEND_API_KEY')
+  if (!apiKey) {
+    console.warn('Resend not configured — skipping send')
+    return new Response(JSON.stringify({ ok: true, skipped: 'no_api_key' }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    })
+  }
+
+  const auth = req.headers.get('authorization')
+  if (!auth) return new Response('Unauthorized', { status: 401 })
+
+  let payload: Payload
+  try {
+    payload = await req.json()
+  } catch {
+    return new Response('Bad payload', { status: 400 })
+  }
+
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+    { global: { headers: { authorization: auth } } }, // SECURITY INVOKER via JWT
+  )
+
+  // Read user's email + opt-in state in one round-trip.
+  const { data: user, error } = await supabase
+    .from('users')
+    .select('email, preferences')
+    .single()
+  if (error || !user) {
+    console.error('users select failed', error)
+    return new Response(JSON.stringify({ ok: false, error: 'user_lookup_failed' }), { status: 500 })
+  }
+
+  const optedIn = user.preferences?.notifications?.syncAlerts !== false // default true
+  if (!optedIn) {
+    return new Response(JSON.stringify({ ok: true, skipped: 'opted_out' }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    })
+  }
+
+  await sendEmail({
+    to: user.email,
+    subject: 'Your Kova changes haven\'t saved yet',
+    text: `Hi,\n\nKova tried 3 times to sync your latest changes and couldn't reach the server. Your work is safe on this device. Reopen Kova to retry.\n\nLast successful sync: ${payload.lastSyncAt}\nCanvas: ${payload.canvasId}\n\n— Kova`,
+    idempotencyKey: `sync-alert:${payload.userId}:${payload.canvasId}:${payload.lastSyncAt}`,
+  })
+
+  return new Response(JSON.stringify({ ok: true, sent: true }), {
+    status: 200,
+    headers: { 'content-type': 'application/json' },
+  })
+}
+```
+
+**Why env-guard at top:** dev environments + CI runs without `RESEND_API_KEY`. The guard returns 200 (not 500) so the caller (Cluster 06 retry-hook) does not retry-storm a known-skip case. Toast is the always-on safety net regardless.
+
+**Why SECURITY INVOKER via JWT (not service-role):** the function reads `users` table scoped to the caller — `auth.uid()` filter enforced by RLS. No service-role key required (zero blast radius if function is compromised).
+
+**Why `idempotencyKey`:** Cluster 06's retry-hook may call this endpoint more than once if the retry-state machine itself glitches. Resend's idempotency-key header (handled by `_shared/resend-client.ts`) dedupes within a 24h window.
+
+- [ ] **Step 4: Run test — expect PASS**
+
+```bash
+cd supabase/functions/send-sync-alert
+deno test --allow-env --allow-net
+```
+
+Expected: all 3 tests pass.
+
+- [ ] **Step 5: Smoke against `supabase functions serve` (skipped path)**
+
+```bash
+# In one shell:
+supabase functions serve send-sync-alert --no-verify-jwt
+# In another:
+curl -X POST 'http://localhost:54321/functions/v1/send-sync-alert' \
+  -H 'authorization: Bearer dummy' \
+  -H 'content-type: application/json' \
+  -d '{"userId":"u","canvasId":"c","lastSyncAt":"2026-05-17T00:00:00Z"}'
+```
+
+Expected response (without `RESEND_API_KEY` set): `{ "ok": true, "skipped": "no_api_key" }` HTTP 200.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add supabase/functions/send-sync-alert/
+git commit -m "feat(prefs): send-sync-alert edge function with env-guard
+
+Cluster 06 retry-hook calls after 3 failed Yjs syncs. Env-guard on
+RESEND_API_KEY so dev runs without Resend (founder defer 2026-05-17).
+SECURITY INVOKER via JWT; reads prefs.notifications.syncAlerts to gate
+send; idempotency-key prevents retry storms. Imports Cluster 01's
+_shared/resend-client.ts."
+```
+
+---
+
+## Task 17: Manual QA + PRD tracker bump
 
 **Files:**
 - Modify: `docs/kova-final-prds/00-PRD_SCOPE_PLAN.md`
@@ -2020,7 +2220,8 @@ rows; added preference-storage disclosure line to privacy policy."
   - §9.1 unit tests → Tasks 2, 3, 4, 5, 8
   - §9.2 integration → Task 6
   - §9.3 E2E → Task 15
-  - §9.4 manual QA + tracker bump → Task 16
+  - §5.4 edge function → Task 16
+  - §9.4 manual QA + tracker bump → Task 17
 
 - [x] **No placeholders:** every step contains exact code, exact commands, exact paths.
 
@@ -2030,7 +2231,7 @@ rows; added preference-storage disclosure line to privacy policy."
 
 - [x] **Theme drift check:** dark only (per `feedback_app_dark_website_light`); no light surface in this cluster.
 
-- [x] **`00e §6` hygiene:** no live multi-device sync promise; no `/marketing` reference; privacy-policy line ships in Task 16; no staging-trigger reference.
+- [x] **`00e §6` hygiene:** no live multi-device sync promise; no `/marketing` reference; privacy-policy line ships in Task 17; no staging-trigger reference.
 
 ---
 
@@ -2038,8 +2239,8 @@ rows; added preference-storage disclosure line to privacy policy."
 
 Plan complete and saved to `kova-open-pencil-1/docs/kova-final-impl-plans/12-settings-and-user-preferences-plan.md`. Two execution options:
 
-**1. Subagent-Driven (recommended)** — Dispatch a fresh subagent per task, review between tasks, fast iteration. Recommended given the 16-task length and the fact that Tasks 10–12 are blocked on Cluster 11 — a controller can re-route work cleanly.
+**1. Subagent-Driven (recommended)** — Dispatch a fresh subagent per task, review between tasks, fast iteration. Recommended given the 17-task length and the fact that Tasks 10–12 are blocked on Cluster 11 — a controller can re-route work cleanly.
 
-**2. Inline Execution** — Execute tasks in this session using `superpowers:executing-plans`, batch with checkpoints at Tasks 6 (integration test) and Task 13 (browser smoke).
+**2. Inline Execution** — Execute tasks in this session using `superpowers:executing-plans`, batch with checkpoints at Tasks 6 (integration test), Task 13 (browser smoke), and Task 16 (edge function curl smoke).
 
 **Which approach?**

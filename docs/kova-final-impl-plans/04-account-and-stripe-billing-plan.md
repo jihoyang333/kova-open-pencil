@@ -4,7 +4,11 @@
 
 **Goal:** Ship the `/account` full-page route with 5 sidebar sections (Profile, Plan & billing, Brand Kit shell, Integrations, Danger zone) + the Stripe foundation (Checkout, Customer Portal, webhook, reconcile cron) + refactor the M9 Shopify integration UI to dark theme and re-route it to `/account/integrations` with a brand picker + a NEW `shopify_connection_history` table backing the sync-history accordion.
 
-**Architecture:** Vue 3 + Pinia + Vue Router on top of Supabase + Vercel Functions. Stripe SDK on the server (Node runtime via Vercel Fluid Compute). Stripe-hosted Checkout + Customer Portal opened via redirect (Customer Portal in a new tab — Stripe blocks iframe embed per `docs.stripe.com/customer-management/integrate-customer-portal`, verified 2026-05-15). One Stripe Customer per user, forever (per founder ratification D-2). Webhook handler verifies HMAC-SHA256 signature, dedups by `event.id` via a primary-key INSERT on `stripe_webhook_events`, and dispatches 6 event types. Weekly reconcile cron heals webhook-miss drift. PRD section IDs are cited as `[PRD §N.M]` throughout — engineers should keep `docs/kova-final-prds/04-account-and-stripe-billing.md` open while executing.
+**Architecture:** Vue 3 + Pinia + Vue Router on top of Supabase + Vercel Functions. Stripe SDK on the server (Node runtime via Vercel Fluid Compute). Stripe-hosted Checkout + Customer Portal opened via redirect (Customer Portal in a new tab — Stripe blocks iframe embed per `docs.stripe.com/customer-management/integrate-customer-portal`, verified 2026-05-15). One Stripe Customer per user; **D-2 amended 2026-05-17 — Stripe Customer is DELETED on account-deletion via Cluster 01 GDPR cron** (was originally "kept forever"; invoice history persists in Stripe 7 yrs per their docs regardless). Webhook handler verifies HMAC-SHA256 signature, dedups by `event.id` via a primary-key INSERT on `stripe_webhook_events`, and dispatches 6 event types. Weekly reconcile cron heals webhook-miss drift. PRD section IDs are cited as `[PRD §N.M]` throughout — engineers should keep `docs/kova-final-prds/04-account-and-stripe-billing.md` open while executing.
+
+> **20 founder amendments to PRD 04 ratified 2026-05-17.** See PRD §13.2.1 for the full table. Key code-affecting items: (1) Avatar = PNG/JPG only, 5MB max, server normalizes to PNG via `sharp` at fixed path `avatar.png`. (2) `plan_status` CHECK now includes `'trialing'` — webhook stores it as-is. (3) D-2 amended: Stripe Customer deleted on account-deletion via Cluster 01 cron. (4) All 4 Resend templates ship at MVP (new/upgraded/cancelled/payment-failed). (5) `<BrandPicker>` has 3 render modes (empty/static-label/dropdown) with precedence URL > Q5 > alphabetical. (6) `<TrialBanner>` ships hidden, conditional on `planStatus === 'trialing'`.
+>
+> **B12 archive reversal 2026-05-17** — additional dispatch, separate from the 20 amendments. Sidebar 5 → **6 sections** (Brands added between Profile and Plan & billing). New `/account/brands` route. PRD 03 owns the page content (`<BrandsArchiveView>`); PRD 04 owns route registration + sidebar entry + `<SectionResolver>` wiring. See PRD §13.2.2 + plan Task 7.1 + Task 13.1 + Task 13.3.
 
 **Tech Stack:** Vue 3 (Composition API, `<script setup lang="ts">`), Pinia setup stores, Reka UI (DropdownMenu, Dialog, Accordion), Tailwind CSS 4 (utility classes only, theme tokens from `kova-hifi.css`), Lucide icons via unplugin-icons, Stripe Node SDK v17.x, `@supabase/supabase-js`, Resend, Sentry, valibot for input validation. No Zod. No React. No ORM.
 
@@ -38,7 +42,10 @@
 | `api/_shared/price-map.ts` | `priceIdToPlan` + `planToPriceId` maps + helper. |
 | `api/_shared/audit-log.ts` | Cluster 11 wrapper — adapter used by all webhook handlers. (Verify Cluster 11 provides; if not, ship a local stub that writes to `audit_log` table.) |
 | `vercel.json` | Add `/api/stripe/reconcile` cron entry. |
-| `emails/account/subscription-payment-failed.html` | Resend email template. [PRD §5.4.3] |
+| `emails/account/subscription-new.html` | Resend template — new paid subscription. [PRD §5.4.3] |
+| `emails/account/subscription-upgraded.html` | Resend template — plan upgraded. [PRD §5.4.3] |
+| `emails/account/subscription-cancelled.html` | Resend template — cancelled (scheduled + final). [PRD §5.4.3] |
+| `emails/account/subscription-payment-failed.html` | Resend template — payment failed dunning. [PRD §5.4.3] |
 | `docs/legal/privacy-policy.md` | Extend Stripe sub-processor disclosure. [PRD §5.5] |
 | `docs/legal/ropa.md` | Stripe row addition. [PRD §5.5] |
 | `docs/operations/stripe-setup-runbook.md` | New — operator runbook for Stripe Dashboard config. [PRD §5.5] |
@@ -47,7 +54,7 @@
 
 | File | Purpose |
 |---|---|
-| `src/router/routes.ts` | Add `/account/:section?`, `/account/billing/success`, `/account/billing/cancel`. [PRD §6.1] |
+| `src/router/routes.ts` | Add `/account/:section?` (enum includes `brands` per B12 reversal 2026-05-17), `/account/billing/success`, `/account/billing/cancel`. [PRD §6.1] |
 | `src/stores/billing.ts` | NEW — `useBillingStore`. [PRD §6.2.1] |
 | `src/stores/account.ts` | NEW — `useAccountStore`. [PRD §6.2.2] |
 | `src/composables/account/use-account-section.ts` | Section URL sync. [PRD §6.3] |
@@ -63,11 +70,13 @@
 | `src/views/account/sections/BrandKitSection.vue` | A7.3 shell. [PRD §6.4.1] |
 | `src/views/account/sections/IntegrationsSection.vue` | A7.5 (M9 refactor). [PRD §6.4.1 + §6.4.5] |
 | `src/views/account/sections/DangerZoneSection.vue` | A7.6 (mounts Cluster 01 `<DangerZoneCard>`). [PRD §6.4.1] |
-| `src/components/account/AccountSidebar.vue` | 5-item sidebar. [PRD §6.4.2] |
+| `src/components/account/AccountSidebar.vue` | **6-item sidebar** including Brands (B12 reversal 2026-05-17). [PRD §6.4.2] |
 | `src/components/account/AccountSectionHeader.vue` | Section title + sub-copy + trailing slot. [PRD §6.4.2] |
 | `src/components/account/UnsavedPill.vue` | Unsaved-changes pill. [PRD §6.4.2] |
 | `src/components/account/BrandPicker.vue` | Brand selection dropdown (A2b). [PRD §6.4.2] |
-| `src/components/account/PlanCard.vue` | A7.2 plan card. [PRD §6.4.2] |
+| `src/components/account/PlanCard.vue` | A7.2 plan card with 5-variant status pill (incl. Trial). [PRD §6.4.2] |
+| `src/components/account/TrialBanner.vue` | NEW — conditional "Trial — X days left" banner. Ships hidden at MVP per founder decision 2026-05-17. [PRD §6.4.2] |
+| `src/constants/billing-plans.ts` | NEW — Free-tier bullets + plan-name map + `PLAN_GATE_ENFORCED` flag. [PRD §6.4.2] |
 | `src/components/account/UsageBar.vue` | A7.2 usage bar. [PRD §6.4.2] |
 | `src/components/account/InvoiceTable.vue` | A7.2 invoice table. [PRD §6.4.2] |
 | `src/components/account/PastDueBanner.vue` | Past-due banner. [PRD §6.4.2] |
@@ -185,10 +194,20 @@ describe('20260605_04 migration', () => {
     expect(error).toBeNull()
   })
 
-  it('enforces plan_status CHECK constraint', async () => {
+  it('enforces plan_status CHECK constraint — rejects unknown values', async () => {
     const { error } = await supabase.from('users').update({ plan_status: 'bogus' }).eq('id', '00000000-0000-0000-0000-000000000000')
     // CHECK violation surfaces as a constraint error
     expect(error?.code).toBe('23514')
+  })
+
+  it('accepts all 5 plan_status values (active/past_due/cancelled/incomplete/trialing) — founder decision 2026-05-17', async () => {
+    const userId = crypto.randomUUID()
+    await supabase.from('users').insert({ id: userId, email: `${userId}@test.local`, name: 'T' })
+    for (const status of ['active', 'past_due', 'cancelled', 'incomplete', 'trialing']) {
+      const { error } = await supabase.from('users').update({ plan_status: status }).eq('id', userId)
+      expect(error).toBeNull()
+    }
+    await supabase.from('users').delete().eq('id', userId)
   })
 })
 ```
@@ -200,7 +219,7 @@ cd kova-open-pencil-1
 bun run test:unit -- tests/integration/account/migrations.test.ts
 ```
 
-Expected: all 4 tests pass.
+Expected: all 5 tests pass (4 original + 1 trialing-acceptance test).
 
 - [ ] **Step 3: Commit**
 
@@ -416,28 +435,38 @@ git commit -m "test(04): RLS integration tests for stripe_webhook_events + shopi
 
 **Goal:** Lazy-init Stripe client + price-map + audit-log helper so every Edge Function has clean shared utilities. [PRD §5.1 + §5.4]
 
-### Task 2.1: Install Stripe SDK
+### Task 2.1: Install Stripe SDK + sharp (avatar normalization)
 
 - [ ] **Step 1: Install + commit lockfile**
 
 ```bash
 cd kova-open-pencil-1
-bun add stripe@17
+bun add stripe@17 sharp@0.34
 ```
+
+Founder decision 2026-05-17 adds `sharp` for avatar normalization (resize 256×256 + PNG conversion in `avatar-confirm` Edge Function).
 
 - [ ] **Step 2: Verify package.json + bun.lock**
 
 ```bash
-grep -E '"stripe":' package.json
+grep -E '"(stripe|sharp)":' package.json
 ```
 
-Expected: `"stripe": "^17.x.x"`.
+Expected: `"stripe": "^17.x.x"` AND `"sharp": "^0.34.x"`.
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 3: Verify sharp's native bindings resolve on Vercel runtime**
+
+```bash
+bun -e "import('sharp').then(s => console.log('sharp loaded:', !!s.default))"
+```
+
+Expected: `sharp loaded: true`. If errors on macOS dev, run `bun add --optional sharp-darwin-arm64` (or similar per host).
+
+- [ ] **Step 4: Commit**
 
 ```bash
 git add package.json bun.lock
-git commit -m "chore(04): add stripe@17 dependency for Cluster 04 billing"
+git commit -m "chore(04): add stripe@17 + sharp@0.34 deps for Cluster 04 billing + avatar"
 ```
 
 ### Task 2.2: Stripe client singleton
@@ -1038,7 +1067,7 @@ describe('handleSubscriptionCreated', () => {
     }))
   })
 
-  it('maps trialing → active per PRD §12.3', async () => {
+  it('stores trialing status as-is per founder decision 2026-05-17 (§12.3 RESOLVED)', async () => {
     process.env.STRIPE_PRICE_ID_SOLO = 'price_solo'
     const update = mock(() => ({ eq: mock(() => Promise.resolve({ error: null })) }))
     const supabase = {
@@ -1051,7 +1080,7 @@ describe('handleSubscriptionCreated', () => {
     await handleSubscriptionCreated({
       data: { object: { id: 'sub_test', customer: 'cus_test', status: 'trialing', current_period_end: 1735603200, cancel_at_period_end: false, items: { data: [{ price: { id: 'price_solo' } }] } } },
     } as any, supabase as any)
-    expect(update).toHaveBeenCalledWith(expect.objectContaining({ plan_status: 'active' }))
+    expect(update).toHaveBeenCalledWith(expect.objectContaining({ plan_status: 'trialing' }))
   })
 })
 ```
@@ -1084,13 +1113,11 @@ export async function handleSubscriptionCreated(event: Stripe.Event, supabase: S
     return
   }
 
-  // Map trialing → active (PRD §12.3 — MVP doesn't enumerate trialing)
-  const planStatus = sub.status === 'trialing' ? 'active' : sub.status
-
+  // Store sub.status as-is — DB CHECK now includes 'trialing' (founder decision 2026-05-17 — PRD §12.3 RESOLVED)
   await supabase.from('users').update({
     stripe_subscription_id: sub.id,
     plan: plan ?? 'free',
-    plan_status: planStatus,
+    plan_status: sub.status,
     current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
     cancel_at_period_end: sub.cancel_at_period_end,
   }).eq('id', user.id)
@@ -1528,7 +1555,7 @@ git commit -m "test(04): integration tests for Stripe webhook lifecycle + idempo
 import { describe, it, expect, mock } from 'bun:test'
 
 describe('POST /api/account/avatar-upload', () => {
-  it('returns signed URL for valid PNG ≤2MB', async () => {
+  it('returns signed URL for valid PNG ≤5MB (founder decision 2026-05-17)', async () => {
     const createSignedUploadUrl = mock(() => Promise.resolve({ data: { signedUrl: 'https://storage.signed.url/abc', path: 'users/user-1/avatar.png' }, error: null }))
     const supabase = { storage: { from: mock(() => ({ createSignedUploadUrl })) } }
     const { handler } = await import('@/../api/account/avatar-upload')
@@ -1538,16 +1565,25 @@ describe('POST /api/account/avatar-upload', () => {
     expect(res.body.storage_path).toBe('users/user-1/avatar.png')
   })
 
-  it('rejects >2MB', async () => {
+  it('rejects >5MB', async () => {
     const { handler } = await import('@/../api/account/avatar-upload')
-    const res = await handler({ method: 'POST', body: { mime_type: 'image/png', size_bytes: 3000000 } }, { supabase: {} as any, userId: 'user-1' })
+    // founder decision 2026-05-17: 5MB limit
+    const res = await handler({ method: 'POST', body: { mime_type: 'image/png', size_bytes: 6 * 1024 * 1024 } }, { supabase: {} as any, userId: 'user-1' })
     expect(res.status).toBe(413)
+    expect(res.body.max_bytes).toBe(5 * 1024 * 1024)
   })
 
-  it('rejects unsupported mime', async () => {
+  it('rejects unsupported mime (HEIC)', async () => {
     const { handler } = await import('@/../api/account/avatar-upload')
     const res = await handler({ method: 'POST', body: { mime_type: 'image/heic', size_bytes: 100 } }, { supabase: {} as any, userId: 'user-1' })
     expect(res.status).toBe(415)
+  })
+
+  it('rejects SVG (founder decision 2026-05-17 — XSS surface)', async () => {
+    const { handler } = await import('@/../api/account/avatar-upload')
+    const res = await handler({ method: 'POST', body: { mime_type: 'image/svg+xml', size_bytes: 100 } }, { supabase: {} as any, userId: 'user-1' })
+    expect(res.status).toBe(415)
+    expect(res.body.error).toBe('unsupported_mime')
   })
 })
 ```
@@ -1558,23 +1594,21 @@ describe('POST /api/account/avatar-upload', () => {
 
 ```typescript
 // api/account/avatar-upload.ts
-const MAX_BYTES = 2 * 1024 * 1024
-const MIME_TO_EXT: Record<string, string> = {
-  'image/png': 'png',
-  'image/jpeg': 'jpg',
-  'image/svg+xml': 'svg',
-}
+// Founder decision 2026-05-17: PNG/JPG only (SVG rejected, XSS); 5MB max; fixed path avatar.png (normalize via sharp in confirm step)
+const MAX_BYTES = 5 * 1024 * 1024 // 5 MB
+const ALLOWED_MIMES = new Set(['image/png', 'image/jpeg'] as const)
 
 export async function handler(req, ctx) {
   if (req.method !== 'POST') return { status: 405, body: { error: 'method_not_allowed' } }
   if (!ctx.userId) return { status: 401, body: { error: 'unauthenticated' } }
 
   const { mime_type, size_bytes } = req.body
-  if (!MIME_TO_EXT[mime_type]) return { status: 415, body: { error: 'unsupported_mime' } }
+  if (!ALLOWED_MIMES.has(mime_type)) return { status: 415, body: { error: 'unsupported_mime' } }
   if (size_bytes > MAX_BYTES) return { status: 413, body: { error: 'too_large', max_bytes: MAX_BYTES } }
 
-  const path = `users/${ctx.userId}/avatar.${MIME_TO_EXT[mime_type]}`
-  const { data, error } = await ctx.supabase.storage.from('media-assets').createSignedUploadUrl(path)
+  // FIXED extension — avatar-confirm normalizes to PNG via sharp; no orphan extensions
+  const path = `users/${ctx.userId}/avatar.png`
+  const { data, error } = await ctx.supabase.storage.from('media-assets').createSignedUploadUrl(path, { upsert: true })
   if (error) return { status: 500, body: { error: 'storage_error' } }
 
   return {
@@ -1597,11 +1631,13 @@ git add api/account/avatar-upload.ts tests/unit/api/account/avatar-upload.test.t
 git commit -m "feat(04): POST /api/account/avatar-upload — signed-URL pattern"
 ```
 
-### Task 4.2: `POST /api/account/avatar-confirm`
+### Task 4.2: `POST /api/account/avatar-confirm` (with sharp normalization)
 
 **Files:**
 - Create: `kova-open-pencil-1/api/account/avatar-confirm.ts`
 - Test: `kova-open-pencil-1/tests/unit/api/account/avatar-confirm.test.ts`
+
+**Founder decision 2026-05-17:** Confirm step runs uploaded file through `sharp` to normalize (resize 256×256 cover fit, convert to PNG) before persisting. Path is fixed `users/{user_id}/avatar.png` — no orphans.
 
 - [ ] **Step 1: Write test**
 
@@ -1610,16 +1646,21 @@ git commit -m "feat(04): POST /api/account/avatar-upload — signed-URL pattern"
 import { describe, it, expect, mock } from 'bun:test'
 
 describe('POST /api/account/avatar-confirm', () => {
-  it('updates users.avatar_storage_path on success', async () => {
-    const list = mock(() => Promise.resolve({ data: [{ name: 'avatar.png' }], error: null }))
+  it('downloads, normalizes via sharp, re-uploads PNG, then updates users.avatar_storage_path', async () => {
+    const originalBuf = new Uint8Array([0x89, 0x50, 0x4e, 0x47]) // PNG header bytes
+    const download = mock(() => Promise.resolve({ data: new Blob([originalBuf]), error: null }))
+    const upd = mock(() => Promise.resolve({ data: { path: 'users/user-1/avatar.png' }, error: null }))
     const update = mock(() => ({ eq: mock(() => Promise.resolve({ error: null })) }))
     const supabase = {
-      storage: { from: mock(() => ({ list })) },
+      storage: { from: mock(() => ({ download, update: upd })) },
       from: mock(() => ({ update })),
     }
     const { handler } = await import('@/../api/account/avatar-confirm')
     const res = await handler({ method: 'POST', body: { storage_path: 'users/user-1/avatar.png' } }, { supabase: supabase as any, userId: 'user-1' })
     expect(res.status).toBe(200)
+    expect(download).toHaveBeenCalledWith('users/user-1/avatar.png')
+    // Re-upload happens with normalized PNG buffer + image/png content-type + upsert
+    expect(upd).toHaveBeenCalledWith('users/user-1/avatar.png', expect.any(Buffer), expect.objectContaining({ contentType: 'image/png', upsert: true }))
     expect(update).toHaveBeenCalledWith({ avatar_storage_path: 'users/user-1/avatar.png' })
   })
 
@@ -1629,10 +1670,85 @@ describe('POST /api/account/avatar-confirm', () => {
     const res = await handler({ method: 'POST', body: { storage_path: 'users/other-user/avatar.png' } }, { supabase: supabase as any, userId: 'user-1' })
     expect(res.status).toBe(403)
   })
+
+  it('rejects path with non-png extension (founder decision 2026-05-17 — fixed avatar.png)', async () => {
+    const supabase = { storage: {}, from: mock(() => ({})) }
+    const { handler } = await import('@/../api/account/avatar-confirm')
+    const res = await handler({ method: 'POST', body: { storage_path: 'users/user-1/avatar.jpg' } }, { supabase: supabase as any, userId: 'user-1' })
+    expect(res.status).toBe(400)
+  })
 })
 ```
 
-- [ ] **Step 2 → 5**: implement + verify + commit per pattern. Skip pseudocode (mirrors §5.1.6).
+- [ ] **Step 2: Run — expect FAIL**
+
+- [ ] **Step 3: Implement**
+
+```typescript
+// api/account/avatar-confirm.ts
+import sharp from 'sharp'
+import { writeAuditLog } from '../_shared/audit-log'
+
+// Founder decision 2026-05-17: fixed path avatar.png; normalize via sharp (resize 256×256 PNG)
+const EXPECTED_PATH_RE = /^users\/[^/]+\/avatar\.png$/
+
+export async function handler(req, ctx) {
+  if (req.method !== 'POST') return { status: 405, body: { error: 'method_not_allowed' } }
+  if (!ctx.userId) return { status: 401, body: { error: 'unauthenticated' } }
+
+  const { storage_path } = req.body
+  // Path must match users/{user_id}/avatar.png AND user_id segment must equal auth.uid()
+  if (!EXPECTED_PATH_RE.test(storage_path)) return { status: 400, body: { error: 'invalid_path' } }
+  const segments = storage_path.split('/')
+  if (segments[1] !== ctx.userId) return { status: 403, body: { error: 'path_user_mismatch' } }
+
+  // 1. Download the original upload
+  const { data: blob, error: downloadErr } = await ctx.supabase.storage.from('media-assets').download(storage_path)
+  if (downloadErr || !blob) return { status: 500, body: { error: 'download_failed' } }
+  const originalBuf = Buffer.from(await blob.arrayBuffer())
+
+  // 2. Normalize via sharp: EXIF rotate → resize 256×256 cover → toFormat png
+  let normalized: Buffer
+  try {
+    normalized = await sharp(originalBuf)
+      .rotate()                                          // auto-orient based on EXIF
+      .resize({ width: 256, height: 256, fit: 'cover' })
+      .toFormat('png', { compressionLevel: 9 })
+      .toBuffer()
+  } catch (err) {
+    return { status: 422, body: { error: 'image_decode_failed' } }
+  }
+
+  // 3. Re-upload normalized PNG (overwrite original)
+  const { error: uploadErr } = await ctx.supabase.storage.from('media-assets').update(storage_path, normalized, {
+    contentType: 'image/png',
+    upsert: true,
+  })
+  if (uploadErr) return { status: 500, body: { error: 'reupload_failed' } }
+
+  // 4. Persist path to users.avatar_storage_path
+  const { error: dbErr } = await ctx.supabase.from('users').update({ avatar_storage_path: storage_path }).eq('id', ctx.userId)
+  if (dbErr) return { status: 500, body: { error: 'db_update_failed' } }
+
+  // 5. Audit-log + generate signed display URL
+  await writeAuditLog(ctx.supabase, 'account.avatar_uploaded', ctx.userId, {
+    original_size: originalBuf.byteLength,
+    normalized_size: normalized.byteLength,
+  })
+  const { data: signed } = await ctx.supabase.storage.from('media-assets').createSignedUrl(storage_path, 15 * 60)
+
+  return { status: 200, body: { success: true, public_url: signed?.signedUrl ?? null, storage_path } }
+}
+export default handler
+```
+
+- [ ] **Step 4: Verify pass + commit**
+
+```bash
+bun run test:unit -- tests/unit/api/account/avatar-confirm.test.ts
+git add api/account/avatar-confirm.ts tests/unit/api/account/avatar-confirm.test.ts
+git commit -m "feat(04): POST /api/account/avatar-confirm — sharp normalize → PNG → upsert"
+```
 
 ---
 
@@ -1929,11 +2045,96 @@ export function useAccountSection() {
 
 **Files:**
 - Create: `kova-open-pencil-1/src/composables/account/use-brand-picker.ts`
-- Test: mirror.
+- Test: `kova-open-pencil-1/tests/unit/composables/account/use-brand-picker.test.ts`
 
-> URL query `?brand=:brandId` ↔ `usePreferencesStore.lastActiveBrandId` (Q5 Layer 2).
+> Founder decision 2026-05-17: default precedence is `route.query.brand` > `usePreferencesStore.lastActiveBrandId` (Q5 Layer 2) > first brand alphabetically. Exposes `renderMode: 'empty' | 'static-label' | 'dropdown'` derived from `brands.length`. [PRD §6.3]
 
-- [ ] **Step 1 → 5**: TDD per pattern.
+- [ ] **Step 1: Write failing test**
+
+```typescript
+// tests/unit/composables/account/use-brand-picker.test.ts
+import { describe, it, expect, beforeEach, mock } from 'bun:test'
+import { setActivePinia, createPinia } from 'pinia'
+
+const router = { push: mock(() => Promise.resolve()), currentRoute: { value: { query: {} } } }
+mock.module('vue-router', () => ({ useRouter: () => router, useRoute: () => router.currentRoute.value }))
+
+describe('useBrandPicker', () => {
+  beforeEach(() => setActivePinia(createPinia()))
+
+  it('precedence: URL > Q5 lastActiveBrandId > alphabetical', async () => {
+    router.currentRoute.value = { query: { brand: 'b-from-url' } }
+    const { useBrandPicker } = await import('@/composables/account/use-brand-picker')
+    // mock useBrandsStore with 3 brands + useUserPreferencesStore with lastActiveBrandId='b-from-prefs'
+    // assert resolved id is 'b-from-url'
+    // then with no URL, expect 'b-from-prefs'; then with neither, expect alphabetical first
+  })
+
+  it('renderMode is "empty" when 0 brands', async () => { /* ... */ })
+  it('renderMode is "static-label" when exactly 1 brand', async () => { /* ... */ })
+  it('renderMode is "dropdown" when 2+ brands', async () => { /* ... */ })
+
+  it('setBrand writes URL query AND updates lastActiveBrandId pref', async () => { /* ... */ })
+})
+```
+
+- [ ] **Step 2: Run — expect FAIL**
+
+- [ ] **Step 3: Implement**
+
+```typescript
+// src/composables/account/use-brand-picker.ts
+import { computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useBrandsStore } from '@/stores/brands'
+import { useUserPreferencesStore } from '@/stores/user-preferences'
+
+type RenderMode = 'empty' | 'static-label' | 'dropdown'
+
+export function useBrandPicker(scope: 'brand-kit' | 'integrations') {
+  const route = useRoute()
+  const router = useRouter()
+  const brands = useBrandsStore()
+  const prefs = useUserPreferencesStore()
+
+  const renderMode = computed<RenderMode>(() => {
+    const count = brands.brands.length
+    if (count === 0) return 'empty'
+    if (count === 1) return 'static-label'
+    return 'dropdown'
+  })
+
+  // Default precedence (founder decision 2026-05-17):
+  //   URL ?brand=:brandId  >  prefs.lastActiveBrandId  >  alphabetical first
+  const selectedBrandId = computed<string | null>(() => {
+    const urlBrand = (route.query.brand as string | undefined) ?? null
+    if (urlBrand && brands.brands.some((b) => b.id === urlBrand)) return urlBrand
+    const prefBrand = prefs.lastActiveBrandId
+    if (prefBrand && brands.brands.some((b) => b.id === prefBrand)) return prefBrand
+    const alphaFirst = [...brands.brands].sort((a, b) => a.name.localeCompare(b.name))[0]
+    return alphaFirst?.id ?? null
+  })
+
+  const selectedBrand = computed(() => brands.brands.find((b) => b.id === selectedBrandId.value) ?? null)
+
+  async function setBrand(id: string) {
+    // 1. Update URL — preserve other query params
+    await router.push({ query: { ...route.query, brand: id } })
+    // 2. Persist to Q5 Layer 2 prefs (write-through to users.preferences.lastActiveBrandId)
+    await prefs.setLastActiveBrandId(id)
+  }
+
+  return { selectedBrand, selectedBrandId, setBrand, renderMode }
+}
+```
+
+- [ ] **Step 4: Verify pass + commit**
+
+```bash
+bun run test:unit -- tests/unit/composables/account/use-brand-picker.test.ts
+git add src/composables/account/use-brand-picker.ts tests/unit/composables/account/use-brand-picker.test.ts
+git commit -m "feat(04): useBrandPicker — URL > Q5 > alphabetical precedence + renderMode"
+```
 
 ### Task 6.3: `usePlanGate` (STUB)
 
@@ -1976,10 +2177,11 @@ export function usePlanGate(_feature: string) {
 
 ```typescript
 // src/composables/account/use-avatar-upload.ts
+// Founder decision 2026-05-17: PNG/JPG only (SVG rejected, XSS); 5MB max; server normalizes to PNG via sharp
 import { ref } from 'vue'
 
-const ALLOWED_MIMES = ['image/png', 'image/jpeg', 'image/svg+xml'] as const
-const MAX_BYTES = 2 * 1024 * 1024
+const ALLOWED_MIMES = ['image/png', 'image/jpeg'] as const
+const MAX_BYTES = 5 * 1024 * 1024 // 5 MB
 
 export function useAvatarUpload() {
   const uploading = ref(false)
@@ -1988,10 +2190,10 @@ export function useAvatarUpload() {
   async function upload(file: File): Promise<{ public_url: string }> {
     error.value = null
     if (!ALLOWED_MIMES.includes(file.type as any)) {
-      throw new Error('Unsupported file type. Use PNG, JPG, or SVG.')
+      throw new Error('Unsupported file type. Use PNG or JPG.')
     }
     if (file.size > MAX_BYTES) {
-      throw new Error('File too large (max 2 MB).')
+      throw new Error('File too large (max 5 MB).')
     }
     uploading.value = true
     try {
@@ -2039,13 +2241,13 @@ export function useAvatarUpload() {
 
 ## Phase 7 — Account chrome components
 
-### Task 7.1: `<AccountSidebar>`
+### Task 7.1: `<AccountSidebar>` — 6 items (B12 reversal 2026-05-17)
 
 **Files:**
 - Create: `kova-open-pencil-1/src/components/account/AccountSidebar.vue`
 - Test: `kova-open-pencil-1/tests/unit/components/account/AccountSidebar.test.ts`
 
-> Per PRD §6.4.2. 5 items; active highlight; warn-tint on Danger zone.
+> Per PRD §6.4.2. **6 items** (Brands inserted slot 2 per B12 reversal). Active highlight. Warn-tint on Danger zone. Sidebar order verified against `Kova Hi-Fi B12 Brands page - Dark.html` lines 554–560.
 
 - [ ] **Step 1: Write test**
 
@@ -2058,15 +2260,17 @@ import AccountSidebar from '@/components/account/AccountSidebar.vue'
 describe('AccountSidebar', () => {
   const items = [
     { id: 'profile', label: 'Profile', icon: 'user' },
+    { id: 'brands', label: 'Brands', icon: 'layers' },             // B12 reversal 2026-05-17
     { id: 'billing', label: 'Plan & billing', icon: 'credit-card' },
     { id: 'brand-kit', label: 'Brand Kit', icon: 'palette' },
     { id: 'integrations', label: 'Integrations', icon: 'plug' },
     { id: 'danger', label: 'Danger zone', icon: 'trash-2', warnTinted: true },
   ]
 
-  it('renders 5 items', () => {
+  it('renders 6 items in correct order (B12 reversal 2026-05-17)', () => {
     const w = mount(AccountSidebar, { props: { activeSection: 'profile', items } })
-    expect(w.findAll('[data-account-sidebar-item]').length).toBe(5)
+    const renderedIds = w.findAll('[data-account-sidebar-item]').map((n) => n.attributes('data-account-sidebar-item'))
+    expect(renderedIds).toEqual(['profile', 'brands', 'billing', 'brand-kit', 'integrations', 'danger'])
   })
 
   it('highlights active item', () => {
@@ -2077,8 +2281,8 @@ describe('AccountSidebar', () => {
 
   it('emits select event on click', async () => {
     const w = mount(AccountSidebar, { props: { activeSection: 'profile', items } })
-    await w.find('[data-account-sidebar-item="billing"]').trigger('click')
-    expect(w.emitted('select')?.[0]).toEqual(['billing'])
+    await w.find('[data-account-sidebar-item="brands"]').trigger('click')
+    expect(w.emitted('select')?.[0]).toEqual(['brands'])
   })
 
   it('renders danger zone with warn tint', () => {
@@ -2139,7 +2343,7 @@ const emit = defineEmits<{ (e: 'select', id: string): void }>()
 ```bash
 bun run test:unit -- tests/unit/components/account/AccountSidebar.test.ts
 git add src/components/account/AccountSidebar.vue tests/unit/components/account/AccountSidebar.test.ts
-git commit -m "feat(04): <AccountSidebar> 5-item nav with active highlight"
+git commit -m "feat(04): <AccountSidebar> 6-item nav with Brands entry + active highlight"
 ```
 
 ### Task 7.2: `<AccountSectionHeader>` + `<UnsavedPill>`
@@ -2149,15 +2353,60 @@ git commit -m "feat(04): <AccountSidebar> 5-item nav with active highlight"
 
 - [ ] **Step 1 → 5**: TDD per pattern.
 
-### Task 7.3: `<BrandPicker>`
+### Task 7.3: `<BrandPicker>` — 3-mode render (founder decision 2026-05-17)
 
 **Files:**
 - Create: `kova-open-pencil-1/src/components/account/BrandPicker.vue`
 - Test: `kova-open-pencil-1/tests/unit/components/account/BrandPicker.test.ts`
 
-> Per PRD §6.4.2. Reka DropdownMenu; search; archived muted; "Add new brand" footer slot.
+> Per PRD §6.4.2 + founder decision 2026-05-17. Component renders 3 variants based on prop `renderMode`:
+>
+> - **`'empty'`** — defer to parent `<EmptyState>` (parent shows "No brands yet. Create one from your dashboard first." + CTA → `/dashboard`)
+> - **`'static-label'`** (1 brand) — render `<span class="brand-picker-static">{{ brandName }}</span>` with no dropdown chevron. Pure text label. Matches Figma's single-team/workspace pattern.
+> - **`'dropdown'`** (2+ brands) — full Reka-UI DropdownMenu with chevron, search filter, archived-muted, footer slot.
 
-- [ ] **Step 1 → 5**: TDD per pattern.
+- [ ] **Step 1: Write failing test**
+
+```typescript
+// tests/unit/components/account/BrandPicker.test.ts
+import { describe, it, expect } from 'bun:test'
+import { mount } from '@vue/test-utils'
+import BrandPicker from '@/components/account/BrandPicker.vue'
+
+describe('<BrandPicker>', () => {
+  it('renders nothing in empty mode (parent owns EmptyState)', () => {
+    const w = mount(BrandPicker, { props: { renderMode: 'empty', brands: [], modelValue: null } })
+    expect(w.find('[data-testid="brand-picker"]').exists()).toBe(false)
+  })
+
+  it('renders static label (no chevron) when renderMode is static-label', () => {
+    const w = mount(BrandPicker, {
+      props: { renderMode: 'static-label', brands: [{ id: 'b1', name: 'Acme Co' }], modelValue: 'b1' },
+    })
+    expect(w.find('.brand-picker-static').text()).toBe('Acme Co')
+    expect(w.find('[data-testid="dropdown-chevron"]').exists()).toBe(false)
+  })
+
+  it('renders full dropdown when renderMode is dropdown (2+ brands)', () => {
+    const w = mount(BrandPicker, {
+      props: {
+        renderMode: 'dropdown',
+        brands: [{ id: 'b1', name: 'Acme Co' }, { id: 'b2', name: 'Zeta Inc' }],
+        modelValue: 'b1',
+      },
+    })
+    expect(w.find('[data-testid="dropdown-chevron"]').exists()).toBe(true)
+  })
+
+  it('emits update:modelValue on selection (dropdown variant)', async () => {
+    const w = mount(BrandPicker, { props: { renderMode: 'dropdown', brands: [{ id: 'b1', name: 'A' }, { id: 'b2', name: 'B' }], modelValue: 'b1' } })
+    await w.find('[data-testid="brand-option-b2"]').trigger('click')
+    expect(w.emitted('update:modelValue')?.[0]).toEqual(['b2'])
+  })
+})
+```
+
+- [ ] **Step 2 → 5**: Implement the 3 variants in template via `v-if="renderMode === 'static-label'"` / `v-else-if="renderMode === 'dropdown'"`; archived-muted + footer slot only render in dropdown variant. Commit.
 
 ### Task 7.4: `<AccountView>`
 
@@ -2228,12 +2477,18 @@ describe('AccountView', () => {
 
 ## Phase 9 — Plan & billing section
 
-### Task 9.1: `<PlanCard>` + `<UsageBar>` + `<InvoiceTable>` + `<PastDueBanner>`
+### Task 9.1: `<PlanCard>` + `<UsageBar>` + `<InvoiceTable>` + `<PastDueBanner>` + `<TrialBanner>`
 
 **Files:**
 - Create each component under `src/components/account/` + tests.
 
-- [ ] **Step 1 → 5**: TDD per component. Status pill color mapping (Active/Past due/Cancelled/Incomplete) per PRD §8.3.
+**Component contracts (founder decisions 2026-05-17):**
+
+- `<PlanCard>` — Status pill renders **5 variants**: Active (`ok` token), Past due (`warn`), Cancelled (`muted`), Incomplete (`warn-soft`), **Trial** (`info` — hidden at MVP since no trials, but component supports it via conditional render on `planStatus === 'trialing'`). Free-tier feature bullets sourced from `@/constants/billing-plans.ts` (4 lines: "1 brand kit", "Unlimited canvases", "AI design assistant", "Image export (PNG slices)"). "Compare plans" button = always visible, click fires `useToast({ message: 'Pricing coming soon.', kind: 'info' })`.
+- `<PastDueBanner>` — Renders ONLY when `useBillingStore.isPastDue === true`. Copy: `"Your last payment didn't go through. Update your card before {{ deadline }} to keep your subscription."` (deadline = `currentPeriodEnd + 7 days`, formatted via `dayjs(...).format('MMMM D')`). Single CTA "Update payment method" → triggers `useBillingStore.openPortal()` (same Stripe Portal new-tab flow as Manage billing).
+- `<TrialBanner>` (NEW, founder decision 2026-05-17) — Renders ONLY when `useBillingStore.planStatus === 'trialing'`. Copy: `"Trial — {{ daysLeft }} days left of {{ planName }}."` where `daysLeft = Math.max(0, Math.ceil((currentPeriodEnd - now) / 86400000))`. Ships hidden at MVP (no Stripe trial settings active) but lights up automatically when founder activates trials in Stripe Dashboard. Test must assert: (a) renders when `planStatus === 'trialing'`; (b) does NOT render for other statuses; (c) renders correct daysLeft for various `currentPeriodEnd` offsets.
+
+- [ ] **Step 1 → 5**: TDD per component. Test status pill 5-variant mapping (Active/Past due/Cancelled/Incomplete/Trial). Test TrialBanner conditional render. Test PastDueBanner deadline interpolation.
 
 ### Task 9.2: `<BillingSection>`
 
@@ -2241,7 +2496,7 @@ describe('AccountView', () => {
 - Create: `kova-open-pencil-1/src/views/account/sections/BillingSection.vue`
 - Test: mirror.
 
-> Per PRD §3.3. Composes `<PlanCard>` + `<PastDueBanner>` (conditional) + `<UsageBar>` (x2) + `<InvoiceTable>`. Calls `useBillingStore.fetchInvoices()` + `fetchUsage()` on mount.
+> Per PRD §3.3. Composes `<PlanCard>` + `<PastDueBanner>` (conditional on `isPastDue`) + `<TrialBanner>` (conditional on `planStatus === 'trialing'`) + `<UsageBar>` (x2) + `<InvoiceTable>`. Calls `useBillingStore.fetchInvoices()` + `fetchUsage()` on mount.
 
 - [ ] **Step 1 → 5**: TDD per pattern.
 
@@ -2527,10 +2782,10 @@ describe('StripeReturnLanding', () => {
 
 ## Phase 13 — Routes + meta + viewport guard wiring
 
-### Task 13.1: Register routes
+### Task 13.1: Register routes — 6 sections including `/account/brands` (B12 reversal 2026-05-17)
 
 **Files:**
-- Modify: `kova-open-pencil-1/src/router/routes.ts` — add the 3 new routes from PRD §6.1
+- Modify: `kova-open-pencil-1/src/router/routes.ts` — add the 3 new routes from PRD §6.1, with `:section` enum including `brands`
 
 - [ ] **Step 1: Write a routes integration test** that navigates to each route + asserts the right component renders.
 
@@ -2561,24 +2816,108 @@ describe('Account routes', () => {
     await router.isReady()
     expect(router.currentRoute.value.name).toBe('account-billing-success')
   })
+
+  it('/account/brands matches account section route (B12 reversal 2026-05-17)', async () => {
+    const router = createRouter({ history: createMemoryHistory(), routes })
+    await router.push('/account/brands')
+    await router.isReady()
+    expect(router.currentRoute.value.name).toBe('account')
+    expect(router.currentRoute.value.params.section).toBe('brands')
+  })
+
+  it('/account/brands inherits requiresAuth + dark theme meta from parent', async () => {
+    const router = createRouter({ history: createMemoryHistory(), routes })
+    await router.push('/account/brands')
+    await router.isReady()
+    expect(router.currentRoute.value.meta.requiresAuth).toBe(true)
+    expect(router.currentRoute.value.meta.theme).toBe('dark')
+    expect(router.currentRoute.value.meta.viewportGuard).toBe('desktop')
+  })
 })
 ```
 
 - [ ] **Step 2: Run — expect FAIL**
 
-- [ ] **Step 3: Add the 3 routes** verbatim from PRD §6.1
+- [ ] **Step 3: Add the 3 routes** verbatim from PRD §6.1. **Important: the `:section` enum MUST include `brands`** — `:section(profile|brands|billing|brand-kit|integrations|danger)`. Cross-cluster ownership: PRD 04 owns this route registration; PRD 03 ships the `<BrandsArchiveView>` component that `<SectionResolver>` dispatches to.
 
 - [ ] **Step 4: Verify pass + commit**
 
 ```bash
 bun run test:unit -- tests/integration/router/account-routes.test.ts
 git add src/router/routes.ts tests/integration/router/account-routes.test.ts
-git commit -m "feat(04): register /account, /account/billing/success, /account/billing/cancel routes"
+git commit -m "feat(04): register /account routes incl. /account/brands (B12 reversal 2026-05-17)"
 ```
 
 ### Task 13.2: Wire viewport guard + auth middleware
 
-Already shipped by Cluster 01. Verify the meta `theme: 'dark'` + `requiresAuth: true` + `viewportGuard: 'desktop'` flow works against `/account/*` via an E2E smoke (Phase 14 covers).
+Already shipped by Cluster 01. Verify the meta `theme: 'dark'` + `requiresAuth: true` + `viewportGuard: 'desktop'` flow works against `/account/*` via an E2E smoke (Phase 14 covers). The `/account/brands` route inherits all 3 meta flags from the parent `account` route — no extra wiring needed.
+
+### Task 13.3: Wire `<SectionResolver>` `'brands'` mapping (B12 reversal 2026-05-17, cross-cluster)
+
+**Files:**
+- Modify: `kova-open-pencil-1/src/views/account/sections/SectionResolver.vue` — add `'brands'` case that dynamic-imports PRD 03's `<BrandsArchiveView>`
+
+**Cross-cluster note:** PRD 03 plan (Task A2 per PRD 03 dispatch) ships `<BrandsArchiveView>` at `src/views/account/sections/BrandsArchiveView.vue`. This task ONLY wires it into the resolver — DO NOT build the component itself. If PRD 03 hasn't shipped `<BrandsArchiveView>` yet at integration time, this resolver case mounts a Cluster 11 `<Skeleton>` placeholder until 03 lands. Verify against PRD 03 plan before claiming complete.
+
+- [ ] **Step 1: Write test**
+
+```typescript
+// tests/unit/views/account/sections/SectionResolver.test.ts
+import { describe, it, expect } from 'bun:test'
+import { mount } from '@vue/test-utils'
+import SectionResolver from '@/views/account/sections/SectionResolver.vue'
+
+describe('SectionResolver', () => {
+  it('renders BrandsArchiveView when activeSection is "brands" (B12 reversal 2026-05-17)', async () => {
+    // Mount with stub store activeSection: 'brands'
+    const w = mount(SectionResolver, { global: { stubs: { BrandsArchiveView: { template: '<div data-testid="brands-view" />' } } } })
+    // ... set store.activeSection = 'brands'
+    await w.vm.$nextTick()
+    expect(w.find('[data-testid="brands-view"]').exists()).toBe(true)
+  })
+
+  it('falls back to Cluster 11 Skeleton if BrandsArchiveView not yet imported (PRD 03 not landed)', async () => {
+    // Mock dynamic import failure
+    // assert Skeleton renders
+  })
+})
+```
+
+- [ ] **Step 2 → 5**: TDD per pattern. Add `<Suspense>` + `<Skeleton>` fallback for the dynamic-import case.
+
+```vue
+<!-- src/views/account/sections/SectionResolver.vue (excerpt) -->
+<script setup lang="ts">
+import { defineAsyncComponent } from 'vue'
+import { useAccountStore } from '@/stores/account'
+import Skeleton from '@/components/ui/Skeleton.vue'
+
+const account = useAccountStore()
+
+const BrandsArchiveView = defineAsyncComponent({
+  loader: () => import('@/views/account/sections/BrandsArchiveView.vue'),
+  loadingComponent: Skeleton,
+  errorComponent: Skeleton, // PRD 03 not landed yet → render Skeleton
+  delay: 100,
+})
+// ProfileSection, BillingSection, BrandKitSection, IntegrationsSection, DangerZoneSection imported normally
+</script>
+
+<template>
+  <ProfileSection v-if="account.activeSection === 'profile'" />
+  <BrandsArchiveView v-else-if="account.activeSection === 'brands'" />
+  <BillingSection v-else-if="account.activeSection === 'billing'" />
+  <BrandKitSection v-else-if="account.activeSection === 'brand-kit'" />
+  <IntegrationsSection v-else-if="account.activeSection === 'integrations'" />
+  <DangerZoneSection v-else-if="account.activeSection === 'danger'" />
+</template>
+```
+
+```bash
+bun run test:unit -- tests/unit/views/account/sections/SectionResolver.test.ts
+git add src/views/account/sections/SectionResolver.vue tests/unit/views/account/sections/SectionResolver.test.ts
+git commit -m "feat(04): SectionResolver maps 'brands' → BrandsArchiveView (cross-cluster from PRD 03)"
+```
 
 ---
 
@@ -2647,38 +2986,143 @@ git add docs/operations/stripe-setup-runbook.md
 git commit -m "docs(04): Stripe Dashboard + webhook setup runbook"
 ```
 
-### Task 14.4: Resend email template
+### Task 14.4: Resend email templates — 4 events at MVP (founder decision 2026-05-17)
 
 **Files:**
+- Create: `kova-open-pencil-1/emails/account/subscription-new.html`
+- Create: `kova-open-pencil-1/emails/account/subscription-upgraded.html`
+- Create: `kova-open-pencil-1/emails/account/subscription-cancelled.html`
 - Create: `kova-open-pencil-1/emails/account/subscription-payment-failed.html`
 
-> Extend Cluster 11's `<EmailShell>`. Plain HTML; Inter font; List-Unsubscribe header set by `<EmailShell>` wrapper.
+> All 4 templates extend Cluster 11's `<EmailShell>`. Inter font. List-Unsubscribe (`<mailto:unsubscribe@kova.app>`) + `X-Entity-Ref-ID: {{ user_id }}` headers set by `<EmailShell>` wrapper. Each `.html` has a paired `.txt` generated at build via `juice` + plain-text extractor; Resend SDK sends both `html:` + `text:` payloads.
 
-- [ ] **Step 1: Create template**
+**Subject lines (founder-approved 2026-05-17):**
+
+| Template | Subject |
+|---|---|
+| `subscription-new.html` | `Welcome to Kova {{ planName }} 🎉` |
+| `subscription-upgraded.html` | `You're now on Kova {{ planName }}` |
+| `subscription-cancelled.html` | `Your Kova subscription has been cancelled` |
+| `subscription-payment-failed.html` | `Action needed: payment failed for Kova` |
+
+- [ ] **Step 1: Create `subscription-new.html`**
+
+```html
+<!-- emails/account/subscription-new.html -->
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8" /><title>Welcome to Kova {{ planName }}</title></head>
+<body>
+  <h1>Welcome to Kova {{ planName }} 🎉</h1>
+  <p>Thanks for subscribing — your account now includes <strong>{{ planName }}</strong> features.</p>
+  <p>Your first invoice for <strong>${{ amount }}</strong> is processed and you're all set.</p>
+  <p><a href="https://kova.app/dashboard" class="btn-primary">Open Kova</a></p>
+  <p><a href="{{ hosted_invoice_url }}">View invoice</a></p>
+  <hr />
+  <p class="footer">This subscription is managed via Kova. Billing emails are transactional and cannot be opted out.</p>
+</body>
+</html>
+```
+
+Variables: `planName`, `amount`, `currency` (default USD), `hosted_invoice_url`, `user_id`.
+
+- [ ] **Step 2: Create `subscription-upgraded.html`**
+
+```html
+<!-- emails/account/subscription-upgraded.html -->
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8" /><title>You're on Kova {{ planName }}</title></head>
+<body>
+  <h1>You're on {{ planName }}</h1>
+  <p>Your plan changed from <strong>{{ oldPlanName }}</strong> to <strong>{{ planName }}</strong> effective immediately.</p>
+  <p>Your next invoice for <strong>${{ amount }}</strong> renews <strong>{{ currentPeriodEnd | date('long') }}</strong>.</p>
+  <p><a href="https://kova.app/dashboard" class="btn-primary">Open Kova</a></p>
+  <p><a href="https://kova.app/account/billing">Manage subscription</a></p>
+</body>
+</html>
+```
+
+Variables: `planName`, `oldPlanName`, `amount`, `currentPeriodEnd`, `user_id`.
+
+- [ ] **Step 3: Create `subscription-cancelled.html` (handles both scheduled-cancel and post-cancel)**
+
+```html
+<!-- emails/account/subscription-cancelled.html -->
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8" /><title>Your Kova subscription has been cancelled</title></head>
+<body>
+  <h1>Subscription cancelled</h1>
+  {% if wasScheduled %}
+    <p>Your subscription will end on <strong>{{ accessEndsOn | date('long') }}</strong>. Until then, you keep full access.</p>
+  {% else %}
+    <p>Your subscription ended on <strong>{{ accessEndsOn | date('long') }}</strong>. We've moved you to the Free plan.</p>
+  {% endif %}
+  <p>We'd love to know what we could've done better — reply to this email anytime.</p>
+  <p><a href="https://kova.app/account/billing" class="btn-primary">Reactivate</a></p>
+  <p><a href="mailto:hello@kova.app">Send feedback</a></p>
+</body>
+</html>
+```
+
+Variables: `accessEndsOn`, `wasScheduled` (boolean), `user_id`.
+
+- [ ] **Step 4: Create `subscription-payment-failed.html`**
 
 ```html
 <!-- emails/account/subscription-payment-failed.html -->
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <title>Payment failed — Kova</title>
-</head>
+<head><meta charset="utf-8" /><title>Action needed: payment failed</title></head>
 <body>
-  <h1>We couldn't process your last payment.</h1>
-  <p>Your subscription stays active until {{ current_period_end }}. After that, paid features become inaccessible until your payment method is updated.</p>
-  <p><a href="{{ update_url }}">Update your payment method</a></p>
-  <p>If you no longer want a subscription, you can cancel anytime — no further charges will be attempted.</p>
+  <h1>We couldn't charge your card</h1>
+  <p>Your last payment of <strong>${{ amount }}</strong> didn't go through (attempt {{ attemptCount }} of 4).</p>
+  <p>Update your card before <strong>{{ deadline | date('long') }}</strong> to keep your subscription. After that, Kova will downgrade your account.</p>
+  <p><a href="https://kova.app/account/billing" class="btn-primary">Update payment method</a></p>
+  <p><a href="{{ hosted_invoice_url }}">View invoice</a></p>
+  <hr />
+  <p class="footer">Stripe is our payment processor and will also email you separately about this charge.</p>
 </body>
 </html>
 ```
 
-- [ ] **Step 2: Commit**
+Variables: `amount`, `attemptCount`, `deadline`, `hosted_invoice_url`, `user_id`.
+
+- [ ] **Step 5: Wire each Resend send into the matching webhook handler**
+
+Founder decision 2026-05-17 — all 4 emails fire from `handle-*` webhook handlers AFTER the DB UPDATE completes and BEFORE the handler returns. Resend SDK call wrapped in try/catch; failure logs to Sentry as `warning` but does NOT 500 the handler.
+
+Update these webhook handlers (already implemented in Phase 3 — extend them):
+
+| Handler | Template | Trigger condition |
+|---|---|---|
+| `handle-subscription-created.ts` | `subscription-new.html` | `sub.plan !== 'free'` (skip for free-tier; only paid subs trigger welcome email) |
+| `handle-subscription-updated.ts` | `subscription-upgraded.html` | New price-id maps to a different plan name than the previous DB value |
+| `handle-subscription-updated.ts` | `subscription-cancelled.html` with `wasScheduled: true` | `sub.cancel_at_period_end` flipped `false → true` |
+| `handle-subscription-deleted.ts` | `subscription-cancelled.html` with `wasScheduled: false` | (Always — subscription has actually ended) |
+| `handle-invoice-payment-failed.ts` | `subscription-payment-failed.html` | (Always — every failed payment) |
+
+- [ ] **Step 6: Generate plain-text siblings + commit**
 
 ```bash
-git add emails/account/subscription-payment-failed.html
-git commit -m "feat(04): Resend email template — subscription-payment-failed"
+# Run plain-text extractor (Cluster 11 ships this helper)
+bun run emails:txt
+# Verify all 4 .txt files generated
+ls emails/account/*.txt
+git add emails/account/subscription-*.html emails/account/subscription-*.txt
+git commit -m "feat(04): Resend templates — 4 events (new/upgraded/cancelled/payment-failed)"
 ```
+
+- [ ] **Step 7: Configure Stripe Dashboard supplementary emails**
+
+Per PRD §5.4.3 — enable Stripe's own customer emails in Stripe Dashboard → Settings → Customer emails:
+- "Successful payments" (ON)
+- "Failed payments" (ON)
+- "Refunds" (ON)
+- "Upcoming invoices" (ON)
+
+Kova emails are supplementary; Stripe's are authoritative for legal/dunning purposes.
 
 ---
 

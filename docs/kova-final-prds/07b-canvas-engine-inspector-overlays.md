@@ -49,9 +49,9 @@ A designer can: (1) edit every Q3-engine-ready property through the inspector wi
 - **Stroke alignment row** — INSIDE / CENTER / OUTSIDE segmented control inside `StrokeSection.vue`. Wires `node.strokeAlign` (existing engine support per Q3 #5).
 - **Multiple fills array UI** — drag-handle-reordered list inside `FillSection.vue` with per-fill swatch / type / opacity / visibility / delete; "Add fill" + control. Hi-fi 11.13 reference.
 - **Image-fill mode picker** (`ImageFillPicker.vue` NEW) — popover with 4 modes per Q21: Fill (default), Fit, Crop (with 4 corner drag handles per hi-fi 11.12), Tile (with size slider per hi-fi 12.11). Source segmented control: Brand kit / Uploads / Shopify (matches hi-fi 11.12 lines 2558–2560).
-- **Gradient editor** (`PaintEditor.vue` NEW) — full popover with mode tabs (Solid / Linear / Radial / Image), gradient strip preview, stop list (drag-reorder; 0% and 100% stops are non-removable; intermediate stops show ×), "Add stop", angle input (∠ 90° default), HSV canvas + hue + alpha sliders, hex/RGB/HSL toggle, eyedropper trigger button. Hi-fi 12.6–12.8 reference.
+- **Gradient editor** (`PaintEditor.vue` NEW) — full popover with mode tabs (Solid / Linear / Radial / Angular / Diamond / Image — all 4 gradient types per founder decision §12.5), gradient strip preview, stop list (drag-reorder; 0% and 100% stops are non-removable; intermediate stops show ×), "Add stop", angle input (∠ 90° default for Linear; not applicable for Radial/Diamond; rotation degree for Angular), HSV canvas + hue + alpha sliders, hex/RGB/HSL toggle, eyedropper trigger button. Hi-fi 12.6–12.8 reference.
 - **Effects inspector extension** — `properties/EffectsSection.vue` exists with all 5 effect types already wired. 07b ensures: collapsed-by-default header row, exact hi-fi 11.14/11.15 visual chrome (drag-handle · effect-icon · type-icon · label · meta · visibility-toggle · delete), per-effect editor popover (hi-fi 11.16) with X/Y/Blur/Spread fields + color swatch + Visible checkbox.
-- **Boolean ops row** (`BooleanOpsRow.vue` NEW) — visible only on multi-select (≥2 layers). Four icon buttons (Union / Subtract / Intersect / Exclude) with tooltip-shown shortcuts ⌘⌥U/S/I/X per Q3 #14. Wires existing `figma.booleanOperation()` from `figma-api.ts`. Hi-fi 11.9.
+- **Boolean ops row** (`BooleanOpsRow.vue` NEW) — visible on all multi-select (≥2 layers). Buttons **disabled** when selection <2 per founder decision §12.10. Four icon buttons (Union / Subtract / Intersect / Exclude) with tooltip-shown shortcuts ⌥⇧U / ⌥⇧S / ⌥⇧I / ⌥⇧E per founder decision §12.5 (matches Figma exactly; supersedes Q3 #14 ⌘⌥U/S/I/X baseline). Wires existing `figma.booleanOperation()` from `figma-api.ts`. Hi-fi 11.9.
 - **JPG export quality dropdown** — extend `properties/ExportSection.vue` per-row format dropdown to add quality picker when format=JPG: High 0.92 (default) / Medium 0.80 / Low 0.65 per Q22. Hi-fi 11.18.
 - **Copy/Paste properties composable** (`use-copy-paste-props.ts` NEW) — Q23 explicitly overrides Figma's stroke-partial limitation; Kova copies the full property set: position-independent fields (fills, strokes, strokeWeight, strokeAlign, effects, opacity, blendMode, cornerRadius, paddingLeft/Right/Top/Bottom, layoutMode, primaryAxisAlignItems, counterAxisAlignItems, itemSpacing, characterStyleOverrides, textAlignVertical). Bound to ⌘⌥C / ⌘⌥V (registered into Cluster 08's shortcut registry).
 
@@ -64,16 +64,30 @@ A designer can: (1) edit every Q3-engine-ready property through the inspector wi
 - `LayoutGuidesOverlay.vue` — three modes Uniform / Columns / Rows, color `rgba(255,0,0,0.10)` per Q24 default-ON red 10%. Cols: flex gap 12px padding 16px. Rows: flex-column gap 6px padding 8px. Uniform: 16×16 background-size checker. Z-index 3. Configured per-frame; visibility follows inspector state (no top-level toggle in MVP).
 - `PixelGridOverlay.vue` — `rgba(126,126,121,0.18)` 1px linear-gradient, 8×8 background-size, z-index 3. Auto-show only when canvas zoom > 800% per hi-fi B8.5.
 - `HoverContourOverlay.vue` — 1.5px solid `var(--select)` border (selection blue), border-radius 0, z-index 4. Renders only while hover holds; disappears the moment hover leaves.
-- `FindHighlightOverlay.vue` — golden/yellow contour around find-result nodes (from Cluster 08's `useFind` composable). 07b owns the overlay; Cluster 08 owns the find composable that supplies the matched node IDs.
+- `DimLayerOverlay.vue` — translucent `rgba(0, 0, 0, 0.6)` overlay rendered over inverse of a `matchedNodeIds: string[]` prop (i.e. dims all non-matching nodes). Z-index 6 (sits above selection but below interaction overlays). Pure render layer — no input handling. Used by `FindOverlay.vue` and reserved for future "isolate" / "presentation" modes.
+- `FindOverlay.vue` — composes `DimLayerOverlay` (matched node IDs from `useFindStore`) + clickthrough handler (any click on dimmed node → `useFindStore.close()` + select the clicked node). Z-index 6. Per founder decision §12.12: full find canvas-focus mode owned by 07b.
 - `EyedropperCrosshair.vue` — 96px magnifier circle (2px white border, box-shadow `0 0 0 1px #1e1e1e, 0 8px 24px rgba(0,0,0,0.6)`) + inner 16×16 reticle + hex chip floats below-right (#2c2c2c bg, 1px `var(--line)` border, 11px Inter "tnum"). Z-index magnifier=9, hex chip=10. Hi-fi B8.7. Canvas-only per Q20 (Phase 2 = macOS Tauri screen-wide).
 - `MeasurementAnnotations.vue` — persistent dashed lines (1px solid `#F24822`) + caps (1×8 vert / 8×1 horz, `#F24822`) + label (`#F24822` bg, white text, 11px Inter "tnum", padding 1px 5px). Z-index 7. Persists across save/reload via 07a's MEASUREMENT NodeType. Hi-fi B8.9.
 
-**Composables (4 net-new):**
+**Find feature — canvas focus mode (07b end-to-end per founder decision §12.12):**
+
+- **`Cmd+F` shortcut** opens `SearchPanel.vue` (slide-in from left). `Esc` closes it.
+- **`SearchPanel.vue` NEW** — left-side panel with search input + result list + close button (×). Input autofocuses on open. List shows up to 200 matches; virtualized if more.
+- **`SearchResultRow.vue` NEW** — single result row: node-type icon (frame / text / rect / etc) + node name + parent breadcrumb (dim grey, smaller font). Hover state grey-50 background. Active/focused result bright blue selection box on canvas.
+- **`useFindStore` NEW (Pinia setup store)** — state: `active: boolean`, `query: string`, `matchedNodeIds: string[]`, `focusedNodeId: string | null`. Actions: `open()`, `close()`, `setQuery(q)`, `focusNode(id)`.
+- **`useFindSearch` NEW composable** — pure function `(query, sceneGraph) → matchedNodeIds[]`. Case-insensitive substring match on `node.name`. Traverses via `figma.currentPage.findAll()`. Debounced 80ms while user types.
+- **`useCameraPan` NEW composable** — `panToNode(nodeId)` animates camera viewport to fit node bbox with 10% padding over 250ms `cubic-bezier(0.4, 0, 0.2, 1)`. Cancel-safe (in-flight pan can be superseded by new pan).
+- **`DimLayerOverlay.vue` + `FindOverlay.vue`** — see canvas-overlays list above.
+- **Clickthrough behavior** — when find is active and user clicks any dimmed (non-matching) node on canvas, `useFindStore.close()` fires + the clicked node becomes the new selection. Matches Figma per §12.12.
+
+**Composables (6 net-new):**
 
 - `use-eyedropper.ts` — canvas-only sampling per Q20. Activates from `PaintEditor.vue` pipette button OR ^C shortcut. Reads pixel via canvas readback. Returns hex on click, cancels on Esc.
 - `use-slice-tool.ts` — slice-tool mode handler. Listens to canvas drag, creates SLICE NodeType (07a), sets default crop rect.
 - `use-measurement-tool.ts` — measurement-tool mode handler. Listens to canvas hover/click, creates MEASUREMENT NodeType (07a) with two anchor points.
 - `use-export-pipeline.ts` — iterates SLICE nodes on the active page, renders each via 07a's `figma.exportAsync()`, batches into a ZIP via JSZip (Phase A → unbundled per-file download fallback if JSZip not installed; Phase B → JSZip in deps).
+- `use-find-search.ts` — query → matchedNodeIds via scene-graph traversal. Debounced. See find feature block above.
+- `use-camera-pan.ts` — animated camera viewport pan/zoom-to-fit. See find feature block above.
 
 **DnD receiver (Q24 cross-cut):**
 
@@ -91,7 +105,6 @@ A designer can: (1) edit every Q3-engine-ready property through the inspector wi
 | Color-picker chrome (`ColorPicker.vue` exists with HSV picker) — 07b extends to render `PaintEditor.vue` for non-solid modes | 06 owns base ColorPicker; 07b extends |
 | Right-click context-menu shell (`useObjectActions`, dispatch table) | 08 Canvas Menus |
 | Keyboard shortcut registry (`useShortcutsStore`, the catalog) — 07b *registers into* it but does not own the registry primitive | 08 |
-| `useFind` composable (find search composable) | 08 |
 | `useConfirm` composable | 08 + 11 |
 | `<KovaModal>` shell (used by export-preview overlay if a confirm is needed) | 11 Shared UI |
 | Snapshot store / version-history store consuming export pipeline output | 09 Version History |
@@ -106,10 +119,7 @@ A designer can: (1) edit every Q3-engine-ready property through the inspector wi
 - **Advanced typography sliders** (per-axis variable font controls) — Phase 2 (engine-partial per Q3 #2).
 - **Pen dropdown chevron stub** — Phase 2.
 - **Arrow primitive** — Phase 2 (after Track 2 stroke-cap renderer audit).
-- **Gradient types beyond Linear + Radial** — Angular and Diamond gradients are engine-ready per Q3, but the inspector UI ships only Linear + Radial in MVP per scope (matches Figma's 90th-percentile usage). Phase 2 unlocks Angular + Diamond pickers.
-- **Layout-guides toggle** — Q24 locks layout guides default-ON; the user-facing toggle (preference UI) is DEFERRED to Cluster 12 Phase 2.
 - **Snap toggles re-introduction** — DEFERRED to Cluster 12 Phase 2 (~7 prefs unlock-ready); Phase A behavior is default-ON snap with no user toggle.
-- **Find composable + overlay UI** — `useFind` itself ships in Cluster 08. 07b ships the *overlay* component (`FindHighlightOverlay.vue`) so the visual is ready when 08 wires the consumer; the overlay is dormant (renders zero highlights) until 08 lands.
 
 ### 2.4 Cross-cut acknowledgments (foreign owners)
 
@@ -175,7 +185,9 @@ Every UI surface in 07b maps to a hi-fi file + scene ID. Engineers cite the scen
 | Eyedropper magnifier | B8.7 | 96px diameter, 2px white border, box-shadow `0 0 0 1px #1e1e1e, 0 8px 24px rgba(0,0,0,0.6)`. Inner pixel grid: `rgba(255,255,255,0.10)` 16×16. Reticle: 16×16 box at center, 1.5px white border, 1px `#1e1e1e` shadow. Hex chip below-right: `#2c2c2c` bg, 1px `var(--line)` border, 11px Inter "tnum", padding 4px 8px, border-radius 4px, box-shadow `0 4px 12px rgba(0,0,0,0.4)`. Z-index magnifier=9, hex chip=10. 6× zoom inside magnifier. |
 | Selection (frame labels + size chip) | B8.8 | Selection box: 1px solid `var(--select)` (z-index 5). Handles: 8×8 white box, 1.5px `var(--select)` border, border-radius 1px (z-index 6). Frame label: `var(--select)` bg, white text Inter 11px, padding 1px 6px, border-radius 2px (z-index 7). Size chip (e.g., "360 × 100"): same chrome, centered below bbox. **Note:** selection box+handles ship with 06 chrome (consumes engine selection state). Frame label + size chip = 07b overlay. |
 | Measurement annotation (persistent) | B8.9 | Dashed lines: 1px solid `#F24822`. Caps: 1×8 vert / 8×1 horz, `#F24822`. Label: `#F24822` bg, white text 11px Inter "tnum", padding 1px 5px, border-radius 2px. Z-index 7. Persists across save/reload via 07a's MEASUREMENT NodeType. Selecting a measurement reveals endpoint handles in same red; dragging an endpoint re-anchors. |
-| AI assist panel (Kova whisper accent) | B8.10 | `#5a7dff` (Kova brand blue) — the only canvas surface that uses Kova blue. Rings the AI panel, marks the toolbar AI tool, tints the input affordance. Everything else stays neutral / industry-standard. **Note:** the AI panel chrome itself is owned by 10 AI Chat. 07b's `FindHighlightOverlay` and other overlays explicitly do NOT use Kova blue (per locked principle "identity surfaces only when AI is acting"). |
+| AI assist panel (Kova whisper accent) | B8.10 | `#5a7dff` (Kova brand blue) — the only canvas surface that uses Kova blue. Rings the AI panel, marks the toolbar AI tool, tints the input affordance. Everything else stays neutral / industry-standard. **Note:** the AI panel chrome itself is owned by 10 AI Chat. 07b's `FindOverlay`, `DimLayerOverlay`, and other overlays explicitly do NOT use Kova blue (per locked principle "identity surfaces only when AI is acting"). |
+| Find — typing / multi-match | (founder ref) `assets/07b/find-state-1-typing.png` | `SearchPanel.vue` slides in from left over layers-panel area. User types `frame` → 3 matches listed. Canvas shows `DimLayerOverlay` over all non-matching nodes (rgba(0,0,0,0.6) backdrop). Focused result (hovered or last-clicked) gets bright-blue selection box. No camera pan in multi-match state. |
+| Find — narrowed to 1 / focused | (founder ref) `assets/07b/find-state-2-focus.png` | Query narrowed to 1 result (e.g. `frame 4`) OR user clicked a specific row. Camera pans + zooms to fit target with 10% padding over 250ms ease-out. Target retains bright-blue selection box. Non-matching nodes still dimmed. Esc or × button exits; clicking a dimmed node also exits + selects clicked node (clickthrough). |
 
 ### 3.4 Z-index stacking (canonical, sourced from hi-fi 09)
 
@@ -184,10 +196,12 @@ Every UI surface in 07b maps to a hi-fi file + scene ID. Engineers cite the scen
 | 3 | Frame outlines, pixel grid, layout guides |
 | 4 | Hover contour, mask outlines |
 | 5 | Snap pixels, selection box, measurement lines |
-| 6 | Selection handles |
+| 6 | Selection handles, **DimLayerOverlay** (find dim backdrop), **FindOverlay** (clickthrough handler) |
 | 7 | Spacing tags, frame labels, size chips, measurement label |
 | 9 | Eyedropper magnifier |
 | 10 | Eyedropper hex chip |
+
+**`SearchPanel.vue`** sits in app chrome (NOT canvas overlay z-stack) — slides in from left over layers panel. Its own DOM z-index: layers-panel + 1 (so it floats above the layers panel but stays below modals).
 
 ### 3.5 Color palette (canvas overlays canonical)
 
@@ -202,6 +216,7 @@ Every UI surface in 07b maps to a hi-fi file + scene ID. Engineers cite the scen
 | `#ffffff` (white) | Eyedropper magnifier border, eyedropper reticle border, selection handles |
 | `#1e1e1e` (dark) | Eyedropper magnifier shadow |
 | `#2c2c2c` | Eyedropper hex chip background |
+| `rgba(0, 0, 0, 0.6)` (black 60%) | `DimLayerOverlay` find-mode backdrop (over non-matching nodes); reserved for future isolate/presentation modes |
 | `#5a7dff` (Kova brand blue) | **EXCLUSIVE to AI assist panel (B8.10) — never used elsewhere on canvas** |
 
 ### 3.6 Design system references
@@ -324,6 +339,33 @@ The only "backend" surface 07b touches indirectly: when `use-export-pipeline.ts`
 //   cancel(): void                                     // sets active=false without invoking callback
 ```
 
+#### 6.2.4 `useFindStore` (NEW — owned by 07b per §12.12)
+
+```typescript
+// src/stores/find.ts (NEW)
+// Owns the canvas-focus-mode find feature state.
+//
+// Shape:
+//   active: boolean                  // panel open + focus mode active
+//   query: string                    // current search text
+//   matchedNodeIds: string[]         // node IDs matching query (case-insensitive substring on node.name)
+//   focusedNodeId: string | null     // currently focused result (single-match narrow OR user clicked a row)
+//
+// Computed:
+//   isMultiMatch: ComputedRef<boolean>   // matchedNodeIds.length > 1 AND focusedNodeId === null
+//   isFocused: ComputedRef<boolean>      // focusedNodeId !== null OR matchedNodeIds.length === 1
+//   dimmedNodeIds: ComputedRef<string[]> // inverse of matchedNodeIds — fed to <DimLayerOverlay>
+//
+// Actions:
+//   open(): void                                   // active=true, query='', matchedNodeIds=[], focusedNodeId=null. Triggers <SearchPanel> slide-in.
+//   close(): void                                  // active=false, clears all state. Triggers <SearchPanel> slide-out.
+//   setQuery(q: string): void                     // debounced 80ms via useFindSearch; updates matchedNodeIds
+//   focusNode(id: string): void                   // user clicked a result row OR query narrowed to 1; sets focusedNodeId + triggers useCameraPan.panToNode(id)
+//   exitOnDimClick(clickedNodeId: string): void   // clickthrough: close() + writes selection = [clickedNodeId] via useEditorStore
+//
+// Persistence: NONE. Per-tab Pinia state. Matches Figma (find state does not survive tab close).
+```
+
 ### 6.3 Composables
 
 | Composable | File | Signature | Used by |
@@ -333,6 +375,8 @@ The only "backend" surface 07b touches indirectly: when `use-export-pipeline.ts`
 | `useMeasurementTool` | `src/composables/use-measurement-tool.ts` (NEW) | `(): { isActive: ComputedRef<boolean>; activate(): void; deactivate(): void }`; on activate, hooks two-click flow: first click anchors start, second click anchors end + creates MEASUREMENT node via `figma.createMeasurement({ start, end })` (07a API) | `BottomToolbar` (06 mounts) |
 | `useExportPipeline` | `src/composables/use-export-pipeline.ts` (NEW) | `(): { exportAllSlices(opts: { quality?: number }): Promise<Blob>; exportSingleSlice(sliceId: string, opts: { format: 'PNG' \| 'JPG'; scale: 1 \| 2 \| 3; quality?: number }): Promise<Blob> }` | `ExportSection.vue` "Export N slices" button + Export-preview surface (B8.1 area) |
 | `useCopyPasteProps` | `src/composables/use-copy-paste-props.ts` (NEW) | `(): { copy(): void; paste(): void; canPaste: ComputedRef<boolean> }`; reads selection from `useEditorStore.selectedNodes`; writes via `useClipboardStore` | `RightPanel` global keyboard binding via 08's shortcut registry (⌘⌥C / ⌘⌥V) |
+| `useFindSearch` | `src/composables/use-find-search.ts` (NEW per §12.12) | `(): { runQuery(q: string): void; cancel(): void }`; debounced 80ms; traverses scene via `figma.currentPage.findAll(predicate)`; predicate is case-insensitive substring on `node.name`; writes `useFindStore.matchedNodeIds`; if exactly 1 match, also calls `useFindStore.focusNode(matches[0].id)` automatically; if 0 matches, sets empty; max 200 results returned to keep panel snappy | `useFindStore.setQuery` |
+| `useCameraPan` | `src/composables/use-camera-pan.ts` (NEW per §12.12) | `(): { panToNode(nodeId: string): Promise<void>; cancel(): void; isAnimating: ComputedRef<boolean> }`; computes target viewport from node.absoluteBoundingBox + 10% padding; writes `figma.viewport.zoom` and `figma.viewport.center` over 250ms via requestAnimationFrame + `cubic-bezier(0.4, 0, 0.2, 1)` easing; cancel-safe — second call interrupts the first; Promise resolves on completion | `useFindStore.focusNode`, future isolate/presentation modes |
 | `useCanvasDrop` (existing — extend) | `src/composables/use-canvas-drop.ts` | (extension only) — register handler for `application/x-kova-brand-asset { assetId: uuid, kind: 'logo' \| 'image' }` MIME (Cluster 05 owns the MIME taxonomy): on drop over an existing node, opens `ImageFillPicker.vue` with the asset pre-selected; on drop over empty canvas, spawns image at natural size | Canvas drop receiver |
 
 ### 6.4 Components
@@ -374,11 +418,21 @@ The only "backend" surface 07b touches indirectly: when `use-export-pipeline.ts`
 | `LayoutGuidesOverlay` | `LayoutGuidesOverlay.vue` | (none) | Reads `frame.layoutGrids[]` per visible frame, renders Uniform/Columns/Rows overlay per Q24 default-ON. |
 | `PixelGridOverlay` | `PixelGridOverlay.vue` | (none) | Renders only when `useCanvas.zoom > 8.0` (800%). |
 | `HoverContourOverlay` | `HoverContourOverlay.vue` | `hoveredNodeId: string \| null` (passed by `useCanvas`) | Renders only when hover is active. |
-| `FindHighlightOverlay` | `FindHighlightOverlay.vue` | `matchedNodeIds: string[]` (passed by Cluster 08's `useFind`; pre-08 = empty array) | Dormant until 08 lands. |
+| `DimLayerOverlay` | `DimLayerOverlay.vue` | `dimmedNodeIds: string[]` (read from `useFindStore.dimmedNodeIds` by `FindOverlay`; reusable by future modes) | Pure-render: draws `rgba(0,0,0,0.6)` over each dimmed node's bbox. Z-index 6. No input handling. |
+| `FindOverlay` | `FindOverlay.vue` | (none — reads `useFindStore`) | Mounts `<DimLayerOverlay :dimmedNodeIds="findStore.dimmedNodeIds">` when `findStore.active`. Attaches a single canvas-level click handler: if click hits a dimmed node, calls `findStore.exitOnDimClick(nodeId)`; if click hits a matched node, does NOT exit find (lets the normal click pass through to selection). |
 | `EyedropperCrosshair` | `EyedropperCrosshair.vue` | (none — reads `useEyedropperStore`) | Renders only when `eyedropperStore.active`. Shows magnifier + reticle + hex chip. |
 | `MeasurementAnnotations` | `MeasurementAnnotations.vue` | (none) | Iterates MEASUREMENT NodeType (07a), renders dashed lines + caps + label per node. |
 
-All overlay components are pure-render (no internal mutation). They mount inside `<CanvasOverlayLayer>` (a wrapper component owned by 06's `EditorView.vue`) which provides the absolute-positioned canvas-aligned coordinate space. The overlay layer itself is a single `<div class="canvas-overlays">` block per scene-graph render frame.
+All overlay components are pure-render (no internal mutation, except `FindOverlay`'s click handler which delegates to `useFindStore`). They mount inside `<CanvasOverlayLayer>` (a wrapper component owned by 06's `EditorView.vue`) which provides the absolute-positioned canvas-aligned coordinate space. The overlay layer itself is a single `<div class="canvas-overlays">` block per scene-graph render frame.
+
+#### 6.4.4 Find feature components (NEW under `src/components/find/`)
+
+| Component | File | Props | Slots | Emits | Notes |
+|---|---|---|---|---|---|
+| `SearchPanel` | `src/components/find/SearchPanel.vue` | (none — reads `useFindStore`) | none | none | Renders only when `findStore.active`. Slides in from left over layers panel (CSS transform translateX 0 → -100% reversed). Contains: title row ("Find on this page" + × close button) · `<input type="search">` autofocused on mount · result count line ("N results · This page") · `<SearchResultRow>` list (virtualized if matchedNodeIds.length > 50). Esc on input or × click → `findStore.close()`. Input bound `v-model` to `findStore.query` with @input → `findStore.setQuery($event.target.value)`. |
+| `SearchResultRow` | `src/components/find/SearchResultRow.vue` | `nodeId: string`; `isFocused: boolean` | none | `click` (handled by parent → `findStore.focusNode(nodeId)`) | Reads node from `useEditorStore.getNodeById(nodeId)`. Renders: node-type icon (frame / text / rect / ellipse / vector / image — Lucide icons via unplugin-icons) + node name (16px Inter, truncate with ellipsis at 220px) + parent breadcrumb dim grey (11px Inter). Hover state: bg `--surface-2`. Focused state: bg `--surface-3`. |
+
+`SearchPanel` mounts at the App level inside `<EditorView>` (06's chrome owner) as a sibling to `<LayersPanel>`. 07b PRD's §6.5 (DnD) and §6.4.4 (find) are the only two 07b features that need to mount above the canvas layer at the App level rather than inside `<RightPanel>` or `<CanvasOverlayLayer>`.
 
 ### 6.5 Drag-and-drop (DnD)
 
@@ -407,12 +461,19 @@ The receiver is registered inside `use-canvas-drop.ts` (existing composable). 07
 | Image-fill 4 modes | `ImagePaint.scaleMode: 'FILL' \| 'FIT' \| 'CROP' \| 'TILE'` (existing field — 07a confirms all 4 enum values per Q21) | `ImageFillPicker` |
 | Gradient editor — Linear | `GradientPaint { type: 'GRADIENT_LINEAR', gradientStops: ColorStop[], gradientHandlePositions: Vector[] }` (existing) | `PaintEditor` |
 | Gradient editor — Radial | `GradientPaint { type: 'GRADIENT_RADIAL', ... }` (existing) | `PaintEditor` |
+| Gradient editor — Angular | `GradientPaint { type: 'GRADIENT_ANGULAR', gradientStops: ColorStop[], rotation: number }` (07a confirms engine-ready per Q3 §12.5 founder decision) | `PaintEditor` |
+| Gradient editor — Diamond | `GradientPaint { type: 'GRADIENT_DIAMOND', gradientStops: ColorStop[], gradientHandlePositions: Vector[] }` (07a confirms engine-ready per Q3 §12.5 founder decision) | `PaintEditor` |
 | Effects all 5 types | `node.effects: Effect[]` with `Effect.type IN ('DROP_SHADOW', 'INNER_SHADOW', 'LAYER_BLUR', 'BACKGROUND_BLUR', 'FOREGROUND_BLUR')` (existing) | `EffectsSection` extension |
 | Boolean operations | `figma.booleanOperation(op: 'UNION' \| 'SUBTRACT' \| 'INTERSECT' \| 'EXCLUDE')` from `figma-api.ts` (existing per Q3 #14) | `BooleanOpsRow` |
 | Eyedropper sample | `figma.canvas.readPixel(x: number, y: number): { r, g, b, a }` (07a exposes via figma-api-proxy) | `useEyedropper` |
 | Slice creation | `figma.createSlice({ x, y, width, height }): SliceNode` (07a NEW per item 1) | `useSliceTool` |
 | Measurement creation | `figma.createMeasurement({ start: Vector, end: Vector }): MeasurementNode` (07a NEW per item 1) | `useMeasurementTool` |
 | Slice export | `figma.exportAsync(node, { format: 'PNG' \| 'JPG', constraint: { type: 'SCALE', value: 1 \| 2 \| 3 }, quality?: number }): Promise<Uint8Array>` (existing) | `useExportPipeline` |
+| Find — scene traversal | `figma.currentPage.findAll(predicate: (node) => boolean): SceneNode[]` (existing OpenPencil API) | `useFindSearch` |
+| Find — node name read | `node.name: string` (existing field, all NodeTypes) | `useFindSearch` predicate |
+| Find — camera pan | `figma.viewport.center: { x: number, y: number }` (existing read/write) + `figma.viewport.zoom: number` (existing read/write) | `useCameraPan` |
+| Find — target bbox | `node.absoluteBoundingBox: { x, y, width, height }` (existing field) | `useCameraPan` (computes target viewport with 10% padding) |
+| Find — dim layer bbox | same `node.absoluteBoundingBox` (existing) | `DimLayerOverlay` (renders rgba(0,0,0,0.6) over each dimmed node's screen-space rect) |
 
 ### 7.2 Engine APIs read by 07b overlay components
 
@@ -425,7 +486,8 @@ The receiver is registered inside `use-canvas-drop.ts` (existing composable). 07
 | `LayoutGuidesOverlay` | `frame.layoutGrids: LayoutGrid[]` (existing OpenPencil field) |
 | `PixelGridOverlay` | viewport zoom from `useCanvas.zoom` (existing) |
 | `HoverContourOverlay` | hover-state from `useCanvasInput.hoveredNodeId` (existing) |
-| `FindHighlightOverlay` | matched IDs from `useFind.matchedNodeIds` (Cluster 08 ships) |
+| `DimLayerOverlay` | dimmed node IDs from `useFindStore.dimmedNodeIds` (07b owns; see §6.2.4) |
+| `FindOverlay` | full `useFindStore` state — drives mount + click handler dispatch (07b owns end-to-end per §12.12) |
 | `EyedropperCrosshair` | active state from `useEyedropperStore` (07b owns) |
 | `MeasurementAnnotations` | `node.type === 'MEASUREMENT'` (07a NEW NodeType) |
 
@@ -440,24 +502,39 @@ The receiver is registered inside `use-canvas-drop.ts` (existing composable). 07
 - **`SYSTEM_PROMPT` constant in `use-chat.ts`** — CLAUDE.md hard constraint; never touched by any cluster.
 - **Yjs / y-indexeddb persistence** — CLAUDE.md hard constraint.
 
-### 7.4 Boolean ops keyboard shortcuts (registers into Cluster 08 registry)
+### 7.4 Keyboard shortcuts (registers into Cluster 08 registry)
 
 ```typescript
 // Registered via Cluster 08's useShortcutsStore.register() in 07b's setup hook
-// (mounted once when 07b's BooleanOpsRow component first mounts on canvas)
+// (mounted once when 07b's RightPanel / EditorView first mount)
 
 [
-  { id: 'boolean.union',     category: 'edit', keys: 'cmd+alt+u', description: 'Union selection',     action: () => figma.booleanOperation('UNION') },
-  { id: 'boolean.subtract',  category: 'edit', keys: 'cmd+alt+s', description: 'Subtract selection',  action: () => figma.booleanOperation('SUBTRACT') },
-  { id: 'boolean.intersect', category: 'edit', keys: 'cmd+alt+i', description: 'Intersect selection', action: () => figma.booleanOperation('INTERSECT') },
-  { id: 'boolean.exclude',   category: 'edit', keys: 'cmd+alt+x', description: 'Exclude selection',   action: () => figma.booleanOperation('EXCLUDE') },
+  // Boolean ops — Option+Shift per founder decision §12.5 (matches Figma exactly).
+  // Action guard: figma.currentPage.selection.length >= 2 (see §12.10); silently no-op if <2.
+  { id: 'boolean.union',     category: 'edit', keys: 'alt+shift+u', description: 'Union selection',     action: () => { if (figma.currentPage.selection.length >= 2) figma.booleanOperation('UNION') } },
+  { id: 'boolean.subtract',  category: 'edit', keys: 'alt+shift+s', description: 'Subtract selection',  action: () => { if (figma.currentPage.selection.length >= 2) figma.booleanOperation('SUBTRACT') } },
+  { id: 'boolean.intersect', category: 'edit', keys: 'alt+shift+i', description: 'Intersect selection', action: () => { if (figma.currentPage.selection.length >= 2) figma.booleanOperation('INTERSECT') } },
+  { id: 'boolean.exclude',   category: 'edit', keys: 'alt+shift+e', description: 'Exclude selection',   action: () => { if (figma.currentPage.selection.length >= 2) figma.booleanOperation('EXCLUDE') } },
+
+  // Copy / paste properties — kept on ⌘⌥C / ⌘⌥V per Q23 baseline (no Figma conflict).
   { id: 'props.copy',        category: 'edit', keys: 'cmd+alt+c', description: 'Copy properties',     action: () => useCopyPasteProps().copy() },
   { id: 'props.paste',       category: 'edit', keys: 'cmd+alt+v', description: 'Paste properties',    action: () => useCopyPasteProps().paste() },
+
+  // Eyedropper — Control+C matches Figma.
   { id: 'tool.eyedropper',   category: 'tools', keys: 'control+c', description: 'Eyedropper tool',    action: () => useEyedropper().activate() },
+
+  // Pixel grid toggle — Shift+' per founder decision §12.7 (matches Figma).
+  { id: 'view.pixelGrid',    category: 'view', keys: 'shift+quote', description: 'Toggle pixel grid', action: () => { useEditorStore().overlays.pixelGrid = !useEditorStore().overlays.pixelGrid } },
+
+  // Find — Cmd+F opens, Esc closes. 07b owns end-to-end per §12.12.
+  { id: 'find.open',         category: 'view', keys: 'cmd+f',   description: 'Find on canvas',       action: () => useFindStore().open() },
+  { id: 'find.close',        category: 'view', keys: 'escape',  description: 'Close find (if active)', action: () => { if (useFindStore().active) useFindStore().close() } },
 ]
 ```
 
-The `useShortcutsStore.register()` API is owned by Cluster 08. 07b imports and calls it. Pre-08, the registry primitive does not exist — feature gate `KEYBOARD_SHORTCUTS_REGISTRY_AVAILABLE` (hard-coded constant; flips to `true` when 08 ships) controls whether the registration runs. Default Phase A: `false` — Boolean ops accessible only via inspector buttons until 08 ships.
+The `useShortcutsStore.register()` API is owned by Cluster 08. 07b imports and calls it. Pre-08, the registry primitive does not exist — feature gate `KEYBOARD_SHORTCUTS_REGISTRY_AVAILABLE` (hard-coded constant; flips to `true` when 08 ships) controls whether the registration runs.
+
+**Phase A behavior:** Until 08 ships the registry, 07b registers the shortcuts via a minimal local fallback handler (`useShortcutsFallback`) attached to `<EditorView>` keydown — same shortcut bindings, same actions, just without the per-category settings UI that 08 will add. This keeps boolean ops / find / pixel-grid / props-copy-paste functional at Phase A close, not deferred to 08.
 
 ---
 
@@ -472,15 +549,17 @@ Every line is testable in code or browser. No "feels right." Engineers verify ea
 - [ ] Selecting a node with multiple fills renders `<MultipleFillsList>` with one row per fill; drag-handle reorders the array; per-row visibility toggle hides the fill from render; per-row delete removes it; "Add fill" button appends a default solid black fill
 - [ ] Drop an image asset onto a fill row → opens `<ImageFillPicker>` popover with the image pre-loaded and scaleMode='FILL' (default)
 - [ ] `<ImageFillPicker>` shows 4 mode tabs: Fill (active by default) / Fit / Crop / Tile; switching to Crop renders 4 corner drag handles per hi-fi 11.12; switching to Tile shows tile-size slider per hi-fi 12.11
-- [ ] Clicking the swatch on any fill row opens `<PaintEditor>` popover anchored to that row; mode tabs Solid / Linear / Radial / Image render per hi-fi 12.6
+- [ ] Clicking the swatch on any fill row opens `<PaintEditor>` popover anchored to that row; mode tabs Solid / Linear / Radial / Angular / Diamond / Image render per hi-fi 12.6 + founder decision §12.5
 - [ ] Switching to Linear gradient mode renders gradient-strip preview, 2 default stops (0% black, 100% white), angle input ∠ 90, stop list with × hidden on outer stops; "Add stop" inserts at midpoint
 - [ ] Adding a 3rd stop in linear gradient renders × button on the new (intermediate) stop; selecting that stop renders 1px accent ring + `--fill2` highlight per hi-fi 12.7
 - [ ] Switching to Radial gradient mode renders 120px circular preview with center handle per hi-fi 12.8; dragging center handle re-positions gradient origin
+- [ ] Switching to Angular gradient mode renders 120px circular preview + rotation input (default 0°); changing rotation re-renders the angular sweep
+- [ ] Switching to Diamond gradient mode renders 120px square preview with center handle + 4 corner handles; dragging handles re-shapes the diamond
 - [ ] Effects section header collapses by default; expanding shows the effect list; "+ Add effect" inserts a default DROP_SHADOW per hi-fi 11.14
 - [ ] Each effect row renders with drag-handle / type-icon / type-label / meta (e.g., "0 4 12") / visibility-toggle / delete per hi-fi 11.15
 - [ ] Clicking an effect row opens per-effect popover at `top:120px; right:14px; width:248px;` with X / Y / Blur / Spread fields + color swatch + Visible checkbox per hi-fi 11.16
 - [ ] All 5 effect types are reachable from the type dropdown: DROP_SHADOW, INNER_SHADOW, LAYER_BLUR, BACKGROUND_BLUR, FOREGROUND_BLUR
-- [ ] Multi-select of ≥2 layers shows `<BooleanOpsRow>` row in inspector; 4 buttons (Union / Subtract / Intersect / Exclude) with tooltip-shown shortcuts ⌘⌥U/S/I/X; clicking each invokes `figma.booleanOperation()` and produces a boolean node in scene-graph
+- [ ] Multi-select of ≥2 layers shows `<BooleanOpsRow>` row in inspector with 4 buttons ENABLED (Union / Subtract / Intersect / Exclude); single-select shows the row with all 4 buttons DISABLED per founder decision §12.10; tooltip-shown shortcuts ⌥⇧U / ⌥⇧S / ⌥⇧I / ⌥⇧E per founder decision §12.5; clicking each on ≥2 selection invokes `figma.booleanOperation()` and produces a boolean node in scene-graph
 - [ ] Inspector shows "3 layers selected" header label when 3 nodes are multi-selected per hi-fi 11.9 line 2244
 - [ ] Multi-select inspector reduces to Position + Appearance + Boolean sections only (other sections hidden until selection collapses to 1 node)
 - [ ] Export section per-row format dropdown shows PNG / JPG / SVG; selecting JPG reveals `<JpgQualityDropdown>` row with options "High (0.92)" (default) / "Medium (0.80)" / "Low (0.65)" per hi-fi 11.18
@@ -489,7 +568,7 @@ Every line is testable in code or browser. No "feels right." Engineers verify ea
 ### 8.2 Color picker / paint editor
 
 - [ ] Solid mode renders existing HSV picker (no regression vs ColorPicker.vue baseline)
-- [ ] Switching to Linear / Radial / Image preserves the popover anchor position; switching back to Solid restores original UI
+- [ ] Switching to Linear / Radial / Angular / Diamond / Image preserves the popover anchor position; switching back to Solid restores original UI
 - [ ] Hex/RGB/HSL toggle cycles input modes inline (line 1771); typed value updates color
 - [ ] Pipette button (`data-lucide="pipette"`) inside `<PaintEditor>` activates eyedropper via `useEyedropper.activate()`
 - [ ] Picker invoked from page background context (12.12) hides Image tab + "+ Add to brand kit" button (single-mode picker)
@@ -503,9 +582,11 @@ Every line is testable in code or browser. No "feels right." Engineers verify ea
 - [ ] Slice region renders dashed border + label on every SLICE node (07a NodeType) in viewport
 - [ ] Snap indicators appear during drag (1px `#F24822` snap-pixels + spacing tags) and disappear on release (no fade)
 - [ ] Layout guides render default-ON at `rgba(255,0,0,0.10)` per Q24; per-frame configuration (Uniform / Columns / Rows) reads from `frame.layoutGrids[]`
-- [ ] Pixel grid renders only when canvas zoom > 800% (verified by zooming from 100% to 1000% and inspecting overlay presence)
+- [ ] Pixel grid renders only when canvas zoom > 800% (verified by zooming from 100% to 1000% and inspecting overlay presence) per founder decision §12.7 (auto-show extends Figma)
+- [ ] `Shift+'` keyboard shortcut toggles `useEditorStore.overlays.pixelGrid` per founder decision §12.7
 - [ ] Hover contour renders at 1.5px `var(--select)` border-radius 0 only while cursor hovers a node; disappears within 16ms of pointer leaving
-- [ ] Find highlight renders golden contour for matched node IDs supplied by Cluster 08's `useFind`; pre-08 the overlay is dormant (zero highlights, zero render cost)
+- [ ] `<DimLayerOverlay>` renders `rgba(0, 0, 0, 0.6)` over every node bbox listed in its `dimmedNodeIds` prop (verified via DevTools — overlay rects align pixel-perfect with node bboxes)
+- [ ] `<FindOverlay>` mounts only when `useFindStore.active=true`; click on a dimmed-node region exits find + selects that node (clickthrough per founder decision §12.12); click on a matched-node region does NOT exit find (lets the normal selection click pass through)
 - [ ] Eyedropper crosshair renders 96px magnifier + 16px reticle + hex chip per hi-fi B8.7 specs ONLY when `useEyedropperStore.active=true`
 - [ ] Measurement annotations render persistent dashed `#F24822` lines + caps + label per hi-fi B8.9 for every MEASUREMENT NodeType in viewport; persists after page reload (since 07a NodeType persists in Yjs)
 
@@ -537,17 +618,36 @@ Every line is testable in code or browser. No "feels right." Engineers verify ea
 
 - [ ] Selecting ≥2 nodes and clicking Union button in `<BooleanOpsRow>` produces a boolean union node in scene-graph (verified by checking the new node's `booleanOperation` property)
 - [ ] Subtract / Intersect / Exclude buttons each produce the correct boolean operation
-- [ ] When Cluster 08's shortcut registry is available (`KEYBOARD_SHORTCUTS_REGISTRY_AVAILABLE=true`), pressing ⌘⌥U on a multi-select invokes Union; ⌘⌥S Subtract; ⌘⌥I Intersect; ⌘⌥X Exclude
-- [ ] Pre-08 (registry not available), Boolean ops are reachable only via the inspector buttons (no keyboard shortcuts)
+- [ ] Pressing `⌥⇧U` on a multi-select invokes Union; `⌥⇧S` Subtract; `⌥⇧I` Intersect; `⌥⇧E` Exclude (per founder decision §12.5 — matches Figma exactly)
+- [ ] Pressing any boolean shortcut on single selection (<2 nodes) silently no-ops per founder decision §12.10
+- [ ] Phase A: shortcuts work via local fallback handler even before 08 registry ships
 
 ### 8.8 Copy / paste properties
 
 - [ ] Selecting a node and triggering `useCopyPasteProps.copy()` writes ALL Q23 fields to `useClipboardStore.copiedProps`
 - [ ] Selecting a different node and triggering `useCopyPasteProps.paste()` applies copied props to the target
-- [ ] Pasting incompatible props onto a different NodeType silently drops them (e.g., `textAlignVertical` on a RECTANGLE) — no error, no toast
+- [ ] Pasting incompatible props onto a different NodeType silently drops them (e.g., `textAlignVertical` on a RECTANGLE) — no error, no toast — per founder decision §12.11
 - [ ] Pasting onto multi-select applies props to every target node
-- [ ] When 08's shortcut registry available: ⌘⌥C copies, ⌘⌥V pastes
+- [ ] `⌘⌥C` copies, `⌘⌥V` pastes (Phase A: works via local fallback handler)
 - [ ] Clipboard is per-tab Pinia state; closing tab loses clipboard (matches Figma)
+
+### 8.8b Find canvas focus mode (per founder decision §12.12 — 07b owns end-to-end)
+
+- [ ] Pressing `Cmd+F` sets `useFindStore.active=true` → `<SearchPanel>` slides in from left over layers panel; input autofocuses
+- [ ] Pressing `Esc` while find is active → `useFindStore.active=false` → `<SearchPanel>` slides out; canvas dim layer clears
+- [ ] Clicking the × close button on `<SearchPanel>` has the same effect as Esc
+- [ ] Typing a query (e.g., `frame`) debounces 80ms then writes `useFindStore.matchedNodeIds = useFindSearch.runQuery('frame')`
+- [ ] Result count line in `<SearchPanel>` shows "N results · This page"
+- [ ] Each matching node renders as a `<SearchResultRow>` with node-type icon + name + parent breadcrumb (verified against founder screenshot `assets/07b/find-state-1-typing.png`)
+- [ ] When `matchedNodeIds.length > 1` AND `focusedNodeId === null`: canvas shows `<DimLayerOverlay>` over non-matching nodes with `rgba(0, 0, 0, 0.6)`; matching nodes stay normal; camera does NOT pan
+- [ ] When query narrows to exactly 1 match: `useFindStore.focusNode(matches[0].id)` fires automatically → camera pans + zooms to fit target with 10% padding over 250ms `cubic-bezier(0.4, 0, 0.2, 1)` (verified against founder screenshot `assets/07b/find-state-2-focus.png`)
+- [ ] Clicking a `<SearchResultRow>` calls `useFindStore.focusNode(id)` → same pan + zoom behavior
+- [ ] Target node retains its bright-blue selection box during focus
+- [ ] Clicking a dimmed (non-matching) node on canvas → `useFindStore.exitOnDimClick(clickedNodeId)` → focus mode exits + clicked node becomes the new selection (clickthrough per founder decision §12.12)
+- [ ] Clicking a matched (non-dimmed) node on canvas does NOT exit find — normal selection click passes through
+- [ ] `useCameraPan.panToNode()` is cancel-safe: starting a second pan while first is in-flight cancels the first and starts the new one
+- [ ] All search is case-insensitive substring on `node.name`
+- [ ] Max 200 results returned to keep panel responsive; if >200 matches, panel shows "Showing 200 of N matches — narrow your query"
 
 ### 8.9 Drag-and-drop integration with Cluster 05
 
@@ -602,9 +702,15 @@ Target coverage: ≥85% on new composables, ≥80% on new components.
 | `tests/unit/components/canvas-overlays/LayoutGuidesOverlay.test.ts` | Per-frame layout-grid read; Uniform / Columns / Rows render correctly; Q24 default red 10% |
 | `tests/unit/components/canvas-overlays/PixelGridOverlay.test.ts` | Hidden ≤ 800% zoom; visible > 800% |
 | `tests/unit/components/canvas-overlays/HoverContourOverlay.test.ts` | Renders only when hoveredNodeId set; disappears on null |
-| `tests/unit/components/canvas-overlays/FindHighlightOverlay.test.ts` | Renders one highlight per matchedNodeId; empty when array empty |
+| `tests/unit/components/canvas-overlays/DimLayerOverlay.test.ts` | Renders rgba(0,0,0,0.6) over each dimmedNodeId's bbox; empty when array empty; pure render (no input handling) |
+| `tests/unit/components/canvas-overlays/FindOverlay.test.ts` | Mounts only when findStore.active=true; click on dimmed-region calls findStore.exitOnDimClick(id); click on matched-region does NOT exit find |
 | `tests/unit/components/canvas-overlays/EyedropperCrosshair.test.ts` | Hidden when eyedropperStore.active=false; visible when true; magnifier + reticle + hex chip render |
 | `tests/unit/components/canvas-overlays/MeasurementAnnotations.test.ts` | Renders for MEASUREMENT NodeType; dashed lines + caps + label |
+| `tests/unit/components/find/SearchPanel.test.ts` | Renders only when findStore.active; autofocuses input on mount; Esc closes; × button closes; result count line correct |
+| `tests/unit/components/find/SearchResultRow.test.ts` | Renders node icon + name + parent breadcrumb; hover state bg; focused state bg; click emits |
+| `tests/unit/composables/use-find-search.test.ts` | Case-insensitive substring on node.name; debounced 80ms; max 200 results; auto-focusNode when narrowed to 1 match |
+| `tests/unit/composables/use-camera-pan.test.ts` | Computes target viewport with 10% padding; animates 250ms with cubic-bezier(0.4, 0, 0.2, 1); cancel-safe (second call interrupts first); Promise resolves on completion |
+| `tests/unit/stores/use-find-store.test.ts` | open/close/setQuery/focusNode/exitOnDimClick state transitions; isMultiMatch + isFocused + dimmedNodeIds computeds |
 
 ### 9.2 Integration tests (`bun run test:unit` against engine integration)
 
@@ -638,6 +744,7 @@ Smoke tests via Vercel Agent Browser preferred per `e2e-runner` agent default. P
 | `tests/e2e/canvas/measurement-persistence.spec.ts` | Create measurement → reload page → verify measurement still visible at same coordinates |
 | `tests/e2e/canvas/overlays-render-all.spec.ts` | Load test canvas with 10 frames + 3 masks + 2 slices + 1 measurement → verify all overlays render without z-index conflicts |
 | `tests/e2e/canvas/copy-paste-props.spec.ts` | Source rectangle with stroke + fill + effect → copy → paste onto target rectangle → verify all 3 props applied |
+| `tests/e2e/canvas/find-focus-mode.spec.ts` | Cmd+F opens panel → type "frame" → 3 results listed → dim layer renders over non-matches → click row 1 → camera pans to that frame with 10% padding over 250ms → click dimmed area → find exits + clicked node selected. Screenshot diff vs `assets/07b/find-state-1-typing.png` and `find-state-2-focus.png`. |
 
 ### 9.4 Manual QA (founder browser smoke per `feedback_browser_smoke_test_before_done`)
 
@@ -649,8 +756,13 @@ Smoke tests via Vercel Agent Browser preferred per `e2e-runner` agent default. P
 - [ ] Switch to Radial → drag center handle → observe origin shift
 - [ ] Add a drop-shadow effect → tweak X/Y/Blur/Spread → toggle visibility → delete; repeat for inner-shadow / layer-blur / background-blur / foreground-blur
 - [ ] Multi-select 3 shapes → confirm BooleanOpsRow appears → click each of 4 ops → observe result
-- [ ] Press ⌘⌥U with 2 selected → observe Union (only when 08 ships)
-- [ ] Press ⌘⌥C on a styled node → press ⌘⌥V on another node → observe full props copied (only when 08 ships)
+- [ ] Press `⌥⇧U` with ≥2 selected → observe Union (Phase A — local fallback handler works pre-08)
+- [ ] Press `⌥⇧S` / `⌥⇧I` / `⌥⇧E` with ≥2 selected → observe Subtract / Intersect / Exclude
+- [ ] Press `⌥⇧U` with 1 selected → silent no-op (button visible-disabled)
+- [ ] Press `⌘⌥C` on a styled node → press `⌘⌥V` on another node → observe full props copied
+- [ ] Press `Cmd+F` → search panel slides in → type "frame" → result list populates → canvas dims non-matches → click row → camera pans + zooms → click dimmed area → find exits + clicked node selected → confirm visual match to `assets/07b/find-state-1-typing.png` + `find-state-2-focus.png`
+- [ ] Press `Shift+'` → pixel grid toggles on/off (independent of zoom level)
+- [ ] Toggle global layout-guides toggle in view dropdown (Cluster 06 chrome) → confirm all layout guides hide; toggle back → confirm reappear
 - [ ] Set Export to JPG → confirm quality dropdown → select Medium → click "Export N slices" → confirm ZIP download
 - [ ] Click bottom-toolbar Eyedropper button → magnifier follows cursor → click on canvas → confirm hex sampled
 - [ ] Press Esc during eyedropper → magnifier disappears
@@ -678,24 +790,25 @@ Smoke tests via Vercel Agent Browser preferred per `e2e-runner` agent default. P
 
 ### Phase A — initial deploy (Wave 5 close, paired with 07a)
 
-- All 10 canvas overlay components shipped (Vue + Tailwind)
-- All 9 new inspector components shipped (PaintEditor, ImageFillPicker, BooleanOpsRow, EffectEditor, EffectRow, GradientStopList, JpgQualityDropdown, VerticalTextAlignRow, StrokeAlignRow, MultipleFillsList)
+- All 10 canvas overlay components shipped (Vue + Tailwind): FrameOutlines, MaskOutlines, SliceRegion, SnapIndicators, LayoutGuides, PixelGrid, HoverContour, **DimLayerOverlay**, **FindOverlay**, EyedropperCrosshair, MeasurementAnnotations (note: 11 in total now that DimLayer + Find are separate components)
+- All 9 new inspector components shipped (PaintEditor with all 4 gradient types, ImageFillPicker, BooleanOpsRow, EffectEditor, EffectRow, GradientStopList, JpgQualityDropdown, VerticalTextAlignRow, StrokeAlignRow, MultipleFillsList)
 - All 6 inspector section extensions wired (EffectsSection, ExportSection, StrokeSection, TypographySection, FillSection, ColorPicker)
-- All 5 new composables shipped (useEyedropper, useSliceTool, useMeasurementTool, useExportPipeline, useCopyPasteProps)
-- 2 new Pinia stores (useClipboardStore, useEyedropperStore)
+- All 7 new composables shipped (useEyedropper, useSliceTool, useMeasurementTool, useExportPipeline, useCopyPasteProps, **useFindSearch**, **useCameraPan**)
+- 3 new Pinia stores (useClipboardStore, useEyedropperStore, **useFindStore**)
+- 2 new find feature components (`SearchPanel`, `SearchResultRow` under `src/components/find/`)
 - DnD receiver wiring for image-fill drop (Q24 cross-cut with 05)
-- Boolean-ops keyboard shortcuts: registered into Cluster 08's registry IF available; otherwise inspector-buttons-only fallback
+- Keyboard shortcuts via local fallback handler (since 08 registry may not have shipped): Boolean ops (`⌥⇧U/S/I/E`), Copy/Paste props (`⌘⌥C/V`), Eyedropper (`^C`), Pixel grid (`Shift+'`), Find open (`Cmd+F`), Find close (`Esc`)
+- Layout-guides global toggle wired into Cluster 06's view dropdown (consumes `useEditorStore.overlays.layoutGuides`)
 - Export pipeline: per-file fallback if JSZip not yet in deps
 - All 9.1 unit tests green ≥85% coverage
 - 9.2 integration tests green
-- 9.3 E2E spec pack green in staging
-- 9.4 manual QA pass
+- 9.3 E2E spec pack green in staging (including new `find-focus-mode.spec.ts`)
+- 9.4 manual QA pass (including find focus-mode walkthrough against founder reference screenshots)
 
 ### Phase B — post-Wave 5 polish (paired with 08 + 09 + 10)
 
 - JSZip dependency added → batched ZIP export
-- Cluster 08 ships shortcut registry → Boolean ops + copy/paste shortcuts live
-- Cluster 08 ships `useFind` → `FindHighlightOverlay` activates with real matched IDs
+- Cluster 08 ships shortcut registry → 07b's local fallback handler retires; shortcuts re-register through the central registry (no user-visible change)
 - Cluster 09 consumes export pipeline output for snapshot diffs
 - Cluster 10 consumes engine state for AI tool layer (overlays remain pure-visual; AI tools are read-only against scene-graph)
 
@@ -703,13 +816,19 @@ Smoke tests via Vercel Agent Browser preferred per `e2e-runner` agent default. P
 
 | Flag | Default | Toggle condition |
 |---|---|---|
-| `KEYBOARD_SHORTCUTS_REGISTRY_AVAILABLE` | `false` (Phase A) → `true` (Phase B when 08 ships) | Flip when Cluster 08 lands `useShortcutsStore` |
+| `KEYBOARD_SHORTCUTS_REGISTRY_AVAILABLE` | `false` (Phase A — local fallback handler) → `true` (Phase B when 08 ships) | Flip when Cluster 08 lands `useShortcutsStore` |
 | `EXPORT_PIPELINE_ZIP_BATCHING` | `false` (Phase A — per-file fallback) → `true` (Phase B when JSZip in deps) | Flip when JSZip added to package.json |
-| `FIND_OVERLAY_DORMANT` | `true` (Phase A — overlay renders zero highlights) → `false` (Phase B when 08 ships `useFind`) | Flip when Cluster 08 lands |
+| `FIND_FEATURE_ENABLED` | `true` (Phase A — 07b owns end-to-end per §12.12) | Always on; no flip — find is core 07b scope |
 | `LAYOUT_GUIDES_DEFAULT_ON` | `true` (Q24-locked) | Hardcoded; do not flip |
 | `EYEDROPPER_CANVAS_ONLY` | `true` (Q20-locked for MVP) | Phase 2: Tauri macOS screen-wide flips this to `false` and registers a different sampling backend |
-| `EFFECTS_SECTION_DEFAULT_COLLAPSED` | `true` (Figma-default behavior) | Hard-coded |
+| `EFFECTS_SECTION_DEFAULT_COLLAPSED` | `true` (Figma-default behavior; founder confirmed §12 round 4) | Hard-coded |
 | `JPG_DEFAULT_QUALITY` | `'high'` (0.92 per Q22) | Hard-coded |
+| `FIND_DIM_OPACITY` | `0.6` (rgba(0,0,0,0.6) per founder decision §12.12) | Hard-coded constant |
+| `CAMERA_PAN_DURATION_MS` | `250` (founder decision §12.12) | Hard-coded constant |
+| `CAMERA_PAN_PADDING_PCT` | `10` (founder decision §12.12) | Hard-coded constant |
+| `FIND_RESULTS_MAX` | `200` (founder decision §12.12) | Hard-coded constant |
+| `MULTIPLE_FILLS_CAP` | `Infinity` (no cap — founder decision §12 round 4 "match Figma") | Hard-coded constant |
+| `GRADIENT_MODES_ENABLED` | `['linear', 'radial', 'angular', 'diamond']` (all 4 per founder decision §12.5) | Hard-coded array |
 
 ---
 
@@ -719,7 +838,7 @@ Smoke tests via Vercel Agent Browser preferred per `e2e-runner` agent default. P
 |---|---|---|
 | **07a — Canvas Engine Core + Renderer** | Every engine API listed in §7.1 + §7.2: SLICE NodeType, MEASUREMENT NodeType, scaleMode enum, GradientPaint type, Effect type, `figma.booleanOperation()`, `figma.canvas.readPixel()`, `figma.createSlice()`, `figma.createMeasurement()`, `figma.exportAsync()`, mask compositing in renderer/scene.ts, renderer/measurements.ts, figma-api-proxy field exposure, kiwi schema serialization | Every overlay component reads engine state via the proxy; if 07a renames a field, 07b updates the import. |
 | **06 — Canvas Editor Core Chrome** | `<TopChrome>`, `<BottomToolbar>`, `<RightPanel>`, `<LeftPanel>`, inspector tab routing, the `<EditorView>` shell that mounts `<CanvasOverlayLayer>`. Existing `properties/*Section.vue` chrome | Inspector section *extensions* (07b extends EffectsSection, ExportSection, StrokeSection, TypographySection, FillSection, ColorPicker) — 06 owns the parent components; 07b's extensions land inside them via composition / slots / direct edit |
-| **08 — Canvas Menus + Popovers + Shortcuts** | `useShortcutsStore.register()` API for Boolean ops + copy/paste shortcuts; `useFind` composable for `FindHighlightOverlay`; `<KovaContextMenu>` for inspector right-click overflow (per Q18) | None at runtime |
+| **08 — Canvas Menus + Popovers + Shortcuts** | `useShortcutsStore.register()` API for Boolean ops + copy/paste + pixel-grid + find shortcuts (Phase B — Phase A uses local fallback handler). `<KovaContextMenu>` for inspector right-click overflow (per Q18). **NOTE:** find feature itself is 100% 07b per founder decision §12.12 — 08 is NOT involved in find UX or `useFind` composable | None at runtime |
 | **09 — Version History + Trash** | None at runtime — 07b ships before 09; 09 consumes 07b's `useExportPipeline` output for snapshot thumbnails | `useExportPipeline.exportAllSlices()` produces image bytes 09 thumbnails consume |
 | **10 — AI Chat + Memory + Tools** | None at runtime — 10 ships AFTER 07b; 10 consumes engine state read-only | AI tool layer reads the same scene-graph state 07b reads. AI Slice/Measurement creation tools wrap 07b's `useSliceTool` / `useMeasurementTool` composables |
 | **05 — Brand Kit + Drag-Drop** | `application/x-kova-brand-asset` MIME type taxonomy; brand-asset payload shape `{ assetId, kind }` | Image-fill drop receiver (07b's `use-canvas-drop` extension consumes the brand-asset payload and routes to ImageFillPicker) |
@@ -764,47 +883,37 @@ Q3 #12 says all 5 effect types are engine-ready (renderer ships them). 07b's `Ef
 
 **Mitigation:** 07b acceptance §8.1 includes "all 5 effect types … render correctly." If a render mismatch is found during testing, escalate to 07a as a renderer bug; 07b inspector wiring stays correct.
 
-### 12.5 OPEN QUESTION — Gradient editor: Angular + Diamond defer reasoning
+### 12.5 RESOLVED — Gradient editor: ship all 4 modes
 
-Q3 says all 4 gradient types are engine-ready (LINEAR / RADIAL / ANGULAR / DIAMOND). 07b ships only LINEAR + RADIAL UI in MVP — matches Figma's 90th-percentile usage and avoids a 4-tab clutter in the picker.
+**Decision (founder, 2026-05-17):** Ship all 4 gradient types in MVP — LINEAR / RADIAL / ANGULAR / DIAMOND. Matches Figma exactly. Aligns with "build for best product" bias.
 
-**Decision recommendation:** Ship LINEAR + RADIAL UI only. Phase 2 unlocks ANGULAR + DIAMOND tabs. Founder sign-off needed.
+**Impact:** Mode-tab row in `PaintEditor` becomes 6 tabs (Solid / Linear / Radial / Angular / Diamond / Image). 280px popover width accommodates icon-only tabs. Width verified during Phase 3 implementation.
 
-**Mitigation if founder wants all 4 in MVP:** Add 2 tabs to mode-tab row (Solid / Linear / Radial / Angular / Diamond / Image — 6 tabs). Acceptable but tight on the 280px popover width.
+### 12.6 RESOLVED — Find behavior re-scoped to canvas focus mode (see §12.12)
 
-### 12.6 OPEN QUESTION — Find highlight color
+**Decision (founder, 2026-05-17):** Find is not a colored outline. It is a canvas focus mode with dim layer + camera pan + selection highlight. Original "yellow outline" recommendation withdrawn. Full re-scope captured in §12.12 below.
 
-Hi-fi 09 doesn't provide explicit B8.x scene for find highlight color. Suggested: golden / yellow contour to disambiguate from selection blue + measurement red + mask green.
+### 12.7 RESOLVED — Pixel-grid auto-show at 800% zoom
 
-**Decision recommendation:** `#FFC857` (yellow) at 1.5px solid + `rgba(255, 200, 87, 0.18)` halo. Founder confirms during PRD review.
+**Decision (founder, 2026-05-17):** Keep auto-show. When zoom > 8.0, pixel grid renders even if `useEditorStore.overlays.pixelGrid=false`. Inspector toggle forces always-visible regardless of zoom. Extends Figma (Figma is manual-only) — chosen because it removes friction at pixel-perfect zoom levels.
 
-### 12.7 OPEN QUESTION — Pixel-grid auto-show threshold
+**Bonus:** Register `Shift+'` keyboard shortcut to match Figma muscle memory (§12.8 below covers shortcut registration).
 
-Hi-fi B8.5 says "auto-show > 800% zoom." Confirm threshold is exactly 800% (zoom value > 8.0) or interpret as approximate.
+### 12.8 RESOLVED — Layout-guides top-level toggle ADDED
 
-**Decision recommendation:** Exact 800% threshold (`zoom > 8.0`). Below 800%, `useEditorStore.overlays.pixelGrid=true` still keeps the overlay component mounted but the render is skipped. Toggling via inspector forces visibility independent of zoom.
+**Decision (founder, 2026-05-17):** Add a top-level toggle to the Zoom/view options dropdown (owned by Cluster 06). Toggle hides ALL layout guides in canvas. Per-frame inspector visibility still works. Matches Figma exactly (Figma has both global + per-frame). 07b consumes the global flag from `useEditorStore.overlays.layoutGuides` (extend §6.2.1).
 
-### 12.8 OPEN QUESTION — Layout-guides per-frame UI vs top-level toggle
+### 12.9 RESOLVED — Eyedropper sampling implementation
 
-Hi-fi B8.6 line 2469 says "No top-level toggle UI in MVP; visibility follows inspector state." But the inspector for Layout Grids isn't fully designed yet — Cluster 06's `<LayoutSection>` may or may not include the grid type/color/spacing controls.
+**Decision (founder, 2026-05-17):** 07a adds `figma.canvas.readPixel(x, y): { r, g, b, a }` to figma-api-proxy. 07b consumes it via `useEyedropper` composable. No 07b code change beyond the consumer call.
 
-**Decision recommendation:** 07b's `LayoutGuidesOverlay` reads `frame.layoutGrids[]` directly. Cluster 06 PRD owns the inspector UI for editing those grids. If 06 doesn't ship the grid editor in Phase A, the overlay still works for any grid set programmatically (e.g., on canvas creation defaults). Founder confirms 06 / 07b split.
+### 12.10 RESOLVED — Boolean ops disabled on <2 selection
 
-### 12.9 OPEN QUESTION — Eyedropper sampling implementation
+**Decision (founder, 2026-05-17):** Boolean op buttons greyed when selection count <2. Keyboard shortcuts silently no-op when <2. Matches Figma exactly. Implementation: `useEditorStore.selection.length >= 2` gate in `BooleanOpsRow.vue` button `:disabled` prop and shortcut handler guard.
 
-`figma.canvas.readPixel(x, y)` is the proposed API. OpenPencil's existing canvas exposes a `getImageData()`-like surface via the renderer's WebGL canvas, but not a per-pixel proxy method. 07a may need to add a thin wrapper.
+### 12.11 RESOLVED — Copy/paste silent drop
 
-**Decision recommendation:** 07a adds `figma.canvas.readPixel(x, y): { r, g, b, a }` to the figma-api-proxy as item 9 of 07a's core mods. Falls naturally into 07a's "expose new fields/methods via proxy" item.
-
-### 12.10 OPEN QUESTION — Boolean ops on a single selection
-
-Figma allows boolean ops on a single selection (treats as no-op or selects N siblings depending on context). Q3 #14 confirms 4 ops + Figma shortcuts but doesn't specify single-selection behavior.
-
-**Decision recommendation:** Boolean ops require ≥2 selected nodes. Single selection → buttons + shortcuts disabled. Matches Figma's "must select 2+ to combine" UX. Founder confirms.
-
-### 12.11 OPEN QUESTION — Copy/paste props target compatibility table
-
-Q23 says full property set copies. Need to enumerate the silent-drop matrix:
+**Decision (founder, 2026-05-17):** Silent drop of incompatible properties — no toast, no error. Matches Figma exactly. Compatibility matrix below stays canonical for tests:
 
 | Source field | Target NodeType | Behavior |
 |---|---|---|
@@ -815,7 +924,52 @@ Q23 says full property set copies. Need to enumerate the silent-drop matrix:
 | `cornerRadius` | TEXT / LINE / VECTOR (no native cornerRadius) | Silent drop |
 | `strokeAlign` | TEXT (no stroke) | Silent drop |
 
-**Decision recommendation:** Drop incompatible fields silently (no toast, no error). User-facing behavior matches Figma. Founder confirms.
+Acceptance §8.8 tests this matrix.
+
+### 12.12 RESOLVED — Find canvas focus mode: 07b owns end-to-end
+
+**Discovery (founder demo, 2026-05-17):** Figma's `Cmd+F` find is NOT a colored outline. It is a canvas focus mode.
+
+**Visual reference (founder-provided screenshots):**
+
+| Path | State | Description |
+|---|---|---|
+| `docs/kova-final-prds/assets/07b/find-state-1-typing.png` | "Typing / multi-match" | Search panel left; user typed `frame`; 3 results listed (Frame 1, Frame 4, Frame 5); canvas dimmed with backdrop; result hovered/selected highlighted with bright blue selection box |
+| `docs/kova-final-prds/assets/07b/find-state-2-focus.png` | "Narrowed to 1" | Search panel left; user typed `frame 4`; 1 result; canvas pans + zooms to Frame 4 with 10% padding; selection box bright blue; rest of canvas dimmed |
+
+(Founder to drop the screenshots at these paths during PRD review.)
+
+**Behavior:**
+
+1. User presses `Cmd+F` → `SearchPanel` slides in from left (overlay over layers panel)
+2. User types query → `useFindSearch` filters all scene-graph nodes by `node.name` (case-insensitive substring match) → `useFindStore.matchedNodeIds` updates → canvas immediately enters focus mode:
+   - All non-matching nodes overlaid with translucent gray (`rgba(0, 0, 0, 0.6)`)
+   - Camera does NOT pan yet (multi-match state)
+3. User clicks a specific result in the panel OR narrows query to 1 match → camera enters target-focus sub-mode:
+   - Camera pans + zooms to target with `10%` padding
+   - Animation: `250ms` ease-out `cubic-bezier(0.4, 0, 0.2, 1)`
+   - Target node retains its normal selection box (bright blue)
+4. User clicks any dimmed node on canvas → focus mode exits + that node becomes the new selection (clickthrough). `useFindStore.active=false`.
+5. User presses `Esc` OR clicks the `×` button on the search panel → focus mode exits + search panel slides out. Selection clears.
+
+**07b owns end-to-end (NOT 08).** Founder ratified 2026-05-17. Full deliverable set in 07b:
+
+| Sub-system | Owner | Location |
+|---|---|---|
+| `useFindStore` (Pinia: `active`, `query`, `matchedNodeIds`, `focusedNodeId`) | 07b | `src/stores/use-find-store.ts` |
+| `useFindSearch` composable (query → matching node IDs via scene-graph traversal) | 07b | `src/composables/use-find-search.ts` |
+| `useCameraPan` composable (animate camera to fit node, 10% padding, 250ms) | 07b | `src/composables/use-camera-pan.ts` |
+| `SearchPanel.vue` (left-side slide-in: input + result list + close button) | 07b | `src/components/find/SearchPanel.vue` |
+| `SearchResultRow.vue` (single result row with node icon + name + parent crumb) | 07b | `src/components/find/SearchResultRow.vue` |
+| `DimLayerOverlay.vue` (translucent gray over inverse of `matchedNodeIds`) | 07b | `src/components/canvas-overlays/DimLayerOverlay.vue` |
+| `FindOverlay.vue` (composes DimLayerOverlay + clickthrough handler) | 07b | `src/components/canvas-overlays/FindOverlay.vue` |
+| `Cmd+F` shortcut binding → `useFindStore.open()` | 07b | `src/composables/use-shortcuts.ts` extension |
+| `Esc` shortcut binding (while find active) → `useFindStore.close()` | 07b | same |
+| Selection box rendering on target | 07a (existing) | No 07b code |
+
+**Feature gate:** `FEATURE_GATES.find = true` in Phase A (ships immediately, no 08 dependency).
+
+**Why 07b not 08:** 07b already owns canvas overlays + inspector wiring. Find feature touches: scene-graph read (07a engine), overlay render (07b), keyboard shortcut (07b extends 08-style registry but registers its own binding), Pinia state (07b). Zero overlap with 08's scope (which becomes keyboard-shortcut REGISTRY infrastructure, not Find UX itself).
 
 ---
 
