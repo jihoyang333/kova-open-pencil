@@ -1353,6 +1353,19 @@ describe('Cluster 02 routes', () => {
     const route = router.resolve('/brands')
     expect(route.name).toBe('brands-picker')
   })
+
+  // C-HIGH2 — wizard sub-routes
+  test.each([
+    ['/onboarding/brand', 'onboarding-brand', 1],
+    ['/onboarding/shopify', 'onboarding-shopify', 2],
+    ['/onboarding/brand-kit', 'onboarding-brand-kit', 3],
+    ['/onboarding/done', 'onboarding-done', 4],
+  ])('%s resolves to %s with wizardStep %i', (path, name, step) => {
+    const route = router.resolve(path)
+    expect(route.name).toBe(name)
+    expect(route.meta.wizardStep).toBe(step)
+    expect(route.meta.onboardingOnly).toBe(true)
+  })
 })
 ```
 

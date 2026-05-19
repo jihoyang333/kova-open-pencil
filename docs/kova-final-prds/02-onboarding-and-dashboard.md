@@ -411,6 +411,32 @@ const onboardingRoutes = [
     component: () => import('@/components/onboarding/StoreTypeStep.vue'),
     meta: { theme: 'dark', requiresAuth: true, onboardingOnly: true, viewportGuard: 'desktop' },
   },
+  // C-HIGH2: wizard sub-routes (each step owns its URL for back/forward + deep-link).
+  // Step components mounted inside OnboardingView via <router-view>; guards enforce linear progression.
+  {
+    path: '/onboarding/brand',
+    name: 'onboarding-brand',
+    component: () => import('@/components/onboarding/BrandIdentityStep.vue'),
+    meta: { theme: 'dark', requiresAuth: true, onboardingOnly: true, viewportGuard: 'desktop', wizardStep: 1 },
+  },
+  {
+    path: '/onboarding/shopify',
+    name: 'onboarding-shopify',
+    component: () => import('@/components/onboarding/ShopifyConnectStep.vue'),
+    meta: { theme: 'dark', requiresAuth: true, onboardingOnly: true, viewportGuard: 'desktop', wizardStep: 2 },
+  },
+  {
+    path: '/onboarding/brand-kit',
+    name: 'onboarding-brand-kit',
+    component: () => import('@/components/onboarding/BrandKitStep.vue'),
+    meta: { theme: 'dark', requiresAuth: true, onboardingOnly: true, viewportGuard: 'desktop', wizardStep: 3 },
+  },
+  {
+    path: '/onboarding/done',
+    name: 'onboarding-done',
+    component: () => import('@/components/onboarding/SplashStep.vue'),
+    meta: { theme: 'dark', requiresAuth: true, onboardingOnly: true, viewportGuard: 'desktop', wizardStep: 4 },
+  },
 ]
 
 const dashboardRoutes = [
