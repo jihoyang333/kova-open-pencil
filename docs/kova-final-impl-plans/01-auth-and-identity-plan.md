@@ -777,6 +777,7 @@ Expected: FAIL (handler not implemented).
 // api/account/deletion-request.ts
 import { verifyAuth } from '../_shared/auth'
 import { sendEmail } from '../_shared/resend-client'
+import { verifyIdempotency } from '../_shared/idempotency' // Cluster 11 Task 1.3
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 const RATE_LIMIT_WINDOW_MS = 60_000
@@ -820,6 +821,22 @@ export default async function handler(req: Request): Promise<Response> {
 
   if (!(await checkRateLimit(auth.supabase, auth.userId))) {
     return Response.json({ error: 'rate_limited', retry_after_seconds: 60 }, { status: 429 })
+  }
+
+  // Idempotency replay protection (Cluster 11 idempotency_keys table).
+  // If the client supplied X-Idempotency-Key, replay the cached response on
+  // exact body match, or 422 if the same key was reused with a different body.
+  const idempotencyKey = req.headers.get('X-Idempotency-Key')
+  const bodyText = await req.clone().text()
+  if (idempotencyKey) {
+    const { cached, conflict } = await verifyIdempotency(auth.supabase, {
+      key: idempotencyKey,
+      method: req.method,
+      path: new URL(req.url).pathname,
+      bodyText,
+    })
+    if (conflict) return Response.json({ error: 'idempotency_key_reused_with_different_body' }, { status: 422 })
+    if (cached) return Response.json(cached.body, { status: cached.status })
   }
 
   const { data: scheduledAt, error } = await auth.supabase.rpc('request_account_deletion')
@@ -934,6 +951,7 @@ Expected: FAIL.
 // api/account/restore.ts
 import { verifyAuth } from '../_shared/auth'
 import { sendEmail } from '../_shared/resend-client'
+import { verifyIdempotency } from '../_shared/idempotency' // Cluster 11 Task 1.3
 
 export default async function handler(req: Request): Promise<Response> {
   if (req.method !== 'POST') return Response.json({ error: 'method_not_allowed' }, { status: 405 })
@@ -943,6 +961,20 @@ export default async function handler(req: Request): Promise<Response> {
     auth = await verifyAuth(req)
   } catch {
     return Response.json({ error: 'unauthenticated' }, { status: 401 })
+  }
+
+  // Idempotency replay protection (C-MED2)
+  const idempotencyKey = req.headers.get('X-Idempotency-Key')
+  const bodyText = await req.clone().text()
+  if (idempotencyKey) {
+    const { cached, conflict } = await verifyIdempotency(auth.supabase, {
+      key: idempotencyKey,
+      method: req.method,
+      path: new URL(req.url).pathname,
+      bodyText,
+    })
+    if (conflict) return Response.json({ error: 'idempotency_key_reused_with_different_body' }, { status: 422 })
+    if (cached) return Response.json(cached.body, { status: cached.status })
   }
 
   const { data: restored, error } = await auth.supabase.rpc('restore_account')
@@ -1055,9 +1087,13 @@ Expected: FAIL.
 
 ```ts
 // api/auth/email-change-request.ts
+// NOTE: Zod is used in this Edge Function (B-NOTE1) — Edge Functions are
+// permitted to use Zod per founder lock #4. The valibot-only ban applies
+// strictly to the tool layer (src/ai/tools.ts and its dependencies).
 import { z } from 'zod'
 import { verifyAuth, getAdminClient } from '../_shared/auth'
 import { sendEmail } from '../_shared/resend-client'
+import { verifyIdempotency } from '../_shared/idempotency' // Cluster 11 Task 1.3
 
 const BodySchema = z.object({ new_email: z.string().email() })
 
@@ -1071,9 +1107,24 @@ export default async function handler(req: Request): Promise<Response> {
     return Response.json({ error: 'unauthenticated' }, { status: 401 })
   }
 
+  // Idempotency replay protection (C-MED2) — read raw bodyText before .json()
+  // so we can hand the same bytes to verifyIdempotency AND the BodySchema.
+  const idempotencyKey = req.headers.get('X-Idempotency-Key')
+  const bodyText = await req.text()
+  if (idempotencyKey) {
+    const { cached, conflict } = await verifyIdempotency(auth.supabase, {
+      key: idempotencyKey,
+      method: req.method,
+      path: new URL(req.url).pathname,
+      bodyText,
+    })
+    if (conflict) return Response.json({ error: 'idempotency_key_reused_with_different_body' }, { status: 422 })
+    if (cached) return Response.json(cached.body, { status: cached.status })
+  }
+
   let body
   try {
-    body = BodySchema.parse(await req.json())
+    body = BodySchema.parse(JSON.parse(bodyText))
   } catch {
     return Response.json({ error: 'invalid_email' }, { status: 400 })
   }
