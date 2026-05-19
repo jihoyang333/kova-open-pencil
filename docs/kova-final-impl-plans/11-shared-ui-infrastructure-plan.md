@@ -73,7 +73,7 @@
 - `kova-open-pencil-1/src/composables/use-email-shell.ts`
 
 ### Phase 9 — App wiring + showcase
-- `kova-open-pencil-1/src/App.vue` — **MODIFY** (mount ToastStack + ConfirmModal globally)
+- `kova-open-pencil-1/src/App.vue` — **MODIFY** (mount ToastStack + ConfirmModal + `<NetworkStatusIndicator>` globally — C-MED-11.5)
 - `kova-open-pencil-1/src/main.ts` — **MODIFY** (install Sentry, mount useTheme)
 - `kova-open-pencil-1/src/router/routes.ts` — **MODIFY** (add /404, /500, /network-unreachable, /dev/cluster-11)
 - `kova-open-pencil-1/src/views/dev/Cluster11Showcase.vue` — Storybook-replacement smoke page
@@ -3191,13 +3191,27 @@ describe('<EmailShell> Resend placeholder pass-through (C-MED-11.4)', () => {
 - Modify: `kova-open-pencil-1/src/App.vue`
 - Modify: `kova-open-pencil-1/src/main.ts`
 
-- [ ] **Step 1: App.vue mount globals**
+- [ ] **Step 1: App.vue mount globals (C-MED-11.5 — includes `<NetworkStatusIndicator>`)**
+
+The single-source-of-truth offline indicator is mounted globally in `App.vue`,
+not inside the dashboard topbar. Founder lock (2026-05-17, recorded in §3.7):
+the retired sidebar `.net-strip` is replaced by a single Figma-style icon-only
+indicator that renders nothing while online and a 14×14 `cloud-off` tooltip
+while offline. Mounting at the `<App>` root keeps the indicator surface-
+agnostic — every authenticated route (dashboard, brand modal, canvas,
+settings) gets the same overlay for free, including pre-login auth pages
+that don't have a topbar.
+
+If a future shared topbar component lands (coordinated with Cluster 02), the
+indicator may move there — but only after the topbar covers every authed
+route. Until then, App.vue is the canonical mount point.
 
 ```vue
 <!-- src/App.vue (add to existing) -->
 <script setup lang="ts">
 import ToastStack from '@/components/ui/ToastStack.vue'
 import ConfirmModal from '@/components/ui/ConfirmModal.vue'
+import NetworkStatusIndicator from '@/components/ui/NetworkStatusIndicator.vue'
 import { useTheme } from '@/composables/use-theme'
 
 useTheme()
@@ -3207,6 +3221,7 @@ useTheme()
   <RouterView />
   <ToastStack />
   <ConfirmModal />
+  <NetworkStatusIndicator />
 </template>
 ```
 
@@ -3218,7 +3233,7 @@ import { installSentry } from './sentry'
 installSentry(app, router)
 ```
 
-- [ ] **Commit:** `git commit -am "feat(cluster-11): mount ToastStack + ConfirmModal globally"`
+- [ ] **Commit:** `git commit -am "feat(cluster-11): mount ToastStack + ConfirmModal + NetworkStatusIndicator globally"`
 
 ---
 
