@@ -2614,6 +2614,54 @@ git add packages/core/src/renderer/scene.ts packages/core/src/renderer/renderer.
 git commit -m "feat(engine): sibling-traversal mask compositing for ALPHA + VECTOR + LUMINANCE (Cluster 07a)"
 ```
 
+- [ ] **Step 9.13: Mask-compositing perf benchmark (C-LOW07a.2)**
+
+Files:
+- Create: `tests/bench/mask-compositing.bench.ts`
+
+Budget: render must complete in < 16ms (60fps) for 100 / 200 / 300 masked nodes inside a single frame. Catches accidental O(n²) compositing regressions in the sibling-traversal pass.
+
+```ts
+// tests/bench/mask-compositing.bench.ts
+import { describe, bench } from 'bun:test'
+import { SceneGraph } from '@/packages/core/src/scene-graph'
+import { Renderer } from '@/packages/core/src/renderer/renderer'
+
+function makeMaskedScene(n: number): { graph: SceneGraph, renderer: Renderer, frameId: string } {
+  const graph = new SceneGraph()
+  const canvas = graph.createNode('CANVAS', graph.rootId)
+  const frame = graph.createNode('FRAME', canvas.id, { width: 1200, height: 800, clipsContent: true })
+  for (let i = 0; i < n; i++) {
+    const mask = graph.createNode('VECTOR', frame.id, { isMask: true, maskType: 'ALPHA', x: i * 10, y: i * 10, width: 80, height: 80 })
+    void mask
+    graph.createNode('RECTANGLE', frame.id, { x: i * 10, y: i * 10, width: 80, height: 80, fills: [{ type: 'SOLID', color: { r: 0.5, g: 0.5, b: 0.5, a: 1 } }] })
+  }
+  const renderer = new Renderer({ canvas: document.createElement('canvas') })
+  return { graph, renderer, frameId: frame.id }
+}
+
+describe('mask compositing perf (C-LOW07a.2 — 50–300 nodes, 60fps budget)', () => {
+  for (const n of [100, 200, 300]) {
+    bench(`render ${n} masked nodes < 16ms`, () => {
+      const { renderer, graph, frameId } = makeMaskedScene(n)
+      const t0 = performance.now()
+      renderer.renderNode(graph.getNodeById(frameId)!)
+      const dt = performance.now() - t0
+      if (dt >= 16) throw new Error(`render exceeded budget: ${dt.toFixed(2)}ms (n=${n})`)
+    })
+  }
+})
+```
+
+Commit (separate from Step 9.12):
+
+```bash
+git add tests/bench/mask-compositing.bench.ts
+git commit -m "test(engine): mask-compositing perf benchmark — 100/200/300 nodes < 16ms (C-LOW07a.2)"
+```
+
+Wire into CI gate: extend `bun run test:bench` script in package.json to include `tests/bench/`. Add `bun run test:bench` to the `bun run check` chain or gate it behind a separate `bun run check:perf` step.
+
 ---
 
 ## Task 10: CLAUDE.md amendment text
