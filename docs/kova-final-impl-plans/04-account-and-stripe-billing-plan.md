@@ -2307,7 +2307,7 @@ describe('AccountSidebar', () => {
 ```vue
 <!-- src/components/account/AccountSidebar.vue -->
 <script setup lang="ts">
-import type { Component } from 'vue'
+import KovaIcon from '@/components/shared/KovaIcon.vue'
 
 interface SidebarItem {
   id: string
@@ -2336,7 +2336,7 @@ const emit = defineEmits<{ (e: 'select', id: string): void }>()
           ]"
           @click="emit('select', item.id)"
         >
-          <component :is="`icon-lucide-${item.icon}`" class="h-4 w-4" />
+          <KovaIcon :name="item.icon" class="h-4 w-4" />
           <span>{{ item.label }}</span>
         </button>
       </li>
@@ -2344,6 +2344,8 @@ const emit = defineEmits<{ (e: 'select', id: string): void }>()
   </nav>
 </template>
 ```
+
+**Note:** Dynamic component name resolution is incompatible with unplugin-icons (compile-time scan). Route all dynamic icon rendering through the Cluster 11 `<KovaIcon :name>` primitive.
 
 - [ ] **Step 4: Verify pass + commit**
 
