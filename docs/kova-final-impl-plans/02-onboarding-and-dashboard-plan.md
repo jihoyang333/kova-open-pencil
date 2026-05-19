@@ -1539,9 +1539,12 @@ defineEmits<{ next: [] }>()
 - [ ] **Step 5: Delete legacy files**
 
 ```bash
+# C-MED6: retire all 4 M9 onboarding components consolidated by BrandIdentityStep + downstream cuts.
+# ExtractionStep is the M9 mid-wizard "Kova is extracting..." card; replaced by inline AI surface in BrandKitStep.
 git rm src/components/onboarding/BrandNameStep.vue \
        src/components/onboarding/BrandUrlStep.vue \
-       src/components/onboarding/NameStep.vue
+       src/components/onboarding/NameStep.vue \
+       src/components/onboarding/ExtractionStep.vue
 ```
 
 - [ ] **Step 6: Commit**
@@ -1915,11 +1918,10 @@ const dotClass = (idx: number) => {
 - [ ] **Step 5: Delete retired components**
 
 ```bash
-git rm src/components/onboarding/ExtractionStep.vue \
-       src/components/onboarding/ReviewStep.vue
+# ExtractionStep retirement moved to T13 (C-MED6). ReviewStep retirement moved to T13 (C-LOW02.7).
+# Nothing to delete in T17 — see T13 Step 5.
+echo "All retired components removed in T13."
 ```
-
-(Confirm in §12.10 ESCALATE before deleting if concern. If founder says keep ReviewStep as commit gate, skip deletion and wire it between brand-kit and splash.)
 
 - [ ] **Step 6: Commit**
 
