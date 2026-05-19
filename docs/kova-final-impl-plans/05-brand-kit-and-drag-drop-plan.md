@@ -2583,6 +2583,15 @@ git commit -m "feat(cluster-05): VoiceDraftConfirmModal — GUARDRAIL implementa
 - [ ] **Step 4: Run — expect PASS**.
 - [ ] **Step 5: Commit** (`feat(cluster-05): VisualsTab + colors/fonts/logo primitives with drag-source`).
 
+**C-LOW05.2 — Cross-cluster dependency: Color picker popover (Cluster 07b):**
+
+`<BrandColorAddTile>` opens a color picker. The picker UI is shipped by Cluster 07b as `<ColorPickerPopover>` (import path: `@/components/find/ColorPickerPopover.vue` per Plan 07b). If Cluster 07b has NOT yet merged to `feat/m9-shopify` at the time Task 21 is implemented, use a temporary fallback in this order of preference:
+
+1. **Cluster 11 `<ColorInput>` primitive** if it exists (check `src/components/shared/ColorInput.vue` — Plan 11 may have shipped it).
+2. **Native `<input type="color">`** as a last resort. This is functional but lacks brand styling and palette suggestions.
+
+When using a fallback, mark the import with a `TODO(cluster-07b): replace fallback with <ColorPickerPopover> once shipped` comment so the swap is easy to find later. Open a follow-up commit immediately after Cluster 07b merges to swap the fallback for the real `<ColorPickerPopover>` — do NOT ship Cluster 05 to production with the native fallback.
+
 ---
 
 ### Task 22: IdentityTab + IdentityCard
