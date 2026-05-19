@@ -2800,11 +2800,87 @@ bypassing the save-bar.
 
 **Files:**
 - Create: `kova-open-pencil-1/src/views/account/sections/BrandKitSection.vue`
-- Test: mirror.
+- Test: `kova-open-pencil-1/tests/unit/views/account/sections/BrandKitSection.test.ts`
 
-> Per PRD §3.4 + §6.4.1. Renders `<BrandPicker>` + sub-tab rail + content slot (Cluster 11 `<Skeleton>` placeholder until Cluster 05 ships).
+> Per PRD §3.4 + §6.4.1. Renders `<BrandPicker>` + sub-tab rail + content slot. Sub-tab rail reads `?tab=:tab` query param and renders the matching Brand Kit pane via Vue Router's `<router-view>` (Cluster 05 ships the individual pane components per Plan 05 Tasks 21-27; until then, panes render Cluster 11 `<Skeleton>` placeholders).
 
-- [ ] **Step 1 → 5**: TDD per pattern. Sub-tab rail uses `?tab=:tab` query param.
+**C-MED15 — `?tab=` sub-route via `<router-view>` (NOT a static `<Skeleton>`):**
+
+The previous draft of this task used a single `<Skeleton>` placeholder. Per C-MED15, the shell must instead use `<router-view>` so each `?tab=...` value (`colors`, `fonts`, `logo`, `saved-blocks`, `tone-snippets`, `voice`, `product-references`) renders a different child component. Implementation:
+
+```vue
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import BrandPicker from '@/components/brand/BrandPicker.vue'
+
+const route = useRoute()
+const router = useRouter()
+
+// 7 panes — Cluster 05 ships the components (Plan 05 Tasks 21-27).
+// Default tab = colors. Unknown tab values fall through to colors.
+const TABS = ['colors', 'fonts', 'logo', 'saved-blocks', 'tone-snippets', 'voice', 'product-references'] as const
+type Tab = typeof TABS[number]
+
+const activeTab = computed<Tab>(() => {
+  const t = route.query.tab as string | undefined
+  return (TABS as readonly string[]).includes(t ?? '') ? (t as Tab) : 'colors'
+})
+
+function setTab(name: Tab) {
+  router.push({ query: { ...route.query, tab: name } })
+}
+</script>
+
+<template>
+  <div class="brand-kit-section">
+    <BrandPicker />
+
+    <nav class="brand-kit-tabs" role="tablist" aria-label="Brand Kit tabs">
+      <button
+        v-for="t in TABS"
+        :key="t"
+        :class="{ active: activeTab === t }"
+        role="tab"
+        :aria-selected="activeTab === t"
+        @click="setTab(t)"
+      >
+        {{ t }}
+      </button>
+    </nav>
+
+    <router-view />
+  </div>
+</template>
+```
+
+**Route config** (extend `src/router/routes.ts`):
+
+```ts
+{
+  path: '/account/brand-kit',
+  name: 'account-brand-kit',
+  component: () => import('@/views/account/sections/BrandKitSection.vue'),
+  children: [
+    // Cluster 05 Tasks 21-27 register pane routes here.
+    // Until then, an empty route renders nothing (panel falls through to <router-view /> with no match).
+    // Example for the colors pane (Plan 05 Task 21):
+    // { path: '', name: 'account-brand-kit-pane', component: () => import('@/components/brand-kit/PaneRouter.vue') },
+  ],
+}
+```
+
+(Alternative pattern: if Cluster 05 prefers query-driven rendering without nested routes, replace `<router-view />` with a `<component :is="paneComponent">` where `paneComponent` is a `computed` that maps `activeTab` to the imported pane component. Either pattern satisfies C-MED15 — the founder requirement is "real wiring, not a `<Skeleton>` placeholder". Coordinate with the Cluster 05 fix agent on which pattern Plan 05 expects.)
+
+- [ ] **Step 1: Write tests** asserting:
+  - mounts `<BrandPicker>`
+  - renders 7 tab buttons with names matching `TABS`
+  - clicking a tab calls `router.push({ query: { tab: <name> } })`
+  - `activeTab` defaults to `colors` when `route.query.tab` is missing or invalid
+- [ ] **Step 2: Implement** per snippet above.
+- [ ] **Step 3: Run + verify pass.**
+- [ ] **Step 4: Update `src/router/routes.ts`** to add the `/account/brand-kit` route (with nested children placeholder until Cluster 05 lands).
+- [ ] **Step 5: Commit** (`feat(04): wire BrandKitSection tab rail + router-view`).
 
 ---
 
