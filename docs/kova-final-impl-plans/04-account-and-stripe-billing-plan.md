@@ -1323,17 +1323,87 @@ git add api/stripe/webhook-handlers/handle-subscription-created.ts tests/unit/ap
 git commit -m "feat(04): Stripe webhook handler — subscription.created"
 ```
 
-#### Task 3.3.2 through 3.3.6 — handle-subscription-updated / -deleted / -invoice-paid / -invoice-payment-failed / -checkout-completed
+#### Task 3.3.2: `handle-subscription-updated`
 
-For each: write test → run (fail) → implement per PRD §5.1.3 pseudocode → run (pass) → commit. Use the same shape as 3.3.1. Each commit message: `feat(04): Stripe webhook handler — <event-name>`.
+**Files:**
+- Create: `kova-open-pencil-1/api/stripe/webhook-handlers/handle-subscription-updated.ts`
+- Test: `kova-open-pencil-1/tests/unit/api/stripe/webhook-handlers/handle-subscription-updated.test.ts`
 
-Concrete differences:
+- [ ] **Step 1: Write failing tests** — assert each behavior independently:
+  - heals `plan_status`, `current_period_end`, `cancel_at_period_end` from incoming `sub.status` (per B-MED14 — store all three, not just status)
+  - downgrades `past_due → active` when `sub.status === 'active'`
+  - upgrades `incomplete → active` when `sub.status === 'active'` AND `sub.latest_invoice.payment_intent.status === 'succeeded'`
+  - sets `plan` from `sub.items.data[0].price.id` lookup (solo vs agency env vars)
+  - flips `cancel_at_period_end: false → true` triggers the `subscription-cancelled` email via Resend wrapper (assert one call with `wasScheduled: true`)
+  - rejects events for unknown `stripe_customer_id` (throws `NonRetriableError` — handler returns 200 with `error: 'unknown_customer'`)
+- [ ] **Step 2: Run — expect FAIL**.
+- [ ] **Step 3: Implement** per PRD §5.1.3 pseudocode.
+- [ ] **Step 4: Run — expect PASS**.
+- [ ] **Step 5: Commit** (`feat(04): Stripe webhook handler — customer.subscription.updated`).
 
-- **subscription.updated**: identical to .created. Re-use the handler body (factor a `syncSubscriptionToUser` helper if attractive, but DRY only after both are written).
-- **subscription.deleted**: sets `plan='free'`, `plan_status='cancelled'`, `stripe_subscription_id=null`, `cancel_at_period_end=false`.
-- **invoice.paid**: if user is `past_due`, reset to `active`. Audit log.
-- **invoice.payment_failed**: set `plan_status='past_due'`. Audit log. Send Resend email via Cluster 11 wrapper (template name `subscription-payment-failed.html` — created in Task 14).
-- **checkout.completed**: NO DB update (subscription.created fires immediately after and is authoritative); audit-log only.
+#### Task 3.3.3: `handle-subscription-deleted`
+
+**Files:**
+- Create: `kova-open-pencil-1/api/stripe/webhook-handlers/handle-subscription-deleted.ts`
+- Test: `kova-open-pencil-1/tests/unit/api/stripe/webhook-handlers/handle-subscription-deleted.test.ts`
+
+- [ ] **Step 1: Write failing tests**:
+  - sets `plan='free'`, `plan_status='cancelled'`, `stripe_subscription_id=null`, `cancel_at_period_end=false`
+  - writes audit-log row `subscription.deleted` with the removed `stripe_subscription_id` in metadata
+  - sends `subscription-cancelled` email via Resend wrapper with `wasScheduled: false`
+  - is idempotent — calling twice with the same event leaves the user row unchanged after the first call
+- [ ] **Step 2: Run — expect FAIL**.
+- [ ] **Step 3: Implement** per PRD §5.1.3.
+- [ ] **Step 4: Run — expect PASS**.
+- [ ] **Step 5: Commit** (`feat(04): Stripe webhook handler — customer.subscription.deleted`).
+
+#### Task 3.3.4: `handle-invoice-paid`
+
+**Files:**
+- Create: `kova-open-pencil-1/api/stripe/webhook-handlers/handle-invoice-paid.ts`
+- Test: `kova-open-pencil-1/tests/unit/api/stripe/webhook-handlers/handle-invoice-paid.test.ts`
+
+- [ ] **Step 1: Write failing tests**:
+  - heals `past_due → active` when the invoice belongs to a past-due subscription
+  - is a no-op when the user is already `active` (no DB update fired)
+  - writes audit-log row `invoice.paid` with `amount_paid` + `hosted_invoice_url`
+  - sends `subscription-new` email IF `invoice.billing_reason === 'subscription_create'` AND it's the FIRST paid invoice for this customer (otherwise no email)
+- [ ] **Step 2: Run — expect FAIL**.
+- [ ] **Step 3: Implement** per PRD §5.1.3.
+- [ ] **Step 4: Run — expect PASS**.
+- [ ] **Step 5: Commit** (`feat(04): Stripe webhook handler — invoice.paid`).
+
+#### Task 3.3.5: `handle-invoice-payment-failed`
+
+**Files:**
+- Create: `kova-open-pencil-1/api/stripe/webhook-handlers/handle-invoice-payment-failed.ts`
+- Test: `kova-open-pencil-1/tests/unit/api/stripe/webhook-handlers/handle-invoice-payment-failed.test.ts`
+
+- [ ] **Step 1: Write failing tests**:
+  - sets `plan_status='past_due'` (regardless of prior state)
+  - writes audit-log row `invoice.payment_failed` with `attempt_count` + `next_payment_attempt`
+  - sends `subscription-payment-failed` email via Resend wrapper with `amount`, `attemptCount`, `deadline`, `hosted_invoice_url`
+  - dedupes email sends — calling twice with the same `invoice.id` should only fire Resend once (assert via idempotency_keys row)
+- [ ] **Step 2: Run — expect FAIL**.
+- [ ] **Step 3: Implement** per PRD §5.1.3.
+- [ ] **Step 4: Run — expect PASS**.
+- [ ] **Step 5: Commit** (`feat(04): Stripe webhook handler — invoice.payment_failed`).
+
+#### Task 3.3.6: `handle-checkout-completed`
+
+**Files:**
+- Create: `kova-open-pencil-1/api/stripe/webhook-handlers/handle-checkout-completed.ts`
+- Test: `kova-open-pencil-1/tests/unit/api/stripe/webhook-handlers/handle-checkout-completed.test.ts`
+
+- [ ] **Step 1: Write failing tests**:
+  - performs NO `users` UPDATE (subscription.created fires immediately after and is authoritative — checkout.completed is informational only)
+  - writes audit-log row `checkout.session.completed` with `session_id` + `client_reference_id` (which equals our `users.id`) + `customer` (the new `stripe_customer_id`)
+  - returns successfully when `client_reference_id` is null (e.g., guest checkout — not currently supported but the handler must not crash; logs warning instead)
+  - throws `NonRetriableError` when the event payload is missing `customer` (impossible per Stripe contract but defensive)
+- [ ] **Step 2: Run — expect FAIL**.
+- [ ] **Step 3: Implement** per PRD §5.1.3.
+- [ ] **Step 4: Run — expect PASS**.
+- [ ] **Step 5: Commit** (`feat(04): Stripe webhook handler — checkout.session.completed`).
 
 ### Task 3.4: Webhook dispatch + signature verify + idempotency
 
