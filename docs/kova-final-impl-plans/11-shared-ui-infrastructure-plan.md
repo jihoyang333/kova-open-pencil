@@ -89,7 +89,7 @@
 - `kova-open-pencil-1/src/App.vue` — mount global UI containers
 - `kova-open-pencil-1/src/main.ts` — install Sentry stub, mount theme
 - `kova-open-pencil-1/src/router/routes.ts` — register error + showcase routes
-- `kova-open-pencil-1/.env.example` — add `VITE_SENTRY_DSN_BROWSER`, `SENTRY_DSN_SERVER`, `RESEND_API_KEY`, `CRON_SECRET` (all stub-guarded; real values wired pre-launch per 00 §11)
+- `kova-open-pencil-1/.env.example` — add `VITE_SENTRY_DSN_BROWSER`, `SENTRY_DSN_SERVER`, `RESEND_API_KEY`, `CRON_SECRET`, `PUBLIC_APP_URL` (all stub-guarded / fallback-guarded; real values wired pre-launch per 00 §11)
 
 ---
 
@@ -1266,6 +1266,12 @@ RESEND_API_KEY=
 
 # Vercel cron — see 00 §11 for setup (Pro plan + secret generation)
 CRON_SECRET=
+
+# Public app origin — used by <EmailShell> wordmark URL + Resend templates
+# linking back into the app. Defaults to https://kova.app when unset (C-MED-11.3).
+# Set per-environment: preview deployments use the per-branch Vercel URL,
+# production sets https://kova.app.
+PUBLIC_APP_URL=
 ```
 
 - [ ] **Step 2: Commit**
@@ -3058,7 +3064,30 @@ defineProps<{ title: string }>()
 ```vue
 <!-- src/components/email/EmailShell.vue -->
 <script setup lang="ts">
-defineProps<{ title: string; preheader?: string }>()
+import { computed } from 'vue'
+
+interface Props {
+  title: string
+  preheader?: string
+  /**
+   * Fully-qualified wordmark URL. Defaults to `${PUBLIC_APP_URL}/email/wordmark-light@2x.png`
+   * with a `https://kova.app` fallback when PUBLIC_APP_URL is unset (C-MED-11.3).
+   * Override only for tests / preview deployments that need a different host.
+   */
+  wordmarkUrl?: string
+}
+
+const props = defineProps<Props>()
+
+// C-MED-11.3 — never hardcode prod host. The fallback keeps prod builds
+// working without env wiring; preview / dev / test deployments override
+// via PUBLIC_APP_URL (vercel.json + .env.example).
+const PUBLIC_APP_URL_FALLBACK = 'https://kova.app'
+const wordmark = computed(
+  () =>
+    props.wordmarkUrl ??
+    `${process.env.PUBLIC_APP_URL ?? PUBLIC_APP_URL_FALLBACK}/email/wordmark-light@2x.png`
+)
 </script>
 
 <template>
@@ -3080,7 +3109,7 @@ defineProps<{ title: string; preheader?: string }>()
     <body>
       <div v-if="preheader" style="display:none;font-size:1px;color:#fff;">{{ preheader }}</div>
       <div class="container">
-        <div class="head"><img src="https://kova.app/email/wordmark-light@2x.png" alt="Kova" width="80" /></div>
+        <div class="head"><img :src="wordmark" alt="Kova" width="80" /></div>
         <div class="body"><slot /></div>
         <div class="foot">
           Sent to {{ '{{email}}' }}. <a href="{{settings_url}}">Manage preferences</a>.<br />
