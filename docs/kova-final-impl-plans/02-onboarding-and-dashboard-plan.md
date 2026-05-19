@@ -538,10 +538,17 @@ Expected: FAIL "cannot find module".
 import { defineStore } from 'pinia'
 import { useLocalStorage } from '@vueuse/core'
 
+// C-MED8: hoist `kova:ui:last-brand` to a module-scope singleton so `useUIStateStore.lastActiveBrandId`
+// and `useBrandsStore.selectedBrandId` share ONE underlying `useLocalStorage` ref. Two separate
+// useLocalStorage instances on the same key were not synchronized in-tab — fixed by composition.
+export const lastActiveBrandIdRef = useLocalStorage<string | null>('kova:ui:last-brand', null)
+export const lastActiveCanvasIdRef = useLocalStorage<string | null>('kova:ui:last-canvas', null)
+export const fileGridViewModeRef = useLocalStorage<'grid' | 'list'>('kova:ui:file-grid-view', 'grid')
+
 export const useUIStateStore = defineStore('ui-state', () => {
-  const lastActiveBrandId = useLocalStorage<string | null>('kova:ui:last-brand', null)
-  const lastActiveCanvasId = useLocalStorage<string | null>('kova:ui:last-canvas', null)
-  const fileGridViewMode = useLocalStorage<'grid' | 'list'>('kova:ui:file-grid-view', 'grid')
+  const lastActiveBrandId = lastActiveBrandIdRef
+  const lastActiveCanvasId = lastActiveCanvasIdRef
+  const fileGridViewMode = fileGridViewModeRef
 
   // B-HIGH14: store mutations only via actions
   function setLastActiveBrandId(id: string | null): void { lastActiveBrandId.value = id }
@@ -621,7 +628,17 @@ describe('useBrandsStore — selectedBrandId persistence + ensureSelectedBrand',
     const store = useBrandsStore()
     // seed brands.value directly:
     // [{ id: 'b1', archived_at: '2026-04-01' }, { id: 'b2', archived_at: null }]
-    expect(store.sortedActiveBrands.map(b => b.id)).toEqual(['b2'])
+    expect(store.sortedActiveBrands.map((b) => b.id)).toEqual(['b2'])
+  })
+
+  test('C-MED8: useBrandsStore.selectedBrandId and useUIStateStore.lastActiveBrandId share one ref', async () => {
+    const brands = useBrandsStore()
+    const { useUIStateStore } = await import('@/stores/ui-state')
+    const ui = useUIStateStore()
+    brands.selectBrand('shared-brand-id')
+    expect(ui.lastActiveBrandId).toBe('shared-brand-id')
+    ui.setLastActiveBrandId('flipped-id')
+    expect(brands.selectedBrandId).toBe('flipped-id')
   })
 })
 ```
@@ -636,12 +653,14 @@ Expected: FAIL (`selectBrand` doesn't persist; `ensureSelectedBrand` doesn't exi
 
 - [ ] **Step 3: Refactor `src/stores/brands.ts`**
 
-Replace the `selectedBrandId` declaration:
+Replace the `selectedBrandId` declaration to consume the singleton ref from `@/stores/ui-state` (C-MED8 — one underlying `useLocalStorage` instance shared between `useBrandsStore` and `useUIStateStore`):
 
 ```ts
-import { useLocalStorage } from '@vueuse/core'
+// C-MED8: do NOT call useLocalStorage('kova:ui:last-brand', ...) here — that would create a second
+// in-memory ref on the same storage key. Consume the module-scope singleton from ui-state.
+import { lastActiveBrandIdRef } from '@/stores/ui-state'
 // ...
-const selectedBrandId = useLocalStorage<string | null>('kova:ui:last-brand', null)
+const selectedBrandId = lastActiveBrandIdRef
 ```
 
 Add the `sortedActiveBrands` getter:
