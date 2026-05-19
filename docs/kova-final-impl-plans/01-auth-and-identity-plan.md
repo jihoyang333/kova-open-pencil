@@ -3016,6 +3016,7 @@ describe('DangerZoneCard', () => {
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import KovaModal from '@/components/ui/KovaModal.vue' // Cluster 11 primitive
 
 const emit = defineEmits<{ requested: [] }>()
 const auth = useAuthStore()
@@ -3042,21 +3043,30 @@ async function confirm() {
     <p class="text-ink-2 text-sm mt-1">Permanently delete your account and all associated data. This action cannot be undone after the 30-day grace period.</p>
     <button class="delete-account mt-3 btn-danger" @click="open = true">Delete account</button>
 
-    <!-- Reka Dialog modal — replace with <KovaModal> once Cluster 11 ships -->
-    <div v-if="open" class="modal-shell">
-      <div class="modal-card">
-        <h2>Are you sure?</h2>
-        <p>Type <b>DELETE</b> to confirm. Your account is queued for deletion. You can restore by signing in within 30 days.</p>
-        <input class="typed-confirm" v-model="typed" placeholder="DELETE" autocomplete="off" />
-        <button class="confirm btn-danger" :disabled="!canConfirm" @click="confirm">Delete my account</button>
+    <!-- KovaModal from Cluster 11 — owns overlay, focus trap, ESC handling,
+         a11y attrs. We compose the body slot. -->
+    <KovaModal
+      v-model:open="open"
+      title="Are you sure?"
+      :destructive="true"
+      :close-on-escape="!submitting"
+    >
+      <p>Type <b>DELETE</b> to confirm. Your account is queued for deletion. You can restore by signing in within 30 days.</p>
+      <input class="typed-confirm" v-model="typed" placeholder="DELETE" autocomplete="off" />
+      <template #footer>
         <button class="cancel btn" @click="open = false">Cancel</button>
-      </div>
-    </div>
+        <button class="confirm btn-danger" :disabled="!canConfirm" @click="confirm">Delete my account</button>
+      </template>
+    </KovaModal>
   </div>
 </template>
 ```
 
-Note: replaces the modal-shell stub with `<KovaModal>` from Cluster 11 once shipped. Until then, inline shell is acceptable.
+KovaModal contract (Cluster 11 Task 5.x): `v-model:open` controls visibility,
+`title` renders the modal header, `destructive` flips the accent token to the
+danger palette, `#footer` slot renders the action row right-aligned. Focus trap
+and ESC-to-close are handled by the primitive. Visual parity verified against
+the previous inline modal-shell stub at Task 16 hand-off.
 
 - [ ] **Step 16.3: Run + commit**
 
