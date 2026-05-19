@@ -37,7 +37,8 @@ kova-open-pencil-1/docs/kova-final-prds/
   04-account-and-stripe-billing.md
   05-brand-kit-and-drag-drop.md
   06-canvas-editor-core-chrome.md
-  07-canvas-engine-extensions.md
+  07a-canvas-engine-core-renderer.md
+  07b-canvas-engine-inspector-overlays.md
   08-canvas-menus-popovers-shortcuts.md
   09-version-history-and-trash.md
   10-ai-chat-and-memory.md
@@ -239,7 +240,7 @@ For each cluster: scope boundary, 03-doc rows covered, hi-fi files referenced, Q
 - Top chrome composable: topbar layout, file menu, logo dropdown ("Back to dashboard"), brand label, avatar dropdown
 - Bottom toolbar: 9 tools (Move/Frame/Rectangle/Ellipse/Pen/Text/Comment/AI/Components) + tool registration (Slice + Measurement added in Cluster 07)
 - Left panel: Pages section + Layers tree (`useLayerTree()`, virtual scrolling, expand/collapse, drag-reorder)
-- Right panel / Inspector: tab routing (Design only at MVP — Prototype DEFERRED), properties section component (when no selection — §3C #13), per-section panels (Position/Layout/Fill/Stroke/Text/Effects/Export)
+- Right panel / Inspector: tab routing (Design + AI only at MVP — **Prototype OUT OF SCOPE entirely** (founder lock 2026-05-15; W0-8 propagation 2026-05-19 — Kova exports static images, NOT interactive prototypes; never building, not merely deferred)), properties section component (when no selection — §3C #13), per-section panels (Position/Layout/Fill/Stroke/Text/Effects/Export)
 - Color picker popover (B5 file 12) — picker logic, gradient editor, eyedropper trigger (canvas-only Q20)
 - `useNodeProps()` + `useMultiProps()` consumer pattern (existing in core, extend with new rows)
 
