@@ -344,6 +344,62 @@ $$;
 GRANT EXECUTE ON FUNCTION public.request_account_deletion() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.restore_account() TO authenticated;
 
+-- ---- 4. rate_limits (per-user-per-endpoint window counter) ----
+--
+-- B-CRIT8 fix: replaces the in-memory `Map` used in early Plan drafts. Serverless
+-- isolates cold-start with empty Maps, so the in-process cap was unenforceable
+-- under realistic invocation patterns. This table persists the counter across
+-- isolates; concurrent requests collapse safely via UPSERT (count = count + 1).
+-- A daily cron prunes rows where window_start < now() - 1 day.
+
+CREATE TABLE IF NOT EXISTS public.rate_limits (
+  user_id      uuid        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  endpoint     text        NOT NULL,
+  window_start timestamptz NOT NULL,
+  count        int         NOT NULL DEFAULT 1,
+  PRIMARY KEY (user_id, endpoint, window_start)
+);
+
+CREATE INDEX IF NOT EXISTS idx_rate_limits_window
+  ON public.rate_limits(window_start);
+
+COMMENT ON TABLE public.rate_limits IS
+  'Per-(user, endpoint, window_start) counter for Edge Function rate limiting. '
+  'Owned by Cluster 01; consumed by Cluster 01 (deletion-request, restore, '
+  'email-change-request) and any other Edge Function that needs a durable '
+  'cross-isolate cap. 1-day TTL via cron prune.';
+
+ALTER TABLE public.rate_limits ENABLE ROW LEVEL SECURITY;
+-- Service-role only. Authenticated has no policy → RLS denies by default.
+COMMENT ON TABLE public.rate_limits IS
+  'Service-role access only (RLS bypassed by role). No authenticated policy by design.';
+
+CREATE OR REPLACE FUNCTION public.bump_rate_limit(
+  p_user_id      uuid,
+  p_endpoint     text,
+  p_window_start timestamptz
+)
+RETURNS int
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_count int;
+BEGIN
+  INSERT INTO public.rate_limits (user_id, endpoint, window_start, count)
+  VALUES (p_user_id, p_endpoint, p_window_start, 1)
+  ON CONFLICT (user_id, endpoint, window_start)
+  DO UPDATE SET count = public.rate_limits.count + 1
+  RETURNING count INTO v_count;
+  RETURN v_count;
+END;
+$$;
+
+-- Service-role only — Edge Functions hit this via the service-role client.
+REVOKE ALL ON FUNCTION public.bump_rate_limit(uuid, text, timestamptz) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.bump_rate_limit(uuid, text, timestamptz) TO service_role;
+
 COMMIT;
 ```
 
@@ -709,21 +765,33 @@ Expected: FAIL (handler not implemented).
 // api/account/deletion-request.ts
 import { verifyAuth } from '../_shared/auth'
 import { sendEmail } from '../_shared/resend-client'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 const RATE_LIMIT_WINDOW_MS = 60_000
 const RATE_LIMIT_MAX = 5
-const rateLimitMap = new Map<string, { count: number; windowStart: number }>()
+const ENDPOINT = 'deletion-request'
 
-function checkRateLimit(userId: string): boolean {
+// Postgres-backed rate-limit. In-memory Map fails on serverless cold-starts:
+// each invocation may land on a fresh isolate with an empty Map, defeating the
+// cap. The rate_limits table (Task 1 migration) persists a per-(user, endpoint,
+// window) counter; concurrent requests collapse safely via UPSERT.
+async function checkRateLimit(supabase: SupabaseClient, userId: string): Promise<boolean> {
   const now = Date.now()
-  const entry = rateLimitMap.get(userId)
-  if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
-    rateLimitMap.set(userId, { count: 1, windowStart: now })
+  const windowStart = new Date(now - (now % RATE_LIMIT_WINDOW_MS)).toISOString()
+
+  // Atomic INSERT ... ON CONFLICT ... DO UPDATE returning the new count.
+  const { data, error } = await supabase.rpc('bump_rate_limit', {
+    p_user_id: userId,
+    p_endpoint: ENDPOINT,
+    p_window_start: windowStart,
+  })
+  if (error) {
+    // Fail-open on DB error: better to allow a request than 500 the user.
+    // The cap still holds on the next request once the DB recovers.
+    console.error('rate_limit DB error (fail-open):', error)
     return true
   }
-  if (entry.count >= RATE_LIMIT_MAX) return false
-  entry.count++
-  return true
+  return (data as number) <= RATE_LIMIT_MAX
 }
 
 export default async function handler(req: Request): Promise<Response> {
@@ -738,7 +806,7 @@ export default async function handler(req: Request): Promise<Response> {
     return Response.json({ error: 'unauthenticated' }, { status: 401 })
   }
 
-  if (!checkRateLimit(auth.userId)) {
+  if (!(await checkRateLimit(auth.supabase, auth.userId))) {
     return Response.json({ error: 'rate_limited', retry_after_seconds: 60 }, { status: 429 })
   }
 
