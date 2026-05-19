@@ -1003,11 +1003,11 @@ Cluster 03 ships `brands.color` (CHECK IN coral/violet/sage/sand/graphite). This
 
 **Decision:** Wire to Resend mailing-list signup in Phase A. Small marginal cost, captures real product-signal data. Resend integration already exists from Cluster 01.
 
-### 12.10 OPEN QUESTION — Existing onboarding components (WelcomeStep, BrandNameStep, BrandUrlStep, NameStep) consolidation
+### 12.10 RESOLVED 2026-05-19 — Existing onboarding components (WelcomeStep, BrandNameStep, BrandUrlStep, NameStep) consolidation
 
 §6.4.2 recommends consolidating BrandNameStep + BrandUrlStep + NameStep into a single `BrandIdentityStep` matching A1.01.c's single-screen layout. Existing M9 split is 3 screens; hi-fi is 1 screen.
 
-**Recommendation:** Consolidate per hi-fi. Existing M9 code retired during refactor. **ESCALATE: founder** — confirm consolidation OK (impacts existing tests + onboarding analytics).
+**Decision (founder ratified 2026-05-19 — C-MED5):** Consolidate per hi-fi. `BrandNameStep`, `BrandUrlStep`, and `NameStep` are retired during the refactor and `BrandIdentityStep` is the single replacement step. `WelcomeStep` and `ReviewStep` are also retired in the same wave (see C-LOW02.7 — Plan 02 Task T13). M9 tests against the retired files are deleted as part of the refactor; onboarding analytics consolidate `name_entered` + `url_entered` events into one `brand_identity_submitted` event.
 
 ### 12.11 Sidebar SOON-tagged nav entries — split into Part A + Part B
 
