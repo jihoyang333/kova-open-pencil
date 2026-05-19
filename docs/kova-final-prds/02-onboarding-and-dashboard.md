@@ -691,6 +691,41 @@ export const useUIStateStore = defineStore('ui-state', () => {
 
 **N/A in this PRD.** File-grid does not accept drag-and-drop receivers (no drop-to-import in MVP). Brand-logo upload uses a file picker, not drag. Brand-kit step 3 drop zone is a single browser-level `DataTransfer` file-pick — no MIME-typed Kova payload.
 
+### 6.6 Brand-kit extract queue handoff — consumer of Cluster 05 (C-MED7)
+
+**Owner of the queue + Edge Function:** Cluster 05 (`api/brand-kit/extract.ts` + Postgres job table + worker).
+
+**This PRD's responsibility:** At the end of onboarding step 3, the wizard pushes a payload to Cluster 05's extract queue via the public composable `useBrandKitExtractQueue()` (also owned by Cluster 05). The wizard advances to the splash step immediately after enqueue resolves — the extract worker runs asynchronously; the founder sees results in the Brand Kit page once the worker finishes (out of scope for this PRD).
+
+**Queue contract (frozen 2026-05-19):**
+
+```ts
+// Composable signature — Cluster 05 ships at `src/composables/use-brand-kit-extract-queue.ts`
+export interface BrandKitExtractPayload {
+  /** Target brand the extract results write back to. */
+  brand_id: string
+  /** Uploaded brand-kit assets (PDF / HTML / EML / PNG / JPG, ≤25 MB each). */
+  files: File[]
+  /** Pasted brand-guidelines free text. Trimmed by the caller. */
+  guidelines: string
+  /** Where the payload originated. Cluster 05 uses this to gate analytics + retry policy. */
+  source: 'onboarding' | 'brand-kit-page'
+}
+
+export interface BrandKitExtractHandle {
+  enqueueBrandKitExtract(payload: BrandKitExtractPayload): Promise<{ job_id: string }>
+}
+
+export function useBrandKitExtractQueue(): BrandKitExtractHandle
+```
+
+**Wire-up in this PRD:**
+- `OnboardingView` (T17) calls `enqueueBrandKitExtract({ brand_id, files, guidelines, source: 'onboarding' })` inside an `onBrandKitCommit` handler bound to `<BrandKitStep @commit>`.
+- The `@skip` path on `BrandKitStep` does NOT enqueue.
+- `tempBrandId` (held in the wizard state) is what feeds `brand_id`. If `tempBrandId` is missing, the enqueue is skipped and the wizard surfaces a toast (Cluster 11 `useToast`) — this is an error case, not silent.
+
+**Failure mode:** If Cluster 05 has not yet shipped the queue Edge Function, `useBrandKitExtractQueue` resolves with a stub `job_id` and writes a breadcrumb to `audit_log` (Cluster 11) so the founder can replay later. Stub mode is `import.meta.env.MODE !== 'production'` only — production builds fail loudly if the queue is missing.
+
 ---
 
 ## 7. Tool layer / canvas-engine touches

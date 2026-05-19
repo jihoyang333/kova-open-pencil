@@ -1868,6 +1868,8 @@ describe('OnboardingView', () => {
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
 import { useOnboarding } from '@/composables/use-onboarding'
+// C-MED7: Cluster 05 owns the extract queue + the enqueue composable.
+import { useBrandKitExtractQueue } from '@/composables/use-brand-kit-extract-queue'
 
 import BrandIdentityStep from '@/components/onboarding/BrandIdentityStep.vue'
 import StoreTypeStep from '@/components/onboarding/StoreTypeStep.vue'
@@ -1876,6 +1878,20 @@ import SplashStep from '@/components/onboarding/SplashStep.vue'
 
 const wizard = useOnboarding()
 const { state } = wizard
+const { enqueueBrandKitExtract } = useBrandKitExtractQueue()
+
+async function onBrandKitCommit(payload: { files: File[]; guidelines: string }): Promise<void> {
+  // C-MED7: hand off to Cluster 05's brand-kit-extract queue.
+  // Contract is documented in PRD §6.4.5; queue Edge Function is `api/brand-kit/extract.ts` (Cluster 05).
+  // BrandKitStep also emits `skip` — in that case we do NOT enqueue.
+  await enqueueBrandKitExtract({
+    brand_id: state.tempBrandId.value ?? '',
+    files: payload.files,
+    guidelines: payload.guidelines.trim(),
+    source: 'onboarding',
+  })
+  wizard.next()
+}
 
 onMounted(() => wizard.restoreDraft())
 
@@ -1913,7 +1929,7 @@ const dotClass = (idx: number) => {
       <BrandKitStep
         v-else-if="wizard.step.value === 'brand-kit'"
         @skip="wizard.next"
-        @commit="wizard.next"
+        @commit="onBrandKitCommit"
       />
       <SplashStep
         v-else-if="wizard.step.value === 'splash'"
