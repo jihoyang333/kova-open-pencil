@@ -2054,6 +2054,28 @@ const VoiceDraftSchema = v.object({
 
 // ... inside handler, after existing color/font/logo extraction succeeds ...
 
+// C-LOW05.4 — Rate-limit guard (1 req per hour per (user_id, brand_id)).
+// Uses the rate_limits Postgres table introduced by Cluster 01 fix B-CRIT8 (commit `49a8a7b7`).
+// Returns 429 with retry-after-seconds when cap hit; otherwise increments via increment_rate_limit RPC.
+const windowStart = new Date()
+windowStart.setMinutes(0, 0, 0)
+
+const { data: rlRows, error: rlErr } = await supabase
+  .from('rate_limits')
+  .select('count')
+  .eq('user_id', auth.userId)
+  .eq('endpoint', `/api/shopify/brand-kit-extract/${brand_id}`)
+  .eq('window_start', windowStart.toISOString())
+
+if (rlErr) return res.status(500).json({ error: 'rate_check_failed' })
+
+const usedCount = rlRows?.[0]?.count ?? 0
+if (usedCount >= 1) {
+  const nextHour = new Date(windowStart.getTime() + 60 * 60 * 1000)
+  const retryAfterSeconds = Math.ceil((nextHour.getTime() - Date.now()) / 1000)
+  return res.status(429).json({ error: 'rate_limited', retry_after_seconds: retryAfterSeconds })
+}
+
 // C-LOW05.3 — Idempotency check (Cluster 11 verifyIdempotency). Edge Function consumes the
 // `X-Idempotency-Key` header sent by the client (or generates one if missing). A duplicate
 // extract call for the same brand within the rate-limit window returns the cached response
@@ -2073,6 +2095,15 @@ const { cached } = await verifyIdempotency(supabase, {
 if (cached) {
   return res.status(cached.status).json(cached.body)
 }
+
+// After successful extraction (Steps 1-5 below), increment the rate-limit counter so
+// the next call within the same hour returns 429.
+// Pseudo-flow: at the END of the handler, before the final `return res.status(200).json(...)`:
+//   await supabase.rpc('increment_rate_limit', {
+//     p_user_id: auth.userId,
+//     p_endpoint: `/api/shopify/brand-kit-extract/${brand_id}`,
+//     p_window_start: windowStart.toISOString(),
+//   })
 
 // 1. Discard any prior open draft
 await supabase.from('voice_drafts')
