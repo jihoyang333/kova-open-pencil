@@ -1234,6 +1234,8 @@ bun run test:unit -- tests/unit/api/stripe/webhook.test.ts
 
 - [ ] **Step 3: Implement**
 
+Vercel Functions deliver `req` as a Node `Readable`; consume it before any framework parses the body. `bodyParser: false` is Pages-Router-only and has no effect in Vercel Functions.
+
 ```typescript
 // api/stripe/webhook.ts
 import type { VercelRequest, VercelResponse } from '@vercel/node'
@@ -1248,7 +1250,13 @@ import { handleSubscriptionDeleted } from './webhook-handlers/handle-subscriptio
 import { handleInvoicePaid } from './webhook-handlers/handle-invoice-paid'
 import { handleInvoicePaymentFailed } from './webhook-handlers/handle-invoice-payment-failed'
 
-export const config = { api: { bodyParser: false } }  // Vercel: read raw body
+async function readRawBody(req: VercelRequest): Promise<Buffer> {
+  const chunks: Buffer[] = []
+  for await (const chunk of req) {
+    chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk)
+  }
+  return Buffer.concat(chunks)
+}
 
 const HANDLED_EVENTS = {
   'checkout.session.completed': handleCheckoutCompleted,
@@ -1259,25 +1267,26 @@ const HANDLED_EVENTS = {
   'invoice.payment_failed': handleInvoicePaymentFailed,
 } as const
 
-export async function handler(
-  req: { method: string; headers: Record<string, string | undefined>; rawBody: string },
-  ctx: { stripe: ReturnType<typeof getStripeClient>; supabase: any },
-): Promise<{ status: number; body: any }> {
-  if (req.method !== 'POST') return { status: 405, body: { error: 'method_not_allowed' } }
+export default async function (req: VercelRequest, res: VercelResponse): Promise<void> {
+  if (req.method !== 'POST') return res.status(405).json({ error: 'method_not_allowed' })
 
-  const sig = req.headers['stripe-signature']
-  if (!sig) return { status: 400, body: { error: 'missing_signature' } }
+  const rawBody = await readRawBody(req)
+  const sigHeader = req.headers['stripe-signature']
+  const sig = Array.isArray(sigHeader) ? sigHeader[0] : sigHeader
+  if (!sig) return res.status(400).json({ error: 'missing_signature' })
 
+  const stripe = getStripeClient()
   let event: Stripe.Event
   try {
-    event = ctx.stripe.webhooks.constructEvent(req.rawBody, sig, process.env.STRIPE_WEBHOOK_SECRET!)
+    event = stripe.webhooks.constructEvent(rawBody, sig, process.env.STRIPE_WEBHOOK_SECRET!)
   } catch (err) {
-    return { status: 400, body: { error: 'invalid_signature' } }
+    return res.status(400).json({ error: 'signature_verification_failed' })
   }
 
-  // Idempotency
-  const payloadHash = crypto.createHash('sha256').update(req.rawBody).digest('hex')
-  const { error: insErr } = await ctx.supabase.from('stripe_webhook_events').insert({
+  // Idempotency check + event dispatch (Task 3.7 handlers)
+  const payloadHash = crypto.createHash('sha256').update(rawBody).digest('hex')
+  const supabase = getServiceSupabase()
+  const { error: insErr } = await supabase.from('stripe_webhook_events').insert({
     event_id: event.id,
     type: event.type,
     payload_hash: payloadHash,
@@ -1285,39 +1294,37 @@ export async function handler(
   })
   if (insErr && insErr.code === '23505') {
     // Duplicate
-    return { status: 200, body: { received: true, duplicate: true } }
+    return res.status(200).json({ received: true, duplicate: true })
   }
 
   // Dispatch
   const eventHandler = (HANDLED_EVENTS as Record<string, (e: Stripe.Event, s: any) => Promise<void>>)[event.type]
   if (!eventHandler) {
-    await ctx.supabase.from('stripe_webhook_events').update({ outcome: 'unhandled_type' }).eq('event_id', event.id)
-    return { status: 200, body: { received: true, unhandled: true } }
+    await supabase.from('stripe_webhook_events').update({ outcome: 'unhandled_type' }).eq('event_id', event.id)
+    return res.status(200).json({ received: true, unhandled: true })
   }
 
   try {
-    await eventHandler(event, ctx.supabase)
-    return { status: 200, body: { received: true } }
+    await eventHandler(event, supabase)
+    return res.status(200).json({ received: true })
   } catch (err) {
     console.error('[stripe-webhook] handler error', event.type, err)
-    await ctx.supabase.from('stripe_webhook_events').update({
+    await supabase.from('stripe_webhook_events').update({
       outcome: 'error',
       error_message: err instanceof Error ? err.message : 'unknown',
     }).eq('event_id', event.id)
     // Still 200 to Stripe; retries handled by Stripe via webhook config + next attempt hits idempotency
-    return { status: 200, body: { received: true, error: 'handler_failed' } }
+    return res.status(200).json({ received: true, error: 'handler_failed' })
   }
 }
+```
 
-export default async function (req: VercelRequest, res: VercelResponse): Promise<void> {
-  const rawBody = await new Promise<string>(resolve => {
-    let data = ''
-    req.on('data', chunk => data += chunk)
-    req.on('end', () => resolve(data))
-  })
-  const result = await handler({ method: req.method ?? '', headers: req.headers as any, rawBody }, { stripe: getStripeClient(), supabase: getServiceSupabase() })
-  res.status(result.status).json(result.body)
-}
+- [ ] **Step 3.6: Validate signature**
+
+Validate webhook signature using Stripe CLI before merge — must produce a 200 response from this handler.
+
+```bash
+stripe trigger checkout.session.completed --api-key sk_test_...
 ```
 
 - [ ] **Step 4: Run + verify pass**
