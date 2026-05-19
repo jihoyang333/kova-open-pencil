@@ -1623,6 +1623,8 @@ Separate decision dispatched same day. B12 archived Brands page promoted from Ph
 
 ### 13.9 What is NOT in this PRD (handed elsewhere)
 
+**Cmd+K dropped 2026-05-17** per `00g-CMDK_KILL_DISPATCH.md` — see PRD 02 §12.13 for full scrub log.
+
 - `<DangerZoneCard>` modal + cascade + restore page + middleware — Cluster 01
 - Brand Kit sub-tab content (Visuals, Fonts, Tone snippets, Saved blocks, Writing rules, Memories, Knowledge base) — Cluster 05
 - Brand-creation flow + brand-archive + brand-delete — Cluster 03
