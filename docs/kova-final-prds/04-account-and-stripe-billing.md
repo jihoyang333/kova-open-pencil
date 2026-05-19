@@ -759,7 +759,7 @@ In Stripe Dashboard → Developers → Webhooks → Add endpoint:
 
 #### 5.4.3 Email templates (Resend) — all 4 events ship at MVP (founder decision 2026-05-17)
 
-All templates extend `<EmailShell>` (Cluster 11), use Inter, plain-text fallback, valid `List-Unsubscribe` header (`<mailto:unsubscribe@kova.app>`), `X-Entity-Ref-ID: {{ user_id }}` for thread grouping. Stored at `kova-open-pencil-1/emails/account/*.html`. Each template accepts variables documented per row.
+All templates MUST compose `<EmailShell>` (Cluster 11) via `buildEmail()` from `@/composables/use-email-shell`. Templates use Inter, plain-text fallback, valid `List-Unsubscribe` header (`<mailto:unsubscribe@kova.app>`), `X-Entity-Ref-ID: {{ user_id }}` for thread grouping (all set inside `<EmailShell>` — templates do not configure them directly). Stored at `kova-open-pencil-1/emails/account/*.ts` — TypeScript modules that export an async render function returning `{ html, text, subject }`. Direct `.html` files bypassing the shell are forbidden per C-MED13 (2026-05-19). Each template accepts variables documented per row.
 
 | Template file | Webhook trigger | Subject | Body summary | Variables |
 |---|---|---|---|---|

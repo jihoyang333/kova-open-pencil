@@ -42,10 +42,10 @@
 | `api/_shared/price-map.ts` | `priceIdToPlan` + `planToPriceId` maps + helper. |
 | `api/_shared/audit-log.ts` | Cluster 11 wrapper — adapter used by all webhook handlers. (Verify Cluster 11 provides; if not, ship a local stub that writes to `audit_log` table.) |
 | `vercel.json` | Add `/api/stripe/reconcile` cron entry. |
-| `emails/account/subscription-new.html` | Resend template — new paid subscription. [PRD §5.4.3] |
-| `emails/account/subscription-upgraded.html` | Resend template — plan upgraded. [PRD §5.4.3] |
-| `emails/account/subscription-cancelled.html` | Resend template — cancelled (scheduled + final). [PRD §5.4.3] |
-| `emails/account/subscription-payment-failed.html` | Resend template — payment failed dunning. [PRD §5.4.3] |
+| `emails/account/subscription-new.ts` | Resend template — new paid subscription; composes `<EmailShell>` via `buildEmail()`. [PRD §5.4.3] |
+| `emails/account/subscription-upgraded.ts` | Resend template — plan upgraded; composes `<EmailShell>` via `buildEmail()`. [PRD §5.4.3] |
+| `emails/account/subscription-cancelled.ts` | Resend template — cancelled (scheduled + final); composes `<EmailShell>` via `buildEmail()`. [PRD §5.4.3] |
+| `emails/account/subscription-payment-failed.ts` | Resend template — payment failed dunning; composes `<EmailShell>` via `buildEmail()`. [PRD §5.4.3] |
 | `docs/legal/privacy-policy.md` | Extend Stripe sub-processor disclosure. [PRD §5.5] |
 | `docs/legal/ropa.md` | Stripe row addition. [PRD §5.5] |
 | `docs/operations/stripe-setup-runbook.md` | New — operator runbook for Stripe Dashboard config. [PRD §5.5] |
@@ -3281,12 +3281,14 @@ git commit -m "docs(04): Stripe Dashboard + webhook setup runbook"
 ### Task 14.4: Resend email templates — 4 events at MVP (founder decision 2026-05-17)
 
 **Files:**
-- Create: `kova-open-pencil-1/emails/account/subscription-new.html`
-- Create: `kova-open-pencil-1/emails/account/subscription-upgraded.html`
-- Create: `kova-open-pencil-1/emails/account/subscription-cancelled.html`
-- Create: `kova-open-pencil-1/emails/account/subscription-payment-failed.html`
+- Create: `kova-open-pencil-1/emails/account/subscription-new.ts`
+- Create: `kova-open-pencil-1/emails/account/subscription-upgraded.ts`
+- Create: `kova-open-pencil-1/emails/account/subscription-cancelled.ts`
+- Create: `kova-open-pencil-1/emails/account/subscription-payment-failed.ts`
 
-> All 4 templates extend Cluster 11's `<EmailShell>`. Inter font. List-Unsubscribe (`<mailto:unsubscribe@kova.app>`) + `X-Entity-Ref-ID: {{ user_id }}` headers set by `<EmailShell>` wrapper. Each `.html` has a paired `.txt` generated at build via `juice` + plain-text extractor; Resend SDK sends both `html:` + `text:` payloads.
+> **C-MED13 — All 4 templates compose Cluster 11's `<EmailShell>` via `buildEmail()`** (from `@/composables/use-email-shell`, shipped by Plan 11 Task 8.2). Each template is a TypeScript module that exports an async function returning `{ html, text }`. Plain HTML files are forbidden — they bypass shell composition (wordmark, Inter font, List-Unsubscribe header, X-Entity-Ref-ID header, juice CSS inlining, automatic plain-text sibling) and are a maintenance liability. Resend SDK consumes both `html` and `text` from the return value.
+
+**Cross-cluster dependency:** `buildEmail()` ships from Plan 11 Task 8.2. Verify the W1 Cluster 11 merge (`70932143`) includes the composable before Cluster 04 merges. The body of each template is plain HTML passed as `bodyHtml` — `<EmailShell>` adds the wordmark, Inter font, and footer. Mustache variables (`{{ var }}`) inside `bodyHtml` are preserved verbatim and substituted by Resend at send time.
 
 **Subject lines (founder-approved 2026-05-17):**
 
@@ -3297,26 +3299,42 @@ git commit -m "docs(04): Stripe Dashboard + webhook setup runbook"
 | `subscription-cancelled.html` | `Your Kova subscription has been cancelled` |
 | `subscription-payment-failed.html` | `Action needed: payment failed for Kova` |
 
-- [ ] **Step 1: Create `subscription-new.html`**
+- [ ] **Step 1: Create `subscription-new.ts` — composes `<EmailShell>` via `buildEmail()`**
 
-```html
-<!-- emails/account/subscription-new.html -->
-<!doctype html>
-<html lang="en">
-<head><meta charset="utf-8" /><title>Welcome to Kova {{ planName }}</title></head>
-<body>
-  <h1>Welcome to Kova {{ planName }} 🎉</h1>
-  <p>Thanks for subscribing — your account now includes <strong>{{ planName }}</strong> features.</p>
-  <p>Your first invoice for <strong>${{ amount }}</strong> is processed and you're all set.</p>
-  <p><a href="https://kova.app/dashboard" class="btn-primary">Open Kova</a></p>
-  <p><a href="{{ hosted_invoice_url }}">View invoice</a></p>
-  <hr />
-  <p class="footer">This subscription is managed via Kova. Billing emails are transactional and cannot be opted out.</p>
-</body>
-</html>
+```typescript
+// emails/account/subscription-new.ts
+import { buildEmail } from '@/composables/use-email-shell'
+
+export interface SubscriptionNewProps {
+  planName: string
+  amount: number          // dollars; render as `${amount.toFixed(2)}` in body
+  currency?: string       // default 'USD'
+  hosted_invoice_url: string
+  user_id: string
+}
+
+export async function renderSubscriptionNew(props: SubscriptionNewProps): Promise<{ html: string; text: string; subject: string }> {
+  const bodyHtml = `
+    <h1>Welcome to Kova ${props.planName} 🎉</h1>
+    <p>Thanks for subscribing — your account now includes <strong>${props.planName}</strong> features.</p>
+    <p>Your first invoice for <strong>$${props.amount.toFixed(2)}</strong> is processed and you're all set.</p>
+    <p><a href="https://kova.app/dashboard" class="btn-primary">Open Kova</a></p>
+    <p><a href="${props.hosted_invoice_url}">View invoice</a></p>
+    <hr />
+    <p class="footer">This subscription is managed via Kova. Billing emails are transactional and cannot be opted out.</p>
+  `
+  const { html, text } = await buildEmail({
+    title: `Welcome to Kova ${props.planName}`,
+    preheader: `Your Kova ${props.planName} subscription is active.`,
+    bodyHtml,
+  })
+  return { html, text, subject: `Welcome to Kova ${props.planName} 🎉` }
+}
 ```
 
 Variables: `planName`, `amount`, `currency` (default USD), `hosted_invoice_url`, `user_id`.
+
+Steps 2-4 (subscription-upgraded.ts, subscription-cancelled.ts, subscription-payment-failed.ts) follow the same `buildEmail()` composition pattern: define a typed props interface, build `bodyHtml` as a template literal with `${prop}` interpolation, pass through `buildEmail({ title, preheader, bodyHtml })`, return `{ html, text, subject }`. Do not author plain `.html` files — `<EmailShell>` composition is mandatory per C-MED13.
 
 - [ ] **Step 2: Create `subscription-upgraded.html`**
 
