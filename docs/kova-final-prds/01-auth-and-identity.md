@@ -1128,19 +1128,29 @@ Founder accepted: auto-submit on 6th digit. Wrong-code recovery via B4.3 preserv
 
 Founder accepted: pre-toggled ON. 30-day refresh = default.
 
-### 12.8 OPEN QUESTION — Email-change "Revert" button mechanics
+### 12.8 RESOLVED 2026-05-19 — Email-change "Revert" button mechanics
 
-B5.1 annotation says "Recommend confirm step (irreversible action)" for the foot-link "Revert email change". This PRD's §8.3 ships that. If founder wants a different model (one-click revert), flag.
+Founder ratifies the B5.1 annotation as drawn: "Revert email change" is a
+two-step action — clicking the foot-link surfaces a confirm modal ("Revert to
+old@example.com? This will sign you out."), and only the confirm CTA fires the
+revert RPC. Matches the irreversible-action pattern used by the typed-DELETE
+modal in §6.4 (DangerZoneCard). One-click revert was considered and rejected:
+the asymmetry between requesting an email change (already gated by a confirm)
+and reverting one (single click) creates a UX cliff during the verify window.
 
 ### 12.9 RESOLVED 2026-05-15 — Tablet auto-rotate-and-reload behavior
 
 Founder accepted: auto-listen + auto-reload on orientation change ≥1024px.
 
-### 12.10 OPEN QUESTION — Account-pending-deletion view contents
+### 12.10 RESOLVED 2026-05-19 — Account-pending-deletion view contents
 
-No dedicated hi-fi exists. This PRD's §6.4.1 says "compose B4.7 chrome + A4 modal pattern". Confirm visual approach with founder, or sketch a dedicated hi-fi between PRD approval and implementation start?
-
-**Recommendation:** compose at implementation time; if visual ambiguity surfaces, draft a quick hi-fi mid-stream. Not a blocker for PRD approval.
+Founder ratifies the recommendation: compose at implementation time using B4.7
+chrome (dark theme, centered card) + the A4 modal copy pattern. No dedicated
+hi-fi will be drafted upfront. If visual ambiguity surfaces during Task 20
+(AccountPendingDeletionView), the implementer surfaces a quick design check
+mid-stream; B4.7's existing dark-mode tokens cover the needed surfaces.
+Contents (per PRD §6.4.1): countdown to scheduled deletion, "Restore account"
+primary CTA, sign-out secondary action, link to privacy policy.
 
 ---
 
