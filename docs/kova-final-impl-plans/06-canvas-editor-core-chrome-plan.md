@@ -1466,6 +1466,24 @@ git add src/components/editor/TopChrome.vue src/components/editor/TopChromeLogo.
 git commit -m "feat(cluster-06): top chrome — logo + file breadcrumb (Q17 navigate) + actions (Comments hidden per §12.3 2026-05-17) + 5-item avatar dropdown (Q16)"
 ```
 
+**Version history event contract (C-MED26 — ratified W3 fix dispatch):**
+
+The file-menu items "Show version history" and "Save to version history (⌥⌘S)" (defined in Plan 08 §3.3 file-name dropdown rows) dispatch via a global event bus that Cluster 09's `<VersionHistoryPanel>` consumes. TopChrome itself only hosts the file-name trigger surface (`FileBreadcrumb.vue`); it does NOT mount the panel.
+
+Event surface (defined here; consumed by Plan 09 W4):
+
+```ts
+// src/lib/editor-bus.ts (Cluster 11 shared)
+export interface EditorBusEvents {
+  'editor:open-version-history':  { canvasId: string; brandId: string }
+  'editor:save-version-snapshot': { canvasId: string; label?: string }
+}
+```
+
+- Plan 08 file-name dropdown row handlers call `editorBus.emit('editor:open-version-history', { canvasId, brandId })`.
+- Plan 09 (W4) mounts `<VersionHistoryPanel>` listening for both events; on `open-version-history` it slides the right panel over the inspector; on `save-version-snapshot` it triggers snapshot RPC + toast.
+- TopChrome integration test: assert `FileBreadcrumb` emits no panel-mount logic itself (decoupling guard).
+
 ---
 
 ### Task 10: BottomToolbar + ToolButton + ToolDropdown + AiToolButton
