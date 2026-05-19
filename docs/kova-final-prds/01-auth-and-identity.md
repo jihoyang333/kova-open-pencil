@@ -425,7 +425,8 @@ Idempotency-key handling per cross-cut convention (Cluster 11 owns the primitive
 //      LIMIT 100  (batch size; cron may re-process leftovers next day)
 //
 //   2. For each user_id, walk steps in fixed order: stripe → shopify → anthropic → storage → db
-//      For each (user_id, step) row in gdpr_deletion_queue with status IN ('pending', 'in_progress', 'failed_terminal' AND attempts < 5):
+//      For each (user_id, step) row in gdpr_deletion_queue with status IN ('pending', 'in_progress'):
+//      (failed_terminal rows are NEVER reprocessed — once attempts >= 5 the row stays terminal until manual operator intervention)
 //        BEGIN
 //          UPDATE row SET status='in_progress', last_attempt_at=now(), attempts=attempts+1
 //            WHERE id=row.id AND status IN ('pending','in_progress','failed_terminal')
