@@ -1664,12 +1664,17 @@ describe('POST /api/stripe/reconcile (cron)', () => {
         update,
       })),
     }
-    const stripe = { subscriptions: { retrieve: mock(() => Promise.resolve({ status: 'active' })) } }
+    const stripe = { subscriptions: { retrieve: mock(() => Promise.resolve({ status: 'active', current_period_end: 1735603200, cancel_at_period_end: false })) } }
     const { handler } = await import('@/../api/stripe/reconcile')
     const res = await handler({ headers: { authorization: 'Bearer cron-secret' } }, { stripe: stripe as any, supabase: supabase as any })
     expect(res.status).toBe(200)
     expect(res.body.healed).toBe(1)
-    expect(update).toHaveBeenCalled()
+    // B-MED14 — heal updates BOTH plan_status AND current_period_end + cancel_at_period_end
+    expect(update).toHaveBeenCalledWith(expect.objectContaining({
+      plan_status: 'active',
+      current_period_end: new Date(1735603200 * 1000).toISOString(),
+      cancel_at_period_end: false,
+    }))
   })
 })
 ```
@@ -1690,7 +1695,12 @@ export async function handler(req, ctx) {
     try {
       const sub = await ctx.stripe.subscriptions.retrieve(u.stripe_subscription_id)
       if (sub.status === 'active') {
-        await ctx.supabase.from('users').update({ plan_status: 'active' }).eq('id', u.id)
+        // B-MED14 — heal plan_status AND refresh current_period_end + cancel_at_period_end so the row reflects the live Stripe state, not just the status flag
+        await ctx.supabase.from('users').update({
+          plan_status: 'active',
+          current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
+          cancel_at_period_end: sub.cancel_at_period_end,
+        }).eq('id', u.id)
         healed++
       }
     } catch (err) {
