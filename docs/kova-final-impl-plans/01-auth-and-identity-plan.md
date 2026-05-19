@@ -1845,24 +1845,17 @@ export default async function handler(req: Request): Promise<Response> {
   const supabase = getAdminClient()
   let processed = 0, succeeded = 0, failed = 0, terminal = 0
 
-  // Find users ready for hard-delete (deleted_at > 30 days ago + has pending queue rows)
+  // Find users ready for hard-delete (deleted_at > 30 days ago + has pending queue rows).
+  // RPC uses FOR UPDATE SKIP LOCKED so concurrent cron runs cannot claim the
+  // same users; the function is defined in Task 1's migration.
   const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
   const { data: queueRows, error: qErr } = await supabase
     .rpc('claim_pending_deletion_users', { p_cutoff: cutoff, p_limit: BATCH_USERS })
-
-  // If RPC doesn't exist, fall back to inline SQL via select
-  let userIds: string[]
   if (qErr) {
-    const { data: rows } = await supabase
-      .from('users')
-      .select('id, gdpr_deletion_queue!inner(status)')
-      .lt('deleted_at', cutoff)
-      .in('gdpr_deletion_queue.status', ['pending', 'in_progress'])
-      .limit(BATCH_USERS)
-    userIds = (rows ?? []).map((r: any) => r.id)
-  } else {
-    userIds = (queueRows ?? []).map((r: any) => r.user_id)
+    console.error('claim_pending_deletion_users RPC failed:', qErr)
+    return Response.json({ error: 'rpc_unavailable' }, { status: 500 })
   }
+  const userIds: string[] = (queueRows ?? []).map((r: { user_id: string }) => r.user_id)
 
   for (const userId of userIds) {
     processed++
@@ -1950,6 +1943,38 @@ $$;
 -- Service-role-only execution
 REVOKE EXECUTE ON FUNCTION public.claim_deletion_queue_row(uuid, text, int) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.claim_deletion_queue_row(uuid, text, int) TO service_role;
+
+-- C-MED1: claim users whose 30-day soft-delete window has elapsed AND who
+-- still have pending/in_progress cascade steps. FOR UPDATE SKIP LOCKED so
+-- two concurrent cron isolates cannot claim the same users. Replaces the
+-- inline supabase-js fallback in api/cron/delete-account.ts.
+CREATE OR REPLACE FUNCTION public.claim_pending_deletion_users(
+  p_cutoff timestamptz,
+  p_limit  int DEFAULT 100
+)
+RETURNS TABLE (user_id uuid, deletion_requested_at timestamptz)
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT u.id, u.deleted_at
+    FROM public.users u
+   WHERE u.deleted_at IS NOT NULL
+     AND u.deleted_at < p_cutoff
+     AND EXISTS (
+       SELECT 1 FROM public.gdpr_deletion_queue q
+        WHERE q.user_id = u.id
+          AND q.status IN ('pending', 'in_progress')
+     )
+   ORDER BY u.deleted_at ASC
+   LIMIT p_limit
+   FOR UPDATE OF u SKIP LOCKED;
+END;
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.claim_pending_deletion_users(timestamptz, int) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.claim_pending_deletion_users(timestamptz, int) TO service_role;
 ```
 
 Re-apply: `supabase db reset`. Re-run Task 1 tests (still PASS).
