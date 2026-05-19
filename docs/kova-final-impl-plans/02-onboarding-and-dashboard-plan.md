@@ -3000,14 +3000,14 @@ git commit -m "feat(dashboard): add B7.1 DashboardSkeleton with shimmer animatio
 - [ ] **Step 1: Test**
 
 ```ts
-import { describe, test, expect } from 'bun:test'
+import { describe, test, expect, mock } from 'bun:test'
 import { mount } from '@vue/test-utils'
 import { ref } from 'vue'
 import OfflineIndicator from '@/components/dashboard/OfflineIndicator.vue'
 
-// Mock Cluster 11 useOfflineState
-jest.mock('@/composables/use-offline-state', () => ({
-  useOfflineState: () => ({ isOnline: ref(false) }),
+// Mock Cluster 11 useOnlineStatus (bun:test pattern)
+mock.module('@/composables/use-online-status', () => ({
+  useOnlineStatus: () => ({ status: ref<'online' | 'offline'>('offline') }),
 }))
 
 describe('OfflineIndicator', () => {
