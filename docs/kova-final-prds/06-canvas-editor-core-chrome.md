@@ -579,7 +579,7 @@ Every line is testable in code or browser. No "feels right." Engineers verify be
 - [ ] Right panel renders exactly TWO tabs: **Design** + **AI** (default-active = **AI** on first canvas open; per-canvas localStorage overrides on subsequent opens)
 - [ ] Layer click on canvas does NOT switch tab (sticky behavior — `useRightPanelStore.activeTab` value before click === value after click for both tabs)
 - [ ] **Prototype tab is NOT rendered anywhere** in the DOM (verified via DOM inspection in E2E test) — per founder ratification 2026-05-15, scope plan §3 Cluster 06 "Prototype DEFERRED" line is superseded by "Prototype out of scope entirely"
-- [ ] Default-active tab on canvas open = Design (matches Figma's first-tab default)
+- [ ] Default-active tab on canvas open = AI (founder ratification 2026-05-17 §12.13; W0-7 propagation 2026-05-19)
 - [ ] Click AI tab → `useRightPanelStore.activeTab = 'ai'` → `<RightPanelAiSlot>` renders Cluster 10's `<ChatPanel>`
 - [ ] Click Design tab → `<InspectorRouter>` renders
 - [ ] Tab state persists per-canvas via `usePreferencesStore` Layer 2 (localStorage)
