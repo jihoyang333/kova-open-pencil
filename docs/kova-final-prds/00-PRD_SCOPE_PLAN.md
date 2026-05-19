@@ -752,6 +752,25 @@ Per W0-9 founder ratification (resolves CT-009 from `docs/kova-final-qa/CONSOLID
 - Plan 11 Task 11.7 ships a CI grep gate + `bun run check:lock10` script composed into `bun run check`. Any new `as any` or `process.env.X!` in `src/` / `api/` / `supabase/functions/` immediately fails CI.
 - Wave-2/3 cluster fix agents (03 / 06 / 07b / others) replace existing `as any` casts during their pass; each commits its sweep separately.
 
+### 6.5 `/brands` + `/account/brands` route lockstep (CT-021 closure — 2026-05-19)
+
+Per CT-021 from `docs/kova-final-qa/CONSOLIDATED-TRIAGE.md` (merging A-NOTE2 + A-NOTE3), two routes coordinate across three clusters and must ship in lockstep:
+
+| Route | Page content owner | Route registration owner | Notes |
+|---|---|---|---|
+| `/brands` | **02** (Onboarding & Dashboard) — sidebar brand picker per B12 reversal 2026-05-17 | **02** | The dashboard-sidebar `<BrandsListView>`; brand-picker entrypoint. |
+| `/account/brands` | **03** (Brand Management) — `<BrandsAccountView>` + segmented control + Restore / Delete-archived flows | **04** (Account & Stripe Billing) — owns the `/account/*` route family registration in `src/router/routes.ts` | Cluster 03 ships the page content but does NOT register the route; Cluster 04 registers `/account/brands` alongside `/account/billing` / `/account/profile`. |
+
+**Lockstep ordering (mandatory):**
+
+1. **Cluster 03 ships content first** (Wave 2): `<BrandsAccountView>` + child components + Pinia actions. Cluster 03's plan registers no route — it ships a component the consumer renders.
+2. **Cluster 04 registers route second** (Wave 2): `/account/brands` route in `routes.ts` mounts `<BrandsAccountView>` imported from Cluster 03.
+3. **Cluster 02 ships /brands third** (Wave 2): sidebar entry + `<BrandsListView>`; independent of /account/brands but shares the brand store.
+
+If a wave-2 agent ships its piece out of order, the route 404s in CI until the dependent piece lands. The blast radius is low (route 404 is observable; no data drift), but the wave-2 dispatch order MUST schedule Cluster 03 + 04 in the same dispatch window so the lockstep closes inside the wave, not across waves.
+
+**Why no fix in Cluster 11:** Cluster 11 owns no routes. This subsection exists in the scope plan (shared spec doc) so the wave-2 dispatch agents find the ordering rule without re-deriving it. The implementation owners are 02, 03, 04 — not 11.
+
 ---
 
 ## 7. Open questions per cluster
