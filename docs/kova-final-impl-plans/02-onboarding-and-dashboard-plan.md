@@ -3206,6 +3206,15 @@ describe('RecentsView', () => {
 
   test('shows file grid when canvases present', async () => { /* full stub of canvases store */ })
 
+  test('SortDropdown reads sortMode from useDashboardStore (not useCanvasesStore)', async () => {
+    const { useDashboardStore } = await import('@/stores/dashboard')
+    const dash = useDashboardStore()
+    dash.sortMode = 'name-asc'
+    const w = mount(RecentsView, { props: { brandId: 'b1' } })
+    await flushPromises()
+    expect(w.findComponent({ name: 'SortDropdown' }).props('modelValue')).toBe('name-asc')
+  })
+
   test('composer submit transitions through B11 states', async () => { /* covered in E2E */ })
 })
 ```
@@ -3220,6 +3229,8 @@ import { ref, watch, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useBrandsStore } from '@/stores/brands'
 import { useCanvasesStore } from '@/stores/canvases'
+import { useDashboardStore } from '@/stores/dashboard'
+import { useUIStateStore } from '@/stores/ui-state'
 import { useFileGrid } from '@/composables/use-file-grid'
 import { useGreeting } from '@/composables/use-greeting'
 
@@ -3234,10 +3245,15 @@ const route = useRoute()
 const router = useRouter()
 const brands = useBrandsStore()
 const canvasesStore = useCanvasesStore()
+const dashboard = useDashboardStore()
+const uiState = useUIStateStore()
 
 const brandIdRef = computed(() => route.params.brandId as string)
 const grid = useFileGrid(brandIdRef)
 const greeting = useGreeting()
+
+const sortMode = computed(() => dashboard.sortMode)
+const fileGridViewMode = computed(() => uiState.fileGridViewMode)
 
 const transitionState = ref<'idle' | 'submitting' | 'review' | 'splash'>('idle')
 const transitionPrompt = ref('')
@@ -3280,14 +3296,14 @@ defineExpose({ onNewCanvas })
           <span class="count">{{ grid.canvases.value.length }} canvases</span>
         </div>
         <div class="r">
-          <SortDropdown :model-value="(canvasesStore as any).sortMode ?? 'recent'" @update:model-value="grid.setSort" />
-          <ViewToggle :model-value="useUIStateStore().fileGridViewMode" @update:model-value="grid.setView" />
+          <SortDropdown :model-value="sortMode" @update:model-value="grid.setSort" />
+          <ViewToggle :model-value="fileGridViewMode" @update:model-value="grid.setView" />
         </div>
       </div>
 
       <FileGrid
         :canvases="grid.canvases.value"
-        :view-mode="useUIStateStore().fileGridViewMode"
+        :view-mode="fileGridViewMode"
         :is-loading="grid.isLoading.value"
         @open="(id) => router.push(`/editor/${id}`)"
       >
