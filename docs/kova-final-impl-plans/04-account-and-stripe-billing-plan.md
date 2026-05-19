@@ -1490,14 +1490,54 @@ export default async function (req: VercelRequest, res: VercelResponse): Promise
     return res.status(200).json({ received: true })
   } catch (err) {
     console.error('[stripe-webhook] handler error', event.type, err)
-    await supabase.from('stripe_webhook_events').update({
-      outcome: 'error',
-      error_message: err instanceof Error ? err.message : 'unknown',
-    }).eq('event_id', event.id)
-    // Still 200 to Stripe; retries handled by Stripe via webhook config + next attempt hits idempotency
-    return res.status(200).json({ received: true, error: 'handler_failed' })
+    const isNonRetriable = err instanceof NonRetriableError
+    if (isNonRetriable) {
+      // Non-retriable (bad payload, type error) — mark idempotency row 'error' and return 200 so Stripe stops redelivering
+      await supabase.from('stripe_webhook_events').update({
+        outcome: 'error',
+        error_message: err instanceof Error ? err.message : 'unknown',
+      }).eq('event_id', event.id)
+      return res.status(200).json({ received: true, error: 'handler_failed', retriable: false })
+    }
+    // Retriable (DB drop, transient network, Supabase 5xx) — delete the idempotency row so Stripe redelivers and we can retry
+    await supabase.from('stripe_webhook_events').delete().eq('event_id', event.id)
+    return res.status(500).json({ error: 'handler_failed', retriable: true })
   }
 }
+
+// Define this in `api/stripe/_shared/webhook-errors.ts`. Per-event handlers throw `new NonRetriableError(...)` for unrecoverable conditions (e.g., schema validation failures, missing brand id in metadata). Anything else is treated as retriable.
+class NonRetriableError extends Error {
+  constructor(message: string, public readonly code: string) {
+    super(message)
+    this.name = 'NonRetriableError'
+  }
+}
+```
+
+**B-MED8 retriable semantics:**
+
+- **200 OK** → Stripe acknowledges delivery, stops retrying. Used for: handler success, duplicate event (idempotency hit), unhandled event type, and **non-retriable** handler failures (we've persisted an `outcome='error'` row so the failure is captured but redelivery is suppressed).
+- **500 Internal Server Error** → Stripe retries with exponential backoff. Used for: **retriable** handler failures (DB connection drop, Supabase 5xx, transient network errors). We delete the idempotency row first so the redelivery sees a fresh slot — otherwise it would short-circuit on duplicate detection.
+
+Per-event handler tests must cover BOTH paths:
+
+```ts
+it('returns 500 on retriable error (e.g., Supabase connection drop)', async () => {
+  // mock supabase.from(...).update to throw a TypeError simulating connection failure
+  mockSupabase.from = mock(() => ({ update: mock(() => { throw new TypeError('fetch failed') }) }))
+  const res = await invokeWebhook(/* ... */)
+  expect(res.status).toBe(500)
+  expect(res.body.retriable).toBe(true)
+})
+
+it('returns 200 on non-retriable error (bad payload)', async () => {
+  // mock handler to throw NonRetriableError
+  mockHandler.mockImplementation(() => { throw new NonRetriableError('missing brand_id in metadata', 'bad_payload') })
+  const res = await invokeWebhook(/* ... */)
+  expect(res.status).toBe(200)
+  expect(res.body.retriable).toBe(false)
+  expect(res.body.error).toBe('handler_failed')
+})
 ```
 
 - [ ] **Step 3.6: Validate signature**
