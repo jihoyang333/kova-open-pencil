@@ -244,9 +244,16 @@ CREATE INDEX IF NOT EXISTS idx_users_pending_deletion
   WHERE deleted_at IS NOT NULL;
 
 COMMENT ON COLUMN public.users.deleted_at IS
-  'GDPR soft-delete timestamp. Set by request_account_deletion(); cleared by restore_account() within 30 days; hard-deleted by delete-account-cron after 30 days.';
+  'GDPR soft-delete timestamp. Set by request_account_deletion(); cleared by restore_account() within 30 days; hard-deleted by delete-account-cron after 30 days. Column-level GRANTs deny authenticated read+write — see C-LOW01.5 RLS test.';
 COMMENT ON COLUMN public.users.preferences IS
   'Cross-device user preferences JSONB (Q5 Layer 1). Consumed by Cluster 12 usePreferencesStore.';
+
+-- C-LOW01.5: authenticated role must never SELECT or UPDATE users.deleted_at
+-- directly. The only valid mutation path is via the SECURITY DEFINER RPCs
+-- request_account_deletion() (sets) and restore_account() (clears within window).
+-- service_role retains full access for the cron hard-delete path.
+REVOKE UPDATE (deleted_at) ON public.users FROM authenticated;
+REVOKE SELECT (deleted_at) ON public.users FROM authenticated;
 
 -- ---- 2. gdpr_deletion_queue (cron retry state) ----
 
@@ -492,6 +499,76 @@ describe('request_account_deletion + restore_account RPC behavior', () => {
     await admin.auth.admin.deleteUser(userId)
   })
 })
+
+// ============================================================================
+// C-LOW01.5: RLS guard around users.deleted_at
+// ============================================================================
+// The authenticated role must NEVER be able to forge a deletion-restore by
+// nulling its own deleted_at row via supabase-js. Only the SECURITY DEFINER
+// RPC restore_account() (which enforces the 30-day window) and service_role
+// (cron) may write users.deleted_at. The column should also be excluded from
+// the authenticated-role REST payload so client code doesn't accidentally
+// depend on it.
+//
+// File: tests/db/rls-users-deleted-at.test.ts (sibling to migration test).
+//
+// Note: the underlying RLS lives on the users table (existing). The Cluster 01
+// migration adds users.deleted_at as a column, so the existing
+// "users_self_can_update_own_row" policy (per 20260316_users.sql) determines
+// what the authenticated role may write. If the existing policy permits column
+// updates by id-match without column filtering, this test should fail; the
+// resolution is to either (a) restrict the policy via a CHECK on which columns
+// may be touched, or (b) document deleted_at as service-role-only via column
+// GRANT REVOKE. Option (b) is preferred — surgical, no RLS rewrite.
+//
+// Test outline:
+//
+//   describe('users.deleted_at RLS guard (C-LOW01.5)', () => {
+//     test('authenticated user CANNOT update users.deleted_at directly', async () => {
+//       const { user, token } = await createTestUserWithJwt()
+//       const userClient = createClient(adminUrl, anonKey, {
+//         global: { headers: { Authorization: `Bearer ${token}` } }
+//       })
+//       const future = new Date(Date.now() - 31 * 24 * 60 * 60 * 1000).toISOString()
+//       const { error } = await userClient.from('users').update({ deleted_at: future }).eq('id', user.id)
+//       // Either RLS denies (PGRST301) or column GRANT denies (permission denied for column deleted_at)
+//       expect(error?.code === 'PGRST301' || /deleted_at/.test(error?.message ?? '')).toBe(true)
+//
+//       const { data: row } = await admin.from('users').select('deleted_at').eq('id', user.id).single()
+//       expect(row?.deleted_at).toBeNull()
+//     })
+//
+//     test('service_role CAN update users.deleted_at (cron path)', async () => {
+//       const { user } = await createTestUserWithJwt()
+//       const now = new Date().toISOString()
+//       const { error } = await admin.from('users').update({ deleted_at: now }).eq('id', user.id)
+//       expect(error).toBeNull()
+//     })
+//
+//     test('users.deleted_at NOT in authenticated REST select payload', async () => {
+//       const { user, token } = await createTestUserWithJwt()
+//       const userClient = createClient(adminUrl, anonKey, {
+//         global: { headers: { Authorization: `Bearer ${token}` } }
+//       })
+//       // Either explicit select fails, or implicit select * masks the column.
+//       const { data, error } = await userClient.from('users').select('deleted_at').eq('id', user.id).maybeSingle()
+//       // Acceptable outcomes: column hidden (data is { deleted_at: null }) or
+//       // column denied (error.code = '42501').
+//       if (error) {
+//         expect(error.code === '42501' || /deleted_at/.test(error.message ?? '')).toBe(true)
+//       } else {
+//         expect(data?.deleted_at).toBeNull()
+//       }
+//     })
+//   })
+//
+// If the existing users table does NOT yet have a deleted_at-aware policy or
+// GRANT, add the following to the migration:
+//
+//   REVOKE UPDATE (deleted_at) ON public.users FROM authenticated;
+//   REVOKE SELECT (deleted_at) ON public.users FROM authenticated;
+//
+// Then re-run the test (expect PASS).
 ```
 
 Notes: `signTestJwt(userId)` is a test helper to mint a Supabase-compatible JWT signed with the local anon JWT secret. If you don't have one, create `tests/_helpers/sign-test-jwt.ts` using the local `SUPABASE_JWT_SECRET` env var with HS256.
