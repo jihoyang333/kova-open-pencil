@@ -3925,6 +3925,8 @@ git commit -m "ci: add grep guards for access_token + light-theme drift; bundle-
 
 **3. Type consistency** — `SortMode` and `ViewMode` defined once in `src/stores/dashboard.ts` (T06); consumed everywhere by re-import. `ComposerPreset` defined in `src/constants/composer-presets.ts` (T23); consumed in T25 + T26. `Brand` type imported from existing `@/types/kova/database`.
 
+**4. B-MED11 verified 2026-05-19** — `useLocalStorage` from VueUse is internally debounced (writes coalesce on reactive change). No additional debounce wrapper is needed in `useUIStateStore` or `useBrandsStore.selectedBrandId`. Reference: `@vueuse/core` `useStorage` writes via `watch(..., { flush: 'pre' })` with throttle.
+
 **Issues found during review:**
 - T28's relative-time util test boundary cases match the implementation conditionals.
 - T35 `useUIStateStore()` is called inside the template — must import at top of `<script setup>`. Fix during implementation.
