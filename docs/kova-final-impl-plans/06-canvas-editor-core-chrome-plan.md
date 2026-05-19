@@ -488,6 +488,8 @@ git commit -m "feat(cluster-06): useRightPanelStore — AI-default tab framework
 - Create: `src/stores/tool-registry.ts`
 - Test: `tests/unit/stores/tool-registry.test.ts`
 
+**Icon convention (B-HIGH7 — W0-4 lock):** `ToolDef.icon` is a KovaIcon registry name (short form, e.g. `'mouse-pointer-2'`, `'crop'`, `'ruler'`, `'frame'`, `'square'`, `'circle'`, `'pen-tool'`, `'type'`, `'sparkles'`, `'component'`). The bottom toolbar passes the string into `<KovaIcon :name="tool.icon" />`. Forbidden alternates (`'i-lucide-*'` UnoCSS class strings, `<icon-lucide-*>` raw tags, `<component :is="\`icon-lucide-${name}\`">` template-literal resolution) are NOT permitted — see Cluster 11 Task 4.4 contract. ALL icon names registered above MUST be added to `src/components/ui/kova-icon-registry.ts` before this task ships.
+
 - [ ] **Step 1: Write failing test**
 
 ```ts
@@ -497,9 +499,9 @@ import { setActivePinia, createPinia } from 'pinia'
 import { useToolRegistry } from '@/stores/tool-registry'
 import type { ToolDef } from '@/types/tool-registry'
 
-const move: ToolDef = { id: 'move', slot: 'move', icon: 'i-lucide-mouse-pointer-2', label: 'Move', key: 'V', onActivate: () => {} }
-const slice: ToolDef = { id: 'slice', slot: 'frame', parent: 'frame', icon: 'i-lucide-crop', label: 'Slice', key: 'S', onActivate: () => {} }
-const measurement: ToolDef = { id: 'measurement', slot: 'measurement', icon: 'i-lucide-ruler', label: 'Measurement', keySequence: ['Shift','M'], onActivate: () => {} }
+const move: ToolDef = { id: 'move', slot: 'move', icon: 'mouse-pointer-2', label: 'Move', key: 'V', onActivate: () => {} }
+const slice: ToolDef = { id: 'slice', slot: 'frame', parent: 'frame', icon: 'crop', label: 'Slice', key: 'S', onActivate: () => {} }
+const measurement: ToolDef = { id: 'measurement', slot: 'measurement', icon: 'ruler', label: 'Measurement', keySequence: ['Shift','M'], onActivate: () => {} }
 
 describe('useToolRegistry', () => {
   beforeEach(() => setActivePinia(createPinia()))
@@ -623,14 +625,14 @@ import { useToolRegistry } from '@/stores/tool-registry'
 
 // after pinia setup, before mount:
 const registry = useToolRegistry()
-registry.register({ id: 'move',       slot: 'move',       icon: 'i-lucide-mouse-pointer-2', label: 'Move',      key: 'V', onActivate: () => useEditorStore().setActiveTool('move') })
-registry.register({ id: 'frame',      slot: 'frame',      icon: 'i-lucide-frame',           label: 'Frame',     key: 'F', onActivate: () => useEditorStore().setActiveTool('frame') })
-registry.register({ id: 'rectangle',  slot: 'rectangle',  icon: 'i-lucide-square',          label: 'Rectangle', key: 'R', onActivate: () => useEditorStore().setActiveTool('rectangle') })
-registry.register({ id: 'ellipse',    slot: 'ellipse',    icon: 'i-lucide-circle',          label: 'Ellipse',   key: 'O', onActivate: () => useEditorStore().setActiveTool('ellipse') })
-registry.register({ id: 'pen',        slot: 'pen',        icon: 'i-lucide-pen-tool',        label: 'Pen',       key: 'P', onActivate: () => useEditorStore().setActiveTool('pen') })
-registry.register({ id: 'text',       slot: 'text',       icon: 'i-lucide-type',            label: 'Text',      key: 'T', onActivate: () => useEditorStore().setActiveTool('text') })
-registry.register({ id: 'ai',         slot: 'ai',         icon: 'i-lucide-sparkles',        label: 'Ask Kova',  onActivate: () => useRightPanelTab().focusAiComposer() })
-registry.register({ id: 'components', slot: 'components', icon: 'i-lucide-component',       label: 'Components — Phase 2', disabled: true, onActivate: () => {} })
+registry.register({ id: 'move',       slot: 'move',       icon: 'mouse-pointer-2', label: 'Move',      key: 'V', onActivate: () => useEditorStore().setActiveTool('move') })
+registry.register({ id: 'frame',      slot: 'frame',      icon: 'frame',           label: 'Frame',     key: 'F', onActivate: () => useEditorStore().setActiveTool('frame') })
+registry.register({ id: 'rectangle',  slot: 'rectangle',  icon: 'square',          label: 'Rectangle', key: 'R', onActivate: () => useEditorStore().setActiveTool('rectangle') })
+registry.register({ id: 'ellipse',    slot: 'ellipse',    icon: 'circle',          label: 'Ellipse',   key: 'O', onActivate: () => useEditorStore().setActiveTool('ellipse') })
+registry.register({ id: 'pen',        slot: 'pen',        icon: 'pen-tool',        label: 'Pen',       key: 'P', onActivate: () => useEditorStore().setActiveTool('pen') })
+registry.register({ id: 'text',       slot: 'text',       icon: 'type',            label: 'Text',      key: 'T', onActivate: () => useEditorStore().setActiveTool('text') })
+registry.register({ id: 'ai',         slot: 'ai',         icon: 'sparkles',        label: 'Ask Kova',  onActivate: () => useRightPanelTab().focusAiComposer() })
+registry.register({ id: 'components', slot: 'components', icon: 'component',       label: 'Components — Phase 2', disabled: true, onActivate: () => {} })
 // Slice + Measurement registered by Cluster 07a (Wave 5)
 ```
 
@@ -1863,11 +1865,11 @@ describe('tool registration end-to-end', () => {
     setActivePinia(createPinia())
     const registry = useToolRegistry()
     // Default 9 (registered in main.ts but here we simulate)
-    registry.register({ id: 'move', slot: 'move', icon: 'i-lucide-mouse-pointer-2', label: 'Move', key: 'V', onActivate: () => {} })
+    registry.register({ id: 'move', slot: 'move', icon: 'mouse-pointer-2', label: 'Move', key: 'V', onActivate: () => {} })
     // ... register all 8 default
     // Simulate Cluster 07a
-    registry.register({ id: 'slice', slot: 'frame', parent: 'frame', icon: 'i-lucide-crop', label: 'Slice', key: 'S', onActivate: () => {} })
-    registry.register({ id: 'measurement', slot: 'measurement', icon: 'i-lucide-ruler', label: 'Measurement', keySequence: ['Shift','M'], onActivate: () => {} })
+    registry.register({ id: 'slice', slot: 'frame', parent: 'frame', icon: 'crop', label: 'Slice', key: 'S', onActivate: () => {} })
+    registry.register({ id: 'measurement', slot: 'measurement', icon: 'ruler', label: 'Measurement', keySequence: ['Shift','M'], onActivate: () => {} })
 
     const wrap = mount(BottomToolbar)
     expect(wrap.text()).toContain('Measurement')
