@@ -1950,6 +1950,7 @@ describe('DashboardSidebar', () => {
 
 ```vue
 <script setup lang="ts">
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import BrandSwitcher from './BrandSwitcher.vue'
 import SideNav from './SideNav.vue'
