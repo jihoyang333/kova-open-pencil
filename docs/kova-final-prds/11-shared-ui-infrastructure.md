@@ -306,7 +306,7 @@ CREATE TABLE IF NOT EXISTS public.idempotency_keys (
   key            text PRIMARY KEY,            -- caller-supplied UUID v4
   user_id        uuid NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
   endpoint       text NOT NULL,               -- e.g. 'POST /api/account/deletion-request'
-  request_hash   text NOT NULL,               -- sha256(method + path + sorted body keys + body) — protects against key reuse on different requests
+  request_hash   text NOT NULL,               -- sha256(method + '|' + path + '|' + bodyText). Callers MUST deterministically serialize JSON before sending — the helper hashes raw bytes (see §5.5 / C-HIGH11).
   response_status int  NOT NULL,
   response_body   jsonb NOT NULL,
   created_at     timestamptz NOT NULL DEFAULT now(),
@@ -325,7 +325,7 @@ COMMENT ON TABLE public.idempotency_keys IS
   'Per-request idempotency cache. Cross-cut primitive owned by Cluster 11. Consumed by Cluster 01 (deletion-request, restore, email-change), Cluster 04 (Stripe webhook), Cluster 09 (snapshot create). Retention 24 hours via daily prune cron.';
 
 COMMENT ON COLUMN public.idempotency_keys.request_hash IS
-  'sha256(method + path + sorted-body) — second-call with same key but different body returns 422, not the cached response. Prevents accidental key reuse on different intents.';
+  'sha256(method + ''|'' + path + ''|'' + bodyText). The helper hashes the raw bodyText byte-for-byte — it does NOT canonicalize JSON. Clients that need deterministic replays MUST serialize JSON deterministically (stable key order, no incidental whitespace). Second call with same key but different bodyText returns 422, not the cached response. See PRD 11 §5.5 and C-HIGH11 closure.';
 
 -- RLS: service_role only (only Edge Functions read/write)
 ALTER TABLE public.idempotency_keys ENABLE ROW LEVEL SECURITY;

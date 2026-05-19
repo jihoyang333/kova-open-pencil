@@ -428,6 +428,23 @@ describe('verifyIdempotency', () => {
     const promise = verifyIdempotency(makeReq({}, 'a'.repeat(15) + '!'), 'u', 'POST /api/x')
     await expect(promise).rejects.toMatchObject({ status: 400 })
   })
+
+  // C-HIGH11 contract — the helper hashes raw bodyText byte-for-byte. Two
+  // payloads with different key order produce DIFFERENT hashes. The cached
+  // row was seeded with `{x:1,y:2}`; replaying with `{y:2,x:1}` MUST therefore
+  // throw 422, not return the cached response. Callers that need
+  // retry-safety must serialize JSON deterministically.
+  it('order-sensitive hash — same logical body, different key order, throws 422', async () => {
+    const key = 'a'.repeat(20)
+    seedMockRow(key, 200, { ok: true }, computeHashFor({ x: 1, y: 2 }))
+    const reordered = '{"y":2,"x":1}'
+    const req = new Request('https://test.kova/api/x', {
+      method: 'POST',
+      headers: { 'X-Idempotency-Key': key },
+      body: reordered,
+    })
+    await expect(verifyIdempotency(req, 'u', 'POST /api/x')).rejects.toMatchObject({ status: 422 })
+  })
 })
 ```
 
@@ -453,6 +470,29 @@ class HttpError extends Error {
 
 const KEY_PATTERN = /^[a-zA-Z0-9_-]{16,64}$/
 
+/**
+ * Idempotency contract (C-HIGH11 — read before integrating):
+ *
+ *   request_hash = sha256(method + '|' + path + '|' + bodyText)
+ *
+ * The helper hashes the raw bodyText byte-for-byte. It does NOT canonicalize
+ * JSON: two semantically-equivalent payloads with different property order
+ * (e.g. `{"a":1,"b":2}` vs `{"b":2,"a":1}`) produce DIFFERENT hashes and a
+ * replay with the second body will throw 422 "key_reused_with_different_body".
+ *
+ * Callers that retry the same logical request MUST serialize their JSON
+ * deterministically (stable key order, no incidental whitespace) before
+ * sending. The TypeScript/V8 default `JSON.stringify(obj)` is deterministic
+ * for the same input object, so callers that send the literal same object
+ * twice are safe; callers that round-trip through other languages or rebuild
+ * the payload between retries must enforce determinism themselves.
+ *
+ * Rationale: canonicalizing JSON in the helper is expensive (recursive sort,
+ * unicode normalisation) and ambiguous (what about arrays-as-sets?). Pushing
+ * determinism to the caller keeps the helper a pure byte-hasher and matches
+ * the Stripe / GitHub / AWS pattern. See PRD 11 §4.1 column comment + §5.5
+ * for the contract surface.
+ */
 export async function verifyIdempotency(
   req: Request,
   userId: string,
