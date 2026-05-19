@@ -1236,6 +1236,8 @@ bun run test:unit -- tests/unit/api/stripe/webhook.test.ts
 
 Vercel Functions deliver `req` as a Node `Readable`; consume it before any framework parses the body. `bodyParser: false` is Pages-Router-only and has no effect in Vercel Functions.
 
+**B-HIGH9 audit (2026-05-19):** All `req.headers` access in this plan uses bracket notation (Vercel returns `IncomingHttpHeaders`, not `Headers`). No `.get(...)` calls remain. The B-CRIT12 rewrite above also satisfies B-HIGH9.
+
 ```typescript
 // api/stripe/webhook.ts
 import type { VercelRequest, VercelResponse } from '@vercel/node'
