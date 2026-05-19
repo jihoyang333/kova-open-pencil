@@ -1964,6 +1964,43 @@ git add src/views/EditorView.vue tests/integration/editor/editor-view-refactor.t
 git commit -m "refactor(cluster-06): EditorView refactor — remove ChatPopup + product-variant extension + drag-place model (per Shopify spec §5.1 RIP)"
 ```
 
+**Sub-spec 14.x: `<MissingFontsPill>` anchor location (C-LOW06.5)**
+
+EditorView refactor mounts `<MissingFontsPill>` inside `<CanvasOverlayHost>` (Task 16) — NOT inside `<TopChrome>`. Anchor: top-right of the canvas viewport, offset from the chrome edges.
+
+```css
+/* src/components/editor/MissingFontsPill.vue (scoped) */
+.missing-fonts-pill {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 30;
+}
+```
+
+Z-index stack (canvas viewport overlays):
+- `z-0` — canvas surface
+- `z-10` — selection-box overlay
+- `z-20` — frame-outlines / measurement annotations
+- `z-30` — `<MissingFontsPill>` (this pill) + zoom HUD
+- `z-50` — modal layer (`<KovaModal>`, `<ConfirmDialog>`)
+
+Rationale: pill must be visible above marquee/selection visuals but below modal layers; anchoring to the canvas viewport (not the topbar) keeps it visible when the topbar is hidden in minimized UI mode (`useEditorStore.showUI === 'minimized'`).
+
+E2E regression:
+
+```ts
+// tests/e2e/editor/missing-fonts-pill-anchor.spec.ts
+test('MissingFontsPill anchors top-right of canvas viewport, not topbar', async ({ page }) => {
+  await loadEditorWithMissingFonts(page, 2)
+  const pill = page.locator('[data-testid="missing-fonts-pill"]')
+  const box = await pill.boundingBox()
+  const viewport = await page.locator('[data-testid="canvas-viewport"]').boundingBox()
+  expect(box!.x + box!.width).toBeCloseTo(viewport!.x + viewport!.width - 12, 0)
+  expect(box!.y).toBeCloseTo(viewport!.y + 12, 0)
+})
+```
+
 ---
 
 ### Task 15: RightPanel + RightPanelTabs + FrameHead + InspectorRouter + RightPanelAiSlot
