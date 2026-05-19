@@ -977,8 +977,9 @@ git commit -m "feat(composable): useLogoFetch — debounced favicon probe + manu
 // tests/unit/composables/use-greeting.test.ts
 import { describe, test, expect, beforeEach, mock } from 'bun:test'
 import { setActivePinia, createPinia } from 'pinia'
+import type { User as AuthUser } from '@supabase/supabase-js'
 import { useGreeting } from '@/composables/use-greeting'
-import { useAuthStore } from '@/stores/auth'
+import { useAuthStore, type UserProfile } from '@/stores/auth'
 
 const at = (h: number) => new Date(2026, 4, 15, h, 0, 0)
 
@@ -1004,7 +1005,9 @@ describe('useGreeting', () => {
 
   test('fallback to email local-part when name missing', () => {
     const auth = useAuthStore()
-    auth.profile = { email: 'jane@example.com', name: null } as any
+    // B-HIGH4: email is auth-level (Supabase User), not on UserProfile.
+    auth.profile = { name: null } as UserProfile
+    auth.user = { email: 'jane@example.com' } as AuthUser
     expect(useGreeting().value).toContain('jane')
   })
 })
@@ -1028,9 +1031,10 @@ export function useGreeting() {
       : hour >= 12 && hour < 18 ? 'Good afternoon'
       : 'Good evening'
     const fullName = auth.profile?.name?.trim() ?? ''
+    // B-HIGH4: email lives on auth.user (Supabase auth), not on UserProfile.
     const firstName = fullName
       ? fullName.split(/\s+/)[0]
-      : (auth.profile?.email?.split('@')[0] ?? 'there')
+      : (auth.user?.email?.split('@')[0] ?? 'there')
     return `${phase}, ${firstName}`
   })
 }
@@ -2255,7 +2259,7 @@ const planLabel = computed(() => {
   <div class="side-footer">
     <div class="avatar">{{ initials }}</div>
     <div class="who">
-      <b>{{ auth.profile?.name ?? auth.profile?.email }}</b>
+      <b>{{ auth.profile?.name ?? auth.user?.email }}</b>
       <span>{{ planLabel }}</span>
     </div>
     <AccountMenu />
