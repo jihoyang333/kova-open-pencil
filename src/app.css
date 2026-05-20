@@ -58,6 +58,32 @@
   --color-accent-ai: #a9c4ff;
   /* Alias: bg-input-hi maps to fill-2 (input active / segmented active). */
   --color-input-hi: #303035;
+
+  /* Positional offsets — design.md §3.11–§3.14, mirrored from
+     main-main-kova-scope/design-system/kova-hifi.css. Pre-populated
+     2026-05-20 ahead of the no-raw-visual-values lint (Mandate 6).
+     Components reference these instead of raw px in chrome positioning. */
+  --toolbar-bottom: 22px;
+  --toolbar-pad: 6px;
+  --toolbar-gap: 2px;
+  --toolbar-divider-y: 6px;
+  --toolbar-divider-x: 4px;
+  --zoom-hud-bottom: 22px;
+  --zoom-hud-right: 22px;
+  --zoom-hud-pad-y: 6px;
+  --zoom-hud-pad-x: 10px;
+  --frame-label-offset: 24px;
+  --frame-outline: 2px;
+  --frame-radius: 6px;
+  --handle-size: 9px;
+  --handle-border: 1.5px;
+  --handle-inset: 1px;
+  --size-chip-offset: 36px;
+  --size-chip-pad-y: 5px;
+  --size-chip-pad-x: 12px;
+  --floating-help-bottom: 14px;
+  --floating-help-right: 14px;
+  --floating-help-size: 28px;
 }
 
 html,
