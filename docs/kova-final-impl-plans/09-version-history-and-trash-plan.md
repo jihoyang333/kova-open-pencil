@@ -2549,7 +2549,13 @@ CREATE INDEX IF NOT EXISTS idx_canvas_snapshots_prune_candidates
   ON public.canvas_snapshots(taken_at)
   WHERE retention_class = 'free' AND kind = 'autosave' AND claimed_at IS NULL;
 
-CREATE OR REPLACE FUNCTION public.claim_snapshots_for_prune(p_batch_size int DEFAULT 1000)
+-- W4 C-MED24: retention days is sourced from @/config/feature-flags (SNAPSHOT_FREE_RETENTION_DAYS),
+-- which the cron handler reads in TS and passes here as p_retention_days. Keeps the constant
+-- single-sourced in TS-land without requiring a Postgres feature_flags table.
+CREATE OR REPLACE FUNCTION public.claim_snapshots_for_prune(
+  p_batch_size      int DEFAULT 1000,
+  p_retention_days  int DEFAULT 30
+)
 RETURNS TABLE (id uuid, scene_blob_path text, thumbnail_path text)
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -2564,9 +2570,7 @@ BEGIN
       FROM canvas_snapshots cs
      WHERE cs.retention_class = 'free'
        AND cs.kind = 'autosave'
-       AND cs.taken_at < now() - (SELECT (value::int || ' days')::interval
-                                    FROM public.feature_flags
-                                   WHERE key = 'SNAPSHOT_FREE_RETENTION_DAYS')
+       AND cs.taken_at < now() - make_interval(days => p_retention_days)
        AND cs.claimed_at IS NULL
      ORDER BY cs.taken_at
      LIMIT p_batch_size
@@ -2576,11 +2580,9 @@ BEGIN
 END;
 $$;
 
-REVOKE EXECUTE ON FUNCTION public.claim_snapshots_for_prune(int) FROM public;
-GRANT  EXECUTE ON FUNCTION public.claim_snapshots_for_prune(int) TO service_role;
+REVOKE EXECUTE ON FUNCTION public.claim_snapshots_for_prune(int, int) FROM public;
+GRANT  EXECUTE ON FUNCTION public.claim_snapshots_for_prune(int, int) TO service_role;
 ```
-
-**Note:** the retention-day lookup `(SELECT value FROM public.feature_flags WHERE key = …)` keeps the constant single-sourced (paired with C-MED24 below). If a `feature_flags` row keyed table doesn't yet exist in the project, substitute the literal `30 days` in the RPC and accept the duplication until Plan 11 ships the table — flag as a follow-up.
 
 - [ ] **Step 2: Integration test (concurrency)**
 
@@ -2684,6 +2686,7 @@ describe('POST /api/cron/snapshot-prune', () => {
 ```typescript
 // kova-open-pencil-1/api/cron/snapshot-prune.ts
 import { createClient } from '@supabase/supabase-js'
+import { SNAPSHOT_FREE_RETENTION_DAYS } from '@/config/feature-flags'  // W4 C-MED24
 
 const SUPABASE_URL = process.env.SUPABASE_URL!
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -2699,7 +2702,11 @@ export default async function handler(req: Request): Promise<Response> {
   // W4 C-HIGH8: claim rows atomically via SECURITY DEFINER RPC with FOR UPDATE SKIP LOCKED.
   // Two concurrent cron invocations cannot claim the same row, so the subsequent storage.remove +
   // DELETE cannot race. The RPC stamps claimed_at so retried invocations also skip.
-  const { data: rows, error } = await supabase.rpc('claim_snapshots_for_prune', { p_batch_size: 1000 })
+  // W4 C-MED24: retention-days sourced from @/config/feature-flags single constant.
+  const { data: rows, error } = await supabase.rpc('claim_snapshots_for_prune', {
+    p_batch_size: 1000,
+    p_retention_days: SNAPSHOT_FREE_RETENTION_DAYS,
+  })
   if (error) return new Response(JSON.stringify({ error: 'claim_failed' }), { status: 500 })
   scanned = rows?.length ?? 0
   if (!rows || rows.length === 0) return Response.json({ scanned, pruned, storage_failures: 0 })
