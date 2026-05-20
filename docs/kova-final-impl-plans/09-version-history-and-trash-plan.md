@@ -2469,13 +2469,19 @@ export default async function handler(req: Request): Promise<Response> {
   })
   if (cErr || !newCanvasId) return new Response(JSON.stringify({ error: 'internal_error' }), { status: 500 })
 
-  // 5. Upload the blob to the new canvas's path
-  const newBlobPath = `${auth.userId}/${targetBrand}/${newCanvasId}/${crypto.randomUUID()}.kiwi.zst`
+  // 5. Pre-generate the new snapshot id (W4 C-MED23) so the Storage path embeds the snapshot_id
+  // per PRD 09 §4.3 invariant: {user_id}/{brand_id}/{canvas_id}/{snapshot_id}.kiwi.zst.
+  // The id is then passed to create_snapshot via the optional p_id parameter so the same value
+  // ends up in the canvas_snapshots row.
+  const newSnapshotId = crypto.randomUUID()
+  const newBlobPath   = `${auth.userId}/${targetBrand}/${newCanvasId}/${newSnapshotId}.kiwi.zst`
+
+  // 6. Upload the blob to the new canvas's path
   const { error: upErr } = await adminClient.storage
     .from('canvas-snapshots').upload(newBlobPath, blobBytes, { contentType: 'application/octet-stream' })
   if (upErr) return new Response(JSON.stringify({ error: 'internal_error' }), { status: 500 })
 
-  // 5b. W4 C-HIGH7: stamp initial_state_blob_path on the new canvas so Cluster 02 canvas-open
+  // 6b. W4 C-HIGH7: stamp initial_state_blob_path on the new canvas so Cluster 02 canvas-open
   // can hydrate the Yjs doc from this blob on first open. Service-role bypass acceptable —
   // create_canvas just minted this row for auth.userId, so the WHERE id = newCanvasId is safe.
   const { error: stampErr } = await adminClient.from('canvases')
@@ -2483,13 +2489,14 @@ export default async function handler(req: Request): Promise<Response> {
     .eq('id', newCanvasId)
   if (stampErr) return new Response(JSON.stringify({ error: 'internal_error' }), { status: 500 })
 
-  // 6. Insert "Duplicated from..." snapshot row on the new canvas
+  // 7. Insert "Duplicated from..." snapshot row on the new canvas (id pre-set per C-MED23)
   await userClient.rpc('create_snapshot', {
     p_canvas_id: newCanvasId, p_kind: 'manual',
     p_label: `Duplicated from ${snap.label || new Date(snap.taken_at).toLocaleString()}`,
     p_description: null, p_scene_blob_path: newBlobPath,
     p_scene_size_bytes: blobBytes.byteLength, p_thumbnail_path: null,
     p_parent_snapshot_id: snapshot_id,
+    p_id: newSnapshotId,  // W4 C-MED23
   })
 
   const responseBody = { canvas_id: newCanvasId, redirect_to: `/canvas/${newCanvasId}` }

@@ -236,6 +236,9 @@ CREATE POLICY snapshots_delete_blocked
 -- ---- 4. RPCs (SECURITY DEFINER) ----
 
 -- 4a. create_snapshot — enforces 100 MB per-brand quota; assigns retention_class
+--     W4 C-MED23: accepts optional p_id so callers (e.g. duplicate-to-canvas) can pre-generate
+--     the snapshot UUID, use it in the Storage path, and INSERT with the same value — so the
+--     §4.3 path invariant (path = {user}/{brand}/{canvas}/{snapshot_id}.kiwi.zst) holds.
 CREATE OR REPLACE FUNCTION public.create_snapshot(
   p_canvas_id       uuid,
   p_kind            text,
@@ -244,7 +247,8 @@ CREATE OR REPLACE FUNCTION public.create_snapshot(
   p_scene_blob_path text,
   p_scene_size_bytes bigint,
   p_thumbnail_path  text,
-  p_parent_snapshot_id uuid
+  p_parent_snapshot_id uuid,
+  p_id              uuid DEFAULT gen_random_uuid()  -- W4 C-MED23
 )
 RETURNS uuid
 LANGUAGE plpgsql
@@ -292,10 +296,10 @@ BEGIN
   END IF;
 
   INSERT INTO public.canvas_snapshots
-    (canvas_id, brand_id, user_id, taken_at, kind, label, description,
+    (id, canvas_id, brand_id, user_id, taken_at, kind, label, description,
      scene_blob_path, scene_size_bytes, thumbnail_path, parent_snapshot_id, retention_class)
   VALUES
-    (p_canvas_id, v_brand_id, v_user_id, now(), p_kind, p_label, p_description,
+    (p_id, p_canvas_id, v_brand_id, v_user_id, now(), p_kind, p_label, p_description,
      p_scene_blob_path, p_scene_size_bytes, p_thumbnail_path, p_parent_snapshot_id, v_retention_class)
   RETURNING id INTO v_snapshot_id;
 
