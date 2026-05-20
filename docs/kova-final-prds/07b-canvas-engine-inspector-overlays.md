@@ -21,7 +21,7 @@
 
 The canvas engine (sibling PRD 07a) ships the **data + render** for everything Kova adds on top of OpenPencil — Slice and Measurement node types, mask compositing, every effect, gradient, image-fill mode, and boolean operation. None of that is reachable through the UI today. **07b is the inspector + overlay layer that lets a designer actually use those features.** Three buckets:
 
-1. **Inspector wiring** — when a designer selects a layer, the right-hand inspector now exposes: vertical text alignment, stroke alignment (Inside/Center/Outside), multiple fills (drag-reorder, per-fill opacity, per-fill visibility), 4 image-fill modes (Fill / Fit / Crop / Tile per Q21), the gradient editor (Linear / Radial), an Effects editor for all 5 effect types (drop-shadow, inner-shadow, layer-blur, background-blur, foreground-blur), a Boolean-ops row when a multi-select is active (Union / Subtract / Intersect / Exclude with Figma-exact ⌘⌥U/S/I/X shortcuts), and a JPG export quality dropdown (High 0.92 default / Medium 0.80 / Low 0.65 per Q22).
+1. **Inspector wiring** — when a designer selects a layer, the right-hand inspector now exposes: vertical text alignment, stroke alignment (Inside/Center/Outside), multiple fills (drag-reorder, per-fill opacity, per-fill visibility), 4 image-fill modes (Fill / Fit / Crop / Tile per Q21), the gradient editor (Linear / Radial), an Effects editor for all 5 effect types (drop-shadow, inner-shadow, layer-blur, background-blur, foreground-blur), a Boolean-ops row when a multi-select is active (Union / Subtract / Intersect / Exclude with Figma-exact ⌥⇧U/S/I/E shortcuts per founder lock §12.5), and a JPG export quality dropdown (High 0.92 default / Medium 0.80 / Low 0.65 per Q22).
 
 2. **Canvas overlays** — the 10 visual-feedback layers that ride above the canvas: frame outlines, mask outlines, slice region preview, snap indicators, layout guides (default-ON red 10% per Q24), pixel grid (auto-show > 800% zoom), hover contour, find highlight, eyedropper crosshair (canvas-only per Q20), and persistent measurement annotations.
 
@@ -31,7 +31,7 @@ The canvas engine (sibling PRD 07a) ships the **data + render** for everything K
 
 ### 1.2 Caveman summary (per CLAUDE.md communication style)
 
-Engine ready (07a). UI not. 07b add inspector rows + 10 canvas overlays + 4 composables. Designer click layer → see fields work. Designer drag layout → see snap line. Designer click eyedropper → magnifier on canvas. Designer hit ⌘⌥U → boolean union. JPG export get quality dropdown. Zero core touch — pure Vue + Pinia.
+Engine ready (07a). UI not. 07b add inspector rows + 10 canvas overlays + 4 composables. Designer click layer → see fields work. Designer drag layout → see snap line. Designer click eyedropper → magnifier on canvas. Designer hit ⌥⇧U → boolean union. JPG export get quality dropdown. Zero core touch — pure Vue + Pinia.
 
 ### 1.3 Outcome (acceptance gate)
 
@@ -141,7 +141,7 @@ Every UI surface in 07b maps to a hi-fi file + scene ID. Engineers cite the scen
 
 | Surface | Scene ID | Notes |
 |---|---|---|
-| Boolean ops row (multi-select ≥2 layers) | 11.9 | "Boolean" header (line 2254). 4 icon buttons. Tooltip shortcuts ⌘⌥U / ⌘⌥S / ⌘⌥I / ⌘⌥X per Q3 #14. Multi-select reduces inspector to Position + Appearance only. |
+| Boolean ops row (multi-select ≥2 layers) | 11.9 | "Boolean" header (line 2254). 4 icon buttons. Tooltip shortcuts ⌥⇧U / ⌥⇧S / ⌥⇧I / ⌥⇧E per founder lock §12.5 (matches current Figma; supersedes Q3 #14 ⌘⌥U/S/I/X baseline). Multi-select reduces inspector to Position + Appearance only. |
 | Solid fill row (per-fill swatch + hex) | 11.10 | Reuses existing FillSection chrome. |
 | Linear-gradient editor popover (anchored to fill row) | 11.11 | Cross-cuts hi-fi 12.6 (gradient editor). |
 | Image-fill mode = Crop with 4 corner handles | 11.12 | Mode dropdown labeled "Crop" (line 2567). Source segmented control: Brand kit / Uploads (active) / Shopify (lines 2558-2560). |
@@ -1000,7 +1000,7 @@ Acceptance §8.8 tests this matrix.
 
 - **Q3** (corrected expanded — 9 features engine-ready, 1 partial, 4 missing): inspector wiring for vertical text align, all gradient types (UI ships LINEAR + RADIAL only — see §12.5), POLYGON / STAR / LINE shape registration (07a), stroke align, all 5 effect types, boolean operations (07b consumes), vector network field
 - **Q3 #12** (Effects re-added to MVP): all 5 effect types ship — DROP_SHADOW, INNER_SHADOW, LAYER_BLUR, BACKGROUND_BLUR, FOREGROUND_BLUR
-- **Q3 #14** (Boolean operations): wire existing `figma.booleanOperation()` from `figma-api.ts`. Standard Figma shortcuts: Union (⌘⌥U), Subtract (⌘⌥S), Intersect (⌘⌥I), Exclude (⌘⌥X)
+- **Q3 #14** (Boolean operations): wire existing `figma.booleanOperation()` from `figma-api.ts`. Shortcuts per founder lock §12.5 (matches current Figma; supersedes earlier Q3 #14 ⌘⌥U/S/I/X baseline): Union (⌥⇧U), Subtract (⌥⇧S), Intersect (⌥⇧I), Exclude (⌥⇧E)
 - **Q20** (Eyedropper): canvas-only MVP. Phase 2 = screen-wide on macOS Tauri
 - **Q21** (Image fill modes): all 4 ship — Fill (default), Fit, Crop, Tile
 - **Q22** (JPG export quality): 3-level dropdown — High 0.92 (default) / Medium 0.80 / Low 0.65
@@ -1032,7 +1032,7 @@ Acceptance §8.8 tests this matrix.
 
 ### 13.6 External sources cited
 
-- [Figma Help — Boolean operations](https://help.figma.com/hc/en-us/articles/360039957534-Combine-shapes) (Boolean ops UX + ⌘⌥U/S/I/X shortcuts)
+- [Figma Help — Boolean operations](https://help.figma.com/hc/en-us/articles/360039957534-Combine-shapes) (Boolean ops UX + ⌥⇧U/S/I/E shortcuts per founder lock §12.5)
 - [Figma Help — Eyedropper](https://help.figma.com/hc/en-us/articles/360039958654-Use-the-eyedropper-tool) (canvas-only behavior reference)
 - [Figma Help — Effects](https://help.figma.com/hc/en-us/articles/360041488473-Apply-effects-to-layers) (5 effect types)
 - [Figma Help — Slice tool](https://help.figma.com/hc/en-us/articles/360040028934-Export-slices) (slice → export pipeline)
