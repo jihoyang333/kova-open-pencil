@@ -950,7 +950,7 @@ describe('useLayerTree', () => {
         { id: 'slice-1', type: 'SLICE', name: 'Export region', isMask: false, children: [] },
       ] }],
       currentPageId: 'p1',
-    } as any
+    } as any  // test-fixture: bun:test convention
   })
 
   test('flatRows yields ordered rows with indent', () => {
@@ -984,7 +984,7 @@ describe('useLayerTree', () => {
     const tree = useLayerTree()
     const editor = useEditorStore()
     let captured: any = null
-    editor.reorderChildWithUndo = ((args: any) => { captured = args }) as any
+    editor.reorderChildWithUndo = ((args: any) => { captured = args }) as any  // test-fixture: bun:test convention
     tree.reorderLayer('text-1', 'rect-1')
     expect(captured).toEqual({ nodeId: 'text-1', beforeNodeId: 'rect-1' })
   })
@@ -1025,7 +1025,7 @@ export function useLayerTree() {
 
   const flatRows = computed<LayerRow[]>(() => {
     const out: LayerRow[] = []
-    const currentPage = (editor.graph as any)?.pages?.find?.((p: any) => p.id === (editor.graph as any).currentPageId)
+    const currentPage = (editor.graph as any)?.pages?.find?.((p: any) => p.id === (editor.graph as any).currentPageId)  // W0-9 Bucket D: OpenPencil engine internals (packages/core/ read-only per CLAUDE.md)
     if (!currentPage) return out
 
     function walk(nodes: any[], indent: number): void {
@@ -1060,7 +1060,7 @@ export function useLayerTree() {
   }
 
   function reorderLayer(nodeId: string, beforeNodeId?: string, parentNodeId?: string): void {
-    ;(editor as any).reorderChildWithUndo({ nodeId, beforeNodeId, parentNodeId })
+    ;(editor as any).reorderChildWithUndo({ nodeId, beforeNodeId, parentNodeId })  // W0-9 Bucket D: OpenPencil engine internals (packages/core/ read-only per CLAUDE.md)
   }
 
   const rowHeight = 28
@@ -1118,7 +1118,7 @@ describe('useInspectorRouter', () => {
   test('when single TEXT selection → position + text (sorted by priority)', () => {
     const editor = useEditorStore()
     editor.selectedIds = ['text-1']
-    editor.graph = { nodesById: { 'text-1': { id: 'text-1', type: 'TEXT' } } } as any
+    editor.graph = { nodesById: { 'text-1': { id: 'text-1', type: 'TEXT' } } } as any  // test-fixture: bun:test convention
     const router = useInspectorRouter()
     expect(router.activeSections.value.map(s => s.id)).toEqual(['position','text'])
   })
@@ -1126,7 +1126,7 @@ describe('useInspectorRouter', () => {
   test('when single FRAME selection → position only (text not supported)', () => {
     const editor = useEditorStore()
     editor.selectedIds = ['frame-1']
-    editor.graph = { nodesById: { 'frame-1': { id: 'frame-1', type: 'FRAME' } } } as any
+    editor.graph = { nodesById: { 'frame-1': { id: 'frame-1', type: 'FRAME' } } } as any  // test-fixture: bun:test convention
     const router = useInspectorRouter()
     expect(router.activeSections.value.map(s => s.id)).toEqual(['position'])
   })
@@ -1159,7 +1159,7 @@ export function useInspectorRouter() {
       return sections.value.filter(s => s.supports === 'none').sort((a, b) => a.priority - b.priority)
     }
     const isMulti = ids.length > 1
-    const selectedType = !isMulti ? (editor.graph as any)?.nodesById?.[ids[0]]?.type : null
+    const selectedType = !isMulti ? (editor.graph as any)?.nodesById?.[ids[0]]?.type : null  // W0-9 Bucket D: OpenPencil engine internals (packages/core/ read-only per CLAUDE.md)
 
     return sections.value
       .filter(s => {
@@ -1281,45 +1281,45 @@ function makeDropEvent(types: string[], data: Record<string, string>, modifiers:
   const dt = {
     types,
     getData: mock((k: string) => data[k] ?? ''),
-    files: [] as any,
+    files: [] as any,  // test-fixture: bun:test convention
   } as unknown as DataTransfer
-  return { dataTransfer: dt, clientX: 100, clientY: 100, preventDefault: mock(() => undefined), shiftKey: !!modifiers.shift, altKey: !!modifiers.alt } as any
+  return { dataTransfer: dt, clientX: 100, clientY: 100, preventDefault: mock(() => undefined), shiftKey: !!modifiers.shift, altKey: !!modifiers.alt } as any  // test-fixture: bun:test convention
 }
 
 describe('useCanvasDrop — 5 MIME handlers', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     const editor = useEditorStore()
-    ;(editor as any).hitTestAt = mock(() => ({ id: 'frame-1', type: 'FRAME' }))
-    ;(editor as any).screenToCanvas = mock(() => ({ x: 50, y: 50 }))
-    ;(editor as any).commitNodeUpdate = mock(() => undefined)
-    ;(editor as any).createNode = mock(() => ({ id: 'new-1' }))
+    ;(editor as any).hitTestAt = mock(() => ({ id: 'frame-1', type: 'FRAME' }))  // test-fixture: bun:test convention
+    ;(editor as any).screenToCanvas = mock(() => ({ x: 50, y: 50 }))  // test-fixture: bun:test convention
+    ;(editor as any).commitNodeUpdate = mock(() => undefined)  // test-fixture: bun:test convention
+    ;(editor as any).createNode = mock(() => ({ id: 'new-1' }))  // test-fixture: bun:test convention
   })
 
   test('color drop on frame → commitNodeUpdate with fills replaced', async () => {
     const drop = useCanvasDrop()
     const evt = makeDropEvent([DRAG_MIME.COLOR], { [DRAG_MIME.COLOR]: JSON.stringify({ hex: '#FA5400', swatchId: '00000000-0000-0000-0000-000000000001', brandId: '00000000-0000-0000-0000-000000000002' }) })
     await drop.handleDrop(evt)
-    expect((useEditorStore() as any).commitNodeUpdate).toHaveBeenCalledWith('frame-1', expect.objectContaining({ fills: expect.any(Array) }))
+    expect((useEditorStore() as any).commitNodeUpdate).toHaveBeenCalledWith('frame-1', expect.objectContaining({ fills: expect.any(Array) }))  // test-fixture: bun:test convention
   })
 
   test('Shift+color drop → stroke replace', async () => {
     const drop = useCanvasDrop()
     const evt = makeDropEvent([DRAG_MIME.COLOR], { [DRAG_MIME.COLOR]: JSON.stringify({ hex: '#FA5400', swatchId: '00000000-0000-0000-0000-000000000001', brandId: '00000000-0000-0000-0000-000000000002' }) }, { shift: true })
     await drop.handleDrop(evt)
-    expect((useEditorStore() as any).commitNodeUpdate).toHaveBeenCalledWith('frame-1', expect.objectContaining({ strokes: expect.any(Array) }))
+    expect((useEditorStore() as any).commitNodeUpdate).toHaveBeenCalledWith('frame-1', expect.objectContaining({ strokes: expect.any(Array) }))  // test-fixture: bun:test convention
   })
 
   test('color drop on empty canvas → spawn rect', async () => {
     setActivePinia(createPinia())
     const editor = useEditorStore()
-    ;(editor as any).hitTestAt = mock(() => null)
-    ;(editor as any).screenToCanvas = mock(() => ({ x: 50, y: 50 }))
-    ;(editor as any).createNode = mock(() => ({ id: 'new-1' }))
+    ;(editor as any).hitTestAt = mock(() => null)  // test-fixture: bun:test convention
+    ;(editor as any).screenToCanvas = mock(() => ({ x: 50, y: 50 }))  // test-fixture: bun:test convention
+    ;(editor as any).createNode = mock(() => ({ id: 'new-1' }))  // test-fixture: bun:test convention
     const drop = useCanvasDrop()
     const evt = makeDropEvent([DRAG_MIME.COLOR], { [DRAG_MIME.COLOR]: JSON.stringify({ hex: '#FA5400', swatchId: '00000000-0000-0000-0000-000000000001', brandId: '00000000-0000-0000-0000-000000000002' }) })
     await drop.handleDrop(evt)
-    expect((useEditorStore() as any).createNode).toHaveBeenCalledWith(expect.objectContaining({ type: 'RECT', w: 200, h: 200 }))
+    expect((useEditorStore() as any).createNode).toHaveBeenCalledWith(expect.objectContaining({ type: 'RECT', w: 200, h: 200 }))  // test-fixture: bun:test convention
   })
 
   test('saved-block type=cta → spawn TEXT wrapped in button frame', async () => {
@@ -1328,7 +1328,7 @@ describe('useCanvasDrop — 5 MIME handlers', () => {
     const evt = makeDropEvent([DRAG_MIME.SAVED_BLOCK], { [DRAG_MIME.SAVED_BLOCK]: JSON.stringify(payload) })
     await drop.handleDrop(evt)
     // Expect createNode called twice: outer frame + inner text (or single create with type='BUTTON_FRAME' if engine has it)
-    const calls = ((useEditorStore() as any).createNode as any).mock.calls
+    const calls = ((useEditorStore() as any).createNode as any).mock.calls  // test-fixture: bun:test convention
     expect(calls.length).toBeGreaterThanOrEqual(1)
     expect(calls.some((c: any) => c[0].type === 'TEXT' && c[0].content === 'Shop now')).toBe(true)
   })
@@ -1337,8 +1337,8 @@ describe('useCanvasDrop — 5 MIME handlers', () => {
     const drop = useCanvasDrop()
     const evt = makeDropEvent([DRAG_MIME.COLOR], { [DRAG_MIME.COLOR]: JSON.stringify({ wrong: 'shape' }) })
     await drop.handleDrop(evt)
-    expect((useEditorStore() as any).commitNodeUpdate).not.toHaveBeenCalled()
-    expect((useEditorStore() as any).createNode).not.toHaveBeenCalled()
+    expect((useEditorStore() as any).commitNodeUpdate).not.toHaveBeenCalled()  // test-fixture: bun:test convention
+    expect((useEditorStore() as any).createNode).not.toHaveBeenCalled()  // test-fixture: bun:test convention
   })
 
   test('existing image-file drop preserved (no MIME match → file fallback)', async () => {
@@ -1367,8 +1367,8 @@ export function useCanvasDrop() {
   async function handleDrop(e: DragEvent): Promise<void> {
     if (!e.dataTransfer) return
     const types = Array.from(e.dataTransfer.types)
-    const pos = (editor as any).screenToCanvas(e.clientX, e.clientY)
-    const target = (editor as any).hitTestAt(pos.x, pos.y)
+    const pos = (editor as any).screenToCanvas(e.clientX, e.clientY)  // W0-9 Bucket D: OpenPencil engine internals (packages/core/ read-only per CLAUDE.md)
+    const target = (editor as any).hitTestAt(pos.x, pos.y)  // W0-9 Bucket D: OpenPencil engine internals (packages/core/ read-only per CLAUDE.md)
     const modifiers = { shift: e.shiftKey, alt: e.altKey }
 
     // Dispatch on first matching MIME
@@ -1381,17 +1381,17 @@ export function useCanvasDrop() {
       if (target) {
         if (modifiers.shift) {
           editor.setDropTarget(target.id, 'stroke-replace')
-          ;(editor as any).commitNodeUpdate(target.id, { strokes: [{ type: 'SOLID', color: p.hex }] })
+          ;(editor as any).commitNodeUpdate(target.id, { strokes: [{ type: 'SOLID', color: p.hex }] })  // W0-9 Bucket D: OpenPencil engine internals (packages/core/ read-only per CLAUDE.md)
         } else if (modifiers.alt) {
           editor.setDropTarget(target.id, 'fill-additive')
-          const existing = (editor as any).graph?.nodesById?.[target.id]?.fills ?? []
-          ;(editor as any).commitNodeUpdate(target.id, { fills: [...existing, { type: 'SOLID', color: p.hex }] })
+          const existing = (editor as any).graph?.nodesById?.[target.id]?.fills ?? []  // W0-9 Bucket D: OpenPencil engine internals (packages/core/ read-only per CLAUDE.md)
+          ;(editor as any).commitNodeUpdate(target.id, { fills: [...existing, { type: 'SOLID', color: p.hex }] })  // W0-9 Bucket D: OpenPencil engine internals (packages/core/ read-only per CLAUDE.md)
         } else {
           editor.setDropTarget(target.id, 'fill-replace')
-          ;(editor as any).commitNodeUpdate(target.id, { fills: [{ type: 'SOLID', color: p.hex }] })
+          ;(editor as any).commitNodeUpdate(target.id, { fills: [{ type: 'SOLID', color: p.hex }] })  // W0-9 Bucket D: OpenPencil engine internals (packages/core/ read-only per CLAUDE.md)
         }
       } else {
-        ;(editor as any).createNode({ type: 'RECT', x: pos.x - 100, y: pos.y - 100, w: 200, h: 200, fills: [{ type: 'SOLID', color: p.hex }] })
+        ;(editor as any).createNode({ type: 'RECT', x: pos.x - 100, y: pos.y - 100, w: 200, h: 200, fills: [{ type: 'SOLID', color: p.hex }] })  // W0-9 Bucket D: OpenPencil engine internals (packages/core/ read-only per CLAUDE.md)
       }
       editor.clearDropTarget()
       return
@@ -1403,9 +1403,9 @@ export function useCanvasDrop() {
       if (!parsed.success) return
       const p = parsed.output
       if (target && target.type === 'TEXT') {
-        ;(editor as any).commitNodeUpdate(target.id, { fontFamily: p.family })
+        ;(editor as any).commitNodeUpdate(target.id, { fontFamily: p.family })  // W0-9 Bucket D: OpenPencil engine internals (packages/core/ read-only per CLAUDE.md)
       } else {
-        ;(editor as any).createNode({ type: 'TEXT', x: pos.x, y: pos.y, content: 'Edit text', fontFamily: p.family })
+        ;(editor as any).createNode({ type: 'TEXT', x: pos.x, y: pos.y, content: 'Edit text', fontFamily: p.family })  // W0-9 Bucket D: OpenPencil engine internals (packages/core/ read-only per CLAUDE.md)
       }
       editor.clearDropTarget()
       return
@@ -1417,10 +1417,10 @@ export function useCanvasDrop() {
       if (!parsed.success) return
       const p = parsed.output
       if (target && hasFillSupport(target.type)) {
-        ;(editor as any).commitNodeUpdate(target.id, { fills: [{ type: 'IMAGE', imageUrl: p.url, scaleMode: 'FILL' }] })
+        ;(editor as any).commitNodeUpdate(target.id, { fills: [{ type: 'IMAGE', imageUrl: p.url, scaleMode: 'FILL' }] })  // W0-9 Bucket D: OpenPencil engine internals (packages/core/ read-only per CLAUDE.md)
       } else {
         const { naturalWidth, naturalHeight } = await fetchImageDimensions(p.url)
-        ;(editor as any).createNode({ type: 'IMAGE', x: pos.x - naturalWidth / 2, y: pos.y - naturalHeight / 2, w: naturalWidth, h: naturalHeight, imageUrl: p.url })
+        ;(editor as any).createNode({ type: 'IMAGE', x: pos.x - naturalWidth / 2, y: pos.y - naturalHeight / 2, w: naturalWidth, h: naturalHeight, imageUrl: p.url })  // W0-9 Bucket D: OpenPencil engine internals (packages/core/ read-only per CLAUDE.md)
       }
       editor.clearDropTarget()
       return
@@ -1433,14 +1433,14 @@ export function useCanvasDrop() {
       const p = parsed.output
       const t = p.blockData.type
       if (t === 'cta') {
-        const wrap = (editor as any).createNode({ type: 'RECT', x: pos.x - 100, y: pos.y - 20, w: 200, h: 40, cornerRadius: 6, fills: [{ type: 'SOLID', color: '#1a1a18' }] })
-        ;(editor as any).createNode({ type: 'TEXT', parentId: wrap.id, x: 0, y: 0, content: p.blockData.content, color: '#ffffff', align: 'center' })
+        const wrap = (editor as any).createNode({ type: 'RECT', x: pos.x - 100, y: pos.y - 20, w: 200, h: 40, cornerRadius: 6, fills: [{ type: 'SOLID', color: '#1a1a18' }] })  // W0-9 Bucket D: OpenPencil engine internals (packages/core/ read-only per CLAUDE.md)
+        ;(editor as any).createNode({ type: 'TEXT', parentId: wrap.id, x: 0, y: 0, content: p.blockData.content, color: '#ffffff', align: 'center' })  // W0-9 Bucket D: OpenPencil engine internals (packages/core/ read-only per CLAUDE.md)
       } else if (t === 'footer') {
         const containerFrame = nearestContainingFrame(target)
         const y = containerFrame ? containerFrame.y + containerFrame.h - 40 : pos.y
-        ;(editor as any).createNode({ type: 'TEXT', x: pos.x, y, content: p.blockData.content })
+        ;(editor as any).createNode({ type: 'TEXT', x: pos.x, y, content: p.blockData.content })  // W0-9 Bucket D: OpenPencil engine internals (packages/core/ read-only per CLAUDE.md)
       } else {
-        ;(editor as any).createNode({ type: 'TEXT', x: pos.x, y: pos.y, content: p.blockData.content })
+        ;(editor as any).createNode({ type: 'TEXT', x: pos.x, y: pos.y, content: p.blockData.content })  // W0-9 Bucket D: OpenPencil engine internals (packages/core/ read-only per CLAUDE.md)
       }
       editor.clearDropTarget()
       return
@@ -1452,9 +1452,9 @@ export function useCanvasDrop() {
       if (!parsed.success) return
       const p = parsed.output
       if (target && target.type === 'TEXT') {
-        ;(editor as any).commitNodeUpdate(target.id, { content: p.content })
+        ;(editor as any).commitNodeUpdate(target.id, { content: p.content })  // W0-9 Bucket D: OpenPencil engine internals (packages/core/ read-only per CLAUDE.md)
       } else {
-        ;(editor as any).createNode({ type: 'TEXT', x: pos.x, y: pos.y, content: p.content })
+        ;(editor as any).createNode({ type: 'TEXT', x: pos.x, y: pos.y, content: p.content })  // W0-9 Bucket D: OpenPencil engine internals (packages/core/ read-only per CLAUDE.md)
       }
       editor.clearDropTarget()
       return
@@ -1470,8 +1470,8 @@ export function useCanvasDrop() {
     if (!e.dataTransfer) return
     e.preventDefault()
     const types = Array.from(e.dataTransfer.types)
-    const pos = (editor as any).screenToCanvas(e.clientX, e.clientY)
-    const target = (editor as any).hitTestAt(pos.x, pos.y)
+    const pos = (editor as any).screenToCanvas(e.clientX, e.clientY)  // W0-9 Bucket D: OpenPencil engine internals (packages/core/ read-only per CLAUDE.md)
+    const target = (editor as any).hitTestAt(pos.x, pos.y)  // W0-9 Bucket D: OpenPencil engine internals (packages/core/ read-only per CLAUDE.md)
 
     let action: string | null = null
     if (types.includes(DRAG_MIME.COLOR)) {
