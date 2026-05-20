@@ -374,6 +374,8 @@ export async function signInAs(userId: string, password = `test-${crypto.randomU
 
 **Re-run verification (W4):** before this fix lands, the 14 RLS tests SHOULD FAIL — they were silently passing as anon, hiding RLS regressions. After the fix, they MUST PASS. Run `bun test ./tests/integration/snapshots/rls-*.test.ts` twice (pre- and post-fix) and diff the output to prove correctness.
 
+**B-HIGH20 close-out (W4):** the QA-B "inline JWT generation pattern" finding (B-HIGH20) is the same defect as B-CRIT13 reported from a different angle — the helper synthesizes a "JWT" from a magic-link URL inline rather than using the Supabase SDK's documented `signInWithPassword`. The rewrite above resolves both findings in a single edit. No separate B-HIGH20 commit is needed; cross-reference the W4 dispatch matrix.
+
 (If a `signInAs` already exists in this repo's test helpers from M9 / Cluster 01 work, re-use it instead — the repo convention wins. Grep `tests/integration/helpers` first.)
 
 - [ ] **Step 2: Run test to verify it fails**
