@@ -394,10 +394,11 @@ Per PRD 04 §4.1."
 // tests/integration/account/migrations.test.ts
 import { describe, it, expect, beforeAll } from 'bun:test'
 import { createClient } from '@supabase/supabase-js'
+import { requireEnv } from '@/api/_shared/env'
 
 const supabase = createClient(
-  process.env.SUPABASE_LOCAL_URL!,
-  process.env.SUPABASE_LOCAL_SERVICE_ROLE_KEY!,
+  requireEnv('SUPABASE_LOCAL_URL'),
+  requireEnv('SUPABASE_LOCAL_SERVICE_ROLE_KEY'),
 )
 
 describe('20260605_04 migration', () => {
@@ -469,10 +470,11 @@ git commit -m "test(04): integration test for 20260605_04 migration"
 ```typescript
 import { describe, it, expect } from 'bun:test'
 import { createClient } from '@supabase/supabase-js'
+import { requireEnv } from '@/api/_shared/env'
 
 const supabase = createClient(
-  process.env.SUPABASE_LOCAL_URL!,
-  process.env.SUPABASE_LOCAL_SERVICE_ROLE_KEY!,
+  requireEnv('SUPABASE_LOCAL_URL'),
+  requireEnv('SUPABASE_LOCAL_SERVICE_ROLE_KEY'),
 )
 
 describe('user_has_active_plan RPC', () => {
@@ -524,10 +526,11 @@ git commit -m "test(04): integration test for user_has_active_plan RPC"
 ```typescript
 import { describe, it, expect } from 'bun:test'
 import { createClient } from '@supabase/supabase-js'
+import { requireEnv } from '@/api/_shared/env'
 
 describe('log_shopify_connection_event RPC', () => {
   it('service_role can call and returns row id', async () => {
-    const service = createClient(process.env.SUPABASE_LOCAL_URL!, process.env.SUPABASE_LOCAL_SERVICE_ROLE_KEY!)
+    const service = createClient(requireEnv('SUPABASE_LOCAL_URL'), requireEnv('SUPABASE_LOCAL_SERVICE_ROLE_KEY'))
     // Seed a brand
     const brandId = crypto.randomUUID()
     const userId = crypto.randomUUID()
@@ -545,7 +548,7 @@ describe('log_shopify_connection_event RPC', () => {
   })
 
   it('authenticated role cannot call', async () => {
-    const anon = createClient(process.env.SUPABASE_LOCAL_URL!, process.env.SUPABASE_LOCAL_ANON_KEY!)
+    const anon = createClient(requireEnv('SUPABASE_LOCAL_URL'), requireEnv('SUPABASE_LOCAL_ANON_KEY'))
     // Sign in a test user first; placeholder — adapt to project's auth-test helpers
     // ... sign in ...
     const { error } = await anon.rpc('log_shopify_connection_event', {
@@ -584,10 +587,11 @@ git commit -m "test(04): integration test for log_shopify_connection_event RPC"
 // tests/integration/account/rls-stripe-webhook-events.test.ts
 import { describe, it, expect } from 'bun:test'
 import { createClient } from '@supabase/supabase-js'
+import { requireEnv } from '@/api/_shared/env'
 
 describe('stripe_webhook_events RLS', () => {
   it('authenticated role cannot SELECT', async () => {
-    const anon = createClient(process.env.SUPABASE_LOCAL_URL!, process.env.SUPABASE_LOCAL_ANON_KEY!)
+    const anon = createClient(requireEnv('SUPABASE_LOCAL_URL'), requireEnv('SUPABASE_LOCAL_ANON_KEY'))
     // Sign in test user
     await anon.auth.signInWithPassword({ email: 'rls-test@kova.local', password: 'test1234' })
     const { data, error } = await anon.from('stripe_webhook_events').select('event_id').limit(1)
@@ -595,7 +599,7 @@ describe('stripe_webhook_events RLS', () => {
   })
 
   it('service_role can SELECT', async () => {
-    const service = createClient(process.env.SUPABASE_LOCAL_URL!, process.env.SUPABASE_LOCAL_SERVICE_ROLE_KEY!)
+    const service = createClient(requireEnv('SUPABASE_LOCAL_URL'), requireEnv('SUPABASE_LOCAL_SERVICE_ROLE_KEY'))
     const { error } = await service.from('stripe_webhook_events').select('event_id').limit(1)
     expect(error).toBeNull()
   })
@@ -606,10 +610,11 @@ describe('stripe_webhook_events RLS', () => {
 // tests/integration/account/rls-shopify-history.test.ts
 import { describe, it, expect, beforeAll } from 'bun:test'
 import { createClient } from '@supabase/supabase-js'
+import { requireEnv } from '@/api/_shared/env'
 
 describe('shopify_connection_history RLS', () => {
   it('user can read own brand history; cannot read others', async () => {
-    const service = createClient(process.env.SUPABASE_LOCAL_URL!, process.env.SUPABASE_LOCAL_SERVICE_ROLE_KEY!)
+    const service = createClient(requireEnv('SUPABASE_LOCAL_URL'), requireEnv('SUPABASE_LOCAL_SERVICE_ROLE_KEY'))
 
     // Two users, two brands, two history rows
     const userA = crypto.randomUUID()
@@ -630,7 +635,7 @@ describe('shopify_connection_history RLS', () => {
     ])
 
     // Sign in as A
-    const anon = createClient(process.env.SUPABASE_LOCAL_URL!, process.env.SUPABASE_LOCAL_ANON_KEY!)
+    const anon = createClient(requireEnv('SUPABASE_LOCAL_URL'), requireEnv('SUPABASE_LOCAL_ANON_KEY'))
     await anon.auth.signInWithPassword({ email: `${userA}@t.local`, password: 'unused' })
     // Note: adapt to project's actual auth test fixture pattern
 
@@ -639,7 +644,7 @@ describe('shopify_connection_history RLS', () => {
   })
 
   it('authenticated cannot INSERT', async () => {
-    const anon = createClient(process.env.SUPABASE_LOCAL_URL!, process.env.SUPABASE_LOCAL_ANON_KEY!)
+    const anon = createClient(requireEnv('SUPABASE_LOCAL_URL'), requireEnv('SUPABASE_LOCAL_ANON_KEY'))
     const { error } = await anon.from('shopify_connection_history').insert({ brand_id: crypto.randomUUID(), event_type: 'connected', source: 'user' })
     expect(error?.code).toBe('42501')
   })
@@ -1564,6 +1569,7 @@ import { handleSubscriptionUpdated } from './webhook-handlers/handle-subscriptio
 import { handleSubscriptionDeleted } from './webhook-handlers/handle-subscription-deleted'
 import { handleInvoicePaid } from './webhook-handlers/handle-invoice-paid'
 import { handleInvoicePaymentFailed } from './webhook-handlers/handle-invoice-payment-failed'
+import { requireEnv } from '@/api/_shared/env'
 
 async function readRawBody(req: VercelRequest): Promise<Buffer> {
   const chunks: Buffer[] = []
@@ -1593,7 +1599,7 @@ export default async function (req: VercelRequest, res: VercelResponse): Promise
   const stripe = getStripeClient()
   let event: Stripe.Event
   try {
-    event = stripe.webhooks.constructEvent(rawBody, sig, process.env.STRIPE_WEBHOOK_SECRET!)
+    event = stripe.webhooks.constructEvent(rawBody, sig, requireEnv('STRIPE_WEBHOOK_SECRET'))
   } catch (err) {
     return res.status(400).json({ error: 'signature_verification_failed' })
   }
