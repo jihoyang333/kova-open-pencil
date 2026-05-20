@@ -260,8 +260,8 @@ const supabase = createClient(
 
 test('brands table has new columns', async () => {
   const { data, error } = await supabase
-    .rpc('table_columns', { p_table: 'brands' } as any)
-    .catch(() => ({ data: null, error: 'rpc-missing' } as any))
+    .rpc('table_columns', { p_table: 'brands' } as any)  // test-fixture: bun:test convention
+    .catch(() => ({ data: null, error: 'rpc-missing' } as any))  // test-fixture: bun:test convention
   // Fallback: select-with-typo to verify columns exist
   const probe = await supabase.from('brands').select('id, archived_at, color, slug, url, description').limit(1)
   expect(probe.error).toBeNull()
@@ -857,7 +857,7 @@ test('delete_brand requires exact name match (case-sensitive)', async () => {
   expect(r1.error?.message).toMatch(/confirm_mismatch/)
   const r2 = await client.rpc('delete_brand', { p_brand_id: brand!.id, p_confirm_name: 'Warby Parker' })
   expect(r2.error).toBeNull()
-  expect((r2.data as any).canvas_count).toBe(0)
+  expect((r2.data as any).canvas_count).toBe(0)  // test-fixture: bun:test convention
   // Verify gone
   const { data: gone } = await supabase.from('brands').select('id').eq('id', brand!.id).maybeSingle()
   expect(gone).toBeNull()
@@ -996,7 +996,7 @@ test('User B cannot call any RPC on User A brand', async () => {
     ['restore_brand', { p_brand_id: brandA!.id }],
     ['delete_brand', { p_brand_id: brandA!.id, p_confirm_name: 'A-only' }],
   ] as const) {
-    const { error } = await clientB.rpc(op[0], op[1] as any)
+    const { error } = await clientB.rpc(op[0], op[1] as any)  // test-fixture: bun:test convention
     expect(error?.message).toMatch(/not_found|not_authenticated/)
   }
   // Verify brand still exists
@@ -1021,7 +1021,7 @@ test('anonymous client cannot call any mutating RPC (auth.uid() defense)', async
     ['restore_brand', { p_brand_id: '00000000-0000-0000-0000-000000000001' }],
     ['delete_brand', { p_brand_id: '00000000-0000-0000-0000-000000000001', p_confirm_name: 'x' }],
   ] as const) {
-    const { error } = await anonClient.rpc(op[0], op[1] as any)
+    const { error } = await anonClient.rpc(op[0], op[1] as any)  // test-fixture: bun:test convention
     expect(error).not.toBeNull()
     expect(error?.message).toMatch(/not_authenticated|permission denied|JWT/i)
   }
@@ -1186,7 +1186,7 @@ function makeSupabaseMock(behavior: Record<string, { listErr?: string; objects?:
         },
       }),
     },
-  } as any
+  } as any  // test-fixture: bun:test convention
 }
 
 test('sweeps all 4 buckets in happy path', async () => {
@@ -1322,7 +1322,7 @@ test('DELETE /api/brands/delete writes brand.deleted audit row even when sweep f
   mockSupabaseAuthedAs('user-123', {
     rpc: async () => ({ data: { name: 'Patagonia', canvas_count: 3 }, error: null }),
     storage: { from: () => ({ list: async () => ({ data: [], error: { message: 'boom' } }), remove: async () => ({ error: null }) }) },
-  } as any)
+  } as any)  // test-fixture: bun:test convention
   await deleteHandler(req, res)
   expect(res.statusCode).toBe(200)
   expect(auditRows[0]).toMatchObject({ event_type: 'brand.deleted', cluster_owner: '03' })
@@ -1437,16 +1437,22 @@ import { createClient } from '@supabase/supabase-js'
 import { validateBrandName, validateBrandUrl, validateDescription } from '../_shared/brand-validation'
 import { requireEnv } from '@/api/_shared/env'
 
+// W0-9 Bucket B — typed body interface replaces `(req.body as any)?.field`.
+// Validator functions (validateBrandName/Url/Description) still do real runtime
+// validation; the interface gates static typing only.
+interface CreateBrandBody { name?: string; url?: string | null; description?: string | null }
+
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   if (req.method !== 'POST') { res.status(405).json({ error: 'method_not_allowed' }); return }
   const auth = req.headers.authorization
   if (!auth?.startsWith('Bearer ')) { res.status(401).json({ error: 'no_auth' }); return }
 
-  const nameV = validateBrandName((req.body as any)?.name)
+  const body: CreateBrandBody = req.body ?? {}
+  const nameV = validateBrandName(body.name)
   if (!nameV.ok) { res.status(422).json({ error: nameV.error }); return }
-  const urlV = validateBrandUrl((req.body as any)?.url ?? null)
+  const urlV = validateBrandUrl(body.url ?? null)
   if (!urlV.ok) { res.status(422).json({ error: urlV.error }); return }
-  const descV = validateDescription((req.body as any)?.description ?? null)
+  const descV = validateDescription(body.description ?? null)
   if (!descV.ok) { res.status(422).json({ error: descV.error }); return }
 
   const supabase = createClient(
@@ -1546,12 +1552,16 @@ function isUuid(s: unknown): s is string {
   return typeof s === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s)
 }
 
+// W0-9 Bucket B — typed body interface.
+interface RenameBrandBody { brand_id?: string; name?: string }
+
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   if (req.method !== 'POST') { res.status(405).json({ error: 'method_not_allowed' }); return }
   const auth = req.headers.authorization
   if (!auth?.startsWith('Bearer ')) { res.status(401).json({ error: 'no_auth' }); return }
-  if (!isUuid((req.body as any)?.brand_id)) { res.status(422).json({ error: 'brand_id_required' }); return }
-  const nameV = validateBrandName((req.body as any)?.name)
+  const body: RenameBrandBody = req.body ?? {}
+  if (!isUuid(body.brand_id)) { res.status(422).json({ error: 'brand_id_required' }); return }
+  const nameV = validateBrandName(body.name)
   if (!nameV.ok) { res.status(422).json({ error: nameV.error }); return }
 
   const supabase = createClient(
@@ -1561,7 +1571,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   )
 
   const { data, error } = await supabase.rpc('rename_brand', {
-    p_brand_id: (req.body as any).brand_id,
+    p_brand_id: body.brand_id,
     p_name: nameV.value,
   })
   if (error) {
@@ -1617,7 +1627,7 @@ test('archives + computes next_brand_id when current archived', async () => {
         }),
       }),
     }),
-  } as any)
+  } as any)  // test-fixture: bun:test convention
   await handler(req, res)
   expect(res.statusCode).toBe(200)
   expect(res.jsonBody?.brand?.id).toBe('b1')
@@ -1644,11 +1654,15 @@ function isUuid(s: unknown): s is string {
   return typeof s === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s)
 }
 
+// W0-9 Bucket B — typed body interface.
+interface ArchiveBrandBody { brand_id?: string }
+
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   if (req.method !== 'POST') { res.status(405).json({ error: 'method_not_allowed' }); return }
   const auth = req.headers.authorization
   if (!auth?.startsWith('Bearer ')) { res.status(401).json({ error: 'no_auth' }); return }
-  if (!isUuid((req.body as any)?.brand_id)) { res.status(422).json({ error: 'brand_id_required' }); return }
+  const body: ArchiveBrandBody = req.body ?? {}
+  if (!isUuid(body.brand_id)) { res.status(422).json({ error: 'brand_id_required' }); return }
 
   const supabase = createClient(
     requireEnv('SUPABASE_URL'),
@@ -1656,7 +1670,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     { global: { headers: { Authorization: auth } } },
   )
 
-  const { data, error } = await supabase.rpc('archive_brand', { p_brand_id: (req.body as any).brand_id })
+  const { data, error } = await supabase.rpc('archive_brand', { p_brand_id: body.brand_id })
   if (error) {
     const status =
       error.message === 'already_archived' ? 409 :
@@ -1669,7 +1683,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   // Compute next active brand for the user (for UI redirect if archived = currently selected)
   const { data: next } = await supabase
     .from('brands').select('id')
-    .eq('user_id', (data as any).user_id)
+    .eq('user_id', (data as any).user_id)  // SDK lacks types — archive_brand RPC codegen not generated
     .is('archived_at', null)
     .order('updated_at', { ascending: false })
     .limit(1)
@@ -1842,7 +1856,7 @@ test('deletes brand + sweeps storage', async () => {
       list: async () => { sweepCalled = true; return { data: [], error: null } },
       remove: async () => ({ error: null }),
     }) },
-  } as any)
+  } as any)  // test-fixture: bun:test convention
   await handler(req, res)
   expect(res.statusCode).toBe(200)
   expect(res.jsonBody?.deleted_brand_name).toBe('Brand Name')
@@ -1873,7 +1887,7 @@ test('returns 401 when auth.getUser() yields no user (delete logic never runs)',
   mockSupabaseAuthedAs(null, {
     auth: { getUser: async () => ({ data: { user: null }, error: { message: 'invalid_jwt' } }) },
     rpc: async () => { rpcCalled = true; return { data: null, error: null } },
-  } as any)
+  } as any)  // test-fixture: bun:test convention
   await handler(req, res)
   expect(res.statusCode).toBe(401)
   expect(res.jsonBody?.error).toBe('unauthorized')
@@ -1899,8 +1913,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   if (req.method !== 'DELETE') { res.status(405).json({ error: 'method_not_allowed' }); return }
   const auth = req.headers.authorization
   if (!auth?.startsWith('Bearer ')) { res.status(401).json({ error: 'no_auth' }); return }
-  const brandId = (req.body as any)?.brand_id
-  const typed = (req.body as any)?.confirm_typed
+  // W0-9 Bucket B — typed body interface.
+  interface DeleteBrandBody { brand_id?: string; confirm_typed?: string }
+  const body: DeleteBrandBody = req.body ?? {}
+  const brandId = body.brand_id
+  const typed = body.confirm_typed
   if (!isUuid(brandId)) { res.status(422).json({ error: 'brand_id_required' }); return }
   if (typeof typed !== 'string' || typed.length === 0) { res.status(422).json({ error: 'confirm_required' }); return }
 
@@ -1933,7 +1950,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   const sweep = await purgeBrandStorageObjects(supabase, brandId, userId)
   res.status(200).json({
     success: true,
-    deleted_brand_name: (data as any).name,
+    deleted_brand_name: (data as { name: string }).name, // SDK lacks types — delete_brand RPC codegen not generated
     storage_sweep: sweep,
   })
 }
@@ -2109,9 +2126,9 @@ beforeEach(() => setActivePinia(createPinia()))
 test('activeBrands filters archived_at IS NULL', () => {
   const store = useBrandsStore()
   store.brands = [
-    { id: '1', archived_at: null } as any,
-    { id: '2', archived_at: '2026-05-01T00:00:00Z' } as any,
-    { id: '3', archived_at: null } as any,
+    { id: '1', archived_at: null } as any,  // test-fixture: bun:test convention
+    { id: '2', archived_at: '2026-05-01T00:00:00Z' } as any,  // test-fixture: bun:test convention
+    { id: '3', archived_at: null } as any,  // test-fixture: bun:test convention
   ]
   expect(store.activeBrands.map(b => b.id)).toEqual(['1', '3'])
 })
@@ -2119,8 +2136,8 @@ test('activeBrands filters archived_at IS NULL', () => {
 test('archivedBrands inverse', () => {
   const store = useBrandsStore()
   store.brands = [
-    { id: '1', archived_at: null } as any,
-    { id: '2', archived_at: '2026-05-01T00:00:00Z' } as any,
+    { id: '1', archived_at: null } as any,  // test-fixture: bun:test convention
+    { id: '2', archived_at: '2026-05-01T00:00:00Z' } as any,  // test-fixture: bun:test convention
   ]
   expect(store.archivedBrands.map(b => b.id)).toEqual(['2'])
 })
@@ -2173,8 +2190,8 @@ Append to `tests/stores/brands.test.ts`:
 test('sortedActive respects sortMode (name-asc)', () => {
   const store = useBrandsStore()
   store.brands = [
-    { id: '1', name: 'Zeta', archived_at: null } as any,
-    { id: '2', name: 'Alpha', archived_at: null } as any,
+    { id: '1', name: 'Zeta', archived_at: null } as any,  // test-fixture: bun:test convention
+    { id: '2', name: 'Alpha', archived_at: null } as any,  // test-fixture: bun:test convention
   ]
   store.sortMode = 'name-asc'
   expect(store.sortedActive.map((b) => b.name)).toEqual(['Alpha', 'Zeta'])
@@ -2216,7 +2233,7 @@ test('createBrand calls /api/brands/create + writes to brands[]', async () => {
   const fetchMock = mock(async () => new Response(JSON.stringify({
     brand: { id: 'new', name: 'Patagonia', archived_at: null, color: 'coral', slug: 'patagonia', url: 'https://patagonia.com', description: null, user_id: 'u', created_at: '', updated_at: '' },
   })))
-  globalThis.fetch = fetchMock as any
+  globalThis.fetch = fetchMock as any  // test-fixture: bun:test convention
   const result = await store.createBrand({ name: 'Patagonia', url: 'https://patagonia.com', description: null })
   expect(result.name).toBe('Patagonia')
   expect(store.brands.find(b => b.id === 'new')).toBeDefined()
@@ -2287,21 +2304,21 @@ Append:
 ```typescript
 test('renameBrand mutates store after success', async () => {
   const store = useBrandsStore()
-  store.brands = [{ id: 'b1', name: 'Old', archived_at: null } as any]
+  store.brands = [{ id: 'b1', name: 'Old', archived_at: null } as any]  // test-fixture: bun:test convention
   globalThis.fetch = mock(async () => new Response(JSON.stringify({
     brand: { id: 'b1', name: 'New', archived_at: null },
-  }))) as any
+  }))) as any  // test-fixture: bun:test convention
   await store.renameBrand('b1', 'New')
   expect(store.brands.find(b => b.id === 'b1')?.name).toBe('New')
 })
 
 test('archiveBrand marks archived_at', async () => {
   const store = useBrandsStore()
-  store.brands = [{ id: 'b1', archived_at: null } as any, { id: 'b2', archived_at: null } as any]
+  store.brands = [{ id: 'b1', archived_at: null } as any, { id: 'b2', archived_at: null } as any]  // test-fixture: bun:test convention
   globalThis.fetch = mock(async () => new Response(JSON.stringify({
     brand: { id: 'b1', archived_at: '2026-05-15T10:00:00Z' },
     next_brand_id: 'b2',
-  }))) as any
+  }))) as any  // test-fixture: bun:test convention
   await store.archiveBrand('b1')
   expect(store.activeBrands).toHaveLength(1)
   expect(store.archivedBrands).toHaveLength(1)
@@ -2309,10 +2326,10 @@ test('archiveBrand marks archived_at', async () => {
 
 test('deleteBrand removes from brands[]', async () => {
   const store = useBrandsStore()
-  store.brands = [{ id: 'b1', name: 'X' } as any]
+  store.brands = [{ id: 'b1', name: 'X' } as any]  // test-fixture: bun:test convention
   globalThis.fetch = mock(async () => new Response(JSON.stringify({
     success: true, deleted_brand_name: 'X',
-  }))) as any
+  }))) as any  // test-fixture: bun:test convention
   await store.deleteBrand('b1', 'X')
   expect(store.brands).toHaveLength(0)
 })
@@ -2399,7 +2416,7 @@ test('restoreBrand clears archived_at on local row', async () => {
   store.brands = [archived]
   globalThis.fetch = mock(async () => new Response(JSON.stringify({
     brand: { ...archived, archived_at: null },
-  }))) as any
+  }))) as any  // test-fixture: bun:test convention
   await store.restoreBrand('b1')
   expect(store.brands[0].archived_at).toBeNull()
   expect(store.activeBrands).toHaveLength(1)
@@ -2449,7 +2466,7 @@ import { useNewBrandFlow } from '../../src/composables/brands/use-new-brand-flow
 // reassigning `store.createBrand = mock(...)` inside a test body
 // (B-MED17 — inline reassignment violates the mock.module discipline used
 // elsewhere in this cluster's tests).
-const createBrandMock = mock(async () => ({ id: 'new-brand', name: 'Test' } as any))
+const createBrandMock = mock(async () => ({ id: 'new-brand', name: 'Test' } as any))  // test-fixture: bun:test convention
 mock.module('@/stores/brands', () => ({
   useBrandsStore: () => ({
     createBrand: createBrandMock,
@@ -2759,7 +2776,7 @@ test('renders brand logo + name + meta', () => {
         archived_at: null, description: null,
         user_id: 'u', created_at: '', updated_at: '',
         colors: null, fonts: null, logo_url: null, voice: null, industry: null,
-      } as any,
+      } as any,  // test-fixture: bun:test convention
       meta: '9 canvases · archived Mar 11, 2026',
     },
   })
@@ -2947,7 +2964,7 @@ import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import RenameBrandModal from '../../../src/components/brand/RenameBrandModal.vue'
 
-const brand = { id: 'b1', name: 'Nike', slug: 'nike' } as any
+const brand = { id: 'b1', name: 'Nike', slug: 'nike' } as any  // test-fixture: bun:test convention
 
 test('Save disabled until name changed AND non-empty', async () => {
   setActivePinia(createPinia())
@@ -3092,7 +3109,7 @@ import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import ArchiveBrandModal from '../../../src/components/brand/ArchiveBrandModal.vue'
 
-const brand = { id: 'b1', name: 'Glossier', color: 'sand' } as any
+const brand = { id: 'b1', name: 'Glossier', color: 'sand' } as any  // test-fixture: bun:test convention
 
 test('renders headline with brand name', () => {
   setActivePinia(createPinia())
@@ -3219,7 +3236,7 @@ import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import DeleteBrandModal from '../../../src/components/brand/DeleteBrandModal.vue'
 
-const brand = { id: 'b1', name: 'Warby Parker', color: 'sand', slug: 'warby-parker' } as any
+const brand = { id: 'b1', name: 'Warby Parker', color: 'sand', slug: 'warby-parker' } as any  // test-fixture: bun:test convention
 
 test('CTA disabled until typed-confirm matches exactly (case-sensitive)', async () => {
   setActivePinia(createPinia())
@@ -3285,11 +3302,11 @@ function safeCount(getter: () => number | undefined): number | string {
   try { return getter() ?? '—' } catch { return '—' }
 }
 const lossRows = computed(() => [
-  { icon: 'layout-template', label: 'Canvases',                                            qty: safeCount(() => (window as any).__kova_canvases_by_brand?.(props.brand.id)?.length) },
-  { icon: 'history',         label: 'Snapshots',                                           qty: safeCount(() => (window as any).__kova_snapshots_by_brand?.(props.brand.id)?.length) },
+  { icon: 'layout-template', label: 'Canvases',                                            qty: safeCount(() => (window as any).__kova_canvases_by_brand?.(props.brand.id)?.length) },  // W0-9 Bucket D: cross-cluster ambient window global
+  { icon: 'history',         label: 'Snapshots',                                           qty: safeCount(() => (window as any).__kova_snapshots_by_brand?.(props.brand.id)?.length) },  // W0-9 Bucket D: cross-cluster ambient window global
   { icon: 'palette',         label: 'Brand-kit data — colors, fonts, snippets, memories', qty: 'all' as const },
-  { icon: 'book-open',       label: 'Knowledge-base sources',                              qty: safeCount(() => (window as any).__kova_kb_by_brand?.(props.brand.id)?.length) },
-  { icon: 'shopping-bag',    label: 'Shopify connection (token revoked)',                  qty: safeCount(() => (window as any).__kova_shopify_has?.(props.brand.id) ? 1 : 0) },
+  { icon: 'book-open',       label: 'Knowledge-base sources',                              qty: safeCount(() => (window as any).__kova_kb_by_brand?.(props.brand.id)?.length) },  // W0-9 Bucket D: cross-cluster ambient window global
+  { icon: 'shopping-bag',    label: 'Shopify connection (token revoked)',                  qty: safeCount(() => (window as any).__kova_shopify_has?.(props.brand.id) ? 1 : 0) },  // W0-9 Bucket D: cross-cluster ambient window global
 ])
 
 async function onConfirm(): Promise<void> {
@@ -3528,7 +3545,7 @@ import { test, expect } from 'bun:test'
 import { mount } from '@vue/test-utils'
 import BrandCard from '../../../src/components/brand/BrandCard.vue'
 
-const brand = { id: 'b1', name: 'Nike', color: 'coral', slug: 'nike', url: 'nike.com', archived_at: null } as any
+const brand = { id: 'b1', name: 'Nike', color: 'coral', slug: 'nike', url: 'nike.com', archived_at: null } as any  // test-fixture: bun:test convention
 
 test('renders brand metadata', () => {
   const wrapper = mount(BrandCard, { props: { brand } })
@@ -3592,7 +3609,7 @@ const emit = defineEmits<{
 
 function shopifyPill(): { tone: 'ok' | 'warn' | 'outline'; label: string } {
   // Real wiring (Task 35): reads useShopifyConnectionsStore. Stopgap = 'outline'.
-  const state = (window as any).__kova_shopify_state?.(props.brand.id) ?? 'none'
+  const state = (window as any).__kova_shopify_state?.(props.brand.id) ?? 'none'  // W0-9 Bucket D: cross-cluster ambient window global
   if (state === 'connected') return { tone: 'ok', label: 'Shopify connected' }
   if (state === 'expired')   return { tone: 'warn', label: 'Shopify · reconnect' }
   return { tone: 'outline', label: 'Shopify · not connected' }
@@ -3643,6 +3660,7 @@ const archived = props.brand.archived_at !== null
     <div class="grid grid-cols-2 gap-2.5 border-t border-[var(--line-2)] pt-2.5 text-[11.5px] text-[var(--ink-3)]">
       <div class="flex flex-col gap-0.5">
         <span class="text-[9.5px] tracking-[0.1em]">Canvases</span>
+        <!-- W0-9 Bucket D: cross-cluster ambient window global -->
         <span class="text-[12px] font-medium text-[var(--ink)]">{{ (window as any).__kova_canvases_by_brand?.(brand.id)?.length ?? '—' }}</span>
       </div>
       <div class="flex flex-col gap-0.5">
@@ -3745,8 +3763,8 @@ test('renders 3-col grid when brands present', async () => {
   setActivePinia(createPinia())
   const store = useBrandsStore()
   store.brands = [
-    { id: 'b1', name: 'A', color: 'coral', archived_at: null, slug: 'a', url: 'a.com' } as any,
-    { id: 'b2', name: 'B', color: 'sage', archived_at: null, slug: 'b', url: 'b.com' } as any,
+    { id: 'b1', name: 'A', color: 'coral', archived_at: null, slug: 'a', url: 'a.com' } as any,  // test-fixture: bun:test convention
+    { id: 'b2', name: 'B', color: 'sage', archived_at: null, slug: 'b', url: 'b.com' } as any,  // test-fixture: bun:test convention
   ]
   const wrapper = mount(BrandPickerView, { global: { stubs: ['router-link', 'router-view'] } })
   await flushPromises()
@@ -3758,8 +3776,8 @@ test('search input filters by name', async () => {
   setActivePinia(createPinia())
   const store = useBrandsStore()
   store.brands = [
-    { id: 'b1', name: 'Nike', color: 'coral', archived_at: null, slug: 'nike', url: 'nike.com' } as any,
-    { id: 'b2', name: 'Allbirds', color: 'sage', archived_at: null, slug: 'allbirds', url: 'allbirds.com' } as any,
+    { id: 'b1', name: 'Nike', color: 'coral', archived_at: null, slug: 'nike', url: 'nike.com' } as any,  // test-fixture: bun:test convention
+    { id: 'b2', name: 'Allbirds', color: 'sage', archived_at: null, slug: 'allbirds', url: 'allbirds.com' } as any,  // test-fixture: bun:test convention
   ]
   const wrapper = mount(BrandPickerView, { global: { stubs: ['router-link', 'router-view'] } })
   await wrapper.find('input[data-test="search"]').setValue('nike')
