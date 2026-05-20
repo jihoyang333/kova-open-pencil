@@ -1,6 +1,23 @@
 # Cluster 11 — Phase 1 Audit (KOVA_AUDIT.md)
 
-**Status:** DRAFT, awaiting founder approval. Created 2026-05-20 by W6 REDO agent.
+**Status:** ✅ APPROVED 2026-05-20 by founder Jiho. Phase 2 cleared to begin.
+**Founder resolution stamp 2026-05-20:**
+- R-1..R-13 — APPROVED block (all defaults per §10 default-recommendation column).
+- Q-A — A2 (keep M1 aliases; drop `--color-component` purple; sweep refs in follow-up PR).
+- Q-B — B1 (PRD verbatim + `--shadow-elev-2`).
+- Q-C — C1 (build `KovaSegmented.vue` now; diff against 07b inspector).
+- Q-D — D1 (lift extracted primitives into canonical `kova-hifi.css`).
+- Q-E — E1 (Reka 2.9.0 already installed, verified 2026-05-20; context7-check per wrapper SFC).
+- Q-F — F1 (continue on `app/cluster-11-redo`).
+- Q-G — G1 (Playwright clip-region against screen hi-fi).
+- Q-H — confirm (EmailShell ships; send deferred to Resend pre-launch).
+- Q-I — confirm (idempotency `request_hash` JSDoc + CI grep gate later).
+
+Original audit-gate draft below.
+
+---
+
+**Status (draft):** Phase 1 gate doc. Created 2026-05-20 by W6 REDO agent.
 **Authority:** `docs/execution-phase/claude-design-files/IMPLEMENTATION_PROMPT.md` §3 — `KOVA_AUDIT.md` is the audit-gate output. Companion: `cluster-11-tokens-used.md` (per-property visual values).
 **Outcome:** no Vue / TS code until founder approves §1.6 (open questions) + R-1 through R-13 in tokens-used.md.
 

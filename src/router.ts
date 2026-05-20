@@ -17,6 +17,7 @@ const BrandAssetsView = () => import('./views/dashboard/BrandAssetsView.vue')
 const BrandSettingsView = () => import('./views/dashboard/BrandSettingsView.vue')
 const SettingsBrandIntegrationsView = () => import('./views/dashboard/SettingsBrandIntegrationsView.vue')
 const SettingsView = () => import('./views/dashboard/SettingsView.vue')
+const TokensDebugView = () => import('./views/dev/TokensDebugView.vue')
 
 interface AuthState {
   isAuthenticated: boolean
@@ -124,6 +125,11 @@ const routes = [
   {
     path: '/demo',
     component: EditorView,
+    meta: { demo: true, requiresAuth: false, publicOnly: false }
+  },
+  {
+    path: '/dev/tokens',
+    component: TokensDebugView,
     meta: { demo: true, requiresAuth: false, publicOnly: false }
   }
 ]

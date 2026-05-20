@@ -1,6 +1,14 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 
+/* Cluster 11 W6 REDO 2026-05-20 — load canonical design system globally.
+   Provides every :root short-name token (--page / --ink / --accent / ... +
+   R-2..R-13 additions) AND every lifted primitive class (.toast / .dlg /
+   .popover / .menu / .tooltip / .skeleton / .empty-pane / .err-*) into
+   the app stylesheet. Single source of truth shared with the in-repo
+   hi-fi mockups. */
+@import '../design-system/canonical/kova-hifi.css';
+
 @utility scrollbar-none {
   -ms-overflow-style: none;
   scrollbar-width: none;
@@ -29,8 +37,10 @@
 }
 
 @theme {
-  /* M1-era ad-hoc tokens — preserved for back-compat with existing components
-     (panel, canvas, border, hover, surface, muted, input, component). */
+  /* M1-era ad-hoc tokens — preserved for back-compat with existing
+     OpenPencil-era components (panel, canvas, border, hover, surface,
+     muted, input). Sweep references in follow-up PR. --color-component
+     purple removed 2026-05-20 per Q-A A2 (violates Ban 3). */
   --color-panel: #1a1a1d;
   --color-canvas: #242428;
   --color-border: #2c2c30;
@@ -39,7 +49,6 @@
   --color-surface: #ebebee;
   --color-muted: #a8a8ad;
   --color-input: #26262b;
-  --color-component: #9747ff;
 
   /* Cluster 11 — canonical kova-hifi.css :root tokens. Short names per
      TOKEN_CANONICAL.md §1. New components reference these directly via
@@ -58,6 +67,23 @@
   --color-accent-ai: #a9c4ff;
   /* Alias: bg-input-hi maps to fill-2 (input active / segmented active). */
   --color-input-hi: #303035;
+
+  /* Cluster 11 R-1 — missing color aliases. These exist in canonical
+     kova-hifi.css :root as short names; mirror here with --color-* prefix
+     so Tailwind generates bg-rail / text-warn / border-warn-edge utility
+     classes. */
+  --color-rail: #1a1a1d;
+  --color-accent-2: #2a4d80;
+  --color-warn: #a8a8ad;
+  --color-warn-soft: #26262b;
+  --color-warn-edge: #2c2c30;
+  --color-ok: #a8a8ad;
+  --color-ok-soft: #26262b;
+  --color-review: #a8a8ad;
+  --color-review-soft: #26262b;
+  --color-ink-on-primary: #fff;
+  --color-accent-hover: #2563eb;
+  --color-modal-backdrop: rgba(0, 0, 0, 0.72);
 
   /* Positional offsets — design.md §3.11–§3.14, mirrored from
      main-main-kova-scope/design-system/kova-hifi.css. Pre-populated

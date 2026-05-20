@@ -122,6 +122,24 @@ Named tokens for chrome positioning. Added 2026-05-20 to pre-populate the no-raw
 
 > **Note:** `--toolbar-bottom` and `--zoom-hud-bottom` are equal (`22px`) by design — they are visually aligned. Maintain both names so future drift in one doesn't quietly break alignment.
 
+### Cluster 11 additions (W6 REDO 2026-05-20)
+
+Founder-approved R-1 through R-13 land here. Full table + per-row source citation lives in `docs/execution-phase/cluster-audits/cluster-11-tokens-used.md`. Summary:
+
+- **R-2** modal backdrop: `--modal-backdrop: rgba(0, 0, 0, 0.72)`
+- **R-3** focus ring (modal-form): `--ring-focus-ink: 0 0 0 3px rgba(235,235,238,0.05)` (canonical `.input:focus` border-only pattern unchanged)
+- **R-4** hex extracted from canonical `.btn` variants: `--ink-on-primary: #fff`, `--accent-hover: #2563eb`
+- **R-5 / R-6** primitive spacing + sizing tokens (per-primitive `--toast-*`, `--modal-*`, `--popover-*`, `--menu-*`, `--tooltip-*`, `--empty-*`, `--err-*`)
+- **R-7** density tokens (`--h-control / --h-control-sm / --h-control-xs / --h-tool / --h-icon-btn / --h-topbar / --h-tabs`) — values per design.md §2
+- **R-8** typography scale tokens (`--t-overline-* / --t-label-* / --t-body-* / --t-body-strong-* / --t-title-sm-* / --t-title-md-* / --t-meta-*`) + Cluster 11 additions (`--t-input-* / --t-modal-title-* / --t-action-12-* / --t-microcopy-* / --t-sublabel-*`) + line-height tokens (`--lh-1 / --lh-tight / --lh-base / --lh-loose / --lh-loosest`)
+- **R-9** radii tokens (`--r-xs / --r-sm / --r-md / --r-lg / --r-xl / --r-2xl / --r-pill`) — values per design.md §1.4
+- **R-10** floating-overlay radius: `--r-overlay: 8px` (new — popover, menu, empty-pane panel outer)
+- **R-11** shadow scale: `--shadow-elev-1 / -2 / -2-menu / -3 / -page` — design.md §1.6 updated
+- **R-12** motion: `--motion-fast / -normal / -slow / -skeleton / -toast-enter / -toast-exit / --ease-out / --ease-in-out / --ease-in` — design.md §1.7 updated
+- **R-13** z-scale: `--z-base / --z-popover / --z-dropdown / --z-modal-backdrop / --z-modal / --z-toast` — design.md §1.8 added
+
+All R-* tokens land in `design-system/canonical/kova-hifi.css :root` AND `src/app.css @theme` (color aliases only for Tailwind utility-class generation). Vue SFCs reference via `var(--*)`. Lint rule (`scripts/lint/no-raw-visual-values.ts`) blocks raw hex / raw px outside the design-system canonical files.
+
 ---
 
 ## 3. Reconciliation history

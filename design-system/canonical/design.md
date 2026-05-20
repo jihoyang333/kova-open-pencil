@@ -86,10 +86,16 @@ Scale: `2, 4, 6, 8, 10, 12, 14, 16, 20, 24, 32`.
 | `--r-md`      | `5px`  | Inputs, fill rows, tab pill, icon buttons.  |
 | `--r-lg`      | `6px`  | Toolbar tools, layer rows, frame edge.      |
 | `--r-xl`      | `7px`  | Page-row pill, file-icon tile.              |
-| `--r-2xl`     | `10px` | Toolbar shell, zoom HUD.                    |
+| `--r-2xl`     | `10px` | Toolbar shell, zoom HUD, **modal shell**.   |
 | `--r-pill`    | `999px`| Avatars, FABs.                              |
 
-Cards, panels, and full-bleed surfaces are **not rounded**. Edges are flat, divided by hairlines.
+**Added 2026-05-20 (Cluster 11 W6 REDO):**
+
+| Token | Radius | Use |
+|---|---|---|
+| `--r-overlay` | `8px` | Popover, DropdownMenu, empty-pane panel outer, scene-card outer |
+
+Cards, panels, and full-bleed surfaces are **not rounded**. Edges are flat, divided by hairlines. Floating overlays use `--r-overlay` (8px) or `--r-2xl` (10px for modal).
 
 ### 1.5 Borders / hairlines
 
@@ -102,16 +108,48 @@ Never use 2px borders for chrome. The accent ring on a selected frame is the **o
 
 ### 1.6 Elevation
 
-Two levels, used sparingly:
+**Updated 2026-05-20 (Cluster 11 W6 REDO):** elevation tokens committed. Hi-fi `.toast / .dlg / .popover / .menu` each use a distinct stack — codified here.
 
-- **Floating** (toolbar, zoom HUD): `0 8px 24px -6px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.04) inset`.
-- **Page** (the screen frame itself in mockups): `0 30px 80px -20px rgba(0,0,0,0.8)`.
+| Token | Value | Use |
+|---|---|---|
+| `--shadow-elev-1` | `0 8px 24px -6px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.04) inset` | Toast, toolbar, zoom HUD (canonical "Floating") |
+| `--shadow-elev-2` | `0 16px 60px -20px rgba(0,0,0,0.7)` | Popover, tooltip |
+| `--shadow-elev-2-menu` | `0 24px 60px rgba(0,0,0,0.55), 0 1px 0 rgba(255,255,255,0.03)` | DropdownMenu |
+| `--shadow-elev-3` | `0 24px 80px -20px rgba(0,0,0,0.7), 0 1px 0 rgba(255,255,255,0.03) inset` | Modal |
+| `--shadow-elev-page` | `0 30px 80px -20px rgba(0,0,0,0.8)` | Hi-fi mockup chrome (the screen frame) |
 
-No drop shadows on inputs, cards, or rows. If something needs to feel raised, raise its background by one neutral step instead.
+No drop shadows on inputs, cards, or rows (Ban 7). Elevation only on floating elements.
 
 ### 1.7 Motion
 
-We have not committed to motion tokens yet. Defer until a surface needs them. Until then: no animations on chrome.
+**Updated 2026-05-20 (Cluster 11 W6 REDO):** motion scale committed. Tokens in `kova-hifi.css :root`:
+
+| Token | Value | Use |
+|---|---|---|
+| `--motion-fast` | `100ms` | Button + input border / background transitions |
+| `--motion-normal` | `200ms` | Reka entry / exit (modal, popover, menu) |
+| `--motion-slow` | `300ms` | Reserved for larger entries |
+| `--motion-skeleton` | `1400ms` | Skeleton shimmer (the ONLY gradient in the system — Ban 5 exception) |
+| `--motion-toast-enter` | `200ms` | Toast pop in |
+| `--motion-toast-exit` | `150ms` | Toast fade out |
+| `--ease-out` | `cubic-bezier(0.2, 0, 0, 1)` | default entries |
+| `--ease-in-out` | `ease-in-out` | skeleton shimmer |
+| `--ease-in` | `cubic-bezier(0.4, 0, 1, 1)` | exits |
+
+`prefers-reduced-motion: reduce` → skeleton falls back to static `var(--fill-2)`; no animation. Other motion-bearing primitives respect the media query (Vue composable `useReducedMotion()`).
+
+### 1.8 Z-scale
+
+**Added 2026-05-20 (Cluster 11 W6 REDO).** Single layered scale across the whole app. No ad-hoc `z-index` in components.
+
+| Token | Value | Layer |
+|---|---|---|
+| `--z-base` | `0` | normal flow |
+| `--z-popover` | `10` | Popover (Reka Popover, brand switcher, avatar dropdown) |
+| `--z-dropdown` | `12` | DropdownMenu + Tooltip |
+| `--z-modal-backdrop` | `19` | Modal backdrop |
+| `--z-modal` | `20` | Modal content (Reka Dialog content) |
+| `--z-toast` | `30` | Toast stack (always above modal per PRD 11 §3.1) |
 
 ---
 
