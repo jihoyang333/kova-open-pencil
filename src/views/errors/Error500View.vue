@@ -1,9 +1,21 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 import KovaButton from '@/components/ui/KovaButton.vue'
 import KovaIcon from '@/components/ui/KovaIcon.vue'
 
 const router = useRouter()
+const auth = useAuthStore()
+
+function goHome() {
+  if (!auth.isAuthenticated) {
+    void router.push('/login')
+  } else if (!auth.isOnboarded) {
+    void router.push('/onboarding')
+  } else {
+    void router.push('/dashboard')
+  }
+}
 </script>
 
 <template>
@@ -24,8 +36,8 @@ const router = useRouter()
         <KovaButton variant="primary" @click="router.go(0)">
           Try again
         </KovaButton>
-        <KovaButton variant="text" @click="router.push('/dashboard')">
-          Go to dashboard
+        <KovaButton variant="text" @click="goHome">
+          Go home
         </KovaButton>
       </div>
     </div>

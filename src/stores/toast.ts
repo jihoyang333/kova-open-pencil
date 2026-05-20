@@ -13,7 +13,10 @@ import type { Toast, NewToast } from '@/types/toast'
 const MAX_VISIBLE = 5
 const DEFAULT_DURATION_MS = 5000
 
-const STICKY_VARIANTS = new Set(['error', 'action', 'progress'])
+// Founder override 2026-05-20: errors auto-dismiss too. Only variants that
+// require an explicit user gesture (CTA click for action, completion for
+// progress) stay sticky.
+const STICKY_VARIANTS = new Set(['action', 'progress'])
 
 export const useToastStore = defineStore('toast', () => {
   const visible = ref<Toast[]>([])

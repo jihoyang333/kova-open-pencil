@@ -6,6 +6,18 @@ import KovaIcon from '@/components/ui/KovaIcon.vue'
 
 const router = useRouter()
 const auth = useAuthStore()
+
+// Smart "go home" — respects onboarding + auth state instead of blindly
+// pushing /dashboard (which would bounce an unonboarded user to /onboarding).
+function goHome() {
+  if (!auth.isAuthenticated) {
+    void router.push('/login')
+  } else if (!auth.isOnboarded) {
+    void router.push('/onboarding')
+  } else {
+    void router.push('/dashboard')
+  }
+}
 </script>
 
 <template>
@@ -25,8 +37,8 @@ const auth = useAuthStore()
         It may be archived or you don't have access.
       </p>
       <div class="cta-row mt-3 flex items-center gap-2">
-        <KovaButton variant="primary" @click="router.push('/dashboard')">
-          Go to dashboard
+        <KovaButton variant="primary" @click="goHome">
+          Go home
         </KovaButton>
         <KovaButton variant="text" @click="auth.signOut()">
           Sign out
