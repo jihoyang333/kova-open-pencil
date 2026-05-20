@@ -2235,14 +2235,16 @@ git commit -am "feat(cluster-11): KovaPopover wraps Reka Popover"
 
 ---
 
-### Task 4.3: `<KovaMenu>` + `<KovaTooltip>`
+### Task 4.3a: `<KovaMenu>` (Reka DropdownMenu wrapper)
 
 **Files:**
-- Create: `kova-open-pencil-1/src/components/ui/KovaMenu.vue` + `KovaTooltip.vue`
+- Create: `kova-open-pencil-1/src/components/ui/KovaMenu.vue`
 - Create: `kova-open-pencil-1/src/types/menu.ts`
-- Test: each
+- Test: `kova-open-pencil-1/tests/unit/components/KovaMenu.test.ts`
 
-- [ ] **Step 1: Types + tests + impl**
+Split per C-LOW-11.7: atomic primitives = one task each (Plan-authoring convention). Previously T4.3 bundled `<KovaMenu>` + `<KovaTooltip>` into a single task.
+
+- [ ] **Step 1: Types**
 
 ```typescript
 // src/types/menu.ts
@@ -2260,6 +2262,8 @@ export interface MenuSeparator { type: 'separator' }
 export interface MenuSection   { type: 'section'; label: string }
 export type MenuEntry = MenuItem | MenuSeparator | MenuSection
 ```
+
+- [ ] **Step 2: Tests + impl**
 
 ```vue
 <!-- src/components/ui/KovaMenu.vue -->
@@ -2295,6 +2299,24 @@ function isSec(e: MenuEntry): e is { type: 'section'; label: string } { return '
 </template>
 ```
 
+- [ ] **Step 3: Pass + commit**
+
+```bash
+git commit -am "feat(cluster-11): KovaMenu wrapper (Reka DropdownMenu — items, sections, separators, destructive flag)"
+```
+
+---
+
+### Task 4.3b: `<KovaTooltip>` (Reka Tooltip wrapper)
+
+**Files:**
+- Create: `kova-open-pencil-1/src/components/ui/KovaTooltip.vue`
+- Test: `kova-open-pencil-1/tests/unit/components/KovaTooltip.test.ts`
+
+Split per C-LOW-11.7: atomic primitives = one task each. See Task 4.3a header.
+
+- [ ] **Step 1: Tests + impl**
+
 ```vue
 <!-- src/components/ui/KovaTooltip.vue -->
 <script setup lang="ts">
@@ -2317,7 +2339,7 @@ defineProps<{ content: string; placement?: 'top' | 'bottom' | 'left' | 'right'; 
 - [ ] **Step 2: Pass + commit**
 
 ```bash
-git commit -am "feat(cluster-11): KovaMenu + KovaTooltip wrappers (Reka DropdownMenu / Tooltip)"
+git commit -am "feat(cluster-11): KovaTooltip wrapper (Reka Tooltip — content, placement, delay)"
 ```
 
 ---
