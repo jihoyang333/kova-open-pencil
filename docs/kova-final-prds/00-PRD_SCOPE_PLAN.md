@@ -773,6 +773,73 @@ If a wave-2 agent ships its piece out of order, the route 404s in CI until the d
 
 ---
 
+### 6.6 Task-compression convention (W0-11 — 2026-05-20)
+
+Resolves Pattern-1 (CONSOLIDATED-TRIAGE.md L474). Every implementation plan
+task body that ships 4+ distinct components MUST split into per-component
+sub-tasks. Each sub-task carries its own:
+
+- File list (no shared "Files:" header at parent task)
+- Step 1 RED test scenario
+- Step 2 GREEN implementation
+- Step 3 commit message
+
+**Rationale:** per-component TDD pressure catches integration bugs at commit
+time; bundled tasks ship N components in one commit and lose RED→GREEN→COMMIT
+discipline. Founder ratification 2026-05-20 per "fix now over fix later" +
+CLAUDE.md "bias toward overbuilding".
+
+**Affected plans (validated W5a):**
+- Plan 04 — Task 11.4–11.8 split (C-LOW04.5)
+- Plan 05 — Task 21–27 per-tab split (C-MED16)
+- Plan 07b — Task 4.5–4.11b per-overlay split (C-MED-07b.1)
+- Plan 08 — Task 2.6a–e per-shortcut-category split (C-MED21)
+- Plan 11 — Task 4.3a + Task 4.3b per-primitive split (C-LOW-11.7)
+
+New plan authoring uses this convention from start; existing plans audited
+per cluster fix-dispatch.
+
+**Enforcement:** Plan 11 CI grep at code-review time. No automated gate
+(structural pattern, not text pattern) — reviewer judgment per founder lock.
+
+---
+
+### 6.7 Numerical caps appendix (W0-15 — 2026-05-20)
+
+Resolves Pattern-7 (CONSOLIDATED-TRIAGE.md L478). Single source of truth for
+every numerical cap that appears in multiple PRDs. PRDs that quote a cap MUST
+cite this table; drift in any PRD bullet fails CI gate (Plan 11 Task 11.x).
+
+| Cap | Value | Founder lock date | Canonical citation |
+|-----|-------|-------------------|--------------------|
+| Tone snippets per brand | 10 | 2026-05-15 | PRD 10 §3.2 + §12.13 |
+| Brand memories per brand | 50 | 2026-05-15 | PRD 10 §3.2 + §12.13 |
+| Product chips per chat message | 20 | 2026-05-15 | PRD 10 §3.2 + §12.13 |
+| Chat tabs per canvas | 20 | 2026-05-15 | PRD 10 §3.2 + §12.13 |
+| Recent colors (FIFO ring) | 12 | 2026-05-17 | PRD 12 §2.1 + §6.2.2 |
+| Sidebar sections | 6 | 2026-05-17 | PRD 04 §1.1–§3.1 |
+| Avatar max size (MB) | 5 | 2026-05-17 | PRD 04 §13.2.1 D-7 |
+| Brand kit Steps wizard | 4 | 2026-04-25 | PRD 02 §6.1 |
+| Right-panel tabs | 2 (Design + AI) | 2026-05-17 | PRD 06 §12.13 |
+| Gradient types | 4 (Linear / Radial / Angular / Diamond) | 2026-05-17 | PRD 07b §3.6 + §12.5 |
+| Resend templates at MVP | 4 | 2026-05-17 | PRD 04 §13.2.1 D-12 |
+| Empty-canvas right-click menu items | 12 (Figma full) | 2026-05-17 | PRD 08 §2.2 |
+| SECURITY DEFINER RPCs Plan 03 | 7 | 2026-05-17 (B12 reversal) | PRD 03 §5.2 |
+| Plan_status enum values | 5 (`active` \| `past_due` \| `cancelled` \| `incomplete` \| `trialing`) | 2026-05-17 | PRD 04 §5.1 |
+
+**Drift gate (procedural):** when any cap changes, founder edit lands in this
+§6.7 table FIRST. Then every PRD citing that cap updates to match. CI grep
+(Plan 11 Task 11.x) flags any PRD numerical that drifts from this table's
+row.
+
+**Why a single SoT:** the audit found the same cap quoted in 2–4 places
+across PRDs/Plans. A founder edit in PRD 10 doesn't automatically propagate
+to PRD 12 if both reference "tone snippets per brand". Centralizing the
+canonical value here turns drift into a CI gate failure instead of a
+silent inconsistency.
+
+---
+
 ## 7. Open questions per cluster
 
 **None pending at scope-plan time.** All 25 §4 founder Qs resolved 2026-04-25. Q-decisions baked into each cluster's scope.
