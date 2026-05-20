@@ -8,13 +8,26 @@
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
-const URL_ENV = 'VITE_SUPABASE_URL'
+// Server-only module: canonical env name is SUPABASE_URL. VITE_SUPABASE_URL is
+// kept as a back-compat fallback because the Vite-built browser bundle already
+// reads it; until every env file standardizes on the server-only name, this
+// avoids breaking local-dev for contributors who only have the VITE_ var.
+// The URL itself is non-secret (it's the public Supabase project hostname).
 const KEY_ENV = 'SUPABASE_SERVICE_ROLE_KEY'
 
-function readEnv(name: string): string {
-  const value = process.env[name]
+function readUrl(): string {
+  const value =
+    process.env['SUPABASE_URL'] ?? process.env['VITE_SUPABASE_URL']
   if (!value || value.length === 0) {
-    throw new Error(`Missing required env: ${name}`)
+    throw new Error('Missing required env: SUPABASE_URL (or VITE_SUPABASE_URL)')
+  }
+  return value
+}
+
+function readKey(): string {
+  const value = process.env[KEY_ENV]
+  if (!value || value.length === 0) {
+    throw new Error(`Missing required env: ${KEY_ENV}`)
   }
   return value
 }
@@ -23,7 +36,7 @@ let cached: SupabaseClient | null = null
 
 export function getSupabaseAdmin(): SupabaseClient {
   if (!cached) {
-    cached = createClient(readEnv(URL_ENV), readEnv(KEY_ENV), {
+    cached = createClient(readUrl(), readKey(), {
       auth: { autoRefreshToken: false, persistSession: false },
     })
   }

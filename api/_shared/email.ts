@@ -9,12 +9,26 @@
 import { loadEnvOrSkip } from './env'
 import type { EmailPayload, EmailSendResult } from './types'
 
+// Until pre-launch §11 lands real Resend wiring, the function always returns
+// stub-mode regardless of RESEND_API_KEY. Setting the key by itself does not
+// flip live-mode on — both the key AND the live branch must be present. This
+// avoids a partial-config trap where a dev sets the key in `.env.local` and
+// every email send 500s. When pre-launch §11 wires Resend, replace this
+// stub-only path with the gated live branch below.
 export async function sendEmail(payload: EmailPayload): Promise<EmailSendResult> {
   void payload
   const apiKey = loadEnvOrSkip('RESEND_API_KEY')
   if (!apiKey) {
     return { id: `stub_${crypto.randomUUID()}`, skipped: true }
   }
-  // TODO(pre-launch §11): import { Resend } from 'resend' + resend.emails.send(payload)
-  throw new Error('Resend live mode not yet wired — stub fallback only')
+  // TODO(pre-launch §11): replace this `console.warn` + stub return with:
+  //   const { Resend } = await import('resend')
+  //   const client = new Resend(apiKey)
+  //   const { data, error } = await client.emails.send(payload)
+  //   if (error) throw new Error(error.message)
+  //   return { id: data.id, skipped: false }
+  console.warn(
+    '[sendEmail] RESEND_API_KEY is set but live mode is not yet wired — falling back to stub. Pre-launch §11 must wire Resend before production use.',
+  )
+  return { id: `stub_${crypto.randomUUID()}`, skipped: true }
 }

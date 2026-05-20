@@ -20,12 +20,18 @@ interface Props {
 const props = defineProps<Props>()
 
 // C-MED-11.3 — never hardcode prod host. Fallback keeps prod builds working
-// without env wiring; preview / dev / test override via PUBLIC_APP_URL.
+// without env wiring; preview / dev / test override via VITE_PUBLIC_APP_URL.
+// Uses import.meta.env (Vite build-time injection, browser-safe) instead of
+// process.env so the SFC can be statically imported from src/ without
+// crashing the browser bundle if the bundler ever hoists it client-side.
 const PUBLIC_APP_URL_FALLBACK = 'https://kova.app'
+const PUBLIC_APP_URL =
+  (import.meta.env['VITE_PUBLIC_APP_URL'] as string | undefined) ??
+  PUBLIC_APP_URL_FALLBACK
 const wordmark = computed(
   () =>
     props.wordmarkUrl ??
-    `${process.env['PUBLIC_APP_URL'] ?? PUBLIC_APP_URL_FALLBACK}/email/wordmark-light@2x.png`,
+    `${PUBLIC_APP_URL}/email/wordmark-light@2x.png`,
 )
 </script>
 

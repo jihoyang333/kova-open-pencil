@@ -17,8 +17,8 @@ export const useConfirmStore = defineStore('confirm', () => {
 
   async function confirm(opts: ConfirmOptions): Promise<boolean> {
     if (stack.value.length >= STACK_MAX) {
-      const innermost = stack.value.pop()!
-      innermost.resolve(false)
+      const innermost = stack.value.pop()
+      if (innermost) innermost.resolve(false)
     }
     return new Promise<boolean>((resolve) => {
       stack.value.push({ ...opts, id: crypto.randomUUID(), resolve })
