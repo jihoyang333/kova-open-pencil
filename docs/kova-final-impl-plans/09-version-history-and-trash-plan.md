@@ -1552,21 +1552,57 @@ describe('useCanvasEditLock', () => {
     a.lock(); expect(b.isLocked.value).toBe(true)
     b.unlock(); expect(a.isLocked.value).toBe(false)
   })
+
+  it('W4 C-MED25: double-lock attempt warns + Sentry-captures (single-owner semantics)', () => {
+    const warnSpy = mock.fn()
+    const captureSpy = mock.fn()
+    mock.module('@sentry/browser', () => ({ captureMessage: captureSpy }))
+    const origWarn = console.warn
+    console.warn = warnSpy
+
+    const { lock, unlock, isLocked } = useCanvasEditLock()
+    lock()
+    expect(isLocked.value).toBe(true)
+    lock()  // second lock — contention
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('already locked'))
+    expect(captureSpy).toHaveBeenCalled()
+    unlock()
+    expect(isLocked.value).toBe(false)  // single unlock releases; not ref-counted
+
+    console.warn = origWarn
+  })
 })
 ```
 
-- [ ] **Step 2: Edit-lock composable (module-level state — singleton)**
+- [ ] **Step 2: Edit-lock composable (module-level state — singleton, single-owner)**
 
 ```typescript
 // kova-open-pencil-1/src/composables/version-history/use-canvas-edit-lock.ts
-import { computed, ref } from 'vue'
+// W4 C-MED25: PRD §12.12 implies single-owner toggle (Version-history panel is the sole lock
+// holder). Previous ref-count implementation silently tolerated multiple-caller contention
+// which masked bugs where the panel and another surface (e.g. preview side-doc) both held
+// the lock — unlock from one consumer left the lock on, surfacing as "edit lock stuck."
+// Switched to boolean. Warn + Sentry-capture on double-lock so the underlying contention
+// surfaces instead of hiding behind a counter.
+import { readonly, ref } from 'vue'
+import { captureMessage } from '@sentry/browser'
 
-const lockCount = ref(0)   // reference-count so multiple callers can lock; first to lock wins, last to unlock releases
-const isLocked = computed(() => lockCount.value > 0)
+const isLockedInternal = ref(false)
+const isLocked = readonly(isLockedInternal)
 
 export function useCanvasEditLock() {
-  function lock() { lockCount.value++ }
-  function unlock() { lockCount.value = Math.max(0, lockCount.value - 1) }
+  function lock() {
+    if (isLockedInternal.value) {
+      const msg = 'useCanvasEditLock: lock() called while already locked (single-owner contract violated)'
+      console.warn(msg)
+      captureMessage(msg, 'warning')
+      return  // single-owner: subsequent locks are no-ops, do NOT increment a counter
+    }
+    isLockedInternal.value = true
+  }
+  function unlock() {
+    isLockedInternal.value = false  // single unlock releases unconditionally
+  }
   return { lock, unlock, isLocked }
 }
 ```
