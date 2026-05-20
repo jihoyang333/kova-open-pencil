@@ -4,11 +4,11 @@
 
 | Field | Value |
 |---|---|
-| **Status** | `DRAFT` |
+| **Status** | `IN-REVIEW 2026-05-19` |
 | **Wave** | 6 |
 | **Author** | Claude (Opus 4.7) |
 | **Reviewer** | Jiho Yang (founder) |
-| **Last updated** | 2026-05-15 |
+| **Last updated** | 2026-05-19 |
 | **Depends on PRDs** | 01 (Auth — `users` table, Storage cleanup contract), 02 (Dashboard — trash inbox host + canvas-creation RPC for Duplicate), 06 (Canvas Core Chrome — right-panel mount slot), 07a (Canvas Engine Core — scene-graph stability), 08 (Menus & Shortcuts — `⌥⌘S` registration), 11 (Shared UI — `useConfirm`, `<KovaModal>`, `<ToastStack>`, skeletons) |
 | **Blocks PRDs** | None |
 | **Source artifacts** | Hi-fi: 2 files (17 Version History, 15 Trash Confirm). 03 doc: §2.11 (2 rows), §2.12 (1 row), §3C #2, §3.A snapshot infra row, §3.B trash reuse row. Q-decisions: Q7 (snapshot model Figma-exact), Q19 (trash indefinite retention). Audit §2.A Cluster 09 (lines 1764–1945). 00d/00e ratifications: snapshot 50 MB blob cap + 100 MB per-brand quota + Vercel Cron + autosnap on blur/beforeunload (2.C.8). |
@@ -236,6 +236,9 @@ CREATE POLICY snapshots_delete_blocked
 -- ---- 4. RPCs (SECURITY DEFINER) ----
 
 -- 4a. create_snapshot — enforces 100 MB per-brand quota; assigns retention_class
+--     W4 C-MED23: accepts optional p_id so callers (e.g. duplicate-to-canvas) can pre-generate
+--     the snapshot UUID, use it in the Storage path, and INSERT with the same value — so the
+--     §4.3 path invariant (path = {user}/{brand}/{canvas}/{snapshot_id}.kiwi.zst) holds.
 CREATE OR REPLACE FUNCTION public.create_snapshot(
   p_canvas_id       uuid,
   p_kind            text,
@@ -244,7 +247,8 @@ CREATE OR REPLACE FUNCTION public.create_snapshot(
   p_scene_blob_path text,
   p_scene_size_bytes bigint,
   p_thumbnail_path  text,
-  p_parent_snapshot_id uuid
+  p_parent_snapshot_id uuid,
+  p_id              uuid DEFAULT gen_random_uuid()  -- W4 C-MED23
 )
 RETURNS uuid
 LANGUAGE plpgsql
@@ -292,10 +296,10 @@ BEGIN
   END IF;
 
   INSERT INTO public.canvas_snapshots
-    (canvas_id, brand_id, user_id, taken_at, kind, label, description,
+    (id, canvas_id, brand_id, user_id, taken_at, kind, label, description,
      scene_blob_path, scene_size_bytes, thumbnail_path, parent_snapshot_id, retention_class)
   VALUES
-    (p_canvas_id, v_brand_id, v_user_id, now(), p_kind, p_label, p_description,
+    (p_id, p_canvas_id, v_brand_id, v_user_id, now(), p_kind, p_label, p_description,
      p_scene_blob_path, p_scene_size_bytes, p_thumbnail_path, p_parent_snapshot_id, v_retention_class)
   RETURNING id INTO v_snapshot_id;
 
@@ -517,7 +521,9 @@ ON CONFLICT (id) DO NOTHING;
 
 Two Vercel Functions under `kova-open-pencil-1/api/`. Fluid Compute runtime (matches PRD 01 + M9 pattern). Idempotency-key handling per Cluster 11 cross-cut.
 
-**Hardening (W0-5 / founder lock #15):** every `CREATE FUNCTION ... SECURITY DEFINER` RPC defined by this PRD MUST include `SET search_path = public, pg_temp` within the same function definition. CI-enforced — `bun run check:rls` (Plan 11 Task 11.5) fails on any DEFINER block missing the clause. CT-013 from CONSOLIDATED-TRIAGE.md flagged the 3 DEFINER RPCs in this cluster as missing the lock; the Cluster 09 Wave-4 fix agent adds the clause during its pass.
+**Hardening (W0-5 / founder lock #15):** every `CREATE FUNCTION ... SECURITY DEFINER` RPC defined by this PRD MUST include `SET search_path = public, pg_temp` within the same function definition. CI-enforced — `bun run check:rls` (Plan 11 Task 11.5) fails on any DEFINER block missing the clause.
+
+**CT-013 status (W4, 2026-05-19): CLOSED.** Verified all 4 SECURITY DEFINER RPCs in §4.1 (`create_snapshot` line 251, `restore_snapshot` line 315, `rename_snapshot` line 365, `purge_canvas_snapshot_paths` line 398) declare `SECURITY DEFINER` immediately followed by `SET search_path = public, pg_temp` on the next line. No remediation edits needed; the lock was already present at PRD-authoring time. The W4 fix agent confirmed via grep + line-level read and added this close-out note.
 
 ---
 

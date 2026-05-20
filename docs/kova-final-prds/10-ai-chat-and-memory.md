@@ -4,12 +4,12 @@
 
 | Field | Value |
 |---|---|
-| **Status** | `DRAFT` 2026-05-15 (author: Claude Opus 4.7) |
+| **Status** | `IN-REVIEW 2026-05-17` (founder-finalized 2026-05-17; W4 QA pass 2026-05-19) |
 | **Wave** | 6 (closing wave) |
 | **Author** | Claude (Opus 4.7) |
 | **Reviewer** | Jiho Yang (founder) |
-| **Last updated** | 2026-05-15 |
-| **Depends on PRDs** | 05 (Brand Kit ships `tone_snippets` read API); 06 (canvas chrome hosts the chat tab in the right panel); 07a (Slice + Measurement NodeTypes that the AI tool wrappers in this PRD register against); 11 (toast, modal, skeleton primitives). |
+| **Last updated** | 2026-05-19 |
+| **Depends on PRDs** | 05 (Brand Kit ships `tone_snippets` read API); 06 (canvas chrome hosts the chat tab in the right panel); 07a (Slice NodeType + **page-level Measurement methods** on the CANVAS-typed SceneNode — Measurement is NOT a NodeType, per PRD 07a §7.1b / §12.10; W0-7 propagation 2026-05-19; W4 CT-004 close-out 2026-05-19 — the AI tool wrappers in this PRD register against these); 11 (toast, modal, skeleton primitives). |
 | **Blocks PRDs** | None (closing-wave cluster). |
 | **Source artifacts** | M5 + M5.5 prior implementation (`useChatStore`, `useBrandMemoriesStore`, `buildSystemPrompt`, `createKovaTools`, `ai-proxy/v1/messages`). Audit `00c §2.A` Cluster 10 lines 1946–2007 (lifted as base draft). `00c §1.E.1` Check 5 (no-Shopify-connected error UX gap). Shopify product-reference spec `docs/superpowers/specs/2026-05-14-shopify-product-reference-design.md` Rev 2 (composer-chip architecture D1–D9). Q-decisions: Q3 #14 (Boolean ops engine-ready), Q8 (tone-snippet injection), Q11 (Measurement — superseded 2026-05-17: measurements are page-level on CANVAS, NOT a NodeType, per PRD 07a §7.1b / §12.10; W0-7 propagation 2026-05-19), Q24 (saved-blocks payload — owned by 05, not this PRD). 03 doc cross-cuts §2.5 (Brand Kit), §2.7 (AI text suggestions DEFERRED), §2.13 (brand assets). |
 
@@ -330,7 +330,7 @@ Per scope plan §5.5 mandatory section.
 | `buildSystemPrompt` builder | **REUSE + EXTEND** | Verbatim 11-layer composition; EXTEND with 2 new layers: tone-snippet exemplars (between Layer 4 brand kit and Layer 5 image handling) + active product references (after Layer 8b chat attachments). SYSTEM_PROMPT constant (Layer 1) IMMUTABLE per CLAUDE.md hard constraint ✅. |
 | `ChatPopup.vue` (floating popup, current MVP) | **RE-SPEC** | DELETE. Replaced by `ChatPanel.vue` mounted as the right-panel "AI" tab content. The popup chrome (lines 269–317) carries forward as the tab strip + composer pattern but mounts inside the right panel, not floating bottom-left. Removal points: `EditorView.vue` line 282 `<ChatPopup>` render + line 33 import — replaced by `<ChatPanel>` mount inside the right panel (Cluster 06 PRD must spec the slot). |
 | `ChatPanel.vue` (existing, ~unused) | **REFACTOR** | Currently a stub that imports `useAIChat()` but no per-conversation tab strip + no composer chip row. EXTEND to mirror `ChatPopup.vue`'s tab strip + persistence wiring + add chip row above text input. |
-| `ChatInput.vue` | **EXTEND** | Insert chip row above the existing attachment row + form. Pass active references in via a new `productReferences` prop; emit `remove-reference` event on `×` click. |
+| `ChatInput.vue` | **EXTEND** | Insert chip row **between** the existing attachment-thumbnail row and the `<form>` element — i.e. **below** attachments, **above** the textarea (per §3.2 founder-locked stack order + §12.12 item 7; W4 C-MED28 close-out). Pass active references in via a new `productReferences` prop; emit `remove-reference` event on `×` click. |
 
 **No re-spec from scratch.** Per dispatch instruction: "Reference existing implementation; do NOT re-spec from scratch." This PRD is an EXTENSION pass on top of M5 / M5.5 / M9.
 
@@ -632,7 +632,7 @@ Composition mirrors `ChatPopup.vue` but mounted inside the right-panel slot (no 
 
 #### 6.4.2 `<ChatInput>` — EXTEND existing
 
-File: `src/components/chat/ChatInput.vue`. EXTEND to accept and render the chip row above the existing attachment-thumbnail row.
+File: `src/components/chat/ChatInput.vue`. EXTEND to accept and render the chip row **BELOW** the existing attachment-thumbnail row (matches §3.2 founder-locked stack order `image attachment thumbnails → product chip row → textarea → send/stop buttons` per §12.12 item 7; W4 C-MED28 reconciles a prior draft that incorrectly said "above").
 
 | New Prop | Type | Notes |
 |---|---|---|
@@ -755,7 +755,7 @@ Engine tools registered via `toolsToAI(CORE_TOOLS, ...)` in `createAITools(store
 
 - [ ] Right panel has exactly two tabs visible: Design and **AI** (default-active on first canvas open per PRD 06 §12.13 founder ratification 2026-05-17). Prototype tab is NOT rendered anywhere in Kova. Tab labels visible at all viewport widths ≥ 1024px.
 - [ ] Clicking the AI tab activates a `<ChatPanel>` content slot that renders empty-state, message list (if messages exist), per-conversation tab strip, and composer.
-- [ ] Default-active tab on canvas load = Design (matches Figma's first-tab default).
+- [ ] Default-active tab on first canvas open = **AI** (per PRD 06 §12.13 founder ratification 2026-05-17; W0-7 propagation 2026-05-19; W4 CT-005 close-out). Subsequent opens read per-canvas `localStorage[right-panel-tab:${canvasId}]`.
 - [ ] The previous `<ChatPopup>` floating element no longer renders on `/canvas/:canvasId`. Removed from `EditorView.vue`.
 - [ ] Chat persistence (per-canvas, multiple conversations) works identically to M5 — switching canvases switches the conversation list; switching tabs within a canvas switches the active message stream.
 - [ ] Switching from canvas A to canvas B preserves canvas A's chat state (per-canvas independence per M5 decision); returning to canvas A restores its active conversation + messages from Supabase.
@@ -783,8 +783,8 @@ Engine tools registered via `toolsToAI(CORE_TOOLS, ...)` in `createAITools(store
 
 - [ ] `search_products` schema no longer accepts `bestsellers` as a `sort` value (`v.safeParse` fails for that value).
 - [ ] Each of the 5 Shopify tools returns `{ error, code: 'no_connection' }` (NOT empty arrays / nulls) when invoked for a brand with no `shopify_connections` row.
-- [ ] `createSliceFromSelection` AI tool calls `figma.createSliceFromSelection(...)` from Cluster 07a engine API and returns `{ success: true, sliceId }` on success / `{ error: 'No selection to slice', code: 'no_selection' }` on no-selection.
-- [ ] `addMeasurement` AI tool calls `figma.currentPage.addMeasurement(...)` (07a §7.1b page-level API — NOT a NodeType factory; W0-7 propagation 2026-05-19) and returns `{ success: true, measurementId }` or `{ error: ..., code: 'canvas_missing' | 'invalid_anchors' }`.
+- [ ] `createSliceFromSelection` AI tool calls `figma.createSliceFromSelection(...)` from Cluster 07a engine API and returns `{ success: true, sliceId }` on success / `{ error: 'No selection to slice', code: 'no_selection' }` on no-selection / `{ error: 'Slice engine API not available', code: 'engine_unavailable' }` if Cluster 07a engine API is missing at registration time.
+- [ ] `addMeasurement` AI tool calls `figma.currentPage.addMeasurement(...)` (07a §7.1b page-level API — NOT a NodeType factory; W0-7 propagation 2026-05-19) and returns `{ success: true, measurementId }` / `{ error: ..., code: 'invalid_anchors' }` / `{ error: 'Measurement engine API not available', code: 'engine_unavailable' }` (W4 C-LOW10.5: `engine_unavailable` added to acceptance to match Plan 10 Tasks 10 + 11; reserved for the runtime existence-check gate from §6.3.4 — fires when Cluster 07a slips and the engine API is absent at AI-tool registration).
 - [ ] All AI tools are valibot-validated via `valibotSchema()` per CLAUDE.md hard constraint (no Zod).
 - [ ] ToolLoopAgent + `@ai-sdk/anthropic` + the 16384 max output token budget + 50 step limit are unchanged from M5.
 
@@ -969,7 +969,7 @@ Dispatch recommends cap=10 with "first 10 by user-defined order." If a brand has
 
 **Decisions ratified by founder during PRD 10 review:**
 - Final right-panel tab order: **Design / AI** (2 tabs only).
-- Default-active tab on canvas load: **Design** (matches Figma's first-tab default per CLAUDE.md "what Figma does, Kova does" rule).
+- Default-active tab on first canvas open: **AI** (per PRD 06 §12.13 founder ratification 2026-05-17 — surfacing the chat-first differentiator. Supersedes the earlier "Design default" pick from initial drafts; W0-7 propagation 2026-05-19; W4 CT-005 close-out 2026-05-19.). Subsequent opens persist per-canvas via `localStorage[right-panel-tab:${canvasId}]`.
 - **Figma's Prototype tab is dropped entirely** from Kova's right-panel. Reason: Kova exports static email images, not clickable interactive prototypes. Prototype tab has zero use case in the email-design pipeline.
 - Scope plan §3 Cluster 06 line 237 ("Design only at MVP — Prototype DEFERRED") is **superseded** by "Design + AI tabs only; Prototype out of scope entirely."
 

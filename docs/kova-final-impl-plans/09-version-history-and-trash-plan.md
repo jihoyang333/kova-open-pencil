@@ -2,17 +2,17 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Ship the Figma-exact version-history panel + 30-min autosnapshot heartbeat + atomic restore + trash-confirm modal for PRD 09 (`docs/prd/09-version-history-and-trash.md`).
+**Goal:** Ship the Figma-exact version-history panel + 30-min autosnapshot heartbeat + atomic restore + trash-confirm modal for PRD 09 (`docs/kova-final-prds/09-version-history-and-trash.md`).
 
 **Architecture:** Single Postgres migration (1 table + 4 RPCs + RLS) + 1 private Storage bucket (`canvas-snapshots`) + 2 Vercel Edge Functions (`duplicate-to-canvas`, `cron/snapshot-prune`) + Pinia store + 6 composables + 9 Vue components. Snapshot bytes are Yjs Kiwi-encoded + Zstd-compressed. Restore is atomic with a pre-restore snapshot pushed to Yjs undo. Trash is dashboard-only (per founder 2026-05-09); the canvas-side dropdown does NOT carry "Move to trash". This PRD does NOT modify `packages/core/` (CLAUDE.md hard constraint preserved).
 
 **Tech Stack:** Supabase Postgres + Storage; SECURITY DEFINER RPCs (`plpgsql`); Vercel Functions (Fluid Compute) in `kova-open-pencil-1/api/`; `@supabase/supabase-js`; existing `yjs`, `kiwi-schema`, `@bokuweb/zstd-wasm` deps from OpenPencil `packages/core/codec`; Vue 3 Composition API + Pinia setup stores + Reka UI primitives + Tailwind CSS 4 + Lucide icons via `unplugin-icons`. Tests: `bun:test` (unit + integration via local Supabase) + Playwright/Vercel Agent Browser (E2E).
 
 **Reference docs:**
-- PRD: `kova-open-pencil-1/docs/prd/09-version-history-and-trash.md`
+- PRD: `kova-open-pencil-1/docs/kova-final-prds/09-version-history-and-trash.md`
 - Hi-fi: `main-main-kova-scope/batch-b/chunk-b6/Kova Hi-Fi 17 Version History - Dark.html` (11 scenes), `main-main-kova-scope/batch-b/chunk-b2/Kova Hi-Fi 15 Trash Confirm - Dark.html` (3 scenes)
 - Design system: `main-main-kova-scope/design-system/{design.md, kova-hifi.css, TOKEN_CANONICAL.md}`
-- Audit base: `kova-open-pencil-1/docs/prd/00c-COMPREHENSIVE_AUDIT_REPORT.md` lines 1764–1945
+- Audit base: `kova-open-pencil-1/docs/kova-final-prds/00c-COMPREHENSIVE_AUDIT_REPORT.md` lines 1764–1945
 
 ---
 
@@ -149,7 +149,7 @@ Expected: FAIL with "table canvas_snapshots does not exist" (migration not yet a
 
 - [ ] **Step 3: Write the migration**
 
-Open `kova-open-pencil-1/docs/prd/09-version-history-and-trash.md` §4.1 and copy the SQL block verbatim into `kova-open-pencil-1/supabase/migrations/20260615_09_canvas_snapshots.sql`. Then append the bucket-provisioning SQL from §4.3 and the two test-helper RPCs:
+Open `kova-open-pencil-1/docs/kova-final-prds/09-version-history-and-trash.md` §4.1 and copy the SQL block verbatim into `kova-open-pencil-1/supabase/migrations/20260615_09_canvas_snapshots.sql`. Then append the bucket-provisioning SQL from §4.3 and the two test-helper RPCs:
 
 ```sql
 -- ---- 5. Test-helper RPCs (used by integration tests only; safe in prod — read-only meta) ----
@@ -352,17 +352,29 @@ export async function seedCanvas(opts: { brand_id: string; user_id: string; tras
   return data!.id
 }
 
-export async function signInAs(userId: string) {
-  // Generate a JWT for the user via the admin API; return a client that signs with it
-  const { data } = await admin.auth.admin.generateLink({ type: 'magiclink', email: `mock-${userId}@local` })
-  // For local testing, easier path: createClient with anon key + setSession from admin-issued tokens.
-  // Implementation detail varies; if seed.ts already exists in the repo, reuse its signInAs pattern.
-  // Intent: returned client has auth.uid() = userId for SECURITY DEFINER RPC calls.
-  return createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!, {
-    global: { headers: { Authorization: `Bearer ${data.properties?.action_link}` } }
+export async function signInAs(userId: string, password = `test-${crypto.randomUUID()}`) {
+  // B-CRIT13 / B-HIGH20 fix (W4): the prior implementation passed a magic-link URL as a Bearer
+  // token, which is NOT a JWT — the returned client silently fell back to anon, so all 14 RLS
+  // tests were dead-on-arrival (they exercised anon, not the target user). Correct pattern:
+  // set a known password via admin API, then signInWithPassword. Returned client has
+  // auth.uid() = userId for SECURITY DEFINER RPC calls.
+  await admin.auth.admin.updateUserById(userId, { password })
+  const { data: userRow, error: getErr } = await admin.auth.admin.getUserById(userId)
+  if (getErr || !userRow?.user) throw getErr ?? new Error(`signInAs: user ${userId} not found`)
+
+  const userClient = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!)
+  const { error: signInErr } = await userClient.auth.signInWithPassword({
+    email: userRow.user.email!,
+    password,
   })
+  if (signInErr) throw signInErr
+  return userClient
 }
 ```
+
+**Re-run verification (W4):** before this fix lands, the 14 RLS tests SHOULD FAIL — they were silently passing as anon, hiding RLS regressions. After the fix, they MUST PASS. Run `bun test ./tests/integration/snapshots/rls-*.test.ts` twice (pre- and post-fix) and diff the output to prove correctness.
+
+**B-HIGH20 close-out (W4):** the QA-B "inline JWT generation pattern" finding (B-HIGH20) is the same defect as B-CRIT13 reported from a different angle — the helper synthesizes a "JWT" from a magic-link URL inline rather than using the Supabase SDK's documented `signInWithPassword`. The rewrite above resolves both findings in a single edit. No separate B-HIGH20 commit is needed; cross-reference the W4 dispatch matrix.
 
 (If a `signInAs` already exists in this repo's test helpers from M9 / Cluster 01 work, re-use it instead — the repo convention wins. Grep `tests/integration/helpers` first.)
 
@@ -925,6 +937,89 @@ git commit -m "feat(09): snapshot codec composable (Yjs + Kiwi-style envelope + 
 
 ---
 
+## Task 7b (C-LOW09.11): `format_version` ↔ Kiwi schema lockstep CI grep
+
+**Files:**
+- Create: `kova-open-pencil-1/src/composables/version-history/snapshot-migration-registry.ts`
+- Modify: `kova-open-pencil-1/.github/workflows/ci.yml` (or whichever workflow runs `bun run check`) — add a CI step that grep-checks for `format_version` bumps in `packages/core/codec/` diffs against base.
+
+**Why (W4):** `C-LOW09.11` (CONSOLIDATED-TRIAGE.md). Plan 07a Step 8.11 ships `FORMAT_VERSION = '2.0.0'` and tells the W4 Cluster 09 fix agent to author a snapshot-migration registry plus a CI grep that prevents silent Kiwi schema bumps without a migration registration. This task closes that handshake.
+
+- [ ] **Step 1: Snapshot-migration registry stub**
+
+```typescript
+// kova-open-pencil-1/src/composables/version-history/snapshot-migration-registry.ts
+import { FORMAT_VERSION } from '@kova/core/src/kiwi/protocol'
+
+// Migration chain: keyed by source formatVersion → mutator returning the next-version snapshot.
+// Plan 09 use-snapshot-codec.decodeCanvasSnapshot() reads snap.formatVersion, looks up the entry,
+// and applies until snap.formatVersion === FORMAT_VERSION.
+export type SnapshotMigration = (snap: unknown) => unknown
+
+export const SNAPSHOT_MIGRATIONS: Record<string, { to: string; migrate: SnapshotMigration }> = {
+  '1.0.0': {
+    to: '2.0.0',
+    migrate: (snap) => {
+      // Kiwi schema v2 (Cluster 07a Step 8.6): adds SLICE NodeType + page-level Measurement
+      // structs + new SceneNode + CharacterStyleOverride fields. Old snapshots are
+      // forward-compatible because the new fields are all optional. This entry registers the
+      // bump in the chain so loadSnapshot() does NOT throw 'format_version_unsupported' on
+      // pre-2.0.0 snapshots.
+      return snap
+    },
+  },
+}
+
+export function isFormatVersionRegistered(fv: string): boolean {
+  return fv === FORMAT_VERSION || fv in SNAPSHOT_MIGRATIONS
+}
+```
+
+- [ ] **Step 2: CI grep step**
+
+Add to the workflow that runs `bun run check`:
+
+```yaml
+- name: Guard format_version vs migration registry (W4 C-LOW09.11)
+  run: |
+    # If packages/core/codec/ or packages/core/src/kiwi/ changes in this PR, the diff MUST
+    # mention either FORMAT_VERSION (an explicit bump) or snapshot-migration-registry.ts
+    # (a migration entry). Otherwise we risk a silent schema drift that breaks restore.
+    BASE="${{ github.base_ref || 'main' }}"
+    if git diff --name-only "origin/${BASE}...HEAD" | grep -qE '^(kova-open-pencil-1/)?packages/core/(codec|src/kiwi)/'; then
+      if ! git diff "origin/${BASE}...HEAD" -- '*.ts' | grep -qE 'FORMAT_VERSION|snapshot-migration-registry'; then
+        echo "::error::Codec/Kiwi schema changed without a FORMAT_VERSION bump or snapshot-migration-registry update."
+        exit 1
+      fi
+    fi
+```
+
+- [ ] **Step 3: Wire registry into `decodeCanvasSnapshot` (Task 7 above)**
+
+In `use-snapshot-codec.ts`, replace the unconditional `throw new Error('format_version_unsupported')` with a registry lookup:
+
+```typescript
+import { FORMAT_VERSION } from '@kova/core/src/kiwi/protocol'
+import { SNAPSHOT_MIGRATIONS, isFormatVersionRegistered } from './snapshot-migration-registry'
+
+// ... inside decodeCanvasSnapshot ...
+if (fv !== FORMAT_VERSION && !isFormatVersionRegistered(String(fv))) {
+  throw new Error('format_version_unsupported')
+}
+// (apply registered migrations until fv === FORMAT_VERSION)
+```
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add kova-open-pencil-1/src/composables/version-history/snapshot-migration-registry.ts \
+        kova-open-pencil-1/.github/workflows/ci.yml \
+        kova-open-pencil-1/src/composables/version-history/use-snapshot-codec.ts
+git commit -m "feat(09): format_version CI grep + snapshot-migration-registry (W4 C-LOW09.11, coord: Cluster 07a FORMAT_VERSION 2.0.0)"
+```
+
+---
+
 ## Task 8: `useSnapshotThumbnail` composable
 
 **Files:**
@@ -1117,7 +1212,7 @@ describe('useSnapshotsStore', () => {
 
 - [ ] **Step 2: Implement store from PRD §6.2 verbatim**
 
-Open `kova-open-pencil-1/docs/prd/09-version-history-and-trash.md` §6.2; reproduce the body 1:1 in `kova-open-pencil-1/src/stores/snapshots.ts`. Replace inline `// ...` placeholders with concrete bodies that satisfy the tests above:
+Open `kova-open-pencil-1/docs/kova-final-prds/09-version-history-and-trash.md` §6.2; reproduce the body 1:1 in `kova-open-pencil-1/src/stores/snapshots.ts`. Replace inline `// ...` placeholders with concrete bodies that satisfy the tests above:
 
 ```typescript
 // kova-open-pencil-1/src/stores/snapshots.ts (excerpt — full body from PRD §6.2)
@@ -1540,21 +1635,57 @@ describe('useCanvasEditLock', () => {
     a.lock(); expect(b.isLocked.value).toBe(true)
     b.unlock(); expect(a.isLocked.value).toBe(false)
   })
+
+  it('W4 C-MED25: double-lock attempt warns + Sentry-captures (single-owner semantics)', () => {
+    const warnSpy = mock.fn()
+    const captureSpy = mock.fn()
+    mock.module('@sentry/browser', () => ({ captureMessage: captureSpy }))
+    const origWarn = console.warn
+    console.warn = warnSpy
+
+    const { lock, unlock, isLocked } = useCanvasEditLock()
+    lock()
+    expect(isLocked.value).toBe(true)
+    lock()  // second lock — contention
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('already locked'))
+    expect(captureSpy).toHaveBeenCalled()
+    unlock()
+    expect(isLocked.value).toBe(false)  // single unlock releases; not ref-counted
+
+    console.warn = origWarn
+  })
 })
 ```
 
-- [ ] **Step 2: Edit-lock composable (module-level state — singleton)**
+- [ ] **Step 2: Edit-lock composable (module-level state — singleton, single-owner)**
 
 ```typescript
 // kova-open-pencil-1/src/composables/version-history/use-canvas-edit-lock.ts
-import { computed, ref } from 'vue'
+// W4 C-MED25: PRD §12.12 implies single-owner toggle (Version-history panel is the sole lock
+// holder). Previous ref-count implementation silently tolerated multiple-caller contention
+// which masked bugs where the panel and another surface (e.g. preview side-doc) both held
+// the lock — unlock from one consumer left the lock on, surfacing as "edit lock stuck."
+// Switched to boolean. Warn + Sentry-capture on double-lock so the underlying contention
+// surfaces instead of hiding behind a counter.
+import { readonly, ref } from 'vue'
+import { captureMessage } from '@sentry/browser'
 
-const lockCount = ref(0)   // reference-count so multiple callers can lock; first to lock wins, last to unlock releases
-const isLocked = computed(() => lockCount.value > 0)
+const isLockedInternal = ref(false)
+const isLocked = readonly(isLockedInternal)
 
 export function useCanvasEditLock() {
-  function lock() { lockCount.value++ }
-  function unlock() { lockCount.value = Math.max(0, lockCount.value - 1) }
+  function lock() {
+    if (isLockedInternal.value) {
+      const msg = 'useCanvasEditLock: lock() called while already locked (single-owner contract violated)'
+      console.warn(msg)
+      captureMessage(msg, 'warning')
+      return  // single-owner: subsequent locks are no-ops, do NOT increment a counter
+    }
+    isLockedInternal.value = true
+  }
+  function unlock() {
+    isLockedInternal.value = false  // single unlock releases unconditionally
+  }
   return { lock, unlock, isLocked }
 }
 ```
@@ -2121,6 +2252,7 @@ import SnapshotRow from './SnapshotRow.vue'
 import SnapshotEmptyState from './SnapshotEmptyState.vue'
 import FilterDropdown from './FilterDropdown.vue'
 import RestoreConfirmModal from './RestoreConfirmModal.vue'
+import KovaSkeleton from '@/components/ui/KovaSkeleton.vue'  // W4 C-LOW09.12: Plan 11 primitive
 
 const props = defineProps<{ canvasId: string }>()
 const emit = defineEmits<{ close: [] }>()
@@ -2183,7 +2315,13 @@ function onPreview(id: string) { store.previewSnapshot(id) }
       Press <span class="glyph">⌘</span> + <span class="glyph">⌥</span> + <span class="glyph">S</span> to add to version history while editing.
     </div>
     <div class="vh-body">
-      <SnapshotEmptyState v-if="visible.length === 0" />
+      <!-- W4 C-LOW09.12: render skeleton placeholders while initial list-load is in flight.
+           The empty state below would otherwise flash on first open as if there were no
+           snapshots, then the timeline pops in once `store.list(canvasId)` resolves. -->
+      <template v-if="store.loadingByCanvas[canvasId]">
+        <KovaSkeleton class="vh-skeleton-row" v-for="i in 6" :key="`skel-${i}`" />
+      </template>
+      <SnapshotEmptyState v-else-if="visible.length === 0" />
       <div v-else class="vh-timeline">
         <CurrentVersionRow />
         <SnapshotRow v-for="s in named" :key="s.id" :snapshot="s"
@@ -2302,6 +2440,68 @@ git commit -m "feat(09): TrashConfirmModal — destructive .btn.danger + B13.1 c
 
 ---
 
+## Task 18b (C-HIGH7): Add `canvases.initial_state_blob_path` column
+
+**Files:**
+- Create: `kova-open-pencil-1/supabase/migrations/20260616_09_canvases_initial_state_blob_path.sql`
+- Test: `kova-open-pencil-1/tests/integration/snapshots/migrations.test.ts` (extend existing)
+
+**Why (W4):** `C-HIGH7` (CONSOLIDATED-TRIAGE.md). Without this column, the duplicate-to-canvas flow (§5.1.1) uploads the snapshot blob to Storage and inserts a `canvas_snapshots` row, but the new canvas opens blank because Yjs y-indexeddb bootstrap has no record of the seeding blob. The PRD-09-locked persistence layer (Yjs + y-indexeddb) is read-only per CLAUDE.md; instead Cluster 02's canvas-open path will read this column and hydrate the Yjs doc from the referenced Storage object.
+
+- [ ] **Step 1: Write the migration**
+
+```sql
+-- kova-open-pencil-1/supabase/migrations/20260616_09_canvases_initial_state_blob_path.sql
+-- W4 C-HIGH7: hydrate seeding blob path for duplicate-to-canvas + snapshot-restore
+ALTER TABLE public.canvases
+  ADD COLUMN IF NOT EXISTS initial_state_blob_path text;
+
+COMMENT ON COLUMN public.canvases.initial_state_blob_path IS
+  'Storage path (canvas-snapshots bucket) used to hydrate the Yjs doc on first open. Set by /api/snapshots/duplicate-to-canvas (PRD 09 §5.1.1); read by Cluster 02 canvas-open. NULL means "no seeding blob" (normal create_canvas path).';
+```
+
+- [ ] **Step 2: Extend `tests/integration/snapshots/migrations.test.ts`**
+
+```typescript
+it('adds initial_state_blob_path column to canvases (W4 C-HIGH7)', async () => {
+  const { data, error } = await supabase.rpc('pg_get_columns', { p_table: 'canvases' })
+  expect(error).toBeNull()
+  const names = (data as Array<{ name: string }>).map(c => c.name)
+  expect(names).toContain('initial_state_blob_path')
+})
+```
+
+- [ ] **Step 3: Apply + verify**
+
+```bash
+supabase migration up
+bun test ./tests/integration/snapshots/migrations.test.ts
+```
+
+Expected: PASS.
+
+- [ ] **Step 4: Document the Cluster 02 read-side contract**
+
+The duplicate-to-canvas Edge Function (Task 19 below) WRITES this column. Cluster 02's canvas-open composable (`useCanvasOpen` or equivalent in Plan 02) MUST READ this column on first open and:
+
+1. If `initial_state_blob_path IS NOT NULL` and the Yjs doc for this canvas does not yet exist in y-indexeddb (first open on this device):
+   - Download the blob from `canvas-snapshots/{initial_state_blob_path}` via signed URL.
+   - Decode via `useSnapshotCodec.decodeCanvasSnapshot()` (Plan 09 Task 7).
+   - Apply the decoded Yjs update into the freshly-constructed `Y.Doc` before y-indexeddb persistence wires up.
+2. If `initial_state_blob_path IS NULL`: take the normal blank-canvas path (current behaviour).
+
+**Cluster 02 amendment required:** since Cluster 02 (W2) is already merged, a follow-up PR (`fix/qa-w4-c09-followup-plan-02`) is needed to add this read-side wiring to Plan 02. Owning agent: founder schedules separately. Until that lands, duplicate-to-canvas writes the column harmlessly (no consumer reads it yet) and the new canvas opens blank as a known-soft-fail. **This Plan 09 PR is safe to merge ahead of the Plan 02 amendment** — the column is additive and NULL-safe.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add kova-open-pencil-1/supabase/migrations/20260616_09_canvases_initial_state_blob_path.sql \
+        kova-open-pencil-1/tests/integration/snapshots/migrations.test.ts
+git commit -m "feat(09): add canvases.initial_state_blob_path column (W4 C-HIGH7)"
+```
+
+---
+
 ## Task 19: Edge Function `POST /api/snapshots/duplicate-to-canvas`
 
 **Files:**
@@ -2341,7 +2541,10 @@ describe('POST /api/snapshots/duplicate-to-canvas', () => {
 ```typescript
 // kova-open-pencil-1/api/snapshots/duplicate-to-canvas.ts
 import { createClient } from '@supabase/supabase-js'
-import { verifyAuth } from '../_shared/auth'   // existing helper from M9 / Cluster 01
+import { verifyAuth } from '../_shared/auth'                // existing helper from M9 / Cluster 01
+import { verifyIdempotency } from '../_shared/idempotency'  // Plan 11 Task 1.3
+
+export const config = { runtime: 'edge' }  // W4 C-LOW09.9: Vercel Fluid Compute Edge runtime
 
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!
 const SUPABASE_URL = process.env.SUPABASE_URL!
@@ -2350,13 +2553,21 @@ export default async function handler(req: Request): Promise<Response> {
   const auth = await verifyAuth(req)
   if (!auth.ok) return new Response(JSON.stringify({ error: 'unauthenticated' }), { status: 401 })
 
-  const { snapshot_id, target_brand_id } = await req.json() as { snapshot_id: string; target_brand_id?: string }
-  if (!snapshot_id) return new Response(JSON.stringify({ error: 'bad_request' }), { status: 400 })
+  const body = await req.json() as { snapshot_id: string; target_brand_id?: string }
+  if (!body.snapshot_id) return new Response(JSON.stringify({ error: 'bad_request' }), { status: 400 })
+  const { snapshot_id, target_brand_id } = body
 
-  const idempKey = req.headers.get('x-idempotency-key')
-  // Idempotency dedup via Cluster 11's idempotency_keys table — pseudo
-  // const cached = await idempotencyLookup(auth.userId, snapshot_id, idempKey)
-  // if (cached) return Response.json(cached, { status: 200 })
+  // W4 C-MED22: real idempotency dedup via Plan 11 helper. Request is keyed by user + endpoint
+  // + body hash. A replay with the same key returns the cached response; a replay with a
+  // different body for the same key returns 422 (malformed-replay).
+  let idem: Awaited<ReturnType<typeof verifyIdempotency>>
+  try {
+    idem = await verifyIdempotency(req, auth.userId, 'POST /api/snapshots/duplicate-to-canvas')
+  } catch (e) {
+    const err = e as { status?: number; body?: unknown }
+    return new Response(JSON.stringify(err.body ?? { error: 'idempotency_error' }), { status: err.status ?? 500 })
+  }
+  if (idem.cached) return Response.json(idem.body, { status: idem.status })
 
   const userClient = createClient(SUPABASE_URL, SERVICE_KEY, {
     global: { headers: { authorization: req.headers.get('authorization')! } }
@@ -2386,24 +2597,43 @@ export default async function handler(req: Request): Promise<Response> {
   })
   if (cErr || !newCanvasId) return new Response(JSON.stringify({ error: 'internal_error' }), { status: 500 })
 
-  // 5. Upload the blob to the new canvas's path
-  const newBlobPath = `${auth.userId}/${targetBrand}/${newCanvasId}/${crypto.randomUUID()}.kiwi.zst`
+  // 5. Pre-generate the new snapshot id (W4 C-MED23) so the Storage path embeds the snapshot_id
+  // per PRD 09 §4.3 invariant: {user_id}/{brand_id}/{canvas_id}/{snapshot_id}.kiwi.zst.
+  // The id is then passed to create_snapshot via the optional p_id parameter so the same value
+  // ends up in the canvas_snapshots row.
+  const newSnapshotId = crypto.randomUUID()
+  const newBlobPath   = `${auth.userId}/${targetBrand}/${newCanvasId}/${newSnapshotId}.kiwi.zst`
+
+  // 6. Upload the blob to the new canvas's path
   const { error: upErr } = await adminClient.storage
     .from('canvas-snapshots').upload(newBlobPath, blobBytes, { contentType: 'application/octet-stream' })
   if (upErr) return new Response(JSON.stringify({ error: 'internal_error' }), { status: 500 })
 
-  // 6. Insert "Duplicated from..." snapshot row on the new canvas
-  await userClient.rpc('create_snapshot', {
-    p_canvas_id: newCanvasId, p_kind: 'manual',
-    p_label: `Duplicated from ${snap.label || new Date(snap.taken_at).toLocaleString()}`,
-    p_description: null, p_scene_blob_path: newBlobPath,
-    p_scene_size_bytes: blobBytes.byteLength, p_thumbnail_path: null,
-    p_parent_snapshot_id: snapshot_id,
-  })
+  // 6b + 7. W4 B-MED5: stamping initial_state_blob_path and inserting the "Duplicated from"
+  // snapshot row are independent of each other (both depend on newCanvasId + newBlobPath,
+  // neither depends on the other's return). Run in parallel to halve the round-trip count.
+  const [stampRes, snapInsertRes] = await Promise.all([
+    adminClient.from('canvases')
+      .update({ initial_state_blob_path: newBlobPath })  // W4 C-HIGH7
+      .eq('id', newCanvasId),
+    userClient.rpc('create_snapshot', {
+      p_canvas_id: newCanvasId, p_kind: 'manual',
+      p_label: `Duplicated from ${snap.label || new Date(snap.taken_at).toLocaleString()}`,
+      p_description: null, p_scene_blob_path: newBlobPath,
+      p_scene_size_bytes: blobBytes.byteLength, p_thumbnail_path: null,
+      p_parent_snapshot_id: snapshot_id,
+      p_id: newSnapshotId,  // W4 C-MED23
+    }),
+  ])
+  if (stampRes.error || snapInsertRes.error) {
+    return new Response(JSON.stringify({ error: 'internal_error' }), { status: 500 })
+  }
 
-  const body = { canvas_id: newCanvasId, redirect_to: `/canvas/${newCanvasId}` }
-  // await idempotencyStore(auth.userId, snapshot_id, idempKey, body)
-  return Response.json(body, { status: 200 })
+  const responseBody = { canvas_id: newCanvasId, redirect_to: `/canvas/${newCanvasId}` }
+  // W4 C-MED22: persist response under the idempotency key so a retry inside the 5-minute
+  // window returns the cached response and does NOT create a second canvas.
+  if (!idem.cached) await idem.persist(200, responseBody)
+  return Response.json(responseBody, { status: 200 })
 }
 ```
 
@@ -2425,6 +2655,126 @@ git add kova-open-pencil-1/api/snapshots/duplicate-to-canvas.ts \
         kova-open-pencil-1/tests/unit/api/snapshots/duplicate-to-canvas.test.ts \
         kova-open-pencil-1/tests/integration/api/duplicate-to-canvas.test.ts
 git commit -m "feat(09): /api/snapshots/duplicate-to-canvas Edge Function"
+```
+
+---
+
+## Task 19b (C-HIGH8): `claimed_at` column + `claim_snapshots_for_prune` RPC
+
+**Files:**
+- Create: `kova-open-pencil-1/supabase/migrations/20260617_09_claim_snapshots_for_prune.sql`
+- Test: `kova-open-pencil-1/tests/integration/snapshots/claim-snapshots-rpc.test.ts`
+
+**Why (W4):** `C-HIGH8` (CONSOLIDATED-TRIAGE.md). The cron handler in Task 20 below does an unguarded `SELECT … LIMIT 1000` and then `DELETE … IN (ids)`. If Vercel Cron retries on timeout (or two cron schedules overlap during a deploy window), two invocations select overlapping rows, race on Storage `remove()`, and double-count `storage_failures`. The fix is a SECURITY DEFINER RPC that claims rows atomically via `FOR UPDATE SKIP LOCKED` and stamps a `claimed_at` timestamp so a concurrent invocation skips them.
+
+- [ ] **Step 1: Write the migration**
+
+```sql
+-- kova-open-pencil-1/supabase/migrations/20260617_09_claim_snapshots_for_prune.sql
+-- W4 C-HIGH8: cron-safe claim function + claimed_at column for snapshot-prune.
+ALTER TABLE public.canvas_snapshots
+  ADD COLUMN IF NOT EXISTS claimed_at timestamptz;
+
+CREATE INDEX IF NOT EXISTS idx_canvas_snapshots_prune_candidates
+  ON public.canvas_snapshots(taken_at)
+  WHERE retention_class = 'free' AND kind = 'autosave' AND claimed_at IS NULL;
+
+-- W4 C-MED24: retention days is sourced from @/config/feature-flags (SNAPSHOT_FREE_RETENTION_DAYS),
+-- which the cron handler reads in TS and passes here as p_retention_days. Keeps the constant
+-- single-sourced in TS-land without requiring a Postgres feature_flags table.
+CREATE OR REPLACE FUNCTION public.claim_snapshots_for_prune(
+  p_batch_size      int DEFAULT 1000,
+  p_retention_days  int DEFAULT 30
+)
+RETURNS TABLE (id uuid, scene_blob_path text, thumbnail_path text)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  RETURN QUERY
+  UPDATE canvas_snapshots
+  SET claimed_at = now()
+  WHERE canvas_snapshots.id IN (
+    SELECT cs.id
+      FROM canvas_snapshots cs
+     WHERE cs.retention_class = 'free'
+       AND cs.kind = 'autosave'
+       AND cs.taken_at < now() - make_interval(days => p_retention_days)
+       AND cs.claimed_at IS NULL
+     ORDER BY cs.taken_at
+     LIMIT p_batch_size
+     FOR UPDATE SKIP LOCKED
+  )
+  RETURNING canvas_snapshots.id, canvas_snapshots.scene_blob_path, canvas_snapshots.thumbnail_path;
+END;
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.claim_snapshots_for_prune(int, int) FROM public;
+GRANT  EXECUTE ON FUNCTION public.claim_snapshots_for_prune(int, int) TO service_role;
+```
+
+- [ ] **Step 2: Integration test (concurrency)**
+
+```typescript
+// kova-open-pencil-1/tests/integration/snapshots/claim-snapshots-rpc.test.ts
+import { describe, expect, it, beforeAll } from 'bun:test'
+import { createClient } from '@supabase/supabase-js'
+import { seedTestUser, seedBrand, seedCanvas } from '../helpers/seed'
+
+const admin = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+
+describe('claim_snapshots_for_prune RPC', () => {
+  let userId: string, brandId: string, canvasId: string
+
+  beforeAll(async () => {
+    userId = await seedTestUser({ plan: 'free' })
+    brandId = await seedBrand({ user_id: userId })
+    canvasId = await seedCanvas({ brand_id: brandId, user_id: userId })
+    // Seed 100 free-tier autosaves with taken_at = 31 days ago
+    const rows = Array.from({ length: 100 }, (_, i) => ({
+      canvas_id: canvasId, brand_id: brandId, user_id: userId,
+      kind: 'autosave', retention_class: 'free',
+      scene_blob_path: `seed/${i}`, scene_size_bytes: 1024,
+      taken_at: new Date(Date.now() - 31 * 24 * 60 * 60 * 1000).toISOString(),
+    }))
+    await admin.from('canvas_snapshots').insert(rows)
+  })
+
+  it('two concurrent calls never claim the same row', async () => {
+    const [a, b] = await Promise.all([
+      admin.rpc('claim_snapshots_for_prune', { p_batch_size: 50 }),
+      admin.rpc('claim_snapshots_for_prune', { p_batch_size: 50 }),
+    ])
+    const idsA = new Set((a.data as Array<{ id: string }>).map(r => r.id))
+    const idsB = new Set((b.data as Array<{ id: string }>).map(r => r.id))
+    const intersection = [...idsA].filter(id => idsB.has(id))
+    expect(intersection).toEqual([])
+    expect(idsA.size + idsB.size).toBe(100) // together they claim all 100
+  })
+
+  it('claim is idempotent — a second call after claim returns no rows for already-claimed', async () => {
+    const { data } = await admin.rpc('claim_snapshots_for_prune', { p_batch_size: 1000 })
+    expect((data as unknown[]).length).toBe(0) // first test already drained all 100
+  })
+})
+```
+
+- [ ] **Step 3: Apply + run**
+
+```bash
+supabase migration up
+bun test ./tests/integration/snapshots/claim-snapshots-rpc.test.ts
+```
+
+Expected: PASS both tests.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add kova-open-pencil-1/supabase/migrations/20260617_09_claim_snapshots_for_prune.sql \
+        kova-open-pencil-1/tests/integration/snapshots/claim-snapshots-rpc.test.ts
+git commit -m "feat(09): claim_snapshots_for_prune RPC + claimed_at column (W4 C-HIGH8)"
 ```
 
 ---
@@ -2466,6 +2816,9 @@ describe('POST /api/cron/snapshot-prune', () => {
 ```typescript
 // kova-open-pencil-1/api/cron/snapshot-prune.ts
 import { createClient } from '@supabase/supabase-js'
+import { SNAPSHOT_FREE_RETENTION_DAYS } from '@/config/feature-flags'  // W4 C-MED24
+
+export const config = { runtime: 'edge' }  // W4 C-LOW09.9: Vercel Fluid Compute Edge runtime
 
 const SUPABASE_URL = process.env.SUPABASE_URL!
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -2478,15 +2831,15 @@ export default async function handler(req: Request): Promise<Response> {
   const supabase = createClient(SUPABASE_URL, SERVICE_KEY)
   let scanned = 0, pruned = 0, storageFailures = 0
 
-  // Process up to 1000 rows per invocation (cron runs daily; tail catches up next day)
-  const { data: rows, error } = await supabase
-    .from('canvas_snapshots')
-    .select('id, scene_blob_path, thumbnail_path')
-    .eq('retention_class', 'free').eq('kind', 'autosave')
-    .lt('taken_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
-    .order('taken_at', { ascending: true })
-    .limit(1000)
-  if (error) return new Response(JSON.stringify({ error: 'select_failed' }), { status: 500 })
+  // W4 C-HIGH8: claim rows atomically via SECURITY DEFINER RPC with FOR UPDATE SKIP LOCKED.
+  // Two concurrent cron invocations cannot claim the same row, so the subsequent storage.remove +
+  // DELETE cannot race. The RPC stamps claimed_at so retried invocations also skip.
+  // W4 C-MED24: retention-days sourced from @/config/feature-flags single constant.
+  const { data: rows, error } = await supabase.rpc('claim_snapshots_for_prune', {
+    p_batch_size: 1000,
+    p_retention_days: SNAPSHOT_FREE_RETENTION_DAYS,
+  })
+  if (error) return new Response(JSON.stringify({ error: 'claim_failed' }), { status: 500 })
   scanned = rows?.length ?? 0
   if (!rows || rows.length === 0) return Response.json({ scanned, pruned, storage_failures: 0 })
 
@@ -2504,7 +2857,7 @@ export default async function handler(req: Request): Promise<Response> {
   if (delErr) return new Response(JSON.stringify({ error: 'delete_failed' }), { status: 500 })
   pruned = ids.length
 
-  // Optional 7th-day sweep — implement when cron is in production; out of scope for this draft.
+  // W4 C-HIGH9: 7th-day Storage sweep moved to its own weekly cron (see Task 20b below).
 
   return Response.json({ scanned, pruned, storage_failures: storageFailures })
 }
@@ -2515,13 +2868,14 @@ export default async function handler(req: Request): Promise<Response> {
 ```json
 {
   "crons": [
-    { "path": "/api/cron/delete-account",  "schedule": "0 3 * * *" },
-    { "path": "/api/cron/snapshot-prune",  "schedule": "0 4 * * *" }
+    { "path": "/api/cron/delete-account",          "schedule": "0 3 * * *" },
+    { "path": "/api/cron/snapshot-prune",          "schedule": "0 4 * * *" },
+    { "path": "/api/cron/snapshot-storage-sweep",  "schedule": "0 5 * * 0" }
   ]
 }
 ```
 
-(If `vercel.json` already has the delete-account cron from Cluster 01, add the snapshot-prune entry as a sibling. If neither exists yet, create the file.)
+(If `vercel.json` already has the delete-account cron from Cluster 01, add the snapshot-prune + snapshot-storage-sweep entries as siblings. If neither exists yet, create the file. The sweep cron runs Sundays 05:00 UTC — covers the "7th day" cadence from PRD 09 §8.3 with a single weekly invocation rather than a day-of-month modulo.)
 
 - [ ] **Step 4: Integration test**
 
@@ -2540,6 +2894,130 @@ git add kova-open-pencil-1/api/cron/snapshot-prune.ts \
         kova-open-pencil-1/tests/unit/api/cron/snapshot-prune.test.ts \
         kova-open-pencil-1/tests/integration/api/cron-snapshot-prune.test.ts
 git commit -m "feat(09): snapshot-prune cron + vercel.json wiring"
+```
+
+---
+
+## Task 20b (C-HIGH9): Weekly Storage sweep — orphan blob cleanup
+
+**Files:**
+- Create: `kova-open-pencil-1/api/cron/snapshot-storage-sweep.ts`
+- Test: `kova-open-pencil-1/tests/unit/api/cron/snapshot-storage-sweep.test.ts`
+- Test: `kova-open-pencil-1/tests/integration/api/cron-snapshot-storage-sweep.test.ts`
+
+**Why (W4):** `C-HIGH9` (CONSOLIDATED-TRIAGE.md). PRD 09 §8.3 ("Storage cascade") is silently uncovered by the placeholder note "implement when cron is in production." Without the sweep, every Storage `remove()` failure inside `snapshot-prune` (network blip, S3 5xx, transient permission denial) leaks an orphan blob forever, eating quota across all brands. The sweep diffs Storage against the DB once a week and deletes orphans.
+
+- [ ] **Step 1: Unit test**
+
+```typescript
+// kova-open-pencil-1/tests/unit/api/cron/snapshot-storage-sweep.test.ts
+import { describe, expect, it } from 'bun:test'
+import handler from '@/api/cron/snapshot-storage-sweep'
+
+describe('POST /api/cron/snapshot-storage-sweep', () => {
+  it('401 without CRON_SECRET', async () => {
+    const res = await handler(new Request('http://x', { method: 'POST', body: '{}' }))
+    expect(res.status).toBe(401)
+  })
+
+  it('deletes Storage objects with no matching canvas_snapshots row', async () => {
+    // Mock storage.list → 100 paths; mock SELECT scene_blob_path → 80 of those
+    // Assert storage.remove called with the 20 orphan paths
+  })
+
+  it('preserves Storage objects referenced by initial_state_blob_path (C-HIGH7)', async () => {
+    // A blob may be referenced by canvases.initial_state_blob_path even after the source
+    // snapshot row is deleted — the sweep MUST diff against both column sets.
+  })
+})
+```
+
+- [ ] **Step 2: Edge handler**
+
+```typescript
+// kova-open-pencil-1/api/cron/snapshot-storage-sweep.ts
+import { createClient } from '@supabase/supabase-js'
+
+export const config = { runtime: 'edge' }
+
+const SUPABASE_URL = process.env.SUPABASE_URL!
+const SERVICE_KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY!
+const CRON_SECRET  = process.env.CRON_SECRET!
+
+export default async function handler(req: Request): Promise<Response> {
+  const auth = req.headers.get('authorization')
+  if (auth !== `Bearer ${CRON_SECRET}`) return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401 })
+
+  const supabase = createClient(SUPABASE_URL, SERVICE_KEY)
+
+  // 1. List Storage objects (paginated; bucket can hold tens of thousands)
+  const storagePaths = new Set<string>()
+  let offset = 0
+  const PAGE = 1000
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const { data, error } = await supabase.storage
+      .from('canvas-snapshots')
+      .list('', { limit: PAGE, offset, sortBy: { column: 'name', order: 'asc' } })
+    if (error) return new Response(JSON.stringify({ error: 'list_failed' }), { status: 500 })
+    for (const obj of data ?? []) storagePaths.add(obj.name)
+    if (!data || data.length < PAGE) break
+    offset += PAGE
+  }
+
+  // 2. Read every DB-referenced path (snapshots + canvas-seed hydration)
+  const dbPaths = new Set<string>()
+  const [snapPaths, canvasPaths] = await Promise.all([
+    supabase.from('canvas_snapshots').select('scene_blob_path, thumbnail_path'),
+    supabase.from('canvases').select('initial_state_blob_path'),
+  ])
+  for (const r of (snapPaths.data ?? []) as Array<{ scene_blob_path: string; thumbnail_path: string | null }>) {
+    dbPaths.add(r.scene_blob_path)
+    if (r.thumbnail_path) dbPaths.add(r.thumbnail_path)
+  }
+  for (const r of (canvasPaths.data ?? []) as Array<{ initial_state_blob_path: string | null }>) {
+    if (r.initial_state_blob_path) dbPaths.add(r.initial_state_blob_path)
+  }
+
+  // 3. Diff: paths in Storage but not in DB are orphans
+  const orphans: string[] = []
+  for (const p of storagePaths) if (!dbPaths.has(p)) orphans.push(p)
+
+  // 4. Chunked delete (100 paths per call)
+  let removed = 0, removeFailures = 0
+  for (let i = 0; i < orphans.length; i += 100) {
+    const chunk = orphans.slice(i, i + 100)
+    const { error: rmErr } = await supabase.storage.from('canvas-snapshots').remove(chunk)
+    if (rmErr) removeFailures += chunk.length
+    else removed += chunk.length
+  }
+
+  return Response.json({
+    storage_objects: storagePaths.size,
+    db_paths: dbPaths.size,
+    orphans: orphans.length,
+    removed,
+    remove_failures: removeFailures,
+  })
+}
+```
+
+- [ ] **Step 3: Integration test**
+
+```typescript
+// Seed 50 snapshot rows + 50 matching blobs + 5 stray blobs (no row)
+// Invoke handler → assert response.orphans === 5 + 5 Storage objects removed
+```
+
+- [ ] **Step 4: Run + commit**
+
+```bash
+bun test ./tests/unit/api/cron/snapshot-storage-sweep.test.ts
+bun test ./tests/integration/api/cron-snapshot-storage-sweep.test.ts
+git add kova-open-pencil-1/api/cron/snapshot-storage-sweep.ts \
+        kova-open-pencil-1/tests/unit/api/cron/snapshot-storage-sweep.test.ts \
+        kova-open-pencil-1/tests/integration/api/cron-snapshot-storage-sweep.test.ts
+git commit -m "feat(09): weekly snapshot-storage-sweep cron (W4 C-HIGH9)"
 ```
 
 ---
@@ -2575,13 +3053,24 @@ import { useAutosnapshot } from '@/composables/version-history/use-autosnapshot'
 import { useCanvasEditLock } from '@/composables/version-history/use-canvas-edit-lock'
 import { usePreviewSideDoc } from '@/composables/version-history/use-preview-side-doc'
 import { useSnapshotsStore } from '@/stores/snapshots'
-import { ref, watch } from 'vue'
+import { editorBus } from '@/lib/editor-bus'  // W4 C-MED26: Plan 06 §3 event bus
+import { onBeforeUnmount, ref, watch } from 'vue'
 
 useDeepLinkedVersion()
 useVersionHistoryShortcut()
 const isActive = ref(true)
 const { start } = useAutosnapshot(canvasId, isActive)
 onMounted(start)
+
+// W4 C-MED26: File-menu Version-history handshake.
+// Plan 06 (W3 merged) ships `<FileBreadcrumb>` + the File-menu dropdown row "Show version
+// history" that emits `editorBus.emit('editor:open-version-history', { canvasId, brandId })`
+// (Plan 06 plan §3 line ~1556-1569). Plan 08 (W3 merged) registers ⌥⌘S which emits the
+// same event. CanvasView listens here and opens the panel; closing the panel resets the
+// store flag (no reverse-emit needed because the menu only opens, never toggles).
+const onOpenVH = (_p: { canvasId: string; brandId: string }) => { store.openPanel() }
+editorBus.on('editor:open-version-history', onOpenVH)
+onBeforeUnmount(() => editorBus.off('editor:open-version-history', onOpenVH))
 
 // Preview side-doc: watch store.previewingId and load/unload as it changes
 const store = useSnapshotsStore()
@@ -2593,38 +3082,56 @@ watch(() => store.previewingId, async (newId) => {
 })
 ```
 
+**Cross-cluster contract (W4 C-MED26):** the `editor:open-version-history` event signature is locked at `{ canvasId: string; brandId: string }` per Plan 06 §3 line ~1563. If Plan 06 changes the signature, Plan 09 panel mount must update in lockstep. `editorBus` lives at `@/lib/editor-bus` (Plan 06 ships); if absent at integration time, fall back to a window CustomEvent dispatch and log a warning.
+
 - [ ] **Step 4: Wire the canvas edit-lock overlay**
 
 In `CanvasView.vue` wrap the canvas stage with a pointer-events overlay tied to `useCanvasEditLock.isLocked`. The overlay swallows mouse-down + click events on the stage when locked, EXCEPT when the user is space-holding (pan), ctrl/meta-scrolling (zoom), or pressing arrow keys (nudge).
 
 ```vue
 <template>
+  <!-- W4 C-LOW09.10: pure-CSS overlay. The overlay is ALWAYS in the DOM; CSS toggles
+       pointer-events between 'none' (unlocked) and 'auto' (locked) based on the
+       .edit-locked class. Pan / zoom / nudge keep working because they run on
+       window keydown / wheel listeners that bypass the overlay entirely — we no
+       longer need a JS handler to "let those events through." The previous
+       window.__spaceHeld global hack is gone; the space-drag composable
+       (Cluster 06) owns its own pannable ref. -->
   <div class="canvas-stage" :class="{ 'edit-locked': editLock.isLocked.value }">
     <CanvasRenderer />
-    <!-- Overlay: pointer-events: none when unlocked; auto when locked.
-         Swallows clicks but lets pan/zoom shortcuts through because those are window-level keydown handlers. -->
-    <div v-if="editLock.isLocked.value" class="edit-lock-overlay"
-         @mousedown.capture="onSuppressedEdit" @click.capture="onSuppressedEdit" />
+    <div class="edit-lock-overlay" aria-hidden="true" />
   </div>
 </template>
 
 <script setup lang="ts">
 const editLock = useCanvasEditLock()
-
-function onSuppressedEdit(e: Event) {
-  // Allow space-drag pan (Cluster 06 handles via window listener — already passes if space is held)
-  if ((window as any).__spaceHeld) return
-  e.preventDefault(); e.stopPropagation()
-}
 </script>
 
 <style scoped>
-.edit-lock-overlay { position: absolute; inset: 0; cursor: not-allowed; pointer-events: auto; }
-.canvas-stage.edit-locked .toolbar .tool:not(.move) { opacity: 0.4; pointer-events: none; }
+/* Default: overlay is in the DOM but transparent to pointer events. */
+.edit-lock-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  cursor: default;
+}
+/* When the panel locks the canvas, the overlay swallows mouse-down + click and shows
+   the "not-allowed" cursor. Window-level keydown (pan / zoom / nudge) is unaffected
+   because keyboard events do not propagate through pointer-events. */
+.canvas-stage.edit-locked .edit-lock-overlay {
+  pointer-events: auto;
+  cursor: not-allowed;
+}
+.canvas-stage.edit-locked .toolbar .tool:not(.move) {
+  opacity: 0.4;
+  pointer-events: none;
+}
 </style>
 ```
 
 The toolbar-disable selector targets Cluster 06's `.toolbar .tool` markup. Cluster 06's PRD must confirm this is the expected class — if not, refactor to use the `useCanvasEditLock.isLocked` ref in the toolbar component itself.
+
+**Removed:** the `window.__spaceHeld` global from the previous draft. Cluster 06's space-pan composable (`useSpacePan` / `usePanGesture`) is the source of truth for whether space is currently held; the canvas does not need to read that state via a window global because the overlay does NOT block keyboard / wheel events — only pointer-down + click. Drag-to-pan and Ctrl+wheel-to-zoom work transparently while the overlay is active.
 
 - [ ] **Step 5: Manual smoke test**
 
@@ -2777,13 +3284,13 @@ Expected: all green; jscpd < 3%; no oxlint errors.
 
 - [ ] **Step 3: Bump PRD §0 status to `IN-IMPLEMENTATION` once smoke is green; bump to `SHIPPED` once production deploy completes**
 
-- [ ] **Step 4: Update `docs/prd/00a-PRD_AUTHORING_GUIDE.md` §7 tracker row for Cluster 09: status `IN-IMPLEMENTATION` then `SHIPPED`**
+- [ ] **Step 4: Update `docs/kova-final-prds/00a-PRD_AUTHORING_GUIDE.md` §7 tracker row for Cluster 09: status `IN-IMPLEMENTATION` then `SHIPPED`**
 
 - [ ] **Step 5: Final commit**
 
 ```bash
-git add kova-open-pencil-1/docs/prd/09-version-history-and-trash.md \
-        kova-open-pencil-1/docs/prd/00a-PRD_AUTHORING_GUIDE.md
+git add kova-open-pencil-1/docs/kova-final-prds/09-version-history-and-trash.md \
+        kova-open-pencil-1/docs/kova-final-prds/00a-PRD_AUTHORING_GUIDE.md
 git commit -m "docs(09): mark PRD 09 as IN-IMPLEMENTATION"
 ```
 

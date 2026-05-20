@@ -421,6 +421,16 @@ describe('useChatStore.updateProductReferences', () => {
   Edit `kova-open-pencil-1/src/stores/chat.ts`. After the existing `updateConversationTitle` function, add:
 
 ```typescript
+/**
+ * W4 C-MED27: SINGLE MUTATION ENTRY for chat_conversations.product_references.
+ * All callers (useChatProductReferencesStore.importProducts / removeReference / clearReferences
+ * in Task 4; later tasks 12 / 14 / 17) MUST invoke this action — no direct
+ * `supabase.from('chat_conversations').update({ product_references })` is allowed
+ * anywhere else in the codebase. Enforced by greplint in CI (see Task 18 quality gate).
+ *
+ * Order: persist to Supabase FIRST, then patch local Pinia state. A failed persist
+ * leaves local state unchanged so the UI never lies about server state.
+ */
 async function updateProductReferences(
   conversationId: string,
   refs: readonly ChatProductReference[]
@@ -460,6 +470,8 @@ git commit -m "feat(prd10): useChatStore.updateProductReferences action"
 **Files:**
 - Create: `kova-open-pencil-1/src/stores/chat-product-references.ts`
 - Test: `kova-open-pencil-1/tests/unit/stores/chat-product-references.test.ts`
+
+> **W4 C-MED27 contract:** this store NEVER writes to Supabase directly. All persistence flows through `useChatStore.updateProductReferences` (Task 3) — the single mutation entry point. `importProducts`, `removeReference`, and `clearReferences` compute the next `refs` array locally and delegate. Do NOT add `supabase.from('chat_conversations').update({ product_references })` here under any circumstances; CI grep gate in Task 18 fails the build if it appears outside Task 3.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1406,7 +1418,7 @@ git commit -m "feat(prd10): createSliceFromSelection AI tool wrapper (Cluster 07
 - Modify: `kova-open-pencil-1/src/ai/kova-tools.ts`
 - Create: `kova-open-pencil-1/tests/engine/ai/measurement-tool.test.ts`
 
-> **Dependency:** Cluster 07a must expose `figma.createMeasurement({ fromNodeId, toNodeId })`. Guard with runtime check.
+> **Dependency (W4 CT-004 corrected):** Cluster 07a exposes Measurement as a **page-level method** on the CANVAS-typed SceneNode — `figma.currentPage.addMeasurement(start, end, options?)` per PRD 07a §7.1b — NOT as a NodeType factory `figma.createMeasurement`. The anchor model uses `{ nodeId, side }` pairs with `side ∈ {TOP, RIGHT, BOTTOM, LEFT}`, plus optional `offset_type ∈ {INNER, OUTER}`, `offset_value`, and `free_text`. PRD 10 §6.3.4 §2.1 founder-locked this signature. Guard with a runtime check on `figma.currentPage?.addMeasurement` and `engine_unavailable` early-return.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1416,19 +1428,41 @@ git commit -m "feat(prd10): createSliceFromSelection AI tool wrapper (Cluster 07
 import { describe, expect, test } from 'bun:test'
 import { createKovaTools } from '@/ai/kova-tools'
 
-describe('addMeasurement AI tool', () => {
+describe('addMeasurement AI tool (page-level API, W4 CT-004)', () => {
   test('returns measurementId on success', async () => {
     const store = makeMockStoreWithNodes(['n1', 'n2'])
     const tools = createKovaTools(store)
-    const result = await tools.addMeasurement.execute({ fromNodeId: 'n1', toNodeId: 'n2' })
+    const result = await tools.addMeasurement.execute({
+      canvas_id: 'c1',
+      start_node_id: 'n1',
+      start_side:    'RIGHT',
+      end_node_id:   'n2',
+      end_side:      'LEFT',
+      offset_type:   'OUTER',
+      offset_value:  16,
+    })
     expect(result).toEqual({ success: true, measurementId: expect.any(String) })
   })
 
-  test('returns invalid_nodes error when nodes do not exist', async () => {
+  test('returns invalid_anchors error when nodes do not exist', async () => {
     const store = makeMockStoreWithNodes([])
     const tools = createKovaTools(store)
-    const result = await tools.addMeasurement.execute({ fromNodeId: 'x', toNodeId: 'y' })
-    expect(result).toEqual({ error: 'Could not create measurement', code: 'invalid_nodes' })
+    const result = await tools.addMeasurement.execute({
+      canvas_id: 'c1', start_node_id: 'x', start_side: 'TOP',
+      end_node_id: 'y', end_side: 'BOTTOM',
+    })
+    expect(result).toEqual({ error: 'Could not create measurement', code: 'invalid_anchors' })
+  })
+
+  test('returns engine_unavailable when currentPage.addMeasurement missing (Cluster 07a slipped)', async () => {
+    const store = makeMockStoreWithNodes(['n1', 'n2'])
+    store.__simulateMissingMeasurementAPI = true
+    const tools = createKovaTools(store)
+    const result = await tools.addMeasurement.execute({
+      canvas_id: 'c1', start_node_id: 'n1', start_side: 'RIGHT',
+      end_node_id: 'n2', end_side: 'LEFT',
+    })
+    expect(result).toEqual({ error: 'Measurement engine API not available', code: 'engine_unavailable' })
   })
 })
 ```
@@ -1439,26 +1473,48 @@ describe('addMeasurement AI tool', () => {
 
   Expected: FAIL.
 
-- [ ] **Step 3: Implement the tool**
+- [ ] **Step 3: Implement the tool — page-level signature per PRD 07a §7.1b**
 
   Edit `kova-open-pencil-1/src/ai/kova-tools.ts`. Add inside `createKovaTools`:
 
 ```typescript
+  const Side = v.picklist(['TOP', 'RIGHT', 'BOTTOM', 'LEFT'] as const)
+
   const addMeasurement = tool({
-    description: 'Add a persistent Measurement annotation between two nodes (distance + label).',
+    description:
+      'Add a persistent Measurement annotation between two nodes on the current page. ' +
+      'Page-level API per PRD 07a §7.1b (Measurement is NOT a NodeType).',
     inputSchema: valibotSchema(v.object({
-      fromNodeId: v.pipe(v.string(), v.description('Source node ID')),
-      toNodeId: v.pipe(v.string(), v.description('Target node ID'))
+      canvas_id:     v.pipe(v.string(), v.description('Canvas (page) id the measurement lives on')),
+      start_node_id: v.pipe(v.string(), v.description('Source node id')),
+      start_side:    Side,
+      end_node_id:   v.pipe(v.string(), v.description('Target node id')),
+      end_side:      Side,
+      offset_type:   v.optional(v.picklist(['INNER', 'OUTER'] as const)),
+      offset_value:  v.optional(v.number()),
+      free_text:     v.optional(v.string()),
     })),
-    execute: async ({ fromNodeId, toNodeId }) => {
+    execute: async ({
+      canvas_id, start_node_id, start_side, end_node_id, end_side,
+      offset_type, offset_value, free_text,
+    }) => {
       const figma = makeFigmaFromStore(store)
-      if (typeof figma.createMeasurement !== 'function') {
+      const page = figma.currentPage
+      if (!page || typeof page.addMeasurement !== 'function') {
         return { error: 'Measurement engine API not available', code: 'engine_unavailable' }
       }
-      const ann = figma.createMeasurement({ fromNodeId, toNodeId })
-      return ann
-        ? { success: true, measurementId: ann.id }
-        : { error: 'Could not create measurement', code: 'invalid_nodes' }
+      try {
+        const m = page.addMeasurement(
+          { nodeId: start_node_id, side: start_side },
+          { nodeId: end_node_id,   side: end_side },
+          { offsetType: offset_type, offsetValue: offset_value, freeText: free_text },
+        )
+        return m
+          ? { success: true, measurementId: m.id }
+          : { error: 'Could not create measurement', code: 'invalid_anchors' }
+      } catch (_e) {
+        return { error: 'Could not create measurement', code: 'invalid_anchors' }
+      }
     }
   })
 ```
@@ -2014,10 +2070,19 @@ async function handleSubmit(text: string, campaignType?: CampaignType) {
     return
   }
 
+  // W4 B-MED5: ensureChat (initializes Chat + builds the system prompt) and
+  // chatImages.buildMessagePayload (base64-encodes attached images for the SDK) are
+  // independent — neither's input depends on the other's output. Run in parallel so the
+  // user's first send round-trip is one async-payload step instead of two sequential ones.
+  let payload: Awaited<ReturnType<typeof chatImages.buildMessagePayload>>
   try {
     initError.value = null
-    const c = await ensureChat(conversationId)
+    const [c, p] = await Promise.all([
+      ensureChat(conversationId),
+      chatImages.buildMessagePayload(text),
+    ])
     if (c) chat.value = markRaw(c)
+    payload = p
   } catch (e) {
     console.error('Failed to initialize chat:', e)
     initError.value = e instanceof Error ? e.message : String(e)
@@ -2028,8 +2093,6 @@ async function handleSubmit(text: string, campaignType?: CampaignType) {
     toast.show('Waiting for image upload to finish…', 'warning')
     return
   }
-
-  const payload = await chatImages.buildMessagePayload(text)
 
   try { await chatStore.addMessage(conversationId, 'user', payload.text) } catch (e) { console.error(e) }
 
@@ -2314,7 +2377,10 @@ git commit -m "feat(prd10): refactor ChatPanel into full right-panel chat surfac
 ```typescript
 import { expect, test } from '@playwright/test'
 
-test('right-panel AI tab is visible + activates ChatPanel', async ({ page }) => {
+test('right-panel AI tab is visible + AI is default-active on first canvas open', async ({ page, context }) => {
+  // W4 C-LOW10.5 (b): assert AI tab is default-active per PRD 06 §12.13 + PRD 10 §1.3 (1).
+  // Use a fresh context so localStorage is clean — "first canvas open" is the contract.
+  await context.clearCookies()
   await page.goto('http://localhost:1420')
   // Login + open canvas via existing E2E fixture
   // ...
@@ -2324,7 +2390,7 @@ test('right-panel AI tab is visible + activates ChatPanel', async ({ page }) => 
   const popup = page.locator('.fixed.bottom-4.left-4')
   await expect(popup).toHaveCount(0)
 
-  // 2. Right-panel has Design + AI tabs only
+  // 2. Right-panel has Design + AI tabs only (no Prototype)
   const designTab = page.locator('[data-test-id="right-panel-tab-design"]')
   const aiTab = page.locator('[data-test-id="right-panel-tab-ai"]')
   const prototypeTab = page.locator('[data-test-id="right-panel-tab-prototype"]')
@@ -2332,9 +2398,25 @@ test('right-panel AI tab is visible + activates ChatPanel', async ({ page }) => 
   await expect(aiTab).toBeVisible()
   await expect(prototypeTab).toHaveCount(0)
 
-  // 3. Click AI → ChatPanel content active
-  await aiTab.click()
+  // 3. W4 C-LOW10.5 (b): AI tab is default-active on first canvas open.
+  //    Empty-state chat surface should be visible without any user click.
+  await expect(aiTab).toHaveAttribute('aria-selected', 'true')
   await expect(page.locator('[data-test-id="chat-empty-state"]')).toBeVisible()
+
+  // 4. Toggle Design then back → AI tab still works
+  await designTab.click()
+  await expect(designTab).toHaveAttribute('aria-selected', 'true')
+  await aiTab.click()
+  await expect(aiTab).toHaveAttribute('aria-selected', 'true')
+  await expect(page.locator('[data-test-id="chat-empty-state"]')).toBeVisible()
+})
+
+test('localStorage[right-panel-tab:${canvasId}] persists tab choice across reloads', async ({ page }) => {
+  await page.goto('http://localhost:1420/canvas/test-canvas-id')
+  await page.locator('[data-test-id="right-panel-tab-design"]').click()
+  await page.reload()
+  await expect(page.locator('[data-test-id="right-panel-tab-design"]'))
+    .toHaveAttribute('aria-selected', 'true')
 })
 ```
 
@@ -2434,7 +2516,7 @@ async function handleImport(): Promise<void> {
 }
 ```
 
-> **Cluster 06 dependency (W0-3 canonical):** `useRightPanelStore` at `@/stores/right-panel` with `setActiveTab('design' | 'ai')` is owned by Cluster 06 per §11 cross-cuts and scope plan §6 W0-3 lock. If the store doesn't exist yet, STOP — Cluster 06 must ship the 2-tab framework first matching this canonical name + path. Do NOT shim a local `useRightPanelTabStore` import — that name was retired by W0-3 on 2026-05-19.
+> **Cluster 06 dependency (W0-3 canonical, W4 C-HIGH10 verified):** `useRightPanelStore` at `@/stores/right-panel` with `setActiveTab('design' | 'ai')` is owned by Cluster 06 per §11 cross-cuts and scope plan §6 W0-3 lock. If the store doesn't exist yet, STOP — Cluster 06 must ship the 2-tab framework first matching this canonical name + path. Do NOT shim a local `useRightPanelTabStore` import — that name was retired by W0-3 on 2026-05-19. **W4 C-HIGH10 verification (2026-05-19):** plan-wide grep confirms zero remaining `useRightPanelTabStore` references; only `right-panel-tab-{design,ai,prototype}` DOM `data-test-id` selectors remain (selectors are E2E lookups, NOT store names — safe).
 
 - [ ] **Step 3: Test interactively + via E2E (E2E covered in Task 18)**
 
@@ -2590,7 +2672,17 @@ Anthropic does NOT use API-channel data to train models by default. Zero-data-re
 
   Already referenced in PRD §11.1. No edit needed.
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 3 (W4 C-MED-10.6): §8.5 + §8.6 acceptance verification**
+
+  PRD 10 §8.5 (server-side proxy) and §8.6 (sub-processor disclosure) had no concrete acceptance check in the original plan — they were only validated transitively by PFC.5 (privacy-flow check). Add explicit verifications to this task so a reviewer can sign off without inferring across documents.
+
+  - [ ] **§8.5.1** — Run `bun run build` then `grep -r "sk-ant-" kova-open-pencil-1/dist/ || echo OK`. Expected: `OK`. (Anthropic API keys begin with `sk-ant-`; any hit means a leaked secret in the browser bundle.)
+  - [ ] **§8.5.2** — Open the dist bundle in DevTools Network panel against staging; observe the chat send. Assert: every outbound request to `api.anthropic.com` is routed through `/api/ai-proxy/v1/messages` and carries `Authorization: Bearer eyJ...` (a Supabase JWT, not a raw API key).
+  - [ ] **§8.5.3** — Hit `POST /api/ai-proxy/v1/messages` 201 times in a UTC day for the same test user. Expected: 200 OK for requests 1–200, then 429 with body `{ retry_after: <seconds>, error: 'rate_limit_exceeded' }` for request 201. (Validates `try_increment_generation` atomicity from M5.)
+  - [ ] **§8.6.1** — Verify `docs/legal/anthropic-subprocessor-disclosure.md` (created above) lists ALL 7 data categories from §8.6: chat message text, attached image URLs, brand kit, brand memories, media library, product-reference summaries, tool-call results. Each category must be a literal bullet — no "etc."
+  - [ ] **§8.6.2** — Confirm Cluster 01's `docs/legal/privacy-policy.md` lifts the disclosure section verbatim. If Cluster 01 has not yet lifted it, file a tracking item under their PRD §11.1 deliverables and block Wave 6 close on Cluster 01 sign-off.
+
+- [ ] **Step 4: Commit**
 
 ```bash
 cd kova-open-pencil-1
