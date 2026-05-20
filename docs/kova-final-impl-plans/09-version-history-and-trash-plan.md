@@ -2957,13 +2957,24 @@ import { useAutosnapshot } from '@/composables/version-history/use-autosnapshot'
 import { useCanvasEditLock } from '@/composables/version-history/use-canvas-edit-lock'
 import { usePreviewSideDoc } from '@/composables/version-history/use-preview-side-doc'
 import { useSnapshotsStore } from '@/stores/snapshots'
-import { ref, watch } from 'vue'
+import { editorBus } from '@/lib/editor-bus'  // W4 C-MED26: Plan 06 §3 event bus
+import { onBeforeUnmount, ref, watch } from 'vue'
 
 useDeepLinkedVersion()
 useVersionHistoryShortcut()
 const isActive = ref(true)
 const { start } = useAutosnapshot(canvasId, isActive)
 onMounted(start)
+
+// W4 C-MED26: File-menu Version-history handshake.
+// Plan 06 (W3 merged) ships `<FileBreadcrumb>` + the File-menu dropdown row "Show version
+// history" that emits `editorBus.emit('editor:open-version-history', { canvasId, brandId })`
+// (Plan 06 plan §3 line ~1556-1569). Plan 08 (W3 merged) registers ⌥⌘S which emits the
+// same event. CanvasView listens here and opens the panel; closing the panel resets the
+// store flag (no reverse-emit needed because the menu only opens, never toggles).
+const onOpenVH = (_p: { canvasId: string; brandId: string }) => { store.openPanel() }
+editorBus.on('editor:open-version-history', onOpenVH)
+onBeforeUnmount(() => editorBus.off('editor:open-version-history', onOpenVH))
 
 // Preview side-doc: watch store.previewingId and load/unload as it changes
 const store = useSnapshotsStore()
@@ -2974,6 +2985,8 @@ watch(() => store.previewingId, async (newId) => {
   if (snap) await loadPreview(newId, snap.scene_blob_path)
 })
 ```
+
+**Cross-cluster contract (W4 C-MED26):** the `editor:open-version-history` event signature is locked at `{ canvasId: string; brandId: string }` per Plan 06 §3 line ~1563. If Plan 06 changes the signature, Plan 09 panel mount must update in lockstep. `editorBus` lives at `@/lib/editor-bus` (Plan 06 ships); if absent at integration time, fall back to a window CustomEvent dispatch and log a warning.
 
 - [ ] **Step 4: Wire the canvas edit-lock overlay**
 
