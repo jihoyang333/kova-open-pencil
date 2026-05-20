@@ -99,9 +99,19 @@ Co-located: `tests/unit/...` mirrors `src/...`; `tests/integration/...` for DB +
 
 > **Authoritative method:** `docs/execution-phase/claude-design-files/IMPLEMENTATION_PROMPT.md` (read end-to-end before any UI task). Maps PRD 04 §3 hi-fi citations to Plan tasks + actual Kova source paths.
 
-**Translation rule:** hi-fi HTML = visual source of truth; idiomatic Vue 3 + Cluster 11 primitives. **Mockup wins**; drift protocol (RIDER §2.1).
+**3-rule fidelity contract** (per `docs/execution-phase/claude-design-files/IMPLEMENTATION_PROMPT.md` §0):
 
-**Per-screen diff loop** per IMPLEMENTATION_PROMPT.md Phase 4. Cluster-boundary Playwright gate ≤ 2%.
+1. **Visual values are copied.** Every color, spacing, type, radius, shadow, gap, padding, line-height, tracking, and proportion in the rendered output MUST match the mockup pixel-for-pixel.
+2. **DOM structure is translated.** Vue 3 SFCs + Reka UI primitives + Cluster 11 primitives + K* component layer (`design.md` §3). NOT the mockup's hand-rolled HTML.
+3. **Behavior is engineered.** State in Pinia / refs / composables. Hover / focus / active / selected / disabled states are dynamic bindings, NEVER hardcoded classes.
+
+**Trap phrase ban:** "copy DOM verbatim" is forbidden. Drift protocol per RIDER §2.1 + IMPLEMENTATION_PROMPT.md §7 on any hi-fi value not in `kova-hifi.css :root` — never silently round.
+
+**Phase 1 audit gate** (per IMPLEMENTATION_PROMPT.md §3): produce `KOVA_AUDIT.md` + `tokens-used.md` BEFORE any Vue code. `tokens-used.md` enumerates every visual value in this cluster's surfaces mapped to either an existing token or ⚠️ MISSING (founder decision via AskUserQuestion). No Vue until founder-approved.
+
+**Per-screen diff loop** (per IMPLEMENTATION_PROMPT.md §6): in-repo mockup + Vue route at 1440px → screenshot both → walk Appendix A per property → list discrepancies in `tests/snapshots/cluster-04/<surface>-diff.md` → fix → re-diff until empty. **Visual-diff thresholds: ≤ 0.1% component / ≤ 0.5% screen** (Playwright `maxDiffPixelRatio: 0.005, threshold: 0.2`, masking volatile regions per IMPLEMENTATION_PROMPT.md §10).
+
+**PR artifact:** every PR touching a UI surface in this cluster MUST include 3-screenshot row (mockup / impl / diff) per surface in the PR description.
 
 **Theme:** dark throughout (account is inside authenticated app per `feedback_app_dark_website_light`). Stripe-hosted Checkout + Portal pages NOT in this list — render on Stripe domain.
 
@@ -128,18 +138,18 @@ Source: `kova-open-pencil-1/src/components/ui/`:
 
 | Plan surface | Hi-fi file | Scene IDs |
 |---|---|---|
-| Account page shell (`.acct-shell` + sidebar + content + top chrome with "Back to dashboard") | `main-main-kova-scope/batch-a/dark/Kova Hi-Fi A7 Account Page - Dark.html` | shared chrome across A7.1–A7.6 |
-| Sidebar item list (6 items: Profile / Brands / Plan & billing / Brand Kit / Integrations / Danger zone) | same + `main-main-kova-scope/batch-a-additions/dark/Kova Hi-Fi B12 Brands page - Dark.html` (Brands item) | A7 chrome lines 554–560 |
+| Account page shell (`.acct-shell` + sidebar + content + top chrome with "Back to dashboard") | `design-system/hifi/account-stripe/Kova Hi-Fi A7 Account Page - Dark.html` | shared chrome across A7.1–A7.6 |
+| Sidebar item list (6 items: Profile / Brands / Plan & billing / Brand Kit / Integrations / Danger zone) | same + `design-system/hifi/brand-mgmt/Kova Hi-Fi B12 Brands page - Dark.html` (Brands item) | A7 chrome lines 554–560 |
 | Profile section (Avatar + Name + Email + Password + Accessibility toggles + Notifications + Timezone + Unsaved-changes pill) | A7 | A7.1 |
 | Plan & billing section (Plan card + Past-due banner + Usage + Invoice table + Compare plans + Upgrade triggers) | A7 | A7.2 |
 | Brand Kit section shell + brand-picker pill + 7-sub-tab nav rail | A7 | A7.3, A7.3.1 |
 | Brand picker dropdown open state | A7 (A2b open variant) + Cluster 03 A2/A3 | A7.3 (open) |
 | Integrations section (Shopify card states: Connected / Not connected / Connecting / Re-authorize / Sync in progress + Sync history accordion + Disconnect confirm + Coming-soon cards) | A7 + refactor from existing `IntegrationsCard.vue` (no dedicated scene for the non-connected states) | A7.5 |
-| Danger zone section default + Delete account modal (cross-cut to Cluster 01 Task 16) | A7 + `main-main-kova-scope/batch-a/dark/Kova Hi-Fi A4+A9+A10 Modals - Dark.html` | A7.6 + A9.1 |
-| Stripe Checkout success landing | `main-main-kova-scope/batch-a-additions/dark/Kova Hi-Fi B10 Stripe Returns - Dark.html` | B10.1 |
+| Danger zone section default + Delete account modal (cross-cut to Cluster 01 Task 16) | A7 + `design-system/hifi/brand-kit/Kova Hi-Fi A4+A9+A10 Modals - Dark.html` | A7.6 + A9.1 |
+| Stripe Checkout success landing | `design-system/hifi/account-stripe/Kova Hi-Fi B10 Stripe Returns - Dark.html` | B10.1 |
 | Stripe Checkout cancelled landing | same | B10.2 |
-| Cross-ref: B12 Brands page populated (Brands sidebar item routes here) | `main-main-kova-scope/batch-a-additions/dark/Kova Hi-Fi B12 Brands page - Dark.html` | B12.1 (Cluster 03 ships full page) |
-| Cross-ref: B5 Email Change Landing (post-email-change-flow lands here; Cluster 01 owns surface) | `main-main-kova-scope/batch-a-additions/light/Kova Hi-Fi B5 Email Change Landing - Light.html` | B5.1, B5.2 |
+| Cross-ref: B12 Brands page populated (Brands sidebar item routes here) | `design-system/hifi/brand-mgmt/Kova Hi-Fi B12 Brands page - Dark.html` | B12.1 (Cluster 03 ships full page) |
+| Cross-ref: B5 Email Change Landing (post-email-change-flow lands here; Cluster 01 owns surface) | `design-system/hifi/auth/Kova Hi-Fi B5 Email Change Landing - Light.html` | B5.1, B5.2 |
 
 ### Per-property extraction checklist
 

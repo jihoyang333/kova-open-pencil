@@ -110,9 +110,19 @@ One test file per non-trivial source — colocated under `tests/`:
 
 > **Authoritative method:** `docs/execution-phase/claude-design-files/IMPLEMENTATION_PROMPT.md` (read end-to-end before any UI task). This section maps PRD 01 §3 hi-fi citations onto Plan tasks + points at actual Kova source paths to consult.
 
-**Translation rule:** hi-fi HTML is the visual source of truth, not a literal copy target. Port to idiomatic Vue 3 using Cluster 11 primitives. **Mockup wins on visual values** — if hi-fi value isn't in `kova-hifi-light.css` / `kova-hifi.css :root`, apply drift protocol (RIDER §2.1). Never silently round.
+**3-rule fidelity contract** (per `docs/execution-phase/claude-design-files/IMPLEMENTATION_PROMPT.md` §0):
 
-**Per-screen diff loop** (per IMPLEMENTATION_PROMPT.md Phase 4): hi-fi HTML + Vue route at 1440px viewport → screenshot both → list discrepancies → fix → re-diff. Cluster-boundary Playwright gate ≤ 2% pixel diff per MASTER §8.2.
+1. **Visual values are copied.** Every color, spacing, type, radius, shadow, gap, padding, line-height, tracking, and proportion in the rendered output MUST match the mockup pixel-for-pixel.
+2. **DOM structure is translated.** Vue 3 SFCs + Reka UI primitives + Cluster 11 primitives + K* component layer (`design.md` §3). NOT the mockup's hand-rolled HTML.
+3. **Behavior is engineered.** State in Pinia / refs / composables. Hover / focus / active / selected / disabled states are dynamic bindings, NEVER hardcoded classes.
+
+**Trap phrase ban:** "copy DOM verbatim" is forbidden. Drift protocol per RIDER §2.1 + IMPLEMENTATION_PROMPT.md §7 on any hi-fi value not in `kova-hifi.css :root` — never silently round.
+
+**Phase 1 audit gate** (per IMPLEMENTATION_PROMPT.md §3): produce `KOVA_AUDIT.md` + `tokens-used.md` BEFORE any Vue code. `tokens-used.md` enumerates every visual value in this cluster's surfaces mapped to either an existing token or ⚠️ MISSING (founder decision via AskUserQuestion). No Vue until founder-approved.
+
+**Per-screen diff loop** (per IMPLEMENTATION_PROMPT.md §6): in-repo mockup + Vue route at 1440px → screenshot both → walk Appendix A per property → list discrepancies in `tests/snapshots/cluster-01/<surface>-diff.md` → fix → re-diff until empty. **Visual-diff thresholds: ≤ 0.1% component / ≤ 0.5% screen** (Playwright `maxDiffPixelRatio: 0.005, threshold: 0.2`, masking volatile regions per IMPLEMENTATION_PROMPT.md §10).
+
+**PR artifact:** every PR touching a UI surface in this cluster MUST include 3-screenshot row (mockup / impl / diff) per surface in the PR description.
 
 **Theme note (Cluster 01 specific):** auth pages = **LIGHT** theme via `kova-hifi-light.css`. Routes carry `meta.theme = 'light'`. Session-expired bridge + account-pending-deletion = **DARK**. Per `feedback_app_dark_website_light` memory.
 
@@ -137,12 +147,12 @@ Source: `kova-open-pencil-1/src/components/ui/`:
 
 | Plan task | Surface built | Hi-fi file | Scene IDs | Theme |
 |---|---|---|---|---|
-| Task 14 — AuthShell + AuthCard + AuthHeading + AuthCta + AuthMedal + AuthIcon | Shared auth-shell primitives consumed by every auth page | `main-main-kova-scope/batch-a/light/Kova Hi-Fi A15 Auth - Light.html` | A15.01–A15.06 (signup/login/sent/otp/forgot/verified) | LIGHT |
+| Task 14 — AuthShell + AuthCard + AuthHeading + AuthCta + AuthMedal + AuthIcon | Shared auth-shell primitives consumed by every auth page | `design-system/hifi/auth/Kova Hi-Fi A15 Auth - Light.html` | A15.01–A15.06 (signup/login/sent/otp/forgot/verified) | LIGHT |
 | Task 15 — AuthField + OtpInput + MagicLinkSentBlock + PersistentSessionToggle | Field-level + OTP input + magic-link "sent" headline block + 30-day refresh toggle | same | A15.02, A15.03, A15.04, A15.06 | LIGHT |
-| Task 16 — DangerZoneCard (typed-confirm) | Delete-account typed-confirm card (rendered in Cluster 04 `/account/danger`) | `main-main-kova-scope/batch-a/dark/Kova Hi-Fi A4+A9+A10 Modals - Dark.html` | A9.1 (typed-confirm "DELETE") | DARK (renders inside `/account`) |
+| Task 16 — DangerZoneCard (typed-confirm) | Delete-account typed-confirm card (rendered in Cluster 04 `/account/danger`) | `design-system/hifi/brand-kit/Kova Hi-Fi A4+A9+A10 Modals - Dark.html` | A9.1 (typed-confirm "DELETE") | DARK (renders inside `/account`) |
 | Task 17 — SignupView + LoginView | Pre-auth surfaces: signup email entry, login email entry, OTP code entry | A15 Auth Light | A15.01 (signup), A15.02 (login), A15.04 (OTP entry) | LIGHT |
-| Task 18 — ForgotPasswordView + MagicLinkErrorView + AuthCallbackView | Forgot-password hidden surface; magic-link expired/invalid error pages; post-signup verified callback | A15 Auth Light + `main-main-kova-scope/batch-a-additions/light/Kova Hi-Fi B4 Auth Errors - Light.html` | A15.05 (forgot), B4.1 (expired), B4.2 (invalid), A15.06 (verified) | LIGHT |
-| Task 19 — EmailChangeVerifyView + SessionExpiredView + DesktopOnlyView | Email-change landing (success/expired) + dark session-expired bridge + desktop-only fallback (primary + tablet edge) | `main-main-kova-scope/batch-a-additions/light/Kova Hi-Fi B5 Email Change Landing - Light.html` (B5.1, B5.2) + `main-main-kova-scope/batch-a-additions/dark/Kova Hi-Fi B4 Session Expired - Dark.html` (B4.7) + `main-main-kova-scope/batch-a-additions/light/Kova Hi-Fi B6 Mobile Fallback - Light.html` (B6.1, B6.2) | per surface | mixed |
+| Task 18 — ForgotPasswordView + MagicLinkErrorView + AuthCallbackView | Forgot-password hidden surface; magic-link expired/invalid error pages; post-signup verified callback | A15 Auth Light + `design-system/hifi/auth/Kova Hi-Fi B4 Auth Errors - Light.html` | A15.05 (forgot), B4.1 (expired), B4.2 (invalid), A15.06 (verified) | LIGHT |
+| Task 19 — EmailChangeVerifyView + SessionExpiredView + DesktopOnlyView | Email-change landing (success/expired) + dark session-expired bridge + desktop-only fallback (primary + tablet edge) | `design-system/hifi/auth/Kova Hi-Fi B5 Email Change Landing - Light.html` (B5.1, B5.2) + `design-system/hifi/auth/Kova Hi-Fi B4 Session Expired - Dark.html` (B4.7) + `design-system/hifi/auth/Kova Hi-Fi B6 Mobile Fallback - Light.html` (B6.1, B6.2) | per surface | mixed |
 | Task 20 — AccountPendingDeletionView + PrivacyPolicyView + TermsView | Pending-deletion landing (composes B4.7 + A4 modal pattern — NO dedicated hi-fi) + privacy/terms long-form markdown shells | none direct; composes from B4.7 + A4 modal patterns | n/a | mixed |
 | Task 21 — Email templates (composed from Cluster 11 `<EmailShell>`) | Magic-link, OTP, password-reset, account-deletion-confirmation emails | composed via Cluster 11 EmailShell primitive | n/a | n/a (email rendering, not in-app) |
 

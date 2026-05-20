@@ -130,9 +130,19 @@
 
 > **Authoritative method:** `docs/execution-phase/claude-design-files/IMPLEMENTATION_PROMPT.md` (read end-to-end before any UI task). Maps PRD 05 §3 hi-fi citations to Plan tasks + actual Kova source paths.
 
-**Translation rule:** hi-fi HTML = visual source of truth; idiomatic Vue 3 + Cluster 11 primitives. **Mockup wins**; drift protocol (RIDER §2.1).
+**3-rule fidelity contract** (per `docs/execution-phase/claude-design-files/IMPLEMENTATION_PROMPT.md` §0):
 
-**Per-screen diff loop** per IMPLEMENTATION_PROMPT.md Phase 4. Cluster-boundary Playwright gate ≤ 2%. Theme: dark throughout.
+1. **Visual values are copied.** Every color, spacing, type, radius, shadow, gap, padding, line-height, tracking, and proportion in the rendered output MUST match the mockup pixel-for-pixel.
+2. **DOM structure is translated.** Vue 3 SFCs + Reka UI primitives + Cluster 11 primitives + K* component layer (`design.md` §3). NOT the mockup's hand-rolled HTML.
+3. **Behavior is engineered.** State in Pinia / refs / composables. Hover / focus / active / selected / disabled states are dynamic bindings, NEVER hardcoded classes.
+
+**Trap phrase ban:** "copy DOM verbatim" is forbidden. Drift protocol per RIDER §2.1 + IMPLEMENTATION_PROMPT.md §7 on any hi-fi value not in `kova-hifi.css :root` — never silently round. **Theme: dark throughout.**
+
+**Phase 1 audit gate** (per IMPLEMENTATION_PROMPT.md §3): produce `KOVA_AUDIT.md` + `tokens-used.md` BEFORE any Vue code. `tokens-used.md` enumerates every visual value in this cluster's surfaces mapped to either an existing token or ⚠️ MISSING (founder decision via AskUserQuestion). No Vue until founder-approved.
+
+**Per-screen diff loop** (per IMPLEMENTATION_PROMPT.md §6): in-repo mockup + Vue route at 1440px → screenshot both → walk Appendix A per property → list discrepancies in `tests/snapshots/cluster-05/<surface>-diff.md` → fix → re-diff until empty. **Visual-diff thresholds: ≤ 0.1% component / ≤ 0.5% screen** (Playwright `maxDiffPixelRatio: 0.005, threshold: 0.2`, masking volatile regions per IMPLEMENTATION_PROMPT.md §10).
+
+**PR artifact:** every PR touching a UI surface in this cluster MUST include 3-screenshot row (mockup / impl / diff) per surface in the PR description.
 
 ### Cluster 11 primitives — use these
 
@@ -157,12 +167,12 @@ Source: `kova-open-pencil-1/src/components/ui/`:
 
 | Plan surface | Hi-fi file | Scene IDs |
 |---|---|---|
-| Brand Kit section shell + 7-sub-tab nav rail + brand-picker pill | `main-main-kova-scope/batch-a/dark/Kova Hi-Fi A7 Account Page - Dark.html` | A7.3 (intro), A7.3.1 (Visuals sub-nav) |
+| Brand Kit section shell + 7-sub-tab nav rail + brand-picker pill | `design-system/hifi/account-stripe/Kova Hi-Fi A7 Account Page - Dark.html` | A7.3 (intro), A7.3.1 (Visuals sub-nav) |
 | Brand-picker open state | A7 (A2b open variant) | A2b |
 | Visuals sub-tab — colors / fonts / logo | A7 | A7.3.1 |
-| Font upload drop zone (idle / hover / in-progress / success / error) | `main-main-kova-scope/batch-a-additions/dark/Kova Hi-Fi B8 Upload States - Dark.html` | B8.2, B8.4, B8.5, B8.6 |
+| Font upload drop zone (idle / hover / in-progress / success / error) | `design-system/hifi/states/Kova Hi-Fi B8 Upload States - Dark.html` | B8.2, B8.4, B8.5, B8.6 |
 | Identity sub-tab — narrative cards (About / Voice & tone / Story & origin) | A7 | A7.3.2 |
-| Tone snippets list + Add/Edit/Delete modals | A7 + `main-main-kova-scope/batch-a-additions/dark/batch-0/Kova Hi-Fi B3 Brand Kit CRUD Modals - Dark.html` | A7.3.3, B3.1 (Add empty/typing/filled), B3.2 (Edit) |
+| Tone snippets list + Add/Edit/Delete modals | A7 + `design-system/hifi/brand-kit/Kova Hi-Fi B3 Brand Kit CRUD Modals - Dark.html` | A7.3.3, B3.1 (Add empty/typing/filled), B3.2 (Edit) |
 | Saved blocks list + Add/Edit modals + Delete confirm | A7 + B3 | A7.3.4, B3.3 (Add), B3.4 (Edit), B3.5 (Delete) |
 | Writing rules toggle list | A7 | A7.3.5 |
 | Memories list (cross-cut with Cluster 10) | A7 | A7.3.6 |

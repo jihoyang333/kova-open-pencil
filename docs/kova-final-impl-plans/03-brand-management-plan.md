@@ -156,9 +156,19 @@ Founder reversed the 2026-05-13 lock that scoped B12 to Phase 2. Per `docs/kova-
 
 > **Authoritative method:** `docs/execution-phase/claude-design-files/IMPLEMENTATION_PROMPT.md` (read end-to-end before any UI task). Maps PRD 03 §3 hi-fi citations to Plan tasks + actual Kova source paths.
 
-**Translation rule:** hi-fi HTML = visual source of truth; idiomatic Vue 3 + Cluster 11 primitives. **Mockup wins**; drift protocol (RIDER §2.1).
+**3-rule fidelity contract** (per `docs/execution-phase/claude-design-files/IMPLEMENTATION_PROMPT.md` §0):
 
-**Per-screen diff loop** per IMPLEMENTATION_PROMPT.md Phase 4. Cluster-boundary Playwright gate ≤ 2%.
+1. **Visual values are copied.** Every color, spacing, type, radius, shadow, gap, padding, line-height, tracking, and proportion in the rendered output MUST match the mockup pixel-for-pixel.
+2. **DOM structure is translated.** Vue 3 SFCs + Reka UI primitives + Cluster 11 primitives + K* component layer (`design.md` §3). NOT the mockup's hand-rolled HTML.
+3. **Behavior is engineered.** State in Pinia / refs / composables. Hover / focus / active / selected / disabled states are dynamic bindings, NEVER hardcoded classes.
+
+**Trap phrase ban:** "copy DOM verbatim" is forbidden. Drift protocol per RIDER §2.1 + IMPLEMENTATION_PROMPT.md §7 on any hi-fi value not in `kova-hifi.css :root` — never silently round.
+
+**Phase 1 audit gate** (per IMPLEMENTATION_PROMPT.md §3): produce `KOVA_AUDIT.md` + `tokens-used.md` BEFORE any Vue code. `tokens-used.md` enumerates every visual value in this cluster's surfaces mapped to either an existing token or ⚠️ MISSING (founder decision via AskUserQuestion). No Vue until founder-approved.
+
+**Per-screen diff loop** (per IMPLEMENTATION_PROMPT.md §6): in-repo mockup + Vue route at 1440px → screenshot both → walk Appendix A per property → list discrepancies in `tests/snapshots/cluster-03/<surface>-diff.md` → fix → re-diff until empty. **Visual-diff thresholds: ≤ 0.1% component / ≤ 0.5% screen** (Playwright `maxDiffPixelRatio: 0.005, threshold: 0.2`, masking volatile regions per IMPLEMENTATION_PROMPT.md §10).
+
+**PR artifact:** every PR touching a UI surface in this cluster MUST include 3-screenshot row (mockup / impl / diff) per surface in the PR description.
 
 **Theme:** all dark (per `feedback_app_dark_website_light`).
 
@@ -183,13 +193,13 @@ Source: `kova-open-pencil-1/src/components/ui/`:
 
 | Plan surface | Hi-fi file | Scene IDs |
 |---|---|---|
-| Brand picker (populated `.bp-card` 3-col grid + empty pane) | `main-main-kova-scope/batch-a/dark/Kova Hi-Fi A2+A3 Brand picker & New brand - Dark.html` | A2.a (populated), A2.b (empty) |
+| Brand picker (populated `.bp-card` 3-col grid + empty pane) | `design-system/hifi/brand-mgmt/Kova Hi-Fi A2+A3 Brand picker & New brand - Dark.html` | A2.a (populated), A2.b (empty) |
 | New-brand wizard (4 steps: Name+URL / Shopify / Brand kit / Done splash) | same | A3.a, A3.b, A3.c, A3.d |
-| Rename brand modal | `main-main-kova-scope/batch-a/dark/Kova Hi-Fi A4+A9+A10 Modals - Dark.html` | A4.1 |
+| Rename brand modal | `design-system/hifi/brand-kit/Kova Hi-Fi A4+A9+A10 Modals - Dark.html` | A4.1 |
 | Archive brand modal | same | A4.2 |
 | Delete brand modal (typed-confirm `.fld` + `.btn.danger`) | same | A4.3 |
-| Modal shell (`.dlg.sm` / `.dlg.md`) + `<TypedConfirmField>` | `main-main-kova-scope/batch-a/dark/Kova Hi-Fi A6+A2a Popovers + A8 Dialogs - Dark.html` | A4 + A8.4 (typed-confirm) |
-| Brands page populated (segmented All / Active / Archived + 3-col grid) | `main-main-kova-scope/batch-a-additions/dark/Kova Hi-Fi B12 Brands page - Dark.html` | B12.1 |
+| Modal shell (`.dlg.sm` / `.dlg.md`) + `<TypedConfirmField>` | `design-system/hifi/canvas-menus/Kova Hi-Fi A6+A2a Popovers + A8 Dialogs - Dark.html` | A4 + A8.4 (typed-confirm) |
+| Brands page populated (segmented All / Active / Archived + 3-col grid) | `design-system/hifi/brand-mgmt/Kova Hi-Fi B12 Brands page - Dark.html` | B12.1 |
 | Brands page archived empty | same | B12.2 |
 | Restore confirm modal | same | B12.3 |
 | Delete-archived confirm modal (same shell as A4.3, "permanent" footer copy) | same | B12.4 |
