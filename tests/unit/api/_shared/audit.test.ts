@@ -1,9 +1,11 @@
 // Unit test for api/_shared/audit.ts (Plan 11 Task 1.3a / W0-1).
-// Uses a handcrafted mock supabase client so we can force DB errors that the
-// helper must swallow (42P01 / 23505 etc.).
+// Uses a handcrafted mock supabase client. Sentry side-effect is intentionally
+// NOT asserted here — the contract is "swallow + don't throw"; observability
+// is left to integration tests + Sentry once wired (founder lock #19).
 
-import { describe, it, expect, beforeEach, mock } from 'bun:test'
+import { describe, it, expect, beforeEach } from 'bun:test'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { writeAudit } from '../../../../api/_shared/audit'
 
 interface MockState {
   inserted: Array<Record<string, unknown>>
@@ -26,23 +28,11 @@ function createMock(): { client: SupabaseClient; state: MockState } {
   return { client: client as unknown as SupabaseClient, state }
 }
 
-const captureExceptionMock = mock(() => undefined)
-
-mock.module('@/../api/_shared/sentry', () => ({
-  captureException: captureExceptionMock,
-}))
-// Bun resolves the import path that audit.ts uses (`./sentry`), so also mock
-// the resolved relative path for portability.
-mock.module('./sentry', () => ({ captureException: captureExceptionMock }))
-
-const { writeAudit } = await import('@/../api/_shared/audit')
-
 describe('writeAudit (W0-1 / founder lock #11)', () => {
   let mockSb: ReturnType<typeof createMock>
 
   beforeEach(() => {
     mockSb = createMock()
-    captureExceptionMock.mockClear()
   })
 
   it('inserts one audit_log row with all fields', async () => {
@@ -72,7 +62,7 @@ describe('writeAudit (W0-1 / founder lock #11)', () => {
     expect(mockSb.state.inserted[0]?.['user_id']).toBeNull()
   })
 
-  it('swallows 42P01 (table missing) — captureException called, no throw', async () => {
+  it('swallows 42P01 (table missing) without throwing', async () => {
     mockSb.state.forcedError = {
       code: '42P01',
       message: 'relation "audit_log" does not exist',
@@ -85,9 +75,11 @@ describe('writeAudit (W0-1 / founder lock #11)', () => {
         clusterOwner: '01',
       }),
     ).resolves.toBeUndefined()
+    // No row written when DB rejected
+    expect(mockSb.state.inserted).toHaveLength(0)
   })
 
-  it('swallows other DB errors — captureException called, no throw', async () => {
+  it('swallows other DB errors without throwing', async () => {
     mockSb.state.forcedError = { code: '23505', message: 'duplicate' }
     await expect(
       writeAudit(mockSb.client, {
