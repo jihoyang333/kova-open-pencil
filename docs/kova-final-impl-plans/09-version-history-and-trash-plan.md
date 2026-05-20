@@ -2517,23 +2517,25 @@ export default async function handler(req: Request): Promise<Response> {
     .from('canvas-snapshots').upload(newBlobPath, blobBytes, { contentType: 'application/octet-stream' })
   if (upErr) return new Response(JSON.stringify({ error: 'internal_error' }), { status: 500 })
 
-  // 6b. W4 C-HIGH7: stamp initial_state_blob_path on the new canvas so Cluster 02 canvas-open
-  // can hydrate the Yjs doc from this blob on first open. Service-role bypass acceptable —
-  // create_canvas just minted this row for auth.userId, so the WHERE id = newCanvasId is safe.
-  const { error: stampErr } = await adminClient.from('canvases')
-    .update({ initial_state_blob_path: newBlobPath })
-    .eq('id', newCanvasId)
-  if (stampErr) return new Response(JSON.stringify({ error: 'internal_error' }), { status: 500 })
-
-  // 7. Insert "Duplicated from..." snapshot row on the new canvas (id pre-set per C-MED23)
-  await userClient.rpc('create_snapshot', {
-    p_canvas_id: newCanvasId, p_kind: 'manual',
-    p_label: `Duplicated from ${snap.label || new Date(snap.taken_at).toLocaleString()}`,
-    p_description: null, p_scene_blob_path: newBlobPath,
-    p_scene_size_bytes: blobBytes.byteLength, p_thumbnail_path: null,
-    p_parent_snapshot_id: snapshot_id,
-    p_id: newSnapshotId,  // W4 C-MED23
-  })
+  // 6b + 7. W4 B-MED5: stamping initial_state_blob_path and inserting the "Duplicated from"
+  // snapshot row are independent of each other (both depend on newCanvasId + newBlobPath,
+  // neither depends on the other's return). Run in parallel to halve the round-trip count.
+  const [stampRes, snapInsertRes] = await Promise.all([
+    adminClient.from('canvases')
+      .update({ initial_state_blob_path: newBlobPath })  // W4 C-HIGH7
+      .eq('id', newCanvasId),
+    userClient.rpc('create_snapshot', {
+      p_canvas_id: newCanvasId, p_kind: 'manual',
+      p_label: `Duplicated from ${snap.label || new Date(snap.taken_at).toLocaleString()}`,
+      p_description: null, p_scene_blob_path: newBlobPath,
+      p_scene_size_bytes: blobBytes.byteLength, p_thumbnail_path: null,
+      p_parent_snapshot_id: snapshot_id,
+      p_id: newSnapshotId,  // W4 C-MED23
+    }),
+  ])
+  if (stampRes.error || snapInsertRes.error) {
+    return new Response(JSON.stringify({ error: 'internal_error' }), { status: 500 })
+  }
 
   const responseBody = { canvas_id: newCanvasId, redirect_to: `/canvas/${newCanvasId}` }
   // W4 C-MED22: persist response under the idempotency key so a retry inside the 5-minute
