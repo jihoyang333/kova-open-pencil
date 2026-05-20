@@ -57,3 +57,7 @@ tsconfig.node.tsbuildinfo
 tests/e2e/.auth/
 .vercel
 .superpowers/
+
+# Supabase CLI local state
+supabase/.branches/
+supabase/.temp/
