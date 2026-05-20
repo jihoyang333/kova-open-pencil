@@ -127,6 +127,51 @@ kova-open-pencil-1/
 
 ---
 
+## Hi-fi Visual Reference + Translation Method
+
+> **Authoritative method:** `docs/execution-phase/claude-design-files/IMPLEMENTATION_PROMPT.md` (read end-to-end before any UI task). This section maps PRD 02 §3 hi-fi citations onto Plan tasks + points at actual Kova source paths.
+
+**Translation rule:** hi-fi HTML = visual source of truth; port to idiomatic Vue 3 using Cluster 11 primitives. **Mockup wins** — drift protocol (RIDER §2.1) on any value not in `kova-hifi.css :root`.
+
+**Per-screen diff loop** (per IMPLEMENTATION_PROMPT.md Phase 4): mockup + Vue at 1440px → screenshot both → list discrepancies → fix → re-diff. Cluster-boundary Playwright gate ≤ 2%.
+
+### Cluster 11 primitives — use these, do NOT reinvent
+
+Source: `kova-open-pencil-1/src/components/ui/`:
+- `<KovaIcon name="...">` — every icon (layout-grid, store, search-x, bookmark, etc.)
+- `<KovaMenu>` — sidebar brand-switcher Reka DropdownMenu (A2/A3 pattern)
+- `<KovaTooltip>` — hover hints
+- `<KovaSkeleton>` — dashboard skeleton (B7.1)
+- `<KovaToast>` + `useToast()` (`src/composables/use-toast.ts`)
+- `<NetworkStatusIndicator>` from Cluster 11 (CT-020) — top-right cloud-off pill (REPLACES A13.1/A13.2 retired)
+
+### Kova codebase paths to consult (per IMPLEMENTATION_PROMPT.md Phase 1)
+
+- `kova-open-pencil-1/src/components/onboarding/` — existing onboarding step components (BrandNameStep, BrandUrlStep, ExtractionStep, WelcomeStep — light → dark refactor per Task T02)
+- `kova-open-pencil-1/src/components/dashboard/` — existing dashboard components (extend per dashboard tasks)
+- `kova-open-pencil-1/src/composables/useOnboardingState.ts`, `useOnboardingComplete.ts` — existing onboarding flow composables
+- `kova-open-pencil-1/src/stores/brands.ts`, `canvases.ts` — existing stores
+- `kova-open-pencil-1/src/app.css` — Tailwind 4 `@theme`
+
+### Hi-fi → Plan surface mapping (this cluster)
+
+| Plan surface | Hi-fi file | Scene IDs |
+|---|---|---|
+| Onboarding wizard (BrandNameStep + BrandUrlStep + StoreTypeStep + ExtractionStep + ReviewStep + WelcomeStep refactor + splash) | `main-main-kova-scope/batch-a/dark/Kova Hi-Fi A1 Onboarding - Dark.html` | A1.01.c (first brand), A1.01.d (Shopify connect), A1.01.e (brand kit), A1.01.f (splash) |
+| Dashboard chrome (sidebar `.brand-switch` + `.side-search` + `.nav` + `.side-footer` + topbar `.breadcrumb` + content `.greeting` + composer + file-grid) | `main-main-kova-scope/batch-a/dark/Kova Hi-Fi 03 Brand Dashboard - Dark.html` | 03.a |
+| Sidebar brand-switcher popover | `main-main-kova-scope/batch-a/dark/Kova Hi-Fi A2+A3 Brand picker & New brand - Dark.html` | A2.a (Cluster 03 owns full A2 spec; Cluster 02 only ships the trigger + dropdown wiring) |
+| Canvas-creation transition (composer idle / submitting / transition / splash hand-off) | `main-main-kova-scope/batch-a-additions/dark/Kova Hi-Fi B11 Canvas Creation Transition - Dark.html` | B11.1, B11.2, B11.3, B11.4 |
+| Dashboard skeleton (initial load) | `main-main-kova-scope/batch-a-additions/dark/Kova Hi-Fi B7 Loading Skeletons - Dark.html` | B7.1 |
+| Empty states (zero canvases / zero brands fallback / file-grid search empty) | `main-main-kova-scope/batch-a/dark/Kova Hi-Fi A11+A12+A13+A_canvas_nav - Dark.html` (A11.1, A11.7) + `main-main-kova-scope/batch-a-additions/dark/Kova Hi-Fi B9 List Search Empty - Dark.html` (B9-pattern) | A11.1, A11.7, B9-pattern |
+| Coming-soon shells (Calendar / Swipes / Templates) | `main-main-kova-scope/batch-a/dark/Kova Hi-Fi A11+A12+A13+A_canvas_nav - Dark.html` | A12.1, A12.2, A12.3 |
+| Cross-ref: B12 Brands page (Cluster 03 ships full page) | `main-main-kova-scope/batch-a-additions/dark/Kova Hi-Fi B12 Brands page - Dark.html` | B12.1 (link target from sidebar "Manage brands") |
+
+### Per-property extraction checklist
+
+For each surface above, walk `IMPLEMENTATION_PROMPT.md Appendix A` (colors / typography / spacing / sizing / border / shadows / layout / motion / states / z-index / a11y) per state. Record in TDD test fixtures + screenshot diff logs under `tests/snapshots/cluster-02/`.
+
+---
+
 ## Phase 0 — Database migration
 
 ### Task T01: Add file-grid + brand recency indexes

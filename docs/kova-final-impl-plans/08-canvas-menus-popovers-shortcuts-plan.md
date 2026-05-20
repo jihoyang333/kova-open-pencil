@@ -66,6 +66,58 @@ Isolated worktree on a new branch off `feat/m9-shopify`.
 
 ---
 
+## Hi-fi Visual Reference + Translation Method
+
+> **Authoritative method:** `docs/execution-phase/claude-design-files/IMPLEMENTATION_PROMPT.md` (read end-to-end before any UI task). Maps PRD 08 §3 hi-fi citations to Plan tasks + actual Kova source paths.
+
+**Translation rule:** hi-fi HTML = visual source of truth; idiomatic Vue 3 + Cluster 11 primitives. **Mockup wins**; drift protocol (RIDER §2.1). Theme: dark.
+
+**Per-screen diff loop** per IMPLEMENTATION_PROMPT.md Phase 4. Cluster-boundary Playwright gate ≤ 2%.
+
+### Cluster 11 primitives — use these
+
+Source: `kova-open-pencil-1/src/components/ui/`:
+- `<KovaMenu>` — every popover in this Plan uses this (Reka DropdownMenu wrapper). The "Reka DropdownMenu shell LOCK" in PRD 08 §3.7 is the visual contract — `<KovaMenu>` is the Vue implementation.
+- `<KovaIcon name="...">` — every menu icon
+- `<KovaTooltip>` — disabled-row tooltips ("Select 2+ layers", "Cannot delete the last page")
+- `<KovaModal>` — Keyboard shortcuts dialog + Trash confirm modal
+- `<KovaToast>` + `useToast()`
+- `<TypedConfirmField>` (Cluster 11) — used by destructive `useConfirm` (e.g., delete page)
+
+### Kova codebase paths to consult
+
+- `kova-open-pencil-1/src/composables/use-menu.ts`, `use-keyboard.ts` — existing (extend)
+- `kova-open-pencil-1/src/components/editor/` — top-chrome host (Cluster 06 ships anchors; Cluster 08 ships menu content)
+- `kova-open-pencil-1/src/stores/editor.ts`, `tabs.ts` — existing
+- `kova-open-pencil-1/src/app.css`
+
+### Hi-fi → Plan surface mapping (this cluster)
+
+| Plan surface | Hi-fi file | Scene IDs |
+|---|---|---|
+| Main menu root popover (8 entries) | `main-main-kova-scope/batch-b/Kova Hi-Fi 08 Top Chrome Menus - Dark.html` | B1.1 |
+| File ▶ submenu | same | B1.2 |
+| Edit ▶ submenu + Copy as ▶ sub-of-sub | same | B1.3 |
+| View ▶ submenu + Outlines ▶ sub-of-sub + Panels ▶ sub-of-sub | same | B1.4 |
+| Object ▶ submenu + Boolean ops sub-of-sub | same | B1.5 |
+| Text ▶ submenu + Case sub-of-sub | same | B1.6 |
+| Arrange ▶ submenu | same | B1.7 |
+| Preferences ▶ submenu | same | B1.8 |
+| Help & account ▶ submenu | same | B1.9 |
+| File-name dropdown popover | `main-main-kova-scope/batch-b/Kova Hi-Fi 08 Top Chrome Menus - Dark.html` + `main-main-kova-scope/batch-b/chunk-b1/Kova Hi-Fi 13 Canvas Popovers - Dark.html` | B1.11 (08) + 13.1 closed + 13.2 open |
+| Canvas right-click (object / empty / page row / layer row / brand-asset row / brand-card active / brand-card archived) | `Kova Hi-Fi 08 Top Chrome Menus - Dark.html` (Reka shell LOCK) | items per PRD §6 dispatch table |
+| Inspector overflow `•••` menu | 08 Top Chrome Menus (shell) | n/a (subset per Q18) |
+| Find overlay (empty / populated / no-results / dismissed) | `main-main-kova-scope/batch-b/chunk-b1/Kova Hi-Fi 14 Find Overlay - Dark.html` | 14.1, 14.2, 14.3, 14.4 |
+| Keyboard shortcuts dialog (centered modal, 11 visible category tabs) | composes A8.2 modal shell + `<KovaModal>` (Cluster 11) — no dedicated scene | n/a |
+| Trash confirm modal (cross-cut Cluster 09) | `main-main-kova-scope/batch-b/chunk-b2/Kova Hi-Fi 15 Trash Confirm - Dark.html` | B13.1, B13.2, B13.3 |
+| Reka DropdownMenu shell visual contract (LOCK) | 08 Top Chrome Menus § LOCK HERE | shared by every popover in §3.1, §3.2, §3.3 |
+
+### Per-property extraction checklist
+
+Walk `IMPLEMENTATION_PROMPT.md Appendix A` per surface — especially **states** (hover, opened-submenu, disabled, destructive, checkable). Record extracted values in TDD fixtures + screenshot diff logs under `tests/snapshots/cluster-08/`.
+
+---
+
 ## Phase 1 — Stores (foundation; no UI yet)
 
 > **Goal:** Establish the two Pinia stores every later component reads from. (Third store `useFindStore` DROPPED — see 1.3.) TDD strict.

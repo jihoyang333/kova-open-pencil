@@ -142,6 +142,68 @@ kova-open-pencil-1/src/
 
 ---
 
+## Hi-fi Visual Reference + Translation Method
+
+> **Authoritative method:** `docs/execution-phase/claude-design-files/IMPLEMENTATION_PROMPT.md` (read end-to-end before any UI task). Maps PRD 07b §3 hi-fi citations to Plan tasks + actual Kova source paths.
+
+**Translation rule:** hi-fi HTML = visual source of truth; idiomatic Vue 3 + Cluster 11 primitives. **Mockup wins**; drift protocol (RIDER §2.1). Theme: dark.
+
+**Per-screen diff loop** per IMPLEMENTATION_PROMPT.md Phase 4. Cluster-boundary Playwright gate ≤ 2%.
+
+### Cluster 11 primitives — use these
+
+Source: `kova-open-pencil-1/src/components/ui/`:
+- `<KovaIcon name="...">` — pipette, search-x, link, chevron-down, etc.
+- `<KovaPopover>` — color picker popover, gradient editor popover, per-effect editor popover (chained)
+- `<KovaTooltip>` — boolean ops shortcut hints, every icon-only button
+- `<KovaMenu>` — fill-row dropdown menus
+
+### Kova codebase paths to consult
+
+- `kova-open-pencil-1/src/components/inspector/` — existing inspector chrome (Cluster 06 ships shell; Cluster 07b ships sections)
+- `kova-open-pencil-1/src/components/properties/` — existing property components (Cluster 07b extends FillSection, etc.)
+- `kova-open-pencil-1/src/components/editor/` — existing editor (Cluster 07b mounts `<CanvasOverlayLayer>` in `EditorView.vue`)
+- `kova-open-pencil-1/src/composables/use-canvas.ts`, `use-node-props.ts`, `use-multi-props.ts` — existing
+- `kova-open-pencil-1/src/stores/editor.ts` — existing (Cluster 07b extends `activeTool` union)
+- `kova-open-pencil-1/src/app.css` — Tailwind 4 `@theme`
+
+### Hi-fi → Plan surface mapping (this cluster)
+
+| Plan surface | Hi-fi file | Scene IDs |
+|---|---|---|
+| Boolean ops row (multi-select ≥2 layers) | `main-main-kova-scope/batch-b/chunk-b4/Kova Hi-Fi 11 Inspector - Dark.html` | 11.9 |
+| Solid fill row (FillSection chrome) | same | 11.10 |
+| Linear-gradient editor popover (cross-cuts hi-fi 12.6) | same + `main-main-kova-scope/batch-b/chunk-b5/Kova Hi-Fi 12 Color Picker - Dark.html` | 11.11, 12.6 |
+| Image-fill mode Crop (4 corner handles) | same + 12 Color Picker | 11.12, 12.10 |
+| Multiple fills (3 stacked, drag-handle) | 11 Inspector | 11.13 |
+| Effects empty state | 11 Inspector | 11.14 |
+| Effects list (2 rows, drop-shadow + layer-blur) | 11 Inspector | 11.15 |
+| Effects per-effect editor popover (drop-shadow editor) | 11 Inspector | 11.16 |
+| Stroke section (color · weight · Inside · dashed) | 11 Inspector | 11.17 |
+| Export rows (PNG @1x · JPG @2x with quality dropdown) | 11 Inspector | 11.18, 11.19 |
+| Linear-gradient editor (2 stops / 4 stops) | 12 Color Picker | 12.6, 12.7 |
+| Radial gradient (2 stops, center handle) | same | 12.8 |
+| Image fill modes (Fill / Crop / Tile) | same | 12.9, 12.10, 12.11 |
+| Eyedropper trigger active + canvas magnifier | same + `main-main-kova-scope/batch-b/Kova Hi-Fi 09 Canvas Overlays - Dark.html` | 12.5, B8.7 |
+| Single-mode pickers (page bg / stroke / drop-shadow) | 12 Color Picker | 12.12, 12.13, 12.14 |
+| Snap indicators | 09 Canvas Overlays | B8.1 |
+| Hover contour | same | B8.2 |
+| Frame outlines | same | B8.3 |
+| Mask outlines (3 maskType corner glyphs) | same | B8.4 |
+| Pixel grid (auto-show > 800% zoom) | same | B8.5 |
+| Layout guides (Uniform / Columns / Rows; default ON) | same | B8.6 |
+| Selection box + frame labels + size chip | same | B8.8 (frame label + size chip = 07b overlay) |
+| Measurement annotation (persistent) | same | B8.9 |
+| AI assist panel ring (Kova blue B8.10) | same | B8.10 (Cluster 10 owns AI panel chrome) |
+| Find — typing / multi-match (SearchPanel + DimLayerOverlay) | founder ref: `assets/07b/find-state-1-typing.png` | n/a (founder asset) |
+| Find — narrowed / focused (camera pan) | founder ref: `assets/07b/find-state-2-focus.png` | n/a |
+
+### Per-property extraction checklist
+
+Walk `IMPLEMENTATION_PROMPT.md Appendix A` per surface. Z-index stacking table per PRD 07b §3.4 is canonical. Record extracted values in TDD fixtures + screenshot diff logs under `tests/snapshots/cluster-07b/`.
+
+---
+
 ## Phase 0: Setup + constants
 
 ### Task 0.1: Define overlay constants + feature gates

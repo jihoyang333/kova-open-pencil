@@ -58,6 +58,57 @@
 
 ---
 
+## Hi-fi Visual Reference + Translation Method
+
+> **Authoritative method:** `docs/execution-phase/claude-design-files/IMPLEMENTATION_PROMPT.md` (read end-to-end before any UI task). Maps PRD 10 §3 hi-fi citations to Plan tasks + actual Kova source paths.
+
+**Translation rule:** hi-fi HTML = visual source of truth; idiomatic Vue 3 + Cluster 11 primitives. **Mockup wins**; drift protocol (RIDER §2.1). Theme: dark.
+
+**Per-screen diff loop** per IMPLEMENTATION_PROMPT.md Phase 4. Cluster-boundary Playwright gate ≤ 2%.
+
+**No dedicated hi-fi for chat panel** (per PRD 10 §3.4). The chat surface composes from:
+- `Kova Canvas - Final.html` right-panel inspector chrome (Cluster 06 source-of-truth)
+- Existing M5 chat components (`src/components/chat/*`) — markup contracts preserved
+- Shopify product-reference design spec (`docs/superpowers/specs/2026-05-14-shopify-product-reference-design.md` §4.2) for the chip pattern
+
+### Cluster 11 primitives — use these
+
+Source: `kova-open-pencil-1/src/components/ui/`:
+- `<KovaIcon name="...">` — message-circle, image, send, square (stop), x, plus, trash-2, etc.
+- `<KovaTooltip>` — max-chips tooltip, send button
+- `<KovaMenu>` — per-conversation tab dropdown
+- `<KovaToast>` + `useToast()`
+
+Reka primitives consumed directly:
+- `ScrollAreaRoot` / `ScrollAreaViewport` / `ScrollAreaScrollbar` / `ScrollAreaThumb` (message scroll)
+- `TooltipRoot` (via `<KovaTooltip>`)
+- `DropdownMenuRoot` (via `<KovaMenu>` per-conversation tab menu)
+
+### Kova codebase paths to consult
+
+- `kova-open-pencil-1/src/components/chat/` — existing chat components (`ChatPanel.vue`, `ChatPopup.vue`, `ChatInput.vue`, `ChatMessage.vue`, `ChatMediaPickerDialog.vue`, `PromptChips.vue`) — refactor per Plan Tasks 12-15
+- `kova-open-pencil-1/src/composables/use-chat.ts`, `use-chat-images.ts`, `use-chat-commands.ts` — existing chat composables (extend)
+- `kova-open-pencil-1/src/stores/chat.ts`, `chat-attachments.ts` — existing stores (extend per Tasks 3-4)
+- `kova-open-pencil-1/src/stores/shopify-products.ts`, `product-variant-bindings.ts` — existing Shopify stores
+- `kova-open-pencil-1/src/ai/` — existing AI directory (system prompt + tool definitions)
+- `kova-open-pencil-1/src/app.css`
+
+### Hi-fi → Plan surface mapping (this cluster)
+
+| Plan surface (task) | Hi-fi reference | Notes |
+|---|---|---|
+| Task 12 — `<ProductReferenceChip>` | composed from spec `docs/superpowers/specs/2026-05-14-shopify-product-reference-design.md` §4.2 + existing chat-attachment thumbnail row in `ChatInput.vue` lines 96–118 | 48×48 product image (or fallback monogram); product name truncated ~14 chars; `×` button top-right at opacity-60 default + full on hover/focus; chip body click = no-op |
+| Task 13 — `<ProductReferenceChipRow>` | composed | One chip per active reference; max 20 chips; horizontal scroll on overflow |
+| Task 14 — Wire chip row into `<ChatInput>` | existing `ChatInput.vue` chrome (lines 86–217) + insert chip row between attachment thumbnails block and `<form>` | Composer-footer vertical stack order: `image attachments → product chips → textarea → send/stop buttons` per founder lock §12.12 item 7 |
+| Task 15 — Refactor `<ChatPanel>` — full right-panel chat surface | `main-main-kova-scope/batch-b/Kova Canvas - Final.html` (right-panel inspector chrome — lifts ChatPanel.vue lines 119–127 empty-state chrome + ChatPopup.vue lines 286–317 chip-row chrome) | Right-panel AI tab default-active on first canvas open per Cluster 06 §12.13 |
+| Task 16 — Mount `<ChatPanel>` in right-panel AI tab (Cluster 06 cross-cut) | Cluster 06 `<RightPanelTabs>` host — see Cluster 06 PRD §3.5 | AI tab is child of `.right .pbody` when `activeTab === 'ai'` |
+
+### Per-property extraction checklist
+
+Walk `IMPLEMENTATION_PROMPT.md Appendix A` per surface. Chip pattern especially needs careful state extraction (idle / hover / focus / `×` button at opacity-60 vs full / max-chips disabled). Record in TDD fixtures + screenshot diff logs under `tests/snapshots/cluster-10/`.
+
+---
+
 ## Pre-flight checks
 
 - [ ] **PFC.1 — Branch state**

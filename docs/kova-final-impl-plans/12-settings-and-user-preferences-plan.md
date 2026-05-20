@@ -82,6 +82,53 @@
 
 ---
 
+## Hi-fi Visual Reference + Translation Method
+
+> **Authoritative method:** `docs/execution-phase/claude-design-files/IMPLEMENTATION_PROMPT.md` (read end-to-end before any UI task). Maps PRD 12 §3 hi-fi citations to Plan tasks + actual Kova source paths.
+
+**Translation rule:** hi-fi HTML = visual source of truth; idiomatic Vue 3 + Cluster 11 primitives. **Mockup wins**; drift protocol (RIDER §2.1). Theme: dark.
+
+**Per-screen diff loop** per IMPLEMENTATION_PROMPT.md Phase 4. Cluster-boundary Playwright gate ≤ 2%.
+
+**Component contract:** per PRD 12 §3.2, `<AccessibilityPanel>` is single-source-of-truth, slotted into BOTH `<ProfileSection>` (`/account/profile`) AND `<PreferencesModal mode="accessibility">` (main menu → Preferences). "Design once, expose twice."
+
+### Cluster 11 primitives — use these
+
+Source: `kova-open-pencil-1/src/components/ui/`:
+- `<KovaIcon name="...">` — settings, type, eye, contrast, etc.
+- `<KovaModal>` (`.dlg.md` 540px) — Accessibility settings modal (A8.3)
+- `<KovaToast>` + `useToast()`
+- `<KovaSegmented>` (Cluster 11 segmented control) — Text size 3-segment (Small / Medium / Large)
+- `<KovaToggle>` (Cluster 11 binary toggle) — Reduce motion + High contrast + Product updates + Sync alerts
+
+### Kova codebase paths to consult
+
+- `kova-open-pencil-1/src/components/ui/` — Cluster 11 primitives
+- `kova-open-pencil-1/src/stores/auth.ts` — existing (Cluster 01 ships `users.preferences` column via migration)
+- `kova-open-pencil-1/src/composables/` — existing composables (new ones added per Tasks 5, 8, 9)
+- `kova-open-pencil-1/src/styles/accessibility.css` — NEW per Task 7 (CSS layer for textSize + highContrast)
+- `kova-open-pencil-1/src/app.css` — Tailwind 4 `@theme` (Plan 12 adds `data-high-contrast="true"` override block)
+
+### Hi-fi → Plan surface mapping (this cluster)
+
+| Plan surface (task) | Hi-fi file | Scene IDs |
+|---|---|---|
+| Task 10 — `<AccessibilityPanel>` (3 rows: Text size segmented / Reduce motion toggle / High contrast toggle) | `main-main-kova-scope/batch-a/dark/Kova Hi-Fi A7 Account Page - Dark.html` | A7.1 §3 Accessibility (lines 671–704) |
+| Task 11 — `<NotificationsPanel>` (2 rows: Product updates / Sync alerts) | A7 | A7.1 §4 Notifications (lines 707–725) |
+| Task 12 — `<PreferencesModal>` (modal host for `<AccessibilityPanel>` when triggered via main menu → Preferences → Accessibility) | `main-main-kova-scope/batch-a/dark/Kova Hi-Fi A6+A2a Popovers + A8 Dialogs - Dark.html` | A8.3 Accessibility settings modal (lines 803–887) |
+
+### Per-property extraction checklist
+
+Walk `IMPLEMENTATION_PROMPT.md Appendix A` per surface. Especially:
+- **A.2 Typography** — segmented control text scales with `data-text-size` attribute (87.5% / 100% / 112.5%)
+- **A.5 Border + radius** — high-contrast overrides `--border` to higher-contrast hex per A8.3
+- **A.8 Motion** — reduce-motion sets all `animation-duration` / `transition-duration` to `0.01ms !important`
+- **A.9 Interactive states** — toggles apply-immediately (no Save gate per founder pick 2026-05-15)
+
+Record extracted values in TDD fixtures + screenshot diff logs under `tests/snapshots/cluster-12/`.
+
+---
+
 ## Pre-flight assumptions
 
 Before Task 1, verify:

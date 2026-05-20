@@ -56,6 +56,57 @@ These cross-cluster edits are touched here for completeness but the owning clust
 
 ---
 
+## Hi-fi Visual Reference + Translation Method
+
+> **Authoritative method:** `docs/execution-phase/claude-design-files/IMPLEMENTATION_PROMPT.md` (read end-to-end before any UI task in this Plan). This section maps PRD 09 §3 hi-fi citations onto the Plan tasks below + points at the actual Kova source paths to consult.
+
+**Translation rule:** hi-fi HTML is the visual source of truth, not a literal copy target. Port to idiomatic Vue 3 using Cluster 11 primitives. **Mockup wins on visual values** — if a hi-fi value isn't in `kova-hifi.css :root`, apply the drift protocol (`DESIGN-SYSTEM-COMPLIANCE-RIDER.md` §2.1) — never silently round.
+
+**Per-screen diff loop** (per IMPLEMENTATION_PROMPT.md Phase 4): open hi-fi HTML + Vue route at 1440px viewport. Screenshot both. List discrepancies in writing. Fix every one. Re-diff. Move on only at zero discrepancies. Final cluster-boundary Playwright gate is ≤ 2% pixel diff per `MASTER-EXECUTION-GUIDE.md` §8.2.
+
+### Cluster 11 primitives — use these, do NOT reinvent
+
+Source: `kova-open-pencil-1/src/components/ui/` (Cluster 11 ships these; Plan 09 consumes):
+- `<KovaIcon name="...">` (icon contract — never `<icon-lucide-*>`)
+- `<KovaModal>` (Reka Dialog wrapper — host for AddVersionDialog, RestoreConfirmModal, TrashConfirmModal)
+- `<KovaMenu>` (Reka DropdownMenu wrapper — host for snapshot-row 5-item right-click menu in Task 16)
+- `<KovaTooltip>` (Reka Tooltip wrapper — for hover hints on row `•••`)
+- `<KovaToast>` + `useToast()` from `src/composables/use-toast.ts` (success toasts for "Saved to version history", "Moved to trash", restore confirmations)
+
+### Kova codebase paths to consult before writing UI code (per IMPLEMENTATION_PROMPT.md Phase 1 audit)
+
+- `kova-open-pencil-1/src/components/ui/` — Cluster 11 primitives (use first, never reinvent)
+- `kova-open-pencil-1/src/components/editor/` — existing canvas-editor components (right-panel host)
+- `kova-open-pencil-1/src/composables/` — existing composables (`use-toast.ts`, `use-inline-rename.ts`, `use-canvas.ts`)
+- `kova-open-pencil-1/src/stores/` — existing stores (`editor.ts`, `canvases.ts`)
+- `kova-open-pencil-1/src/app.css` — Tailwind 4 `@theme` block (kova-hifi.css :root → Tailwind tokens)
+
+### Hi-fi → Task surface mapping (this cluster)
+
+| Plan task | Surface built | Hi-fi file | Scene IDs |
+|---|---|---|---|
+| Task 13 — `<AddVersionDialog>` | Add-to-version-history modal (`⌘+⌥+S` trigger) | `main-main-kova-scope/batch-b/chunk-b6/Kova Hi-Fi 17 Version History - Dark.html` | 17.8 (initial, empty title), 17.9 (filled, Save enabled) |
+| Task 14 — `<RestoreConfirmModal>` | Restore-this-version confirm modal | same | 17.10 |
+| Task 15 — `<SnapshotEmptyState>` + `<AutosaveGroupHead>` + `<CurrentVersionRow>` + `<FilterDropdown>` | Empty state + autosave group header + current-version pinned row + autosave-toggle filter dropdown | same | 17.11 (empty), 17.1 (current + group expanded), 17.2 (group collapsed), 17.7 (filter dropdown) |
+| Task 16 — `<SnapshotRow>` | Single snapshot row (idle / hover / active / right-click menu / inline rename) | same | 17.1 (idle), 17.4 (hover with `•••`), 17.5 (5-item right-click dropdown), 17.6 (inline rename) |
+| Task 17 — `<SnapshotTimelinePanel>` | Right-panel composite (vertical `.vh-timeline` + header instruction strip) | same | 17.1, 17.2, 17.3 (mixed named + autosave) — entire panel |
+| Task 18 — `<TrashConfirmModal>` | Move-to-trash confirm modal (dashboard-mounted) | `main-main-kova-scope/batch-b/chunk-b2/Kova Hi-Fi 15 Trash Confirm - Dark.html` | B13.1 (idle), B13.2 (CTA hover), B13.3 (post-confirm with success toast) |
+
+### Local CSS primitives this Plan ships (per PRD 09 §3.3)
+
+Three local classes scoped to version-history components (not promoted to `kova-hifi.css`):
+- `.vh-timeline` — vertical timeline container with 1px hairline connector + dot glyphs
+- `.vh-row` — single snapshot row (state classes: idle, hover, `.active`, `.current`)
+- `.vh-group-head` — collapsible "N autosave versions" header row
+
+Markup contract must match hi-fi 17 byte-for-byte. Lift to `kova-open-pencil-1/src/assets/css/version-history.css` per design.md §6 extension protocol — NOT inline `<style>` blocks in SFCs (CLAUDE.md hard rule).
+
+### Per-property extraction checklist
+
+For each UI task above, walk `IMPLEMENTATION_PROMPT.md Appendix A` per state of every component — colors / typography / spacing / sizing / border / shadows / layout / motion / states / z-index / a11y. Record extracted values in the task's TDD test fixture or screenshot diff log under `tests/snapshots/cluster-09/`.
+
+---
+
 ## Pre-flight (before Task 1)
 
 Verify the worktree is at `kova-open-pencil-1` repo root for `bun run` commands. All `bun run …` commands in this plan execute from `kova-open-pencil-1/`. SQL is applied via `supabase migration up` against the local instance started by `supabase start`.

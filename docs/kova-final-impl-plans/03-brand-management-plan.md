@@ -152,6 +152,54 @@ Founder reversed the 2026-05-13 lock that scoped B12 to Phase 2. Per `docs/kova-
 
 ---
 
+## Hi-fi Visual Reference + Translation Method
+
+> **Authoritative method:** `docs/execution-phase/claude-design-files/IMPLEMENTATION_PROMPT.md` (read end-to-end before any UI task). Maps PRD 03 §3 hi-fi citations to Plan tasks + actual Kova source paths.
+
+**Translation rule:** hi-fi HTML = visual source of truth; idiomatic Vue 3 + Cluster 11 primitives. **Mockup wins**; drift protocol (RIDER §2.1).
+
+**Per-screen diff loop** per IMPLEMENTATION_PROMPT.md Phase 4. Cluster-boundary Playwright gate ≤ 2%.
+
+**Theme:** all dark (per `feedback_app_dark_website_light`).
+
+### Cluster 11 primitives — use these
+
+Source: `kova-open-pencil-1/src/components/ui/`:
+- `<KovaIcon name="...">` — store, archive, trash-2, restore, etc.
+- `<KovaModal>` (`.dlg.sm` / `.dlg.md` sizes) — Rename / Archive / Delete / Restore confirms
+- `<KovaMenu>` — kebab dropdowns on `.bp-card`
+- `<KovaToast>` + `useToast()` — success/error notifications
+- `<TypedConfirmField>` (Cluster 11) — used by A4.3 delete-brand modal (`expected={brand.name}`, `case='sensitive'`)
+
+### Kova codebase paths to consult
+
+- `kova-open-pencil-1/src/components/brand/` — existing brand components
+- `kova-open-pencil-1/src/components/ui/` — Cluster 11 primitives
+- `kova-open-pencil-1/src/stores/brands.ts` — existing brand store (extend per Plan tasks)
+- `kova-open-pencil-1/src/composables/use-inline-rename.ts` — existing rename composable (consumed by Rename modal)
+- `kova-open-pencil-1/src/app.css`
+
+### Hi-fi → Plan surface mapping (this cluster)
+
+| Plan surface | Hi-fi file | Scene IDs |
+|---|---|---|
+| Brand picker (populated `.bp-card` 3-col grid + empty pane) | `main-main-kova-scope/batch-a/dark/Kova Hi-Fi A2+A3 Brand picker & New brand - Dark.html` | A2.a (populated), A2.b (empty) |
+| New-brand wizard (4 steps: Name+URL / Shopify / Brand kit / Done splash) | same | A3.a, A3.b, A3.c, A3.d |
+| Rename brand modal | `main-main-kova-scope/batch-a/dark/Kova Hi-Fi A4+A9+A10 Modals - Dark.html` | A4.1 |
+| Archive brand modal | same | A4.2 |
+| Delete brand modal (typed-confirm `.fld` + `.btn.danger`) | same | A4.3 |
+| Modal shell (`.dlg.sm` / `.dlg.md`) + `<TypedConfirmField>` | `main-main-kova-scope/batch-a/dark/Kova Hi-Fi A6+A2a Popovers + A8 Dialogs - Dark.html` | A4 + A8.4 (typed-confirm) |
+| Brands page populated (segmented All / Active / Archived + 3-col grid) | `main-main-kova-scope/batch-a-additions/dark/Kova Hi-Fi B12 Brands page - Dark.html` | B12.1 |
+| Brands page archived empty | same | B12.2 |
+| Restore confirm modal | same | B12.3 |
+| Delete-archived confirm modal (same shell as A4.3, "permanent" footer copy) | same | B12.4 |
+
+### Per-property extraction checklist
+
+Walk `IMPLEMENTATION_PROMPT.md Appendix A` per surface. Record in TDD fixtures + screenshot diff logs under `tests/snapshots/cluster-03/`.
+
+---
+
 ## Phase 1 — Database migration + RPCs
 
 ### Task 1: Schema migration file scaffolding

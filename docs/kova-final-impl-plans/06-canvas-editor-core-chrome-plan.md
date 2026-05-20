@@ -110,6 +110,56 @@
 
 ---
 
+## Hi-fi Visual Reference + Translation Method
+
+> **Authoritative method:** `docs/execution-phase/claude-design-files/IMPLEMENTATION_PROMPT.md` (read end-to-end before any UI task). PRD 06 cites **line ranges** inside `Kova Canvas - Final.html` (the canonical reference implementation) — use those line numbers as the authoritative visual source.
+
+**Translation rule:** `Kova Canvas - Final.html` is the canonical reference implementation per `design.md` §7. When in doubt about a component's exact structure, open this file. Port to idiomatic Vue 3 + Cluster 11 primitives. **Mockup wins**; drift protocol (RIDER §2.1).
+
+**Per-screen diff loop** per IMPLEMENTATION_PROMPT.md Phase 4. Cluster-boundary Playwright gate ≤ 2%. Theme: dark.
+
+### Cluster 11 primitives — use these
+
+Source: `kova-open-pencil-1/src/components/ui/`:
+- `<KovaIcon name="...">` — every tool icon (mouse-pointer, frame, square, circle, pen, type, ruler, sparkles, layers, etc.)
+- `<KovaMenu>` — topbar dropdowns (logo, file-name caret, avatar)
+- `<KovaPopover>` — fill swatch click → color picker (Cluster 07b mounts inside)
+- `<KovaTooltip>` — every icon-only button (per RIDER §2.4 — every icon-only button needs tooltip)
+- `<KovaToast>` — canvas-side toast variant (Cluster 11 ships position: 'canvas')
+
+### Kova codebase paths to consult
+
+- `kova-open-pencil-1/src/components/editor/` — existing editor components (extend)
+- `kova-open-pencil-1/src/components/editor/sidebar/` — existing left-panel components (Pages / Layers)
+- `kova-open-pencil-1/src/components/inspector/` — existing inspector chrome (Cluster 07b ships sections)
+- `kova-open-pencil-1/src/components/properties/` — existing property components (Cluster 07b extends)
+- `kova-open-pencil-1/src/composables/use-canvas.ts`, `use-canvas-drop.ts`, `use-canvas-input.ts` — existing canvas composables
+- `kova-open-pencil-1/src/stores/editor.ts`, `tabs.ts` — existing stores (extend per Task 2)
+- `kova-open-pencil-1/src/app.css`
+
+### Hi-fi → Plan surface mapping (this cluster)
+
+| Plan surface | Hi-fi file | Line range / Scene |
+|---|---|---|
+| Editor frame (`.kc` root grid) | `main-main-kova-scope/batch-b/Kova Canvas - Final.html` | lines 75–98 (root grid, tokens) |
+| Topbar (44px, logo + breadcrumb + actions) | same | lines 100–141 (CSS), 611–627 (instance) |
+| Left panel (240px, Pages + Layers) | same + `main-main-kova-scope/batch-b/chunk-b3/Kova Hi-Fi 10 Left Panel - Dark.html` (scenes for layer mask glyph / slice glyph / empty / drag-reorder / search) | Final.html lines 147–215 (CSS), 632–705 (instance); 10 Left Panel scenes 10.1–10.5 |
+| Center canvas | Final.html | lines 218–273 (CSS), 707–768 |
+| Bottom toolbar (floating pill, 9 tools rendered) | Final.html | lines 275–309 (CSS), 770–800 |
+| Zoom HUD (bottom-right) | Final.html | lines 311–325, 802–805 |
+| Right panel (264px, tab strip + frame-head + inspector body) | Final.html + `main-main-kova-scope/batch-b/chunk-b4/Kova Hi-Fi 11 Inspector - Dark.html` (Cluster 07b ships sections) | Final.html lines 327–501 (CSS), 808–1008; 11 Inspector scenes 11.1+ |
+| Tab strip (Design + AI) | Final.html | lines 337–359 (CSS), 811–820 |
+| Help FAB | Final.html | lines 494–502 (Phase 2 visible-disabled) |
+| Top-chrome menu host (logo menu / file-caret menu / avatar menu) | `main-main-kova-scope/batch-b/Kova Hi-Fi 08 Top Chrome Menus - Dark.html` | Cluster 08 ships menu content; Cluster 06 wires anchors |
+| Color picker popover host (Cluster 07b mounts inside) | `main-main-kova-scope/batch-b/chunk-b5/Kova Hi-Fi 12 Color Picker - Dark.html` | 8 scenes (12.1–12.8) — 07b owns |
+| Canvas-side toast variant + Missing fonts pill | `main-main-kova-scope/batch-b/chunk-b2/Kova Hi-Fi 16 Toasts + Missing Fonts - Dark.html` | reused from Cluster 11 ToastStack |
+
+### Per-property extraction checklist
+
+Walk `IMPLEMENTATION_PROMPT.md Appendix A` per surface. Record in TDD fixtures + screenshot diff logs under `tests/snapshots/cluster-06/`.
+
+---
+
 ## Task Sequence
 
 Tasks are ordered so each builds on prior tasks. TDD throughout. Commit after each task.

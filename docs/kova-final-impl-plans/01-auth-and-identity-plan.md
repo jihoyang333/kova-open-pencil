@@ -106,6 +106,52 @@ One test file per non-trivial source — colocated under `tests/`:
 
 ---
 
+## Hi-fi Visual Reference + Translation Method
+
+> **Authoritative method:** `docs/execution-phase/claude-design-files/IMPLEMENTATION_PROMPT.md` (read end-to-end before any UI task). This section maps PRD 01 §3 hi-fi citations onto Plan tasks + points at actual Kova source paths to consult.
+
+**Translation rule:** hi-fi HTML is the visual source of truth, not a literal copy target. Port to idiomatic Vue 3 using Cluster 11 primitives. **Mockup wins on visual values** — if hi-fi value isn't in `kova-hifi-light.css` / `kova-hifi.css :root`, apply drift protocol (RIDER §2.1). Never silently round.
+
+**Per-screen diff loop** (per IMPLEMENTATION_PROMPT.md Phase 4): hi-fi HTML + Vue route at 1440px viewport → screenshot both → list discrepancies → fix → re-diff. Cluster-boundary Playwright gate ≤ 2% pixel diff per MASTER §8.2.
+
+**Theme note (Cluster 01 specific):** auth pages = **LIGHT** theme via `kova-hifi-light.css`. Routes carry `meta.theme = 'light'`. Session-expired bridge + account-pending-deletion = **DARK**. Per `feedback_app_dark_website_light` memory.
+
+### Cluster 11 primitives — use these, do NOT reinvent
+
+Source: `kova-open-pencil-1/src/components/ui/`:
+- `<KovaIcon name="...">` — every icon (check-circle for verified medal, mail for magic-link, etc.)
+- `<KovaModal>` — typed-confirm modals (Task 16 DangerZoneCard composes the A9.1 delete-account modal pattern)
+- `<KovaToast>` + `useToast()` (`src/composables/use-toast.ts`) — success toasts on signup, password reset confirmations
+- `.btn`, `.btn.primary`, `.btn.auth-cta` — auth CTA variants from `kova-hifi-light.css`
+- `.input` field contract for AuthField + OtpInput
+
+### Kova codebase paths to consult before writing UI code (per IMPLEMENTATION_PROMPT.md Phase 1)
+
+- `kova-open-pencil-1/src/components/ui/` — Cluster 11 primitives
+- `kova-open-pencil-1/src/components/onboarding/` — existing onboarding components (NameStep, WelcomeStep — Cluster 02 owns; Cluster 01 only ships auth)
+- `kova-open-pencil-1/src/composables/` — existing (`use-toast.ts`)
+- `kova-open-pencil-1/src/stores/auth.ts` — existing auth store (this Plan extends per Task 9)
+- `kova-open-pencil-1/src/app.css` — Tailwind 4 `@theme` block (both light + dark variants per Cluster 11)
+
+### Hi-fi → Task surface mapping (this cluster)
+
+| Plan task | Surface built | Hi-fi file | Scene IDs | Theme |
+|---|---|---|---|---|
+| Task 14 — AuthShell + AuthCard + AuthHeading + AuthCta + AuthMedal + AuthIcon | Shared auth-shell primitives consumed by every auth page | `main-main-kova-scope/batch-a/light/Kova Hi-Fi A15 Auth - Light.html` | A15.01–A15.06 (signup/login/sent/otp/forgot/verified) | LIGHT |
+| Task 15 — AuthField + OtpInput + MagicLinkSentBlock + PersistentSessionToggle | Field-level + OTP input + magic-link "sent" headline block + 30-day refresh toggle | same | A15.02, A15.03, A15.04, A15.06 | LIGHT |
+| Task 16 — DangerZoneCard (typed-confirm) | Delete-account typed-confirm card (rendered in Cluster 04 `/account/danger`) | `main-main-kova-scope/batch-a/dark/Kova Hi-Fi A4+A9+A10 Modals - Dark.html` | A9.1 (typed-confirm "DELETE") | DARK (renders inside `/account`) |
+| Task 17 — SignupView + LoginView | Pre-auth surfaces: signup email entry, login email entry, OTP code entry | A15 Auth Light | A15.01 (signup), A15.02 (login), A15.04 (OTP entry) | LIGHT |
+| Task 18 — ForgotPasswordView + MagicLinkErrorView + AuthCallbackView | Forgot-password hidden surface; magic-link expired/invalid error pages; post-signup verified callback | A15 Auth Light + `main-main-kova-scope/batch-a-additions/light/Kova Hi-Fi B4 Auth Errors - Light.html` | A15.05 (forgot), B4.1 (expired), B4.2 (invalid), A15.06 (verified) | LIGHT |
+| Task 19 — EmailChangeVerifyView + SessionExpiredView + DesktopOnlyView | Email-change landing (success/expired) + dark session-expired bridge + desktop-only fallback (primary + tablet edge) | `main-main-kova-scope/batch-a-additions/light/Kova Hi-Fi B5 Email Change Landing - Light.html` (B5.1, B5.2) + `main-main-kova-scope/batch-a-additions/dark/Kova Hi-Fi B4 Session Expired - Dark.html` (B4.7) + `main-main-kova-scope/batch-a-additions/light/Kova Hi-Fi B6 Mobile Fallback - Light.html` (B6.1, B6.2) | per surface | mixed |
+| Task 20 — AccountPendingDeletionView + PrivacyPolicyView + TermsView | Pending-deletion landing (composes B4.7 + A4 modal pattern — NO dedicated hi-fi) + privacy/terms long-form markdown shells | none direct; composes from B4.7 + A4 modal patterns | n/a | mixed |
+| Task 21 — Email templates (composed from Cluster 11 `<EmailShell>`) | Magic-link, OTP, password-reset, account-deletion-confirmation emails | composed via Cluster 11 EmailShell primitive | n/a | n/a (email rendering, not in-app) |
+
+### Per-property extraction checklist
+
+For each UI task above, walk `IMPLEMENTATION_PROMPT.md Appendix A` per state of every component — colors / typography / spacing / sizing / border / shadows / layout / motion / states / z-index / a11y. Record extracted values in TDD test fixtures or screenshot diff logs under `tests/snapshots/cluster-01/`.
+
+---
+
 ## Pre-flight
 
 - [ ] **Step P1: Confirm working branch + clean tree**

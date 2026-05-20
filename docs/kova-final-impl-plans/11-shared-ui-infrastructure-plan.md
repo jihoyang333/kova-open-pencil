@@ -93,6 +93,62 @@
 
 ---
 
+## Hi-fi Visual Reference + Translation Method
+
+> **Authoritative method:** `docs/execution-phase/claude-design-files/IMPLEMENTATION_PROMPT.md` (read end-to-end before any UI task). Maps PRD 11 §3 hi-fi citations to Plan tasks + actual Kova source paths.
+
+**Cluster 11 is the foundation cluster.** It ships the PRIMITIVES every other cluster consumes (KovaModal, KovaPopover, KovaMenu, KovaTooltip, KovaIcon, KovaSkeleton, KovaToast, error pages). This Plan IS the source of truth for those primitives — downstream Plans 01–10 + 12 reference them by `<KovaX>` name.
+
+**Translation rule:** hi-fi HTML = visual source of truth; idiomatic Vue 3. **Mockup wins**; drift protocol (RIDER §2.1). Theme: dark inside app + light variant for auth (kova-hifi-light.css).
+
+**Per-screen diff loop** per IMPLEMENTATION_PROMPT.md Phase 4. Cluster-boundary Playwright gate ≤ 2%.
+
+### Kova codebase paths — Cluster 11 SHIPS these
+
+Source: `kova-open-pencil-1/src/components/ui/` — EXISTING files (extend / verify match contract):
+- `KovaIcon.vue` + `kova-icon-registry.ts` — existing icon component (Plan 11 verifies registry covers every lucide name used across the corpus)
+- `button.ts`, `input.ts`, `menu.ts`, `select.ts`, `surface.ts`, `toast.ts` — existing primitives (Plan 11 verifies Reka UI wrapping is correct + extends as needed)
+
+**Files Plan 11 may ADD or EXTEND:**
+- `src/components/ui/KovaModal.vue` (if missing)
+- `src/components/ui/KovaPopover.vue` (if missing)
+- `src/components/ui/KovaTooltip.vue` (if missing)
+- `src/components/ui/KovaSkeleton.vue` (if missing)
+- `src/components/ui/KovaToast.vue` + `useToast()` mount
+- `src/components/email/EmailShell.vue` — for Resend email templates
+- `src/components/network/NetworkStatusIndicator.vue` — global mount in `App.vue`
+- `src/views/error/{NotFoundView,ServerErrorView,NetworkUnreachableView}.vue` — full-page error routes
+- `src/composables/useConfirm.ts` — global confirm modal store + composable
+- `src/lib/audit.ts`, `idempotency.ts`, `requireEnv.ts` — server-side helpers
+- `src/styles/app.css` — Tailwind 4 `@theme` (already exists; Plan 11 verifies kova-hifi.css `:root` block translates correctly)
+
+### Cluster 11 primitive → hi-fi reference table
+
+| Plan task | Primitive shipped | Hi-fi reference | Scene IDs |
+|---|---|---|---|
+| Task 2.1 — Toast variants | `<KovaToast>` + `useToast()` + variants (success / error / info / action / progress / ai-gen) | `main-main-kova-scope/batch-a-additions/dark/batch-0/Kova Hi-Fi B1 Toasts - Dark.html` | B1.1–B1.8 (success / error / progress / action / ai-gen / stacked / wrapping / over-modal) |
+| Task 2.2 — Error pages | `<NotFoundView>` / `<ServerErrorView>` / `<NetworkUnreachableView>` | `main-main-kova-scope/batch-a-additions/dark/batch-0/Kova Hi-Fi B2 Error Pages - Dark.html` | B2.1 (404), B2.2 (500), B2.3 (network) |
+| Task 2.3 — Modal sizes | `<KovaModal>` `sm` (460px) / `md` (540px) / `lg` (880px) | `main-main-kova-scope/batch-a/dark/Kova Hi-Fi A6+A2a Popovers + A8 Dialogs - Dark.html` | A8.1 Snapshot (sm), A8.3 Accessibility (md), A8.2 Keyboard shortcuts (lg) |
+| Task 2.4 — Popover + menu + tooltip | `<KovaPopover>` (280px / 240px patterns) / `<KovaMenu>` (Reka DropdownMenu min-width 240px) / `<KovaTooltip>` (500ms delay) | A6+A2a Popovers + A8 Dialogs | A2a (280px brand switcher), A6 (240px avatar) |
+| Task 2.5 — Skeleton primitives | `<KovaSkeleton>` r-pill / r-card / r-line / r-circle variants | `main-main-kova-scope/batch-a-additions/dark/Kova Hi-Fi B7 Loading Skeletons - Dark.html` | B7.1–B7.5 surface compositions ship in consuming clusters |
+| Task 2.6 — Empty states | `<EmptyState>` inline-32 / panel-40 / full-48 variants | `main-main-kova-scope/batch-a-additions/dark/Kova Hi-Fi B9 List Search Empty - Dark.html` | B9.4 reference grid |
+| Task 2.7 — Brand-card right-click items + cluster cross-cut | `<KovaMenu>` shell (Cluster 08 fills with items per surface) | `main-main-kova-scope/batch-b/Kova Hi-Fi 08 Top Chrome Menus - Dark.html` (shell LOCK) | shared by every popover |
+| Task — NetworkStatusIndicator | single 14×14 `cloud-off` icon top-right when offline | per PRD 02 §3.7 + W5a (replaces A13.1/A13.2 retired) | n/a (no dedicated scene) |
+
+### Token + Tailwind @theme bridge
+
+Plan 11 ships the canonical `app.css` `@theme` block that bridges `kova-hifi.css :root` → Tailwind utility tokens. Every downstream cluster consumes via Tailwind utilities (`bg-page`, `text-ink-2`, `border-line`, etc.) backed by this bridge.
+
+**Source mapping reference:** `main-main-kova-scope/design-system/TOKEN_CANONICAL.md` — three vocabularies (short / long / scoped). Plan 11 uses **short names** (`--bg`, `--ink`, `--accent`) per `TOKEN_CANONICAL.md` §1.
+
+### Per-property extraction checklist
+
+Walk `IMPLEMENTATION_PROMPT.md Appendix A` per primitive. Especially focus on **states** since primitives are state machines. Record in TDD fixtures + screenshot diff logs under `tests/snapshots/cluster-11/`.
+
+**Cluster 11 acts as Phase 2 + Phase 3 of IMPLEMENTATION_PROMPT.md** (token bridge + component layer). Downstream clusters (Plans 01–10 + 12) are Phase 4 (screens).
+
+---
+
 ## Phase 1 — Cross-Cut Backend Foundation
 
 ### Task 1.1: Migration `20260520_11_shared_ui_infrastructure.sql`

@@ -68,6 +68,36 @@
 
 ---
 
+## Hi-fi Visual Reference + Translation Method
+
+> **Authoritative method:** `docs/execution-phase/claude-design-files/IMPLEMENTATION_PROMPT.md` (read end-to-end before any task — engine work still consumes design context for sibling tools, naming, and serialized field semantics).
+
+**Cluster 07a is engine-only.** Per PRD 07a §3: "The engine surface this PRD ships is **invisible** to a customer — it is data shape + serialization + a sibling-traversal change in the renderer. Visual evidence... renders via overlay components + the inspector that PRD 07b ships on top of this engine surface."
+
+**No UI surfaces ship in this cluster.** The visual evidence of engine changes (dashed slice rectangle, measurement annotation, mask corner glyphs, masked composite) renders in **Cluster 07b** via `Kova Hi-Fi 09 Canvas Overlays - Dark.html` + `Kova Hi-Fi 11 Inspector - Dark.html`. See PRD 07a §3 engine→visual evidence table.
+
+### Kova codebase paths to consult (engine work)
+
+- `kova-open-pencil-1/packages/core/src/scene-graph.ts` — engine NodeType union (Task 1 extends with SLICE)
+- `kova-open-pencil-1/packages/core/src/codec/` — Kiwi schema (Task 8 bump)
+- `kova-open-pencil-1/packages/core/src/renderer/` — renderer (Task 9 mask compositing refactor)
+- `kova-open-pencil-1/packages/core/src/figma-api/` — figma-api proxy exposure (Task 7)
+- `kova-open-pencil-1/CLAUDE.md` — lift-the-lock policy amendment (Task 10)
+
+### Hi-fi reference for downstream consumers (this cluster does NOT ship UI; this table is for traceability)
+
+| Engine surface (07a ships) | Visual evidence (07b ships) | Hi-fi file | Scene |
+|---|---|---|---|
+| SLICE NodeType | Dashed-line bbox + layers entry + Export entry | `main-main-kova-scope/batch-b/Kova Hi-Fi 09 Canvas Overlays - Dark.html` + `batch-b/chunk-b4/Kova Hi-Fi 11 Inspector - Dark.html` | B8.x slice region + B8 export-preview |
+| Measurement system | Dashed line + auto-distance label + broken-anchor state | `main-main-kova-scope/batch-b/Kova Hi-Fi 09 Canvas Overlays - Dark.html` | B8.9 |
+| Mask compositing (all 3 maskType branches) | Mask outlines + corner glyph + masked child pixels | same | B8.4 |
+| aspectRatio field | Lock icon in Position/Layout section | `batch-b/chunk-b4/Kova Hi-Fi 11 Inspector - Dark.html` | Layout section |
+| includeInExports + pageBackgroundVisible | Page-row toggle in no-selection Pages section | same | Pages section |
+
+No Playwright visual-diff gate for this cluster (no UI). Integration tests at Task 12 + E2E smoke at Task 13 verify engine state survives load/save/persistence round-trip.
+
+---
+
 ## Pre-flight
 
 - [ ] **Step P1: Confirm working branch + clean tree**

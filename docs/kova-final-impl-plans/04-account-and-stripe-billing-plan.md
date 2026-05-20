@@ -95,6 +95,58 @@ Co-located: `tests/unit/...` mirrors `src/...`; `tests/integration/...` for DB +
 
 ---
 
+## Hi-fi Visual Reference + Translation Method
+
+> **Authoritative method:** `docs/execution-phase/claude-design-files/IMPLEMENTATION_PROMPT.md` (read end-to-end before any UI task). Maps PRD 04 §3 hi-fi citations to Plan tasks + actual Kova source paths.
+
+**Translation rule:** hi-fi HTML = visual source of truth; idiomatic Vue 3 + Cluster 11 primitives. **Mockup wins**; drift protocol (RIDER §2.1).
+
+**Per-screen diff loop** per IMPLEMENTATION_PROMPT.md Phase 4. Cluster-boundary Playwright gate ≤ 2%.
+
+**Theme:** dark throughout (account is inside authenticated app per `feedback_app_dark_website_light`). Stripe-hosted Checkout + Portal pages NOT in this list — render on Stripe domain.
+
+### Cluster 11 primitives — use these
+
+Source: `kova-open-pencil-1/src/components/ui/`:
+- `<KovaIcon name="...">` — user, credit-card, palette, plug, trash-2, check-circle, arrow-right, rotate-cw, etc.
+- `<KovaModal>` — delete-account modal (cross-cut from Cluster 01 Task 16 DangerZoneCard)
+- `<KovaMenu>` (brand picker dropdown anchored to brand-picker-pill at top of Brand Kit + Integrations sections)
+- `<KovaToast>` + `useToast()`
+- `<EmptyState>` (Cluster 11) — empty invoice state
+- Reka Accordion (sync-history accordion under Shopify card)
+
+### Kova codebase paths to consult
+
+- `kova-open-pencil-1/src/components/ui/` — Cluster 11 primitives
+- `kova-open-pencil-1/src/components/brand/` — existing brand-related components (brand-picker pill pattern)
+- `kova-open-pencil-1/src/stores/auth.ts`, `brands.ts` — existing stores
+- `kova-open-pencil-1/src/app.css`
+- existing `IntegrationsCard.vue` (M9 — Cluster 04 refactors per §3.5 not-connected / connecting / re-authorize / sync-progress states)
+- `kova-open-pencil-1/src/composables/use-shopify-connection.ts` — existing Shopify OAuth composable
+
+### Hi-fi → Plan surface mapping (this cluster)
+
+| Plan surface | Hi-fi file | Scene IDs |
+|---|---|---|
+| Account page shell (`.acct-shell` + sidebar + content + top chrome with "Back to dashboard") | `main-main-kova-scope/batch-a/dark/Kova Hi-Fi A7 Account Page - Dark.html` | shared chrome across A7.1–A7.6 |
+| Sidebar item list (6 items: Profile / Brands / Plan & billing / Brand Kit / Integrations / Danger zone) | same + `main-main-kova-scope/batch-a-additions/dark/Kova Hi-Fi B12 Brands page - Dark.html` (Brands item) | A7 chrome lines 554–560 |
+| Profile section (Avatar + Name + Email + Password + Accessibility toggles + Notifications + Timezone + Unsaved-changes pill) | A7 | A7.1 |
+| Plan & billing section (Plan card + Past-due banner + Usage + Invoice table + Compare plans + Upgrade triggers) | A7 | A7.2 |
+| Brand Kit section shell + brand-picker pill + 7-sub-tab nav rail | A7 | A7.3, A7.3.1 |
+| Brand picker dropdown open state | A7 (A2b open variant) + Cluster 03 A2/A3 | A7.3 (open) |
+| Integrations section (Shopify card states: Connected / Not connected / Connecting / Re-authorize / Sync in progress + Sync history accordion + Disconnect confirm + Coming-soon cards) | A7 + refactor from existing `IntegrationsCard.vue` (no dedicated scene for the non-connected states) | A7.5 |
+| Danger zone section default + Delete account modal (cross-cut to Cluster 01 Task 16) | A7 + `main-main-kova-scope/batch-a/dark/Kova Hi-Fi A4+A9+A10 Modals - Dark.html` | A7.6 + A9.1 |
+| Stripe Checkout success landing | `main-main-kova-scope/batch-a-additions/dark/Kova Hi-Fi B10 Stripe Returns - Dark.html` | B10.1 |
+| Stripe Checkout cancelled landing | same | B10.2 |
+| Cross-ref: B12 Brands page populated (Brands sidebar item routes here) | `main-main-kova-scope/batch-a-additions/dark/Kova Hi-Fi B12 Brands page - Dark.html` | B12.1 (Cluster 03 ships full page) |
+| Cross-ref: B5 Email Change Landing (post-email-change-flow lands here; Cluster 01 owns surface) | `main-main-kova-scope/batch-a-additions/light/Kova Hi-Fi B5 Email Change Landing - Light.html` | B5.1, B5.2 |
+
+### Per-property extraction checklist
+
+Walk `IMPLEMENTATION_PROMPT.md Appendix A` per surface. Record in TDD fixtures + screenshot diff logs under `tests/snapshots/cluster-04/`.
+
+---
+
 ## Phase 1 — Database migration + RPCs
 
 **Goal:** Schema + RPCs + RLS land before any code that depends on them. [PRD §4.1]

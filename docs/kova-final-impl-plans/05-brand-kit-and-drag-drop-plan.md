@@ -126,6 +126,55 @@
 
 ---
 
+## Hi-fi Visual Reference + Translation Method
+
+> **Authoritative method:** `docs/execution-phase/claude-design-files/IMPLEMENTATION_PROMPT.md` (read end-to-end before any UI task). Maps PRD 05 §3 hi-fi citations to Plan tasks + actual Kova source paths.
+
+**Translation rule:** hi-fi HTML = visual source of truth; idiomatic Vue 3 + Cluster 11 primitives. **Mockup wins**; drift protocol (RIDER §2.1).
+
+**Per-screen diff loop** per IMPLEMENTATION_PROMPT.md Phase 4. Cluster-boundary Playwright gate ≤ 2%. Theme: dark throughout.
+
+### Cluster 11 primitives — use these
+
+Source: `kova-open-pencil-1/src/components/ui/`:
+- `<KovaIcon name="...">` — palette, type, image, link, file-text, brain, library, upload, etc.
+- `<KovaModal>` (`.dlg.sm` / `.dlg.md`) — Add/Edit tone-snippet, Add/Edit saved-block, Delete confirm
+- `<KovaMenu>` — brand picker dropdown
+- `<KovaPopover>` — color picker popover (anchored to swatch tiles)
+- `<KovaToast>` + `useToast()`
+- `<KovaSkeleton>` — loading states for brand kit sections
+
+### Kova codebase paths to consult
+
+- `kova-open-pencil-1/src/components/brand-kit/` — existing brand-kit components (extend)
+- `kova-open-pencil-1/src/components/ui/` — Cluster 11 primitives
+- `kova-open-pencil-1/src/composables/use-canvas-drop.ts` — existing canvas-drop composable (Cluster 06 extends; Cluster 05 emits drag payloads consumed here)
+- `kova-open-pencil-1/src/composables/use-shop-drop.ts` — existing shop-panel drop composable (Cluster 05 mirrors pattern)
+- `kova-open-pencil-1/src/stores/brand-memories.ts` — existing brand-memories store (extend)
+- `kova-open-pencil-1/src/app.css`
+
+### Hi-fi → Plan surface mapping (this cluster)
+
+| Plan surface | Hi-fi file | Scene IDs |
+|---|---|---|
+| Brand Kit section shell + 7-sub-tab nav rail + brand-picker pill | `main-main-kova-scope/batch-a/dark/Kova Hi-Fi A7 Account Page - Dark.html` | A7.3 (intro), A7.3.1 (Visuals sub-nav) |
+| Brand-picker open state | A7 (A2b open variant) | A2b |
+| Visuals sub-tab — colors / fonts / logo | A7 | A7.3.1 |
+| Font upload drop zone (idle / hover / in-progress / success / error) | `main-main-kova-scope/batch-a-additions/dark/Kova Hi-Fi B8 Upload States - Dark.html` | B8.2, B8.4, B8.5, B8.6 |
+| Identity sub-tab — narrative cards (About / Voice & tone / Story & origin) | A7 | A7.3.2 |
+| Tone snippets list + Add/Edit/Delete modals | A7 + `main-main-kova-scope/batch-a-additions/dark/batch-0/Kova Hi-Fi B3 Brand Kit CRUD Modals - Dark.html` | A7.3.3, B3.1 (Add empty/typing/filled), B3.2 (Edit) |
+| Saved blocks list + Add/Edit modals + Delete confirm | A7 + B3 | A7.3.4, B3.3 (Add), B3.4 (Edit), B3.5 (Delete) |
+| Writing rules toggle list | A7 | A7.3.5 |
+| Memories list (cross-cut with Cluster 10) | A7 | A7.3.6 |
+| KB sources list + multi-state upload | A7 + B8 | A7.3.7, B8.7, B8.8 |
+| Voice-draft confirmation modal (post-Shopify-connect) | composes B3.1 shell + form fields (net-new — no dedicated scene) | n/a |
+
+### Per-property extraction checklist
+
+Walk `IMPLEMENTATION_PROMPT.md Appendix A` per surface. Record in TDD fixtures + screenshot diff logs under `tests/snapshots/cluster-05/`.
+
+---
+
 ## Task Sequence
 
 Tasks are ordered so each builds on prior tasks. TDD throughout. Commit after each task.
