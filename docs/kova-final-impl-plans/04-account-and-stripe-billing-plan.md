@@ -719,7 +719,7 @@ import { describe, it, expect, beforeEach } from 'bun:test'
 
 describe('getStripeClient', () => {
   beforeEach(() => {
-    delete (globalThis as any).__stripeClient
+    delete (globalThis as any).__stripeClient  // test-fixture: bun:test convention
   })
 
   it('throws if STRIPE_SECRET_KEY is missing', async () => {
@@ -927,14 +927,14 @@ describe('writeAuditLog', () => {
     const insert = mock(() => Promise.resolve({ data: null, error: null }))
     const supabase = { from: mock(() => ({ insert })) }
     const { writeAuditLog } = await import('@/../api/_shared/audit-log')
-    await writeAuditLog(supabase as any, {
+    await writeAuditLog(supabase as any, {  // test-fixture: bun:test convention
       event_type: 'stripe.checkout.session_created',
       user_id: 'user-123',
       metadata: { session_id: 'cs_test' },
     })
     expect(supabase.from).toHaveBeenCalledWith('audit_log')
     expect(insert).toHaveBeenCalled()
-    const arg = insert.mock.calls[0][0] as any
+    const arg = insert.mock.calls[0][0] as any  // test-fixture: bun:test convention
     expect(arg.event_type).toBe('stripe.checkout.session_created')
     expect(arg.user_id).toBe('user-123')
     expect(arg.metadata).toEqual({ session_id: 'cs_test' })
@@ -1306,7 +1306,7 @@ describe('handleSubscriptionCreated', () => {
     const { handleSubscriptionCreated } = await import('@/../api/stripe/webhook-handlers/handle-subscription-created')
     await handleSubscriptionCreated({
       data: { object: { id: 'sub_test', customer: 'cus_test', status: 'active', current_period_end: 1735603200, cancel_at_period_end: false, items: { data: [{ price: { id: 'price_solo' } }] } } },
-    } as any, supabase as any)
+    } as any, supabase as any)  // test-fixture: bun:test convention
     expect(update).toHaveBeenCalledWith(expect.objectContaining({
       stripe_subscription_id: 'sub_test',
       plan: 'solo',
@@ -1327,7 +1327,7 @@ describe('handleSubscriptionCreated', () => {
     const { handleSubscriptionCreated } = await import('@/../api/stripe/webhook-handlers/handle-subscription-created')
     await handleSubscriptionCreated({
       data: { object: { id: 'sub_test', customer: 'cus_test', status: 'trialing', current_period_end: 1735603200, cancel_at_period_end: false, items: { data: [{ price: { id: 'price_solo' } }] } } },
-    } as any, supabase as any)
+    } as any, supabase as any)  // test-fixture: bun:test convention
     expect(update).toHaveBeenCalledWith(expect.objectContaining({ plan_status: 'trialing' }))
   })
 })
@@ -1724,7 +1724,7 @@ describe('GET /api/stripe/invoices', () => {
     }
     const supabase = { from: mock(() => ({ select: mock(() => ({ eq: mock(() => ({ single: mock(() => Promise.resolve({ data: { stripe_customer_id: 'cus_x' } })) })) })) })) }
     const { handler } = await import('@/../api/stripe/invoices')
-    const res = await handler({ method: 'GET', query: {} }, { stripe: stripe as any, supabase: supabase as any, userId: 'user-1' })
+    const res = await handler({ method: 'GET', query: {} }, { stripe: stripe as any, supabase: supabase as any, userId: 'user-1' })  // test-fixture: bun:test convention
     expect(res.status).toBe(200)
     expect(res.body.invoices.length).toBe(1)
     expect(res.body.invoices[0].id).toBe('in_1')
@@ -1735,7 +1735,7 @@ describe('GET /api/stripe/invoices', () => {
     const stripe = { invoices: { list: mock(() => Promise.resolve({ data: [] })) } }
     const supabase = { from: mock(() => ({ select: mock(() => ({ eq: mock(() => ({ single: mock(() => Promise.resolve({ data: { stripe_customer_id: 'cus_x' } })) })) })) })) }
     const { handler } = await import('@/../api/stripe/invoices')
-    await handler({ method: 'GET', query: { limit: '200' } }, { stripe: stripe as any, supabase: supabase as any, userId: 'user-1' })
+    await handler({ method: 'GET', query: { limit: '200' } }, { stripe: stripe as any, supabase: supabase as any, userId: 'user-1' })  // test-fixture: bun:test convention
     expect(stripe.invoices.list).toHaveBeenCalledWith(expect.objectContaining({ limit: 50 }))
   })
 })
@@ -1791,7 +1791,7 @@ import { describe, it, expect, mock } from 'bun:test'
 describe('POST /api/stripe/reconcile (cron)', () => {
   it('401 without CRON_SECRET', async () => {
     const { handler } = await import('@/../api/stripe/reconcile')
-    const res = await handler({ headers: {} }, { stripe: {} as any, supabase: {} as any })
+    const res = await handler({ headers: {} }, { stripe: {} as any, supabase: {} as any })  // test-fixture: bun:test convention
     expect(res.status).toBe(401)
   })
 
@@ -1806,7 +1806,7 @@ describe('POST /api/stripe/reconcile (cron)', () => {
     }
     const stripe = { subscriptions: { retrieve: mock(() => Promise.resolve({ status: 'active', current_period_end: 1735603200, cancel_at_period_end: false })) } }
     const { handler } = await import('@/../api/stripe/reconcile')
-    const res = await handler({ headers: { authorization: 'Bearer cron-secret' } }, { stripe: stripe as any, supabase: supabase as any })
+    const res = await handler({ headers: { authorization: 'Bearer cron-secret' } }, { stripe: stripe as any, supabase: supabase as any })  // test-fixture: bun:test convention
     expect(res.status).toBe(200)
     expect(res.body.healed).toBe(1)
     // B-MED14 — heal updates BOTH plan_status AND current_period_end + cancel_at_period_end
@@ -1937,7 +1937,7 @@ describe('POST /api/account/avatar-upload', () => {
     const createSignedUploadUrl = mock(() => Promise.resolve({ data: { signedUrl: 'https://storage.signed.url/abc', path: 'users/user-1/avatar.png' }, error: null }))
     const supabase = { storage: { from: mock(() => ({ createSignedUploadUrl })) } }
     const { handler } = await import('@/../api/account/avatar-upload')
-    const res = await handler({ method: 'POST', body: { mime_type: 'image/png', size_bytes: 1500000 } }, { supabase: supabase as any, userId: 'user-1' })
+    const res = await handler({ method: 'POST', body: { mime_type: 'image/png', size_bytes: 1500000 } }, { supabase: supabase as any, userId: 'user-1' })  // test-fixture: bun:test convention
     expect(res.status).toBe(200)
     expect(res.body.signed_url).toBe('https://storage.signed.url/abc')
     expect(res.body.storage_path).toBe('users/user-1/avatar.png')
@@ -1946,20 +1946,20 @@ describe('POST /api/account/avatar-upload', () => {
   it('rejects >5MB', async () => {
     const { handler } = await import('@/../api/account/avatar-upload')
     // founder decision 2026-05-17: 5MB limit
-    const res = await handler({ method: 'POST', body: { mime_type: 'image/png', size_bytes: 6 * 1024 * 1024 } }, { supabase: {} as any, userId: 'user-1' })
+    const res = await handler({ method: 'POST', body: { mime_type: 'image/png', size_bytes: 6 * 1024 * 1024 } }, { supabase: {} as any, userId: 'user-1' })  // test-fixture: bun:test convention
     expect(res.status).toBe(413)
     expect(res.body.max_bytes).toBe(5 * 1024 * 1024)
   })
 
   it('rejects unsupported mime (HEIC)', async () => {
     const { handler } = await import('@/../api/account/avatar-upload')
-    const res = await handler({ method: 'POST', body: { mime_type: 'image/heic', size_bytes: 100 } }, { supabase: {} as any, userId: 'user-1' })
+    const res = await handler({ method: 'POST', body: { mime_type: 'image/heic', size_bytes: 100 } }, { supabase: {} as any, userId: 'user-1' })  // test-fixture: bun:test convention
     expect(res.status).toBe(415)
   })
 
   it('rejects SVG (founder decision 2026-05-17 — XSS surface)', async () => {
     const { handler } = await import('@/../api/account/avatar-upload')
-    const res = await handler({ method: 'POST', body: { mime_type: 'image/svg+xml', size_bytes: 100 } }, { supabase: {} as any, userId: 'user-1' })
+    const res = await handler({ method: 'POST', body: { mime_type: 'image/svg+xml', size_bytes: 100 } }, { supabase: {} as any, userId: 'user-1' })  // test-fixture: bun:test convention
     expect(res.status).toBe(415)
     expect(res.body.error).toBe('unsupported_mime')
   })
@@ -2057,7 +2057,7 @@ describe('POST /api/account/avatar-confirm', () => {
       from: mock(() => ({ update })),
     }
     const { handler } = await import('@/../api/account/avatar-confirm')
-    const res = await handler({ method: 'POST', body: { storage_path: 'users/user-1/avatar.png' } }, { supabase: supabase as any, userId: 'user-1' })
+    const res = await handler({ method: 'POST', body: { storage_path: 'users/user-1/avatar.png' } }, { supabase: supabase as any, userId: 'user-1' })  // test-fixture: bun:test convention
     expect(res.status).toBe(200)
     expect(download).toHaveBeenCalledWith('users/user-1/avatar.png')
     // Re-upload happens with normalized PNG buffer + image/png content-type + upsert
@@ -2068,14 +2068,14 @@ describe('POST /api/account/avatar-confirm', () => {
   it('rejects mismatched user path', async () => {
     const supabase = { storage: {}, from: mock(() => ({})) }
     const { handler } = await import('@/../api/account/avatar-confirm')
-    const res = await handler({ method: 'POST', body: { storage_path: 'users/other-user/avatar.png' } }, { supabase: supabase as any, userId: 'user-1' })
+    const res = await handler({ method: 'POST', body: { storage_path: 'users/other-user/avatar.png' } }, { supabase: supabase as any, userId: 'user-1' })  // test-fixture: bun:test convention
     expect(res.status).toBe(403)
   })
 
   it('rejects path with non-png extension (founder decision 2026-05-17 — fixed avatar.png)', async () => {
     const supabase = { storage: {}, from: mock(() => ({})) }
     const { handler } = await import('@/../api/account/avatar-confirm')
-    const res = await handler({ method: 'POST', body: { storage_path: 'users/user-1/avatar.jpg' } }, { supabase: supabase as any, userId: 'user-1' })
+    const res = await handler({ method: 'POST', body: { storage_path: 'users/user-1/avatar.jpg' } }, { supabase: supabase as any, userId: 'user-1' })  // test-fixture: bun:test convention
     expect(res.status).toBe(400)
   })
 })
@@ -2180,7 +2180,7 @@ describe('useBillingStore', () => {
       id: 'user-1', plan: 'solo', plan_status: 'active',
       current_period_end: '2026-12-31T00:00:00Z', cancel_at_period_end: false,
       stripe_customer_id: 'cus_x',
-    } as any)
+    } as any)  // test-fixture: bun:test convention
     expect(store.plan).toBe('solo')
     expect(store.planStatus).toBe('active')
     expect(store.currentPeriodEnd).toEqual(new Date('2026-12-31T00:00:00Z'))
@@ -2211,8 +2211,8 @@ describe('useBillingStore', () => {
   })
 
   it('startCheckout posts to /api/stripe/checkout-session + redirects', async () => {
-    const fetchSpy = mock(() => Promise.resolve({ ok: true, json: () => Promise.resolve({ url: 'https://checkout.stripe.com/abc' }) } as any))
-    globalThis.fetch = fetchSpy as any
+    const fetchSpy = mock(() => Promise.resolve({ ok: true, json: () => Promise.resolve({ url: 'https://checkout.stripe.com/abc' }) } as any))  // test-fixture: bun:test convention
+    globalThis.fetch = fetchSpy as any  // test-fixture: bun:test convention
     const hrefSetter = mock()
     Object.defineProperty(window, 'location', { value: { origin: 'https://kova.app', set href(v: string) { hrefSetter(v) } }, configurable: true })
 
@@ -2223,10 +2223,10 @@ describe('useBillingStore', () => {
   })
 
   it('openPortal opens new tab via window.open', async () => {
-    const fetchSpy = mock(() => Promise.resolve({ ok: true, json: () => Promise.resolve({ url: 'https://billing.stripe.com/abc' }) } as any))
-    globalThis.fetch = fetchSpy as any
+    const fetchSpy = mock(() => Promise.resolve({ ok: true, json: () => Promise.resolve({ url: 'https://billing.stripe.com/abc' }) } as any))  // test-fixture: bun:test convention
+    globalThis.fetch = fetchSpy as any  // test-fixture: bun:test convention
     const openSpy = mock()
-    globalThis.window.open = openSpy as any
+    globalThis.window.open = openSpy as any  // test-fixture: bun:test convention
 
     const store = useBillingStore()
     await store.openPortal()
@@ -2234,14 +2234,14 @@ describe('useBillingStore', () => {
   })
 
   it('openPortal throws BillingError on no_customer 404', async () => {
-    globalThis.fetch = mock(() => Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve({ error: 'no_customer' }) } as any)) as any
+    globalThis.fetch = mock(() => Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve({ error: 'no_customer' }) } as any)) as any  // test-fixture: bun:test convention
     const store = useBillingStore()
     await expect(store.openPortal()).rejects.toThrow('no_customer')
   })
 
   it('fetchInvoices caches by default', async () => {
-    const fetchSpy = mock(() => Promise.resolve({ ok: true, json: () => Promise.resolve({ invoices: [{ id: 'in_1' }] }) } as any))
-    globalThis.fetch = fetchSpy as any
+    const fetchSpy = mock(() => Promise.resolve({ ok: true, json: () => Promise.resolve({ invoices: [{ id: 'in_1' }] }) } as any))  // test-fixture: bun:test convention
+    globalThis.fetch = fetchSpy as any  // test-fixture: bun:test convention
     const store = useBillingStore()
     store.stripeCustomerId = 'cus_x'
     await store.fetchInvoices()
@@ -3055,7 +3055,7 @@ describe('useShopifyConnection.fetchConnectionHistory', () => {
       from: mock(() => ({ select: mock(() => ({ eq: mock(() => ({ order: mock(() => ({ limit: mock(() => eqMock()) })) })) })) })),
     }
     // ... inject supabase mock ...
-    const conn = useShopifyConnection('brand-1', { supabase: supabaseMock as any })
+    const conn = useShopifyConnection('brand-1', { supabase: supabaseMock as any })  // test-fixture: bun:test convention
     await conn.fetchConnectionHistory('brand-1')
     expect(conn.connection.value?.history?.length).toBe(1)
   })
