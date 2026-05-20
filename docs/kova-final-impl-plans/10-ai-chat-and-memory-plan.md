@@ -1406,7 +1406,7 @@ git commit -m "feat(prd10): createSliceFromSelection AI tool wrapper (Cluster 07
 - Modify: `kova-open-pencil-1/src/ai/kova-tools.ts`
 - Create: `kova-open-pencil-1/tests/engine/ai/measurement-tool.test.ts`
 
-> **Dependency:** Cluster 07a must expose `figma.createMeasurement({ fromNodeId, toNodeId })`. Guard with runtime check.
+> **Dependency (W4 CT-004 corrected):** Cluster 07a exposes Measurement as a **page-level method** on the CANVAS-typed SceneNode — `figma.currentPage.addMeasurement(start, end, options?)` per PRD 07a §7.1b — NOT as a NodeType factory `figma.createMeasurement`. The anchor model uses `{ nodeId, side }` pairs with `side ∈ {TOP, RIGHT, BOTTOM, LEFT}`, plus optional `offset_type ∈ {INNER, OUTER}`, `offset_value`, and `free_text`. PRD 10 §6.3.4 §2.1 founder-locked this signature. Guard with a runtime check on `figma.currentPage?.addMeasurement` and `engine_unavailable` early-return.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1416,19 +1416,41 @@ git commit -m "feat(prd10): createSliceFromSelection AI tool wrapper (Cluster 07
 import { describe, expect, test } from 'bun:test'
 import { createKovaTools } from '@/ai/kova-tools'
 
-describe('addMeasurement AI tool', () => {
+describe('addMeasurement AI tool (page-level API, W4 CT-004)', () => {
   test('returns measurementId on success', async () => {
     const store = makeMockStoreWithNodes(['n1', 'n2'])
     const tools = createKovaTools(store)
-    const result = await tools.addMeasurement.execute({ fromNodeId: 'n1', toNodeId: 'n2' })
+    const result = await tools.addMeasurement.execute({
+      canvas_id: 'c1',
+      start_node_id: 'n1',
+      start_side:    'RIGHT',
+      end_node_id:   'n2',
+      end_side:      'LEFT',
+      offset_type:   'OUTER',
+      offset_value:  16,
+    })
     expect(result).toEqual({ success: true, measurementId: expect.any(String) })
   })
 
-  test('returns invalid_nodes error when nodes do not exist', async () => {
+  test('returns invalid_anchors error when nodes do not exist', async () => {
     const store = makeMockStoreWithNodes([])
     const tools = createKovaTools(store)
-    const result = await tools.addMeasurement.execute({ fromNodeId: 'x', toNodeId: 'y' })
-    expect(result).toEqual({ error: 'Could not create measurement', code: 'invalid_nodes' })
+    const result = await tools.addMeasurement.execute({
+      canvas_id: 'c1', start_node_id: 'x', start_side: 'TOP',
+      end_node_id: 'y', end_side: 'BOTTOM',
+    })
+    expect(result).toEqual({ error: 'Could not create measurement', code: 'invalid_anchors' })
+  })
+
+  test('returns engine_unavailable when currentPage.addMeasurement missing (Cluster 07a slipped)', async () => {
+    const store = makeMockStoreWithNodes(['n1', 'n2'])
+    store.__simulateMissingMeasurementAPI = true
+    const tools = createKovaTools(store)
+    const result = await tools.addMeasurement.execute({
+      canvas_id: 'c1', start_node_id: 'n1', start_side: 'RIGHT',
+      end_node_id: 'n2', end_side: 'LEFT',
+    })
+    expect(result).toEqual({ error: 'Measurement engine API not available', code: 'engine_unavailable' })
   })
 })
 ```
@@ -1439,26 +1461,48 @@ describe('addMeasurement AI tool', () => {
 
   Expected: FAIL.
 
-- [ ] **Step 3: Implement the tool**
+- [ ] **Step 3: Implement the tool — page-level signature per PRD 07a §7.1b**
 
   Edit `kova-open-pencil-1/src/ai/kova-tools.ts`. Add inside `createKovaTools`:
 
 ```typescript
+  const Side = v.picklist(['TOP', 'RIGHT', 'BOTTOM', 'LEFT'] as const)
+
   const addMeasurement = tool({
-    description: 'Add a persistent Measurement annotation between two nodes (distance + label).',
+    description:
+      'Add a persistent Measurement annotation between two nodes on the current page. ' +
+      'Page-level API per PRD 07a §7.1b (Measurement is NOT a NodeType).',
     inputSchema: valibotSchema(v.object({
-      fromNodeId: v.pipe(v.string(), v.description('Source node ID')),
-      toNodeId: v.pipe(v.string(), v.description('Target node ID'))
+      canvas_id:     v.pipe(v.string(), v.description('Canvas (page) id the measurement lives on')),
+      start_node_id: v.pipe(v.string(), v.description('Source node id')),
+      start_side:    Side,
+      end_node_id:   v.pipe(v.string(), v.description('Target node id')),
+      end_side:      Side,
+      offset_type:   v.optional(v.picklist(['INNER', 'OUTER'] as const)),
+      offset_value:  v.optional(v.number()),
+      free_text:     v.optional(v.string()),
     })),
-    execute: async ({ fromNodeId, toNodeId }) => {
+    execute: async ({
+      canvas_id, start_node_id, start_side, end_node_id, end_side,
+      offset_type, offset_value, free_text,
+    }) => {
       const figma = makeFigmaFromStore(store)
-      if (typeof figma.createMeasurement !== 'function') {
+      const page = figma.currentPage
+      if (!page || typeof page.addMeasurement !== 'function') {
         return { error: 'Measurement engine API not available', code: 'engine_unavailable' }
       }
-      const ann = figma.createMeasurement({ fromNodeId, toNodeId })
-      return ann
-        ? { success: true, measurementId: ann.id }
-        : { error: 'Could not create measurement', code: 'invalid_nodes' }
+      try {
+        const m = page.addMeasurement(
+          { nodeId: start_node_id, side: start_side },
+          { nodeId: end_node_id,   side: end_side },
+          { offsetType: offset_type, offsetValue: offset_value, freeText: free_text },
+        )
+        return m
+          ? { success: true, measurementId: m.id }
+          : { error: 'Could not create measurement', code: 'invalid_anchors' }
+      } catch (_e) {
+        return { error: 'Could not create measurement', code: 'invalid_anchors' }
+      }
     }
   })
 ```
