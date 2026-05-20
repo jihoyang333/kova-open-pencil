@@ -20,11 +20,16 @@ This is NOT design work. NOT scope work. NOT plan work. Pure execution.
 - Re-implementing OpenPencil's canvas / renderer / scene graph
 
 **In scope:**
-- Translating hi-fi HTML into idiomatic Vue 3 with **pixel-level visual fidelity** (mockup wins on visual values; see `claude-design-files/IMPLEMENTATION_PROMPT.md` for the translation method)
+- Translating hi-fi HTML into idiomatic Vue 3 per the **3-rule visual-fidelity contract** (see `claude-design-files/IMPLEMENTATION_PROMPT.md` §0):
+  1. **Visual values are copied** — every color, spacing, type, radius, shadow, gap, padding, line-height, tracking, proportion MUST match the mockup pixel-for-pixel.
+  2. **DOM structure is translated** — compose markup via Vue 3 SFCs + Reka UI primitives + `K*` component layer from `design.md` §3. Do NOT copy the mockup's hand-rolled HTML structure.
+  3. **Behavior is engineered** — state lives in Pinia / refs / composables. Hover/focus/active/selected/disabled states are dynamic bindings, NEVER hardcoded classes.
 - Wiring backend (Supabase migrations + Edge Functions + RPCs)
 - Building Pinia stores per cluster
 - TDD discipline (RED → GREEN → REFACTOR) per Plan task
-- Browser smoke + visual-diff Playwright gates per cluster
+- Per-screen written diff + Playwright visual-diff gates per cluster (thresholds: 0.1% component / 0.5% screen per IMPLEMENTATION_PROMPT.md §6)
+
+**Trap phrase to avoid in agent instructions:** "copy DOM verbatim" is forbidden. It sounds like fidelity insurance and is actually the opposite — it pulls hand-rolled HTML, inline `<style>` blocks, CDN scripts, and hardcoded states into the codebase, defeating the component layer. Use the 3-rule formulation above.
 
 ---
 
@@ -33,17 +38,18 @@ This is NOT design work. NOT scope work. NOT plan work. Pure execution.
 | Input | Path | Used for |
 |---|---|---|
 | PRD (per cluster) | `docs/kova-final-prds/NN-<name>.md` | WHY + acceptance criteria |
-| Implementation Plan (per cluster) | `docs/kova-final-impl-plans/NN-<name>-plan.md` | HOW + task-by-task TDD |
+| Implementation Plan (per cluster) | `docs/kova-final-impl-plans/NN-<name>-plan.md` | HOW + task-by-task TDD. **The plan IS the README** (supersedes any auto-generated bundle README per IMPLEMENTATION_PROMPT.md §11) |
 | Design system canonical | `/Users/jihoyang/kova-main/main-main-kova-scope/design-system/design.md` | Source-of-truth for tokens, fonts, colors, bans |
-| Hi-fi HTML | `/Users/jihoyang/kova-main/main-main-kova-scope/batch-a/dark/*.html` | Pixel-exact visual target |
+| Hi-fi HTML (in-repo, version-controlled, CI-deterministic) | `kova-open-pencil-1/design-system/hifi/<cluster>/*.html` | Pixel-exact visual target. Playwright visual-diff baseline. |
+| Hi-fi HTML (outer-repo originals, reference only) | `/Users/jihoyang/kova-main/main-main-kova-scope/batch-{a,a-additions,b}/...*.html` | Historical originals. Diff against in-repo copy. |
 | Hi-fi tokens (dark) | `/Users/jihoyang/kova-main/main-main-kova-scope/design-system/kova-hifi.css` | CSS custom properties + component primitives |
 | Hi-fi tokens (light, auth only) | `/Users/jihoyang/kova-main/main-main-kova-scope/design-system/kova-hifi-light.css` | Auth pages only |
 | Figma canvas reference (PNGs) | `/Users/jihoyang/kova-main/main-main-kova-scope/design-system/compressed-figma-canvas-ui/*.png` | Visual reference for canvas surfaces (07a/07b/08) |
 | Design-system compliance rider | `docs/execution-phase/DESIGN-SYSTEM-COMPLIANCE-RIDER.md` | Hard rules every cluster agent must follow |
-| Hi-fi handoff bundle overview | `docs/execution-phase/claude-design-files/README.md` | Bundle description, fidelity rule, authority chain, screen inventory |
-| Hi-fi translation method | `docs/execution-phase/claude-design-files/IMPLEMENTATION_PROMPT.md` | Authoritative HTML → Vue translation method (Audit → Tokens → Components → Screens; per-screen diff loop; failure modes) |
+| Hi-fi handoff bundle overview | `docs/execution-phase/claude-design-files/README.md` | Bundle description. **Inverted — plan supersedes; this file is reference only.** |
+| **Hi-fi translation method (CANONICAL)** | `docs/execution-phase/claude-design-files/IMPLEMENTATION_PROMPT.md` | Authoritative HTML → Vue contract. 3-rule formulation. Phase 1 audit gate (`KOVA_AUDIT.md` + `tokens-used.md`). Per-screen written diff + Playwright visual-diff (0.1% component / 0.5% screen). 3-screenshot PR artifact. |
 
-**Every execution-prompt loads PRD + Plan + Design Rider + claude-design-files (README + IMPLEMENTATION_PROMPT). Five total. Plan alone is insufficient — PRD provides acceptance criteria; rider provides hard rules; claude-design-files provide the hi-fi → Vue translation method.**
+**Every execution-prompt loads PRD + Plan + Design Rider + IMPLEMENTATION_PROMPT.md (5 docs). IMPLEMENTATION_PROMPT.md is the canonical contract for visual fidelity — its 3-rule formulation overrides any conflicting wording elsewhere.**
 
 ---
 
@@ -140,24 +146,47 @@ STAGE 2 — TDD LOOP (~60-70% of cluster time)
 STAGE 3 — HI-FI TRANSLATION (~10-15% — UI clusters only)
 │
 │ Follow `claude-design-files/IMPLEMENTATION_PROMPT.md` Phase 4 (per-screen loop).
-│ Method: HTML is the visual source of truth; translate to idiomatic Vue 3
-│ using Cluster 11 primitives (KovaModal, KovaPopover, KovaMenu, KovaTooltip,
-│ KovaIcon, KovaSkeleton, KovaToast). Class names from `kova-hifi.css` are
-│ preserved where they aid clarity (`.btn`, `.input`, `.dlg`, etc.). DOM
-│ structure is NOT copied verbatim — port to Vue idioms.
+│ Apply the 3-rule formulation:
+│   (1) Visual values are copied — every color/spacing/type/radius/shadow/gap/
+│       padding/proportion pixel-for-pixel from the mockup.
+│   (2) DOM structure is translated — Vue 3 SFCs + Reka UI primitives + the K*
+│       component layer from design.md §3. The mockup's hand-rolled HTML is NOT
+│       transcribed; it is REBUILT in Vue idioms.
+│   (3) Behavior is engineered — state in Pinia / refs / composables. Hover /
+│       focus / active / selected states are dynamic bindings, never static
+│       classes copied from the mockup.
+│ Class names from kova-hifi.css are preserved where they aid clarity (.btn,
+│ .input, .dlg, .pill, etc.) — they document the component vocabulary.
+│
+├── Phase 1 gate: produce KOVA_AUDIT.md + tokens-used.md BEFORE any Vue.
+│   ├── tokens-used.md enumerates every visual value in this cluster's surfaces
+│   │     mapped to either an existing token or ⚠️ MISSING for founder.
+│   ├── No Vue code until both docs are founder-approved.
+│   └── See IMPLEMENTATION_PROMPT.md §3.
 │
 ├── For each PRD §3 surface row that has hi-fi reference:
-│   ├── Open the hi-fi HTML file in a browser at 1440px viewport
-│   ├── Implement the Vue route at `/dev/cluster-N/<surface>`
-│   ├── Open Vue version at the same 1440px viewport
-│   ├── Screenshot both. Diff visually. List every discrepancy in writing
-│   │     (spacing, color, radius, type weight, alignment, missing state)
-│   ├── Fix every discrepancy. Re-screenshot. Re-diff.
-│   ├── Token discipline: kova-hifi.css :root is canonical. If hi-fi uses a
-│   │     value not in :root, flag it as a hi-fi bug (ask founder via
-│   │     AskUserQuestion) — never silently round to nearest existing token.
-│   └── Only move to next surface when zero discrepancies remain.
-└── Commit: feat(cN-ui): translate <surface> from batch-a/dark/<file>.html (mockup-diffed)
+│   ├── Open the IN-REPO hi-fi HTML at design-system/hifi/<cluster>/<file>.html
+│   │     (NOT the outer main-main-kova-scope/ originals — those are reference)
+│   ├── Implement the Vue route at /dev/cluster-N/<surface>
+│   ├── Open Vue route at the same 1440px viewport as the mockup
+│   ├── Screenshot both. Walk IMPLEMENTATION_PROMPT.md Appendix A per property.
+│   │     List every discrepancy in writing → tests/snapshots/cluster-N/<surface>-diff.md
+│   ├── Fix every discrepancy. Re-screenshot. Re-diff. Repeat until empty.
+│   ├── Drift protocol: kova-hifi.css :root is canonical. If hi-fi uses a value
+│   │     not in :root, flag it ⚠️ MISSING in tokens-used.md + ask founder via
+│   │     AskUserQuestion. Three options: (a) extend the system, (b) update the
+│   │     hi-fi, (c) keep literal with /* token-exempt */ comment. Never silently
+│   │     round to nearest existing token.
+│   ├── Playwright visual-diff gate: 0.1% component / 0.5% screen (with masking
+│   │     for volatile regions per IMPLEMENTATION_PROMPT.md §6).
+│   └── Only move to next surface when written diff empty AND visual-diff green.
+└── Commit: feat(cN-ui): translate <surface> from design-system/hifi/<cluster>/<file>.html
+    (per-screen diff + visual-diff green)
+
+NEVER USE THE PHRASE "copy DOM verbatim" IN AGENT INSTRUCTIONS. It is forbidden.
+It is a trap phrase that destroys fidelity by pulling hand-rolled HTML + inline
+<style> blocks + CDN scripts + hardcoded states into the codebase. Use the
+3-rule formulation above.
 
 STAGE 4 — SELF-REVIEW (~5-10%)
 ├── Invoke `superpowers:code-reviewer` agent
@@ -276,9 +305,13 @@ Agents do all the typing. Founder makes decisions + presses buttons.
 - All Plan tasks have commits (one per task)
 - `bun run build` succeeds
 - `superpowers:code-reviewer` agent gives PASS (no CRITICAL/HIGH)
-- Playwright visual diff ≤ 2% on every UI surface in cluster (UI clusters only)
+- **Phase 1 gate green**: `KOVA_AUDIT.md` + `tokens-used.md` exist with zero ⚠️ MISSING rows
+- **Per-screen written diff** at `tests/snapshots/cluster-NN/<surface>-diff.md` is empty for every UI surface
+- **Per-component visual diff ≤ 0.1%** for every primitive used (against `/dev/components` gallery)
+- **Per-screen visual diff ≤ 0.5%** on every UI surface in cluster (UI clusters only) — Playwright with `maxDiffPixelRatio: 0.005, threshold: 0.2`, masking volatile regions
+- **No raw hex / raw px** in any Vue file touched (lint per IMPLEMENTATION_PROMPT.md §9)
 - `e2e-runner` agent golden-path test green
-- Hi-fi parity verified (UI clusters only) — agent posts side-by-side screenshots in cluster-done report
+- Hi-fi parity verified — PR description includes 3-screenshot row (mockup / impl / diff) per surface
 
 ### 8.3 Pre-merge gate (founder + agent)
 - Founder browser smoke-test of `/dev/cluster-NN` route
@@ -340,7 +373,7 @@ Per memory `project_external_accounts_deferred`: stub-guard pattern is documente
 - [ ] All 13 cluster branches merged into `feat/m9-shopify`
 - [ ] `bun run build` succeeds on integrated branch
 - [ ] Full E2E pass on integrated branch (signup → onboard → brand-kit → canvas → AI → export → image push)
-- [ ] Hi-fi diff pass on every UI surface (visual diff ≤ 2%)
+- [ ] Hi-fi diff pass on every UI surface (per-component ≤ 0.1%, per-screen ≤ 0.5%; lint hex/px clean)
 - [ ] CLAUDE.md hard-rule sweep: zero violations of stated bans
 - [ ] Supabase production project provisioned + RLS verified
 - [ ] Stripe production account + products + webhook
@@ -396,6 +429,11 @@ Per-wave launch prompts live in `execution-prompts/`. Founder reads + pastes int
 - ❌ Re-litigate founder-locked decisions
 - ❌ Skip code-reviewer step
 - ❌ Skip Playwright visual diff gate
+- ❌ Use the phrase "copy DOM verbatim" in any agent instruction (trap phrase — destroys fidelity by pulling hand-rolled HTML into the codebase)
+- ❌ Skip Phase 1 audit gate (KOVA_AUDIT.md + tokens-used.md must be founder-approved before any Vue)
+- ❌ Silently round a mockup value to the nearest existing token (drift protocol §7 of IMPLEMENTATION_PROMPT.md is mandatory)
+- ❌ Loosen visual-diff thresholds when a screen fails (investigate + fix, don't widen the gate)
+- ❌ Skip the 3-screenshot PR artifact
 
 ---
 
