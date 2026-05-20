@@ -36,8 +36,8 @@ canvas engine extensions that add Slice (17th NodeType) and Measurement
 2. docs/execution-phase/DESIGN-SYSTEM-COMPLIANCE-RIDER.md
 3. docs/kova-final-prds/07a-canvas-engine-core-renderer.md  (the WHY)
 4. docs/kova-final-impl-plans/07a-canvas-engine-core-renderer-plan.md  (the HOW)
-5. docs/execution-phase/claude-design-files/README.md  (hi-fi bundle overview + authority chain — read once even for engine work)
-6. docs/execution-phase/claude-design-files/IMPLEMENTATION_PROMPT.md  (HTML → Vue translation method + Appendix A per-property extraction checklist — 07a ships no UI, but 07b consumes via this method)
+5. docs/execution-phase/claude-design-files/README.md  (REFERENCE ONLY — plan supersedes per Mandate 8; ignore conflicts between this README and the plan)
+6. docs/execution-phase/claude-design-files/IMPLEMENTATION_PROMPT.md  (CANONICAL FIDELITY CONTRACT — read end-to-end. §0 is the 3-rule formulation: (1) visual values are copied, (2) DOM structure is translated, (3) behavior is engineered. "Copy DOM verbatim" is FORBIDDEN. Phase 1 gate = KOVA_AUDIT.md + tokens-used.md before any Vue. Visual-diff thresholds 0.1% component / 0.5% screen. 3-screenshot PR artifact per surface.)
 7. CLAUDE.md
 8. /Users/jihoyang/kova-main/main-main-kova-scope/design-system/design.md
 7. /Users/jihoyang/kova-main/main-main-kova-scope/design-system/compressed-figma-canvas-ui/ — Figma canvas UI screenshots for visual reference
