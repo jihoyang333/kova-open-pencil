@@ -293,6 +293,23 @@ Plan 11 Task 1.3 + PRD 11 §5.5: helper hashes raw `req.text()` bytes. Cluster 0
 
 ---
 
+## §1.6a Phase 3 acceptance-gate carryovers (added 2026-05-20 post-/dev/tokens review)
+
+Founder review of `/dev/tokens` on 2026-05-20 flagged the following items that MUST land before Phase 3 cluster sign-off. None blocks Phase 3 START.
+
+**Carryover-1 — zero raw Unicode in SFCs.** Every icon glyph in shipping Vue SFCs must flow through `<KovaIcon name="..." />`. No `✓ ⚠ ✨ × +` or other Unicode chars rendered as chrome. Keyboard glyphs in `.kbd / .kbd-row` chips (`⌘ ⌫ ⇧ ⌥`) remain Unicode by canonical pattern (kova-hifi.css `.kbd` block + existing app code) — these are content, not chrome icons. Per design.md §5 Ban 2. **Gate:** CI grep step in Phase 11 Task 11.x to flag `✓ ⚠ ✨ ⌕ ✕` in `src/components/ui/**.vue` + `src/views/**.vue`.
+
+**Carryover-2 — 3-screenshot PR artifact per primitive.** Per IMPLEMENTATION_PROMPT.md §6 last paragraph. Mockup clip / Vue impl / pixel diff. Committed under `tests/snapshots/cluster-11/<primitive>-{mockup,impl,diff}.png`. PR description includes the 3-row table.
+
+**Carryover-3 — accent-soft / accent-2 rgba-vs-flat-hex drift (founder decision deferred).** design.md §1.1 specs `--a-500-16: rgba(59,130,246,0.16)` (selected-row tint). Canonical kova-hifi.css L30 hardcodes `--accent-soft: #1d3a66` (flat hex). Same drift on `--a-500-14` doc vs `--accent-2: #2a4d80` CSS. The flat hex was chosen for screenshot fidelity over opaque-flattening math. **Founder picks (post-Phase-3):**
+- (a) Update kova-hifi.css to use `rgba(59,130,246,0.16)` per spec — visual drift over non-dark backgrounds (none in MVP).
+- (b) Update design.md §1.1 to acknowledge concrete-hex semantic tokens — preserve current rendering.
+Recommendation: (b). The flat hex IS the canonical render across every hi-fi mockup; design.md should reflect.
+
+**Carryover-4 — `/dev/tokens` is debug-only; positional offset section curates 10 of 22 tokens.** All 22 positional offsets exist in canonical CSS + `@theme`. Curated list shows the most visually relevant (toolbar / zoom HUD / frame / handle / floating help). The remaining 12 (size-chip, toolbar pad/gap/divider variants) are token-callable but not visually distinct on this debug surface. Not a bug.
+
+---
+
 ## §1.7 Phase 1 acceptance criteria (per IMPLEMENTATION_PROMPT.md §12 DoD)
 
 Before agent proceeds to Phase 2 (token additions):

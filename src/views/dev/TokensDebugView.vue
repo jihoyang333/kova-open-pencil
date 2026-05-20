@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
+import KovaIcon from '@/components/ui/KovaIcon.vue'
+
 interface Swatch {
   name: string
   hex: string
@@ -130,7 +132,7 @@ const ts = computed(() => new Date().toISOString())
 </script>
 
 <template>
-  <div class="bg-[var(--bg)] text-[var(--ink)] min-h-screen overflow-auto">
+  <div class="bg-[var(--bg)] text-[var(--ink)] h-full w-full overflow-y-auto">
     <div class="mx-auto max-w-[1200px] px-12 pt-8 pb-16">
       <header class="mb-10">
         <div class="text-[var(--ink-3)] uppercase tracking-widest text-[11px] mb-2">
@@ -357,7 +359,9 @@ const ts = computed(() => new Date().toISOString())
           <button class="btn accent">Accent</button>
           <button class="btn ghost">Ghost</button>
           <button class="btn sm">Small</button>
-          <button class="btn icon" aria-label="Plus">+</button>
+          <button class="btn icon" aria-label="Plus">
+            <KovaIcon name="plus" size="sm" class="ic" aria-hidden="true" />
+          </button>
           <button class="btn" disabled>Disabled</button>
         </div>
         <div class="flex gap-3 flex-wrap items-center mb-4">
@@ -383,25 +387,31 @@ const ts = computed(() => new Date().toISOString())
           <div>
             <h3 class="m-0 mb-2 text-[13px] font-semibold text-[var(--ink-2)]">Toast</h3>
             <div class="toast success" style="position: static;">
-              <span class="ic-lead">✓</span>
+              <KovaIcon name="check" size="sm" class="ic-lead" aria-hidden="true" />
               <div class="body">
                 <div class="msg">Canvas saved <b>"Homepage"</b></div>
                 <div class="meta">2s ago</div>
               </div>
-              <div class="dismiss"><span class="ic">×</span></div>
+              <div class="dismiss" aria-label="Dismiss">
+                <KovaIcon name="x" size="sm" class="ic" aria-hidden="true" />
+              </div>
             </div>
             <div class="toast error" style="position: static; margin-top: 8px;">
-              <span class="ic-lead">⚠</span>
+              <KovaIcon name="alert-triangle" size="sm" class="ic-lead" aria-hidden="true" />
               <div class="body">
                 <div class="msg">Export failed</div>
                 <div class="meta">PNG too large</div>
               </div>
-              <div class="dismiss"><span class="ic">×</span></div>
+              <div class="dismiss" aria-label="Dismiss">
+                <KovaIcon name="x" size="sm" class="ic" aria-hidden="true" />
+              </div>
             </div>
             <div class="toast ai" style="position: static; margin-top: 8px;">
-              <span class="ic-lead">✨</span>
+              <KovaIcon name="sparkles" size="sm" class="ic-lead" aria-hidden="true" />
               <div class="body"><div class="msg">AI generated 5 color combos</div></div>
-              <div class="dismiss"><span class="ic">×</span></div>
+              <div class="dismiss" aria-label="Dismiss">
+                <KovaIcon name="x" size="sm" class="ic" aria-hidden="true" />
+              </div>
             </div>
           </div>
           <div>
@@ -431,7 +441,9 @@ const ts = computed(() => new Date().toISOString())
           <div>
             <h3 class="m-0 mb-2 text-[13px] font-semibold text-[var(--ink-2)]">Empty pane (inline-32 + panel-40)</h3>
             <div class="empty-pane inline">
-              <div class="ic-wrap"><span class="ic">⌕</span></div>
+              <div class="ic-wrap">
+                <KovaIcon name="search" size="md" class="ic" aria-hidden="true" />
+              </div>
               <h5>No memories match <span class="q">"shipping"</span></h5>
               <p>Try a different keyword.</p>
               <div class="cta-row">
@@ -439,7 +451,9 @@ const ts = computed(() => new Date().toISOString())
               </div>
             </div>
             <div class="empty-pane" style="margin-top: 12px;">
-              <div class="ic-wrap"><span class="ic">+</span></div>
+              <div class="ic-wrap">
+                <KovaIcon name="plus" size="md" class="ic" aria-hidden="true" />
+              </div>
               <h5>No brands yet</h5>
               <p>Add a brand to get started.</p>
               <div class="cta-row">
