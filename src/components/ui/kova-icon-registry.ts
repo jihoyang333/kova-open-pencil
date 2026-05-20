@@ -32,7 +32,9 @@ import IconLoader from '~icons/lucide/loader'
 import IconPlus from '~icons/lucide/plus'
 import IconRuler from '~icons/lucide/ruler'
 import IconSearch from '~icons/lucide/search'
+import IconSearchX from '~icons/lucide/search-x'
 import IconSparkles from '~icons/lucide/sparkles'
+import IconWifiOff from '~icons/lucide/wifi-off'
 import IconX from '~icons/lucide/x'
 
 export const KOVA_ICON_REGISTRY: ReadonlyMap<string, Component> = new Map<
@@ -52,7 +54,9 @@ export const KOVA_ICON_REGISTRY: ReadonlyMap<string, Component> = new Map<
   ['plus', IconPlus],
   ['ruler', IconRuler],
   ['search', IconSearch],
+  ['search-x', IconSearchX],
   ['sparkles', IconSparkles],
+  ['wifi-off', IconWifiOff],
   ['x', IconX],
 ])
 
