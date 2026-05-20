@@ -99,7 +99,7 @@ User can: (1) land on `/brands` after login if they have 2+ brands, (2) see ever
 - **Cluster 02** owns the brand-switcher in the sidebar (the `.brand-switch` chrome) and consumes `useBrandsStore.activeBrands` to render the dropdown. The dropdown's per-row kebab launches the same `<RenameBrandModal>` / `<ArchiveBrandModal>` / `<DeleteBrandModal>` components shipped here.
 - **Cluster 04** owns `/account` + `.acc-rail` sidebar + Brand-Kit + Integrations sections + the `/account/brands` **route registration** (auth meta `requiresAuth`, theme `dark`). The brand-picker dropdown those sections expose reads `useBrandsStore.activeBrands` from us. The `/account/brands` **page content** (`<BrandsAccountView>` + segmented control + Restore/Delete-archived flows) is owned **here**, mounted into the Cluster 04 route per 2026-05-17 reversal.
 - **Cluster 05** consumes `brands.color` to render brand-kit headers and consumes `brands.{id, name, slug}` to scope per-brand Kit data. It writes `brands.{colors, fonts, logo_url, voice, tone_snippets, saved_blocks}` JSONB columns — those columns exist now or ship via Cluster 05's migration; this PRD does NOT touch them.
-- **Cluster 06** consumes `useBrandsStore.selectedBrand` for the canvas brand-label per Q17 (click navigates to `/dashboard?brandId={current}`). No popover.
+- **Cluster 06** consumes `useBrandsStore.selectedBrand` for the canvas brand-label per Q17 (click navigates to `/brand/{current}`). No popover.
 - **M9 Shopify** existing flow is invoked from A3.b. Per the scope plan §5.5 disposition, Cluster 03 reuses the existing `connectShopify` flow verbatim (no refactor in this PRD).
 
 ---
@@ -720,7 +720,7 @@ function brandLogoClass(color: BrandColor): string {
 | `<StepNameUrl>` | `src/views/brands/wizard/StepNameUrl.vue` | — | — | — | A3.a layout. 3 form fields. "Continue" calls `flow.advance()` after validation. |
 | `<StepShopify>` | `src/views/brands/wizard/StepShopify.vue` | — | — | — | A3.b layout. Skip → `flow.advance()`. Connect → `useShopifyOAuth().start({ brandId: <pending>, returnUrl })`. (Brand isn't created yet; `brandId` is a temporary client-side UUID swapped after step-3 commit.) |
 | `<StepBrandKit>` | `src/views/brands/wizard/StepBrandKit.vue` | — | — | — | A3.c layout. Drop + paste + AI extraction preview. "Extract and finish" → `flow.commitAndAdvance()` (creates brand server-side, then extraction runs in background — Cluster 05 owns the actual extraction; this PRD only commits the brand). |
-| `<StepDone>` | `src/views/brands/wizard/StepDone.vue` | — | — | — | A3.d layout. CTA navigates to `/dashboard?brandId={brandId}`. |
+| `<StepDone>` | `src/views/brands/wizard/StepDone.vue` | — | — | — | A3.d layout. CTA navigates to `/brand/{brandId}`. |
 | `<RenameBrandModal>` | `src/components/brand/RenameBrandModal.vue` | `brand: Brand`, `open: boolean` | — | `update:open`, `saved` | Wraps `<KovaModal>` size `sm`. Two fields. Save → `useBrandsStore.renameBrand`. |
 | `<ArchiveBrandModal>` | `src/components/brand/ArchiveBrandModal.vue` | `brand: Brand`, `open: boolean` | — | `update:open`, `archived` | Wraps `<KovaModal>` size `md`. Info-card + summary + paragraph. Archive → `useBrandsStore.archiveBrand`. Foot meta info icon. |
 | `<DeleteBrandModal>` | `src/components/brand/DeleteBrandModal.vue` | `brand: Brand`, `open: boolean` | — | `update:open`, `deleted` | Wraps `<KovaModal>` size `md`. Summary + loss-list (counts from store getters: canvases, snapshots [Cluster 09 getter], brand-kit, KB sources [Cluster 05 getter], Shopify) + `<TypedConfirmField expected={brand.name} case='sensitive'>`. CTA `.btn.danger`. On confirm → `useBrandsStore.deleteBrand(id, typed)`. Reused for both A4.3 (active-card kebab from `/brands`) and B12.4 (archived-card kebab from `/account/brands`). Footer always "This action is permanent." regardless of caller (overrides hi-fi B12.4 mis-leak per §12.8). |
@@ -757,10 +757,10 @@ If any store hasn't been wired yet at runtime, the loss-list row shows "—" (em
 
 - [ ] User with ≥ 2 active brands lands on `/brands` after login; sees populated grid (A2.a) with one card per active brand
 - [ ] User with 0 brands lands on `/brands` and sees the empty pane (A2.b) — clicking the primary CTA navigates to `/brands/new`
-- [ ] User with 1 active brand never lands on `/brands` — Cluster 02 router skips them straight to `/dashboard?brandId={the-one}`
+- [ ] User with 1 active brand never lands on `/brands` — Cluster 02 router skips them straight to `/brand/{the-one}`
 - [ ] Each brand card shows: 5-tint logo glyph, brand name (truncates with ellipsis at card width), URL (truncates), Shopify pill (connected / reconnect / not connected), canvas count, last-edited timestamp
 - [ ] "+ New brand" tile is the 5th grid slot (or 2nd if 1 active brand exists)
-- [ ] Card click navigates to `/dashboard?brandId={card.id}` and calls `useBrandsStore.selectBrand(card.id)`
+- [ ] Card click navigates to `/brand/{card.id}` and calls `useBrandsStore.selectBrand(card.id)`
 - [ ] Kebab on each card opens a Reka DropdownMenu with 3 items: Rename, Archive, Delete brand
 - [ ] Archived brands are rendered at 78% opacity with an "Archived" outline pill (per A2.a hi-fi annotation card 5 — Field Notes) when the Archived filter dropdown is set to "Show" or "Only". The Archived filter dropdown is **ENABLED MVP per 2026-05-17 reversal** (options: Hide / Show / Only; default Hide; selection persists to localStorage `kova.brands.archivedFilter`)
 - [ ] Archived-card kebab in `/brands` (when filter = Show or Only) opens 2-item DropdownMenu: Restore / Delete (per B12.1 archived-state spec)
@@ -779,7 +779,7 @@ If any store hasn't been wired yet at runtime, the loss-list row shows "—" (em
 - [ ] Step 2 "Skip for now" advances to step 3 without OAuth
 - [ ] Step 3 "Do this later" advances to step 4 without uploads / extraction (Cluster 05 owns extraction; this PRD just commits the brand)
 - [ ] Step 3 "Extract and finish" creates the brand record (via `useBrandsStore.createBrand`), then advances to step 4 with `brandId` populated
-- [ ] Step 4 "Enter {brandName}" navigates to `/dashboard?brandId={brandId}` and selects the brand
+- [ ] Step 4 "Enter {brandName}" navigates to `/brand/{brandId}` and selects the brand
 - [ ] Step 4 progress strip shows all 3 dots done; "Cancel" pill is `visibility: hidden` (not removed) to preserve grid layout
 
 ### 8.3 Rename modal (A4.1)
@@ -891,7 +891,7 @@ Coverage target: ≥ 85% line coverage on every new file under `src/views/brands
 
 | Flow | Steps |
 |---|---|
-| **New-brand happy** | Login → land on `/brands` (multi-brand) → click "+ New brand" → fill name+URL → continue → Skip Shopify → "Do this later" on brand-kit → click "Enter Patagonia" → assert `/dashboard?brandId=...` with new brand selected |
+| **New-brand happy** | Login → land on `/brands` (multi-brand) → click "+ New brand" → fill name+URL → continue → Skip Shopify → "Do this later" on brand-kit → click "Enter Patagonia" → assert `/brand/...` with new brand selected |
 | **Rename** | Login → `/brands` → kebab on first card → Rename → change name → Save → assert toast + card name updated |
 | **Archive** | Same setup → kebab → Archive → confirm → assert brand removed from grid + sidebar |
 | **Delete typed-confirm** | Same setup → kebab → Delete → assert CTA disabled → type partial name → CTA still disabled → type full name → CTA enabled → click → assert grid update + toast + dashboard route if was-selected |
@@ -963,7 +963,7 @@ Coverage target: ≥ 85% line coverage on every new file under `src/views/brands
 | **02 — Onboarding & Dashboard** | Dashboard chrome (sidebar, topbar, brand-switcher widget); router redirect logic (zero/one/multi brand routing) | `useBrandsStore.activeBrands` for sidebar dropdown; `<RenameBrandModal>`, `<ArchiveBrandModal>`, `<DeleteBrandModal>` components for sidebar kebab |
 | **04 — Account & Stripe** | `/account` route shell + `.acc-rail` sidebar host with "Brands" nav item; route registration for `/account/brands` (auth meta `requiresAuth`, theme `dark`); fallback route `/account/coming-soon` with `<NotShippedYet>` placeholder if shipped before PRD 03 | `useBrandsStore.activeBrands` + `archivedBrands` for the per-brand picker dropdown in Brand-Kit + Integrations sections; `<BrandsAccountView>` component mounted at `/account/brands` (page content owned here per 2026-05-17 reversal) |
 | **05 — Brand Kit & Drag-Drop** | `useBrandKitStore.kitByBrand(brandId)`; `useMediaStore.mediaByBrand` getter | `brands.color` for header tints; `useBrandsStore.selectedBrand` for "which brand am I editing?" context |
-| **06 — Canvas Editor Core Chrome** | Canvas chrome (topbar, breadcrumb, brand label) | `useBrandsStore.selectedBrand.{name, color, slug}` for brand label rendering; brand-label click handler navigates to `/dashboard?brandId={current}` per Q17 |
+| **06 — Canvas Editor Core Chrome** | Canvas chrome (topbar, breadcrumb, brand label) | `useBrandsStore.selectedBrand.{name, color, slug}` for brand label rendering; brand-label click handler navigates to `/brand/{current}` per Q17 |
 | **09 — Version History + Trash** | `useSnapshotStore.snapshotsByBrand` getter for `<DeleteBrandModal>` loss-list count | Brand-delete cascade includes `canvas_snapshots` rows (FK CASCADE via `brand_id`) — Cluster 09 must add that FK column with `ON DELETE CASCADE` |
 | **10 — AI Chat + Memory** | `useBrandMemoriesStore.memoriesByBrand` getter | Brand-delete cascade includes `chat_conversations` + `chat_messages` + `chat_attachments` + `brand_memories` (existing FK CASCADE per migrations) |
 | **11 — Shared UI Infrastructure** | `<KovaModal>`, `useConfirm()`, `useToast()`, `<KovaSkeleton>`, `<TypedConfirmField>`, `<EmptySearch>`, `idempotency_keys` table + helper, `audit_log` table (or owner clarification — see §12.1), Reka DropdownMenu wrapper | Brand-grid skeleton variant `brand-grid` registered in `<KovaSkeleton>` |
