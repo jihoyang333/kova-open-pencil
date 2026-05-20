@@ -421,6 +421,16 @@ describe('useChatStore.updateProductReferences', () => {
   Edit `kova-open-pencil-1/src/stores/chat.ts`. After the existing `updateConversationTitle` function, add:
 
 ```typescript
+/**
+ * W4 C-MED27: SINGLE MUTATION ENTRY for chat_conversations.product_references.
+ * All callers (useChatProductReferencesStore.importProducts / removeReference / clearReferences
+ * in Task 4; later tasks 12 / 14 / 17) MUST invoke this action — no direct
+ * `supabase.from('chat_conversations').update({ product_references })` is allowed
+ * anywhere else in the codebase. Enforced by greplint in CI (see Task 18 quality gate).
+ *
+ * Order: persist to Supabase FIRST, then patch local Pinia state. A failed persist
+ * leaves local state unchanged so the UI never lies about server state.
+ */
 async function updateProductReferences(
   conversationId: string,
   refs: readonly ChatProductReference[]
@@ -460,6 +470,8 @@ git commit -m "feat(prd10): useChatStore.updateProductReferences action"
 **Files:**
 - Create: `kova-open-pencil-1/src/stores/chat-product-references.ts`
 - Test: `kova-open-pencil-1/tests/unit/stores/chat-product-references.test.ts`
+
+> **W4 C-MED27 contract:** this store NEVER writes to Supabase directly. All persistence flows through `useChatStore.updateProductReferences` (Task 3) — the single mutation entry point. `importProducts`, `removeReference`, and `clearReferences` compute the next `refs` array locally and delegate. Do NOT add `supabase.from('chat_conversations').update({ product_references })` here under any circumstances; CI grep gate in Task 18 fails the build if it appears outside Task 3.
 
 - [ ] **Step 1: Write the failing test**
 
