@@ -2252,6 +2252,7 @@ import SnapshotRow from './SnapshotRow.vue'
 import SnapshotEmptyState from './SnapshotEmptyState.vue'
 import FilterDropdown from './FilterDropdown.vue'
 import RestoreConfirmModal from './RestoreConfirmModal.vue'
+import KovaSkeleton from '@/components/ui/KovaSkeleton.vue'  // W4 C-LOW09.12: Plan 11 primitive
 
 const props = defineProps<{ canvasId: string }>()
 const emit = defineEmits<{ close: [] }>()
@@ -2314,7 +2315,13 @@ function onPreview(id: string) { store.previewSnapshot(id) }
       Press <span class="glyph">⌘</span> + <span class="glyph">⌥</span> + <span class="glyph">S</span> to add to version history while editing.
     </div>
     <div class="vh-body">
-      <SnapshotEmptyState v-if="visible.length === 0" />
+      <!-- W4 C-LOW09.12: render skeleton placeholders while initial list-load is in flight.
+           The empty state below would otherwise flash on first open as if there were no
+           snapshots, then the timeline pops in once `store.list(canvasId)` resolves. -->
+      <template v-if="store.loadingByCanvas[canvasId]">
+        <KovaSkeleton class="vh-skeleton-row" v-for="i in 6" :key="`skel-${i}`" />
+      </template>
+      <SnapshotEmptyState v-else-if="visible.length === 0" />
       <div v-else class="vh-timeline">
         <CurrentVersionRow />
         <SnapshotRow v-for="s in named" :key="s.id" :snapshot="s"
