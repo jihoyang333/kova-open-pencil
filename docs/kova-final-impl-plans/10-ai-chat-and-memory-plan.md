@@ -2646,7 +2646,17 @@ Anthropic does NOT use API-channel data to train models by default. Zero-data-re
 
   Already referenced in PRD §11.1. No edit needed.
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 3 (W4 C-MED-10.6): §8.5 + §8.6 acceptance verification**
+
+  PRD 10 §8.5 (server-side proxy) and §8.6 (sub-processor disclosure) had no concrete acceptance check in the original plan — they were only validated transitively by PFC.5 (privacy-flow check). Add explicit verifications to this task so a reviewer can sign off without inferring across documents.
+
+  - [ ] **§8.5.1** — Run `bun run build` then `grep -r "sk-ant-" kova-open-pencil-1/dist/ || echo OK`. Expected: `OK`. (Anthropic API keys begin with `sk-ant-`; any hit means a leaked secret in the browser bundle.)
+  - [ ] **§8.5.2** — Open the dist bundle in DevTools Network panel against staging; observe the chat send. Assert: every outbound request to `api.anthropic.com` is routed through `/api/ai-proxy/v1/messages` and carries `Authorization: Bearer eyJ...` (a Supabase JWT, not a raw API key).
+  - [ ] **§8.5.3** — Hit `POST /api/ai-proxy/v1/messages` 201 times in a UTC day for the same test user. Expected: 200 OK for requests 1–200, then 429 with body `{ retry_after: <seconds>, error: 'rate_limit_exceeded' }` for request 201. (Validates `try_increment_generation` atomicity from M5.)
+  - [ ] **§8.6.1** — Verify `docs/legal/anthropic-subprocessor-disclosure.md` (created above) lists ALL 7 data categories from §8.6: chat message text, attached image URLs, brand kit, brand memories, media library, product-reference summaries, tool-call results. Each category must be a literal bullet — no "etc."
+  - [ ] **§8.6.2** — Confirm Cluster 01's `docs/legal/privacy-policy.md` lifts the disclosure section verbatim. If Cluster 01 has not yet lifted it, file a tracking item under their PRD §11.1 deliverables and block Wave 6 close on Cluster 01 sign-off.
+
+- [ ] **Step 4: Commit**
 
 ```bash
 cd kova-open-pencil-1
