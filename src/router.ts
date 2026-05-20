@@ -18,6 +18,12 @@ const BrandSettingsView = () => import('./views/dashboard/BrandSettingsView.vue'
 const SettingsBrandIntegrationsView = () => import('./views/dashboard/SettingsBrandIntegrationsView.vue')
 const SettingsView = () => import('./views/dashboard/SettingsView.vue')
 
+// Cluster 11 — error + showcase routes.
+const Error404View = () => import('./views/errors/Error404View.vue')
+const Error500View = () => import('./views/errors/Error500View.vue')
+const NetworkUnreachableView = () => import('./views/errors/NetworkUnreachableView.vue')
+const Cluster11Showcase = () => import('./views/dev/Cluster11Showcase.vue')
+
 interface AuthState {
   isAuthenticated: boolean
   isOnboarded: boolean
@@ -125,6 +131,29 @@ const routes = [
     path: '/demo',
     component: EditorView,
     meta: { demo: true, requiresAuth: false, publicOnly: false }
+  },
+  // Cluster 11 — error pages. requiresAuth=false so signed-out users can
+  // reach /500 + /network-unreachable. /404 catches everything else (last).
+  {
+    path: '/500',
+    component: Error500View,
+    meta: { requiresAuth: false }
+  },
+  {
+    path: '/network-unreachable',
+    component: NetworkUnreachableView,
+    meta: { requiresAuth: false }
+  },
+  {
+    path: '/dev/cluster-11',
+    component: Cluster11Showcase,
+    meta: { requiresAuth: false }
+  },
+  // Catch-all 404 — must be last.
+  {
+    path: '/:pathMatch(.*)*',
+    component: Error404View,
+    meta: { requiresAuth: false }
   }
 ]
 
