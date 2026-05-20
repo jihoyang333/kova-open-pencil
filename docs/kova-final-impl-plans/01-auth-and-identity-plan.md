@@ -1363,7 +1363,7 @@ describe('cron step: stripe', () => {
         select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: { stripe_customer_id: null, stripe_subscription_id: null }, error: null }) }) }),
         update: () => ({ eq: () => Promise.resolve({ error: null }) })
       })
-    } as any
+    } as any  // test-fixture: bun:test convention
     const r = await runStep({ supabase: mockSupabase, userId: 'u1', idempotencyKey: 'k1' })
     expect(r.ok).toBe(true)
   })
@@ -1380,7 +1380,7 @@ describe('cron step: stripe', () => {
         select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: { stripe_customer_id: 'cus1', stripe_subscription_id: 'sub1' }, error: null }) }) }),
         update: () => ({ eq: () => Promise.resolve({ error: null }) })
       })
-    } as any
+    } as any  // test-fixture: bun:test convention
     const r = await runStep({ supabase: mockSupabase, userId: 'u1', idempotencyKey: 'k1' })
     expect(r.ok).toBe(true)
     expect(cancelMock).toHaveBeenCalled()
@@ -1398,7 +1398,7 @@ describe('cron step: stripe', () => {
         select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: { stripe_customer_id: 'cus1', stripe_subscription_id: null }, error: null }) }) }),
         update: () => ({ eq: () => Promise.resolve({ error: null }) })
       })
-    } as any
+    } as any  // test-fixture: bun:test convention
     const r = await runStep({ supabase: mockSupabase, userId: 'u1', idempotencyKey: 'k1' })
     expect(r.ok).toBe(true)
   })
@@ -1507,10 +1507,10 @@ describe('cron step: shopify', () => {
         select: () => ({ eq: () => ({ not: () => Promise.resolve({ data: brands, error: null }) }) }),
         update: updateMock
       })
-    } as any
+    } as any  // test-fixture: bun:test convention
 
     const fetchMock = mock(async () => new Response(null, { status: 200 }))
-    globalThis.fetch = fetchMock as any
+    globalThis.fetch = fetchMock as any  // test-fixture: bun:test convention
 
     const r = await runStep({ supabase: mockSupabase, userId: 'u1', idempotencyKey: 'k1' })
     expect(r.ok).toBe(true)
@@ -1524,8 +1524,8 @@ describe('cron step: shopify', () => {
         select: () => ({ eq: () => ({ not: () => Promise.resolve({ data: brands, error: null }) }) }),
         update: () => ({ eq: () => Promise.resolve({ error: null }) })
       })
-    } as any
-    globalThis.fetch = mock(async () => new Response(null, { status: 404 })) as any
+    } as any  // test-fixture: bun:test convention
+    globalThis.fetch = mock(async () => new Response(null, { status: 404 })) as any  // test-fixture: bun:test convention
     const r = await runStep({ supabase: mockSupabase, userId: 'u1', idempotencyKey: 'k1' })
     expect(r.ok).toBe(true)
   })
@@ -1533,7 +1533,7 @@ describe('cron step: shopify', () => {
   test('no brands → ok', async () => {
     const mockSupabase = {
       from: () => ({ select: () => ({ eq: () => ({ not: () => Promise.resolve({ data: [], error: null }) }) }) })
-    } as any
+    } as any  // test-fixture: bun:test convention
     const r = await runStep({ supabase: mockSupabase, userId: 'u1', idempotencyKey: 'k1' })
     expect(r.ok).toBe(true)
   })
@@ -1642,7 +1642,7 @@ describe('cron step: anthropic', () => {
         if (table === 'anthropic_deletion_log') return { insert: insertMock }
         throw new Error(`Unexpected table: ${table}`)
       }
-    } as any
+    } as any  // test-fixture: bun:test convention
 
     const r = await runStep({ supabase: mockSupabase, userId: 'u1', idempotencyKey: 'k1' })
     expect(r.ok).toBe(true)
@@ -1656,7 +1656,7 @@ describe('cron step: anthropic', () => {
         delete: () => ({ eq: () => Promise.resolve({ error: null, count: 0 }), in: () => Promise.resolve({ error: null }) }),
         insert: () => Promise.resolve({ error: null })
       })
-    } as any
+    } as any  // test-fixture: bun:test convention
     const r = await runStep({ supabase: mockSupabase, userId: 'u1', idempotencyKey: 'k1' })
     expect(r.ok).toBe(true)
   })
@@ -1762,7 +1762,7 @@ describe('cron step: storage', () => {
     const mockSupabase = {
       storage: { from: (b: string) => listMock(b) },
       from: () => ({ select: () => ({ eq: () => Promise.resolve({ data: [{ id: 'b1' }], error: null }) }) })
-    } as any
+    } as any  // test-fixture: bun:test convention
     const r = await runStep({ supabase: mockSupabase, userId: 'u1', idempotencyKey: 'k1' })
     expect(r.ok).toBe(true)
   })
@@ -1776,7 +1776,7 @@ describe('cron step: storage', () => {
         })
       },
       from: () => ({ select: () => ({ eq: () => Promise.resolve({ data: [], error: null }) }) })
-    } as any
+    } as any  // test-fixture: bun:test convention
     const r = await runStep({ supabase: mockSupabase, userId: 'u1', idempotencyKey: 'k1' })
     expect(r.ok).toBe(true)
   })
@@ -1859,7 +1859,7 @@ describe('cron step: db', () => {
         if (table === 'users') return { delete: deleteUserMock, select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: { email: 'a@b.co' }, error: null }) }) }) }
         throw new Error(table)
       }
-    } as any
+    } as any  // test-fixture: bun:test convention
     mock.module('../../../../../api/_shared/resend-client', () => ({ sendEmail: mock(async () => ({ id: 'r' })) }))
 
     const r = await runStep({ supabase: mockSupabase, userId: 'u1', idempotencyKey: 'k1' })
@@ -1889,7 +1889,7 @@ export async function runStep({ supabase, userId }: StepArgs): Promise<StepResul
   // Capture email BEFORE delete
   const { data: user } = await supabase.from('users').select('id').eq('id', userId).single()
   // Look up email via auth.users since public.users may not store it directly
-  const { data: authUser } = await (supabase as any).auth.admin.getUserById(userId)
+  const { data: authUser } = await (supabase as any).auth.admin.getUserById(userId)  // SDK lacks types — auth.admin requires service-role client (Supabase typegen limitation)
   const email = authUser?.user?.email as string | undefined
 
   // Mark queue row succeeded BEFORE cascading delete (FK ON DELETE CASCADE on user_id would wipe queue too)
@@ -2280,7 +2280,7 @@ describe('useAuthStore', () => {
   test('requestAccountDeletion calls POST endpoint + sets pendingDeletion', async () => {
     globalThis.fetch = mock(async () =>
       new Response(JSON.stringify({ success: true, scheduled_purge_at: '2026-06-14T00:00:00Z' }), { status: 200 })
-    ) as any
+    ) as any  // test-fixture: bun:test convention
     const { useAuthStore } = await import('../../../src/stores/auth')
     const store = useAuthStore()
     await store.requestAccountDeletion()
@@ -2288,7 +2288,7 @@ describe('useAuthStore', () => {
   })
 
   test('restoreAccount returns true on success + clears pendingDeletion', async () => {
-    globalThis.fetch = mock(async () => new Response(JSON.stringify({ success: true }), { status: 200 })) as any
+    globalThis.fetch = mock(async () => new Response(JSON.stringify({ success: true }), { status: 200 })) as any  // test-fixture: bun:test convention
     const { useAuthStore } = await import('../../../src/stores/auth')
     const store = useAuthStore()
     const r = await store.restoreAccount()
@@ -2886,7 +2886,7 @@ describe('authGuard', () => {
   }
 
   test('viewport guard redirects to /desktop-only when width<1024', async () => {
-    global.window = { innerWidth: 375 } as any
+    global.window = { innerWidth: 375 } as any  // test-fixture: bun:test convention
     mock.module('@/stores/auth', () => ({ useAuthStore: () => ({ getCurrentSession: async () => null, profile: null }) }))
     const { authGuard } = await import('../../../../src/router/guards/auth-guard')
     const r = await authGuard(makeRoute({ name: 'login', meta: { viewportGuard: 'desktop' } }), makeRoute({}))
@@ -2894,7 +2894,7 @@ describe('authGuard', () => {
   })
 
   test('redirects deleted-account user to /account-pending-deletion', async () => {
-    global.window = { innerWidth: 1440 } as any
+    global.window = { innerWidth: 1440 } as any  // test-fixture: bun:test convention
     mock.module('@/stores/auth', () => ({
       useAuthStore: () => ({ getCurrentSession: async () => ({}), profile: { deleted_at: '2026-05-15T00:00:00Z' } })
     }))
@@ -2904,7 +2904,7 @@ describe('authGuard', () => {
   })
 
   test('redirects unauthenticated user from protected route to /login', async () => {
-    global.window = { innerWidth: 1440 } as any
+    global.window = { innerWidth: 1440 } as any  // test-fixture: bun:test convention
     mock.module('@/stores/auth', () => ({ useAuthStore: () => ({ getCurrentSession: async () => null, profile: null }) }))
     const { authGuard } = await import('../../../../src/router/guards/auth-guard')
     const r = await authGuard(makeRoute({ name: 'dashboard', meta: { requiresAuth: true }, fullPath: '/dashboard' }), makeRoute({}))
@@ -2912,7 +2912,7 @@ describe('authGuard', () => {
   })
 
   test('redirects signed-in user from /login to /dashboard', async () => {
-    global.window = { innerWidth: 1440 } as any
+    global.window = { innerWidth: 1440 } as any  // test-fixture: bun:test convention
     mock.module('@/stores/auth', () => ({
       useAuthStore: () => ({ getCurrentSession: async () => ({}), profile: { deleted_at: null } })
     }))
@@ -2922,7 +2922,7 @@ describe('authGuard', () => {
   })
 
   test('allows public route through', async () => {
-    global.window = { innerWidth: 1440 } as any
+    global.window = { innerWidth: 1440 } as any  // test-fixture: bun:test convention
     const { authGuard } = await import('../../../../src/router/guards/auth-guard')
     const r = await authGuard(makeRoute({ name: 'privacy', meta: {} }), makeRoute({}))
     expect(r).toBe(true)
