@@ -306,6 +306,18 @@ These do NOT gate Wave 1 but every cluster PRD must respect them when authoring 
 4. **D-3 RoPA / privacy disclosure** must name "storefront content analyzed for brand-voice inference" as an Anthropic sub-processor data flow. Cluster 01 (privacy policy) + Cluster 05 (brand-kit extract) own this.
 5. **D-3 brand-voice guardrail:** AI-scraped voice/tone is an editable draft the user reviews and confirms — never a silent write. Cluster 05 PRD owns the confirm step.
 
+6. **§8 acceptance bullet ↔ test annotation (W0-12 — 2026-05-20):** every PRD §8 bullet must map to at least one named test in the paired Plan. CI gate `bun run check:acceptance-mapping` (Plan 11 Task 11.9) enforces. Default mode is **fuzzy-match** — a bullet and test name sharing ≥4 ≥3-letter words pass. For NON-OBVIOUS mappings, annotate both sides with an HTML comment:
+
+   ```markdown
+   <!-- PRD §8 -->
+   - [ ] User sees a magic-link email within 30 seconds <!-- ACC: 01-signup-magic-link-sent -->
+
+   <!-- Plan Step 1 RED block -->
+   it('sends magic-link on /signup', async () => { ... }) <!-- ACC: 01-signup-magic-link-sent -->
+   ```
+
+   `--strict` mode (post-launch target) requires every bullet to carry an explicit ACC id. During W0-12 rollout, annotate non-obvious bullets only; fuzzy-match handles the rest.
+
 ---
 
 ## 10. Plain-English summary (for founder)

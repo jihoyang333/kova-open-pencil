@@ -1939,7 +1939,7 @@ describe('useToastStore', () => {
     expect(store.queued).toHaveLength(0)
   })
 
-  it('auto-dismisses success after 5000 ms', async () => {
+  it('auto-dismisses success after 5000 ms', async () => { // <!-- ACC: 11-toast-success-auto-dismiss -->
     const store = useToastStore()
     store.show({ variant: 'success', message: 'auto' })
     expect(store.visible).toHaveLength(1)
@@ -1947,7 +1947,7 @@ describe('useToastStore', () => {
     expect(store.visible).toHaveLength(0)
   })
 
-  it('does NOT auto-dismiss error', async () => {
+  it('does NOT auto-dismiss error', async () => { // <!-- ACC: 11-toast-error-sticky -->
     const store = useToastStore()
     store.show({ variant: 'error', message: 'sticky' })
     await new Promise(r => setTimeout(r, 5050))
@@ -2039,7 +2039,7 @@ describe('useToast', () => {
     expect(useToastStore().visible[0].variant).toBe('success')
   })
 
-  it('action() returns a sticky toast id with CTA', () => {
+  it('action() returns a sticky toast id with CTA', () => { // <!-- ACC: 11-toast-action-sticky-cta -->
     const { action } = useToast()
     const id = action('Memory added', { ctaLabel: 'Undo', ctaHandler: () => {} })
     expect(id).toBeTruthy()
@@ -3958,6 +3958,185 @@ git commit -am "ci(cluster-11): stub-guard reinvention gate (W0-13)"
 ```
 
 **Scope note:** the gate covers Vercel-Node (`process.env`) only. Deno-runtime parallels (`Deno.env.get(name) ?? ''`) live in `supabase/functions/*` and are flagged at code-review until Cluster 01 ships `supabase/functions/_shared/env.ts` with a Deno `loadEnvOrSkip`.
+
+---
+
+### Task 11.9: Acceptance-criteria → test mapping CI gate (W0-12)
+
+**Files:**
+- Create: `kova-open-pencil-1/scripts/check-acceptance-mapping.ts`
+- Modify: `kova-open-pencil-1/package.json` — `check:acceptance-mapping` script
+- Modify: `.github/workflows/ci.yml`
+- Modify: `docs/kova-final-prds/00a-PRD_AUTHORING_GUIDE.md` — document the annotation convention
+
+**Contract:** Every PRD §8 acceptance bullet must map to at least one named test in the paired Plan (either §9.x scenarios or task §x.y "Step 1 RED" blocks). The script walks the 13 PRD↔Plan pairs, fuzzy-matches by default, and treats explicit `<!-- ACC: <id> -->` HTML-comment annotations as the strict-mode hint. CI fails when a PRD bullet has zero candidate test on the Plan side.
+
+**Annotation convention (introduced here, retroactive for non-obvious bullets only):**
+
+```markdown
+<!-- in PRD §8 -->
+- [ ] User can submit /signup with a fresh email and receive a magic-link <!-- ACC: 01-signup-magic-link-sent -->
+
+<!-- in Plan §x.y Step 1 RED or §9 test scenario -->
+it('sends magic-link email on /signup submission', async () => { ... }) <!-- ACC: 01-signup-magic-link-sent -->
+```
+
+**Why HTML-comment annotations:** invisible in rendered markdown (so PRDs remain reader-friendly), greppable in plain text, and survive copy-paste between PRD ↔ Plan without leaking into prose.
+
+**Scope guard:** PRDs are NOT retroactively annotated wholesale during W0-12. The script's `--strict=false` flag (default) uses substring fuzzy-match — if bullet text "User can submit /signup..." and test name "submits /signup form" share ≥4-word overlap, they map. Only NEW or NON-OBVIOUS bullets need an explicit `<!-- ACC: -->` annotation. The exemplar annotation pair (PRD 11 §8.1 ↔ Plan 11 Task 1.1) ships in this task as proof-of-pattern.
+
+- [ ] **Step 1: Author the CI script**
+
+```typescript
+// scripts/check-acceptance-mapping.ts
+import { readFileSync, readdirSync } from 'node:fs'
+import { join } from 'node:path'
+
+const PRDS_DIR = 'docs/kova-final-prds'
+const PLANS_DIR = 'docs/kova-final-impl-plans'
+const PAIRS = [
+  // PRD slug → Plan slug. Skip 00-* (scope/authoring guides, no §8).
+  ['01-auth-and-identity', '01-auth-and-identity-plan'],
+  ['02-onboarding-and-dashboard', '02-onboarding-and-dashboard-plan'],
+  ['03-brand-management', '03-brand-management-plan'],
+  ['04-account-and-stripe-billing', '04-account-and-stripe-billing-plan'],
+  ['05-brand-kit-and-drag-drop', '05-brand-kit-and-drag-drop-plan'],
+  ['06-canvas-editor-core-chrome', '06-canvas-editor-core-chrome-plan'],
+  ['07a-canvas-engine-core-renderer', '07a-canvas-engine-core-renderer-plan'],
+  ['07b-canvas-engine-inspector-overlays', '07b-canvas-engine-inspector-overlays-plan'],
+  ['08-canvas-menus-popovers-shortcuts', '08-canvas-menus-popovers-shortcuts-plan'],
+  ['09-version-history-and-trash', '09-version-history-and-trash-plan'],
+  ['10-ai-chat-and-memory', '10-ai-chat-and-memory-plan'],
+  ['11-shared-ui-infrastructure', '11-shared-ui-infrastructure-plan'],
+  ['12-settings-and-user-preferences', '12-settings-and-user-preferences-plan'],
+] as const
+
+interface Bullet { line: number; text: string; accId: string | null }
+interface Test { line: number; text: string; accId: string | null }
+
+const ACC_RE = /<!--\s*ACC:\s*([a-z0-9-]+)\s*-->/
+const STRICT = process.argv.includes('--strict')
+const FUZZY_MIN_WORDS = 4
+
+function extractPrdBullets(md: string): Bullet[] {
+  const lines = md.split('\n')
+  const bullets: Bullet[] = []
+  let inSec8 = false
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i]
+    if (/^##\s+§?8\.|^##\s+8\.\s/.test(l)) { inSec8 = true; continue }
+    if (inSec8 && /^##\s+(?!§?8\.|8\.\s)/.test(l)) inSec8 = false
+    if (inSec8 && /^-\s+\[\s*\]/.test(l)) {
+      const accMatch = l.match(ACC_RE)
+      bullets.push({ line: i + 1, text: l.replace(/<!--.*?-->/g, '').trim(), accId: accMatch ? accMatch[1] : null })
+    }
+  }
+  return bullets
+}
+
+function extractPlanTests(md: string): Test[] {
+  const lines = md.split('\n')
+  const tests: Test[] = []
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i]
+    // Match: `it('...', ...)`, `describe('...', ...)`, `test('...', ...)`, `Deno.test('...', ...)`
+    if (/\b(it|test|describe|Deno\.test)\s*\(\s*['"`]/.test(l)) {
+      const accMatch = l.match(ACC_RE) ?? lines[i + 1]?.match(ACC_RE) ?? null
+      tests.push({ line: i + 1, text: l.trim(), accId: accMatch ? accMatch[1] : null })
+    }
+  }
+  return tests
+}
+
+function fuzzyMatch(bulletText: string, tests: Test[]): boolean {
+  const bulletWords = bulletText.toLowerCase().match(/[a-z0-9]+/g) ?? []
+  for (const t of tests) {
+    const testWords = t.text.toLowerCase().match(/[a-z0-9]+/g) ?? []
+    const overlap = bulletWords.filter(w => w.length > 2 && testWords.includes(w))
+    if (overlap.length >= FUZZY_MIN_WORDS) return true
+  }
+  return false
+}
+
+let failures = 0
+for (const [prdSlug, planSlug] of PAIRS) {
+  const prdPath = join(PRDS_DIR, `${prdSlug}.md`)
+  const planPath = join(PLANS_DIR, `${planSlug}.md`)
+  const prd = readFileSync(prdPath, 'utf8')
+  const plan = readFileSync(planPath, 'utf8')
+  const bullets = extractPrdBullets(prd)
+  const tests = extractPlanTests(plan)
+  const planAccIds = new Set(tests.map(t => t.accId).filter(Boolean))
+
+  for (const b of bullets) {
+    if (b.accId) {
+      if (!planAccIds.has(b.accId)) {
+        console.error(`❌ ${prdSlug}.md:${b.line} ACC:${b.accId} has no matching test in ${planSlug}.md`)
+        failures++
+      }
+      continue
+    }
+    if (STRICT) {
+      console.error(`❌ ${prdSlug}.md:${b.line} bullet missing <!-- ACC: --> annotation (--strict mode)`)
+      failures++
+      continue
+    }
+    if (!fuzzyMatch(b.text, tests)) {
+      console.error(`❌ ${prdSlug}.md:${b.line} bullet has no fuzzy-match test in ${planSlug}.md`)
+      console.error(`     "${b.text.slice(0, 80)}..."`)
+      failures++
+    }
+  }
+}
+
+if (failures > 0) {
+  console.error(`\n${failures} acceptance-criteria → test mapping failures`)
+  process.exit(1)
+}
+console.log('✓ all PRD §8 bullets map to Plan tests')
+```
+
+- [ ] **Step 2: Wire into `bun run check` + CI**
+
+```json
+"check:acceptance-mapping": "bun run scripts/check-acceptance-mapping.ts",
+"check": "oxlint --type-aware --type-check && bun run check:rls && bun run check:test-framework && bun run check:lock10 && bun run check:stub-guard && bun run check:acceptance-mapping"
+```
+
+```yaml
+- name: Acceptance criteria → test mapping (W0-12)
+  run: |
+    cd kova-open-pencil-1
+    bun run check:acceptance-mapping
+```
+
+- [ ] **Step 3: Seed exemplar annotation pair (PRD 11 §8.1 ↔ Plan 11 Task 1.1)**
+
+This proves the convention works end-to-end. Engineers add more annotations during plan execution as they encounter non-obvious mappings.
+
+- [ ] **Step 4: Document convention in `00a-PRD_AUTHORING_GUIDE.md`**
+
+Add a "§8 Acceptance Criteria Annotation Convention" subsection that:
+- Defines the `<!-- ACC: <kebab-id> -->` syntax
+- Lists fuzzy-match as default behavior
+- Tells PRD authors to annotate ONLY non-obvious bullets
+- References Task 11.9 as the gate owner
+
+- [ ] **Step 5: Smoke-test locally**
+
+```bash
+cd kova-open-pencil-1
+bun run check:acceptance-mapping       # exit 0 (default fuzzy)
+bun run check:acceptance-mapping --strict   # may exit 1 (annotations not yet exhaustive — expected pre-launch)
+```
+
+- [ ] **Step 6: Commit**
+
+```bash
+git commit -am "ci(cluster-11): acceptance-criteria → test mapping gate (W0-12)"
+```
+
+**Engineer follow-up at plan execution:** when implementing a plan, if any §8 bullet trips the fuzzy-match gate, add a strict `<!-- ACC: -->` annotation pair on both sides. This is the path to `--strict` mode pre-launch.
 
 ---
 

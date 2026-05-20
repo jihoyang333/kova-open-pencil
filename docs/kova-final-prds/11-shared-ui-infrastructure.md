@@ -773,9 +773,11 @@ Every line is testable in code or browser. No "feels right." Engineers verify ea
 
 ### 8.1 Toast system
 
-- [ ] `useToast().success('Canvas saved')` enqueues a toast that renders in `<ToastStack>` and auto-dismisses at 5000 ms (within ±100 ms tolerance)
-- [ ] `useToast().error(...)` toast is sticky — does NOT auto-dismiss; user must click `×`
-- [ ] `useToast().action(...)` toast is sticky AND renders a secondary CTA in `--accent`
+<!-- W0-12 exemplar annotations (2026-05-20) — see 00a §9.6. Pattern: <!-- ACC: <kebab-id> --> on bullet; matching id on Plan §3 test. Engineers extend to other §8 sections during plan execution as fuzzy-match gate flags non-obvious mappings. -->
+
+- [ ] `useToast().success('Canvas saved')` enqueues a toast that renders in `<ToastStack>` and auto-dismisses at 5000 ms (within ±100 ms tolerance) <!-- ACC: 11-toast-success-auto-dismiss -->
+- [ ] `useToast().error(...)` toast is sticky — does NOT auto-dismiss; user must click `×` <!-- ACC: 11-toast-error-sticky -->
+- [ ] `useToast().action(...)` toast is sticky AND renders a secondary CTA in `--accent` <!-- ACC: 11-toast-action-sticky-cta -->
 - [ ] `useToast().progress(...)` toast renders a spinner glyph; resolving via `setLoading(false)` swaps to a `success` or `error` variant in place
 - [ ] `useToast().aiGen(...)` toast uses sparkle glyph in `--accent-ink`
 - [ ] 6 toasts enqueued in rapid succession → 5 visible + 1 queued; dismissing one promotes the queued toast within 100 ms
