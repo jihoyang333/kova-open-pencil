@@ -3593,6 +3593,7 @@ test('archived state: kebab shows Restore + Delete (2 items, no Rename/Archive)'
 
 ```vue
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { Brand } from '@/types/kova/database'
 import { brandLogoClass } from '@/composables/brands/use-brand-color'
 import { DropdownMenuRoot, DropdownMenuTrigger, DropdownMenuPortal, DropdownMenuContent, DropdownMenuItem } from 'reka-ui'
@@ -3616,6 +3617,9 @@ function shopifyPill(): { tone: 'ok' | 'warn' | 'outline'; label: string } {
 }
 
 const archived = props.brand.archived_at !== null
+
+// W0-9 Bucket D: cross-cluster ambient window global — replaces inline (window as any) in template.
+const canvasCount = computed(() => (window as any).__kova_canvases_by_brand?.(props.brand.id)?.length)  // W0-9 Bucket D: cross-cluster ambient window global
 </script>
 <template>
   <div
@@ -3660,8 +3664,7 @@ const archived = props.brand.archived_at !== null
     <div class="grid grid-cols-2 gap-2.5 border-t border-[var(--line-2)] pt-2.5 text-[11.5px] text-[var(--ink-3)]">
       <div class="flex flex-col gap-0.5">
         <span class="text-[9.5px] tracking-[0.1em]">Canvases</span>
-        <!-- W0-9 Bucket D: cross-cluster ambient window global -->
-        <span class="text-[12px] font-medium text-[var(--ink)]">{{ (window as any).__kova_canvases_by_brand?.(brand.id)?.length ?? '—' }}</span>
+        <span class="text-[12px] font-medium text-[var(--ink)]">{{ canvasCount ?? '—' }}</span>
       </div>
       <div class="flex flex-col gap-0.5">
         <span class="text-[9.5px] tracking-[0.1em]">Last edited</span>

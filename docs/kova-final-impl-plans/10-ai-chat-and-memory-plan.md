@@ -1908,7 +1908,7 @@ describe('<ChatInput> productReferences prop', () => {
       props: {
         status: 'ready',
         productReferences: [makeRef('a')],
-        attachments: [{ id: 'att1', publicUrl: 'https://x/a.jpg', fileName: 'a.jpg' }] as any
+        attachments: [{ id: 'att1', publicUrl: 'https://x/a.jpg', fileName: 'a.jpg' }] as any  // test-fixture: bun:test convention
       }
     })
     const html = w.html()
