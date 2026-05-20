@@ -2312,6 +2312,68 @@ git commit -m "feat(09): TrashConfirmModal — destructive .btn.danger + B13.1 c
 
 ---
 
+## Task 18b (C-HIGH7): Add `canvases.initial_state_blob_path` column
+
+**Files:**
+- Create: `kova-open-pencil-1/supabase/migrations/20260616_09_canvases_initial_state_blob_path.sql`
+- Test: `kova-open-pencil-1/tests/integration/snapshots/migrations.test.ts` (extend existing)
+
+**Why (W4):** `C-HIGH7` (CONSOLIDATED-TRIAGE.md). Without this column, the duplicate-to-canvas flow (§5.1.1) uploads the snapshot blob to Storage and inserts a `canvas_snapshots` row, but the new canvas opens blank because Yjs y-indexeddb bootstrap has no record of the seeding blob. The PRD-09-locked persistence layer (Yjs + y-indexeddb) is read-only per CLAUDE.md; instead Cluster 02's canvas-open path will read this column and hydrate the Yjs doc from the referenced Storage object.
+
+- [ ] **Step 1: Write the migration**
+
+```sql
+-- kova-open-pencil-1/supabase/migrations/20260616_09_canvases_initial_state_blob_path.sql
+-- W4 C-HIGH7: hydrate seeding blob path for duplicate-to-canvas + snapshot-restore
+ALTER TABLE public.canvases
+  ADD COLUMN IF NOT EXISTS initial_state_blob_path text;
+
+COMMENT ON COLUMN public.canvases.initial_state_blob_path IS
+  'Storage path (canvas-snapshots bucket) used to hydrate the Yjs doc on first open. Set by /api/snapshots/duplicate-to-canvas (PRD 09 §5.1.1); read by Cluster 02 canvas-open. NULL means "no seeding blob" (normal create_canvas path).';
+```
+
+- [ ] **Step 2: Extend `tests/integration/snapshots/migrations.test.ts`**
+
+```typescript
+it('adds initial_state_blob_path column to canvases (W4 C-HIGH7)', async () => {
+  const { data, error } = await supabase.rpc('pg_get_columns', { p_table: 'canvases' })
+  expect(error).toBeNull()
+  const names = (data as Array<{ name: string }>).map(c => c.name)
+  expect(names).toContain('initial_state_blob_path')
+})
+```
+
+- [ ] **Step 3: Apply + verify**
+
+```bash
+supabase migration up
+bun test ./tests/integration/snapshots/migrations.test.ts
+```
+
+Expected: PASS.
+
+- [ ] **Step 4: Document the Cluster 02 read-side contract**
+
+The duplicate-to-canvas Edge Function (Task 19 below) WRITES this column. Cluster 02's canvas-open composable (`useCanvasOpen` or equivalent in Plan 02) MUST READ this column on first open and:
+
+1. If `initial_state_blob_path IS NOT NULL` and the Yjs doc for this canvas does not yet exist in y-indexeddb (first open on this device):
+   - Download the blob from `canvas-snapshots/{initial_state_blob_path}` via signed URL.
+   - Decode via `useSnapshotCodec.decodeCanvasSnapshot()` (Plan 09 Task 7).
+   - Apply the decoded Yjs update into the freshly-constructed `Y.Doc` before y-indexeddb persistence wires up.
+2. If `initial_state_blob_path IS NULL`: take the normal blank-canvas path (current behaviour).
+
+**Cluster 02 amendment required:** since Cluster 02 (W2) is already merged, a follow-up PR (`fix/qa-w4-c09-followup-plan-02`) is needed to add this read-side wiring to Plan 02. Owning agent: founder schedules separately. Until that lands, duplicate-to-canvas writes the column harmlessly (no consumer reads it yet) and the new canvas opens blank as a known-soft-fail. **This Plan 09 PR is safe to merge ahead of the Plan 02 amendment** — the column is additive and NULL-safe.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add kova-open-pencil-1/supabase/migrations/20260616_09_canvases_initial_state_blob_path.sql \
+        kova-open-pencil-1/tests/integration/snapshots/migrations.test.ts
+git commit -m "feat(09): add canvases.initial_state_blob_path column (W4 C-HIGH7)"
+```
+
+---
+
 ## Task 19: Edge Function `POST /api/snapshots/duplicate-to-canvas`
 
 **Files:**
@@ -2401,6 +2463,14 @@ export default async function handler(req: Request): Promise<Response> {
   const { error: upErr } = await adminClient.storage
     .from('canvas-snapshots').upload(newBlobPath, blobBytes, { contentType: 'application/octet-stream' })
   if (upErr) return new Response(JSON.stringify({ error: 'internal_error' }), { status: 500 })
+
+  // 5b. W4 C-HIGH7: stamp initial_state_blob_path on the new canvas so Cluster 02 canvas-open
+  // can hydrate the Yjs doc from this blob on first open. Service-role bypass acceptable —
+  // create_canvas just minted this row for auth.userId, so the WHERE id = newCanvasId is safe.
+  const { error: stampErr } = await adminClient.from('canvases')
+    .update({ initial_state_blob_path: newBlobPath })
+    .eq('id', newCanvasId)
+  if (stampErr) return new Response(JSON.stringify({ error: 'internal_error' }), { status: 500 })
 
   // 6. Insert "Duplicated from..." snapshot row on the new canvas
   await userClient.rpc('create_snapshot', {
