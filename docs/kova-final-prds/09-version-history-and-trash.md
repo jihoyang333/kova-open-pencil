@@ -4,11 +4,11 @@
 
 | Field | Value |
 |---|---|
-| **Status** | `DRAFT` |
+| **Status** | `IN-REVIEW 2026-05-19` |
 | **Wave** | 6 |
 | **Author** | Claude (Opus 4.7) |
 | **Reviewer** | Jiho Yang (founder) |
-| **Last updated** | 2026-05-15 |
+| **Last updated** | 2026-05-19 |
 | **Depends on PRDs** | 01 (Auth — `users` table, Storage cleanup contract), 02 (Dashboard — trash inbox host + canvas-creation RPC for Duplicate), 06 (Canvas Core Chrome — right-panel mount slot), 07a (Canvas Engine Core — scene-graph stability), 08 (Menus & Shortcuts — `⌥⌘S` registration), 11 (Shared UI — `useConfirm`, `<KovaModal>`, `<ToastStack>`, skeletons) |
 | **Blocks PRDs** | None |
 | **Source artifacts** | Hi-fi: 2 files (17 Version History, 15 Trash Confirm). 03 doc: §2.11 (2 rows), §2.12 (1 row), §3C #2, §3.A snapshot infra row, §3.B trash reuse row. Q-decisions: Q7 (snapshot model Figma-exact), Q19 (trash indefinite retention). Audit §2.A Cluster 09 (lines 1764–1945). 00d/00e ratifications: snapshot 50 MB blob cap + 100 MB per-brand quota + Vercel Cron + autosnap on blur/beforeunload (2.C.8). |
