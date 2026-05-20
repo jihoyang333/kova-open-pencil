@@ -3000,32 +3000,48 @@ In `CanvasView.vue` wrap the canvas stage with a pointer-events overlay tied to 
 
 ```vue
 <template>
+  <!-- W4 C-LOW09.10: pure-CSS overlay. The overlay is ALWAYS in the DOM; CSS toggles
+       pointer-events between 'none' (unlocked) and 'auto' (locked) based on the
+       .edit-locked class. Pan / zoom / nudge keep working because they run on
+       window keydown / wheel listeners that bypass the overlay entirely — we no
+       longer need a JS handler to "let those events through." The previous
+       window.__spaceHeld global hack is gone; the space-drag composable
+       (Cluster 06) owns its own pannable ref. -->
   <div class="canvas-stage" :class="{ 'edit-locked': editLock.isLocked.value }">
     <CanvasRenderer />
-    <!-- Overlay: pointer-events: none when unlocked; auto when locked.
-         Swallows clicks but lets pan/zoom shortcuts through because those are window-level keydown handlers. -->
-    <div v-if="editLock.isLocked.value" class="edit-lock-overlay"
-         @mousedown.capture="onSuppressedEdit" @click.capture="onSuppressedEdit" />
+    <div class="edit-lock-overlay" aria-hidden="true" />
   </div>
 </template>
 
 <script setup lang="ts">
 const editLock = useCanvasEditLock()
-
-function onSuppressedEdit(e: Event) {
-  // Allow space-drag pan (Cluster 06 handles via window listener — already passes if space is held)
-  if ((window as any).__spaceHeld) return
-  e.preventDefault(); e.stopPropagation()
-}
 </script>
 
 <style scoped>
-.edit-lock-overlay { position: absolute; inset: 0; cursor: not-allowed; pointer-events: auto; }
-.canvas-stage.edit-locked .toolbar .tool:not(.move) { opacity: 0.4; pointer-events: none; }
+/* Default: overlay is in the DOM but transparent to pointer events. */
+.edit-lock-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  cursor: default;
+}
+/* When the panel locks the canvas, the overlay swallows mouse-down + click and shows
+   the "not-allowed" cursor. Window-level keydown (pan / zoom / nudge) is unaffected
+   because keyboard events do not propagate through pointer-events. */
+.canvas-stage.edit-locked .edit-lock-overlay {
+  pointer-events: auto;
+  cursor: not-allowed;
+}
+.canvas-stage.edit-locked .toolbar .tool:not(.move) {
+  opacity: 0.4;
+  pointer-events: none;
+}
 </style>
 ```
 
 The toolbar-disable selector targets Cluster 06's `.toolbar .tool` markup. Cluster 06's PRD must confirm this is the expected class — if not, refactor to use the `useCanvasEditLock.isLocked` ref in the toolbar component itself.
+
+**Removed:** the `window.__spaceHeld` global from the previous draft. Cluster 06's space-pan composable (`useSpacePan` / `usePanGesture`) is the source of truth for whether space is currently held; the canvas does not need to read that state via a window global because the overlay does NOT block keyboard / wheel events — only pointer-down + click. Drag-to-pan and Ctrl+wheel-to-zoom work transparently while the overlay is active.
 
 - [ ] **Step 5: Manual smoke test**
 
