@@ -21,30 +21,27 @@ The design system is canonical at:
   compressed-figma-canvas-ui/  ← Figma canvas UI reference PNGs (visual reference for inspector/layers/canvas)
 ```
 
-The hi-fi HTML rendering target lives at:
+The hi-fi HTML rendering target lives **in-repo** (version-controlled + CI-deterministic per IMPLEMENTATION_PROMPT.md §10) at:
 
 ```
-/Users/jihoyang/kova-main/main-main-kova-scope/batch-a/dark/
-  Kova Hi-Fi 03 Brand Dashboard - Dark.html
-  Kova Hi-Fi A1 Onboarding - Dark.html
-  Kova Hi-Fi A2+A3 Brand picker & New brand - Dark.html
-  Kova Hi-Fi A4+A9+A10 Modals - Dark.html
-  Kova Hi-Fi A6+A2a Popovers + A8 Dialogs - Dark.html
-  Kova Hi-Fi A7 Account Page - Dark.html
-  Kova Hi-Fi A11+A12+A13+A_canvas_nav - Dark.html
-  (and more, see directory listing)
-  index-batch-a.html       ← entry index
+kova-open-pencil-1/design-system/hifi/
+  auth/                    ← Cluster 01 (light + dark auth)
+  onboarding/              ← Cluster 02 onboarding
+  dashboard/               ← Cluster 02 dashboard
+  brand-mgmt/              ← Cluster 03
+  account-stripe/          ← Cluster 04
+  brand-kit/               ← Cluster 05
+  canvas-chrome/           ← Cluster 06
+  canvas-engine/           ← Cluster 07a + 07b
+  canvas-menus/            ← Cluster 08
+  version-history/         ← Cluster 09
+  ai-chat/                 ← Cluster 10
+  foundation/              ← Cluster 11 primitive specs (extracted from screens)
+  settings/                ← Cluster 12
+  states/                  ← cross-cluster (error pages, toasts, skeletons, upload states)
 ```
 
-Plus additions at:
-
-```
-/Users/jihoyang/kova-main/main-main-kova-scope/batch-a-additions/dark/
-  Kova Hi-Fi B1 Toasts - Dark.html
-  Kova Hi-Fi B2 Error Pages - Dark.html
-  Kova Hi-Fi B3 Brand Kit CRUD Modals - Dark.html
-  (etc.)
-```
+**The outer-repo originals** at `/Users/jihoyang/kova-main/main-main-kova-scope/{batch-a,batch-a-additions,batch-b}/...*.html` are historical reference only — diff against the in-repo copy. CI cannot reach the outer repo.
 
 **Read `design.md` cover-to-cover before any UI work.** It is the single most important file in the design system. Token rules + bans + extension protocol all live there.
 
@@ -60,18 +57,25 @@ docs/execution-phase/claude-design-files/
 
 ---
 
-## 1. The translation pipeline (HTML → Vue)
+## 1. The translation pipeline (HTML → Vue) — the 3-rule contract
 
-Hi-fi HTML is the **visual source of truth, not a literal copy target.** Translate it into idiomatic Vue 3 using Kova's existing component primitives. Match the visual output pixel-for-pixel; do not copy raw DOM structure.
+Hi-fi HTML is the **visual source of truth for VALUES**. Use the 3-rule formulation from `IMPLEMENTATION_PROMPT.md` §0:
 
-**Authoritative method:** `docs/execution-phase/claude-design-files/IMPLEMENTATION_PROMPT.md`. This rider summarizes; that doc is the canonical procedure.
+> 1. **Visual values are copied.** Every color, spacing, type, radius, shadow, gap, padding, line-height, tracking, and proportion in the rendered output MUST match the mockup pixel-for-pixel.
+> 2. **DOM structure is translated.** Compose markup via Vue 3 SFCs, Reka UI primitives, and the K* component layer from `design.md` §3. Do NOT copy the mockup's hand-rolled HTML.
+> 3. **Behavior is engineered.** State lives in Pinia / refs / composables. Hover / focus / active / selected / disabled / loading / error states are dynamic bindings, NEVER hardcoded classes from the mockup.
+
+**Trap phrase ban:** "copy DOM verbatim" is forbidden in agent instructions and in this codebase's docs. It sounds like fidelity insurance and is actually the opposite — it pulls hand-rolled HTML, inline `<style>` blocks, CDN scripts, and hardcoded states into the codebase, defeating the component layer. Mockup HTML mixes (a) values you want copied, (b) layout structure you want translated, (c) static-prototype scaffolding you want REBUILT. The 3-rule formulation above splits these correctly.
+
+**Authoritative method:** `docs/execution-phase/claude-design-files/IMPLEMENTATION_PROMPT.md`. This rider summarizes; that doc is the canonical procedure. On any conflict between this rider and IMPLEMENTATION_PROMPT.md, **IMPLEMENTATION_PROMPT.md wins** on the fidelity contract.
 
 **Step-by-step per surface:**
 
 1. **Identify the surface** — look at PRD §3 for the cluster, find the row that references the hi-fi file + scene IDs.
-2. **Read the hi-fi HTML file** at `/Users/jihoyang/kova-main/main-main-kova-scope/<batch>/<theme>/<file>.html`.
-3. **Extract visual values before writing code** (per claude-design's mini-masterclass point #2): colors, typography, spacing, sizing, border, shadows, layout, motion, states, z-index. See `claude-design-files/IMPLEMENTATION_PROMPT.md` Appendix A for the full per-property extraction checklist.
-4. **Identify Kova components that already exist** for this surface:
+2. **Read the IN-REPO hi-fi HTML** at `kova-open-pencil-1/design-system/hifi/<cluster>/<file>.html`. (The outer `/Users/jihoyang/kova-main/main-main-kova-scope/` originals are historical reference — diff against the in-repo copy, which is CI-deterministic per IMPLEMENTATION_PROMPT.md §10.)
+3. **Phase 1 gate:** before any Vue code, produce `KOVA_AUDIT.md` + `tokens-used.md` per IMPLEMENTATION_PROMPT.md §3. `tokens-used.md` enumerates every visual value in this surface mapped to either an existing token or ⚠️ MISSING (founder decision via AskUserQuestion). No Vue until both are founder-approved.
+4. **Extract visual values per Appendix A** of IMPLEMENTATION_PROMPT.md (colors / typography / spacing / sizing / border / shadows / layout / motion / states / z-index / a11y). Per state.
+5. **Identify existing Kova components** for this surface:
    - Modal → `<KovaModal>` (Cluster 11)
    - Dropdown → `<KovaMenu>` (Cluster 11)
    - Popover → `<KovaPopover>` (Cluster 11)
@@ -79,12 +83,14 @@ Hi-fi HTML is the **visual source of truth, not a literal copy target.** Transla
    - Icon → `<KovaIcon name="...">` (Cluster 11)
    - Skeleton → `<KovaSkeleton>` (Cluster 11)
    - Toast → `<KovaToast>` mounted globally + `useToast()` composable (Cluster 11)
-5. **Port to idiomatic Vue 3** — `<script setup lang="ts">`, Composition API, typed `defineProps<{}>()` + `defineEmits<{}>()`. **Do NOT copy `<button>` / `<div>` chains verbatim from the HTML** — use the Kova components above. CSS class names from `kova-hifi.css` (`.btn`, `.input`, `.dlg`, `.pill`, etc.) are preserved where they aid clarity OR where the component primitive contract requires them.
-6. **Tokens come from `kova-hifi.css` :root via Tailwind `@theme`.** Reference via `var(--accent)` or Tailwind theme utilities. **Mockup wins**: if the hi-fi uses a value not present in `kova-hifi.css :root`, that is a hi-fi-vs-design-system drift — STOP and ask founder via `AskUserQuestion`. Never silently round to the nearest existing token (per §2.1 + §2.6).
-7. **Layout = Tailwind utility classes.** Spacing, grid, flex, gap, position all use Tailwind utilities backed by `@theme`. Component primitives from `kova-hifi.css` (`.btn`, `.input`, etc.) carry their own padding/density — do not override.
-8. **Visually verify** via `/dev/cluster-NN` route in dev server.
-9. **Per-screen diff loop:** open mockup HTML + Vue route at the same 1440px viewport. Screenshot both. List every discrepancy in writing. Fix. Re-diff. Only move to the next surface when zero discrepancies remain. (This is claude-design's mini-masterclass point #4 + IMPLEMENTATION_PROMPT.md Phase 4.)
-10. **Playwright visual-diff** at cluster boundary (per master guide §8.2). Pass threshold: ≤ 2% pixel diff.
+   - Plus the `K*` component layer from `design.md` §3 (KTopbar, KSidePanel, KSectionHeader, KListRow, KTabs, KPropertyGroup, KInput, KSegmented, KFillRow, KCheckbox, KToolbar, KZoomHUD, KFrame, KFloatingHelp, KAvatar).
+6. **Translate the DOM structure** (Rule 2) — `<script setup lang="ts">`, Composition API, typed `defineProps<{}>()` + `defineEmits<{}>()`. Rebuild the mockup's hand-rolled HTML as Vue component composition: a `<div class="kc-topbar"><div class="kc-topbar-inner">...</div></div>` chain in the mockup becomes `<KTopbar>` with slots. CSS class names from `kova-hifi.css` (`.btn`, `.input`, `.dlg`, `.pill`, etc.) are preserved where they aid clarity OR where the component primitive contract requires them.
+7. **Copy the visual values** (Rule 1) — tokens come from `kova-hifi.css :root` via Tailwind `@theme`. Reference via `var(--accent)` or Tailwind theme utilities. **Drift protocol:** if the hi-fi uses a value not in `:root`, log ⚠️ MISSING in `tokens-used.md` + ask founder via AskUserQuestion. Three options: (a) extend the system, (b) update the hi-fi, (c) keep literal with `/* token-exempt: <justification> */`. NEVER silently round.
+8. **Engineer the behavior** (Rule 3) — state in Pinia / `ref()` / composables. Bind hover/focus/active/selected/disabled/loading/error dynamically (`:class="{ selected: isSelected }"` not `class="row selected"`).
+9. **Layout = Tailwind utility classes.** Spacing, grid, flex, gap, position all use Tailwind utilities backed by `@theme`. Component primitives from `kova-hifi.css` (`.btn`, `.input`, etc.) carry their own padding/density — do not override.
+10. **Per-screen written diff loop:** open IN-REPO mockup HTML + Vue route at the same 1440px viewport. Screenshot both. Walk Appendix A. List every discrepancy in writing → `tests/snapshots/cluster-NN/<surface>-diff.md`. Fix. Re-diff. Move on only when written diff is empty.
+11. **Playwright visual-diff gate** at cluster boundary (per master guide §8.2). Thresholds: **0.1% component / 0.5% screen** with masking for volatile regions + `threshold: 0.2` per-pixel color tolerance (per IMPLEMENTATION_PROMPT.md §6).
+12. **PR artifact:** 3-screenshot row per surface (mockup / impl / diff) in PR description (per IMPLEMENTATION_PROMPT.md §6 last paragraph).
 
 ---
 
@@ -123,8 +129,8 @@ Hi-fi HTML is the **visual source of truth, not a literal copy target.** Transla
 
 ### 2.4 Components
 
-- ✅ **Use Cluster 11 primitives first.** `<KovaModal>`, `<KovaPopover>`, `<KovaMenu>`, `<KovaTooltip>`, `<KovaSelect>`, `<KovaToast>`, `<KovaIcon>`, `<KovaSkeleton>` are the canonical interactive primitives. The hi-fi HTML shows `.dlg` / `.popover` / `.dropdown` markup — translate to the Kova components, NOT raw `<div>` chains.
-- ✅ **Component reuse rule** (per claude-design's mini-masterclass point #6): before reusing an existing component, compare its rendered output to the hi-fi. If they differ in any visual property (color, spacing, radius, type, hover state, active state), either (a) add a new variant prop to the existing component, or (b) build a new component. "Close enough" is not close enough.
+- ✅ **Use Cluster 11 primitives first.** `<KovaModal>`, `<KovaPopover>`, `<KovaMenu>`, `<KovaTooltip>`, `<KovaSelect>`, `<KovaToast>`, `<KovaIcon>`, `<KovaSkeleton>` are the canonical interactive primitives. The hi-fi HTML shows `.dlg` / `.popover` / `.dropdown` markup — translate the DOM structure (Rule 2 of the 3-rule contract) to the Kova components. Visual values inside those components (Rule 1) match the mockup pixel-for-pixel.
+- ✅ **Component reuse rule:** before reusing an existing component, compare its rendered output to the hi-fi per Appendix A. If they differ in ANY visual property (color, spacing, radius, type, hover state, active state, focus-visible, disabled), either (a) add a new variant prop, or (b) build a new component. "Close enough" is not close enough.
 - ✅ Modal chrome: `.dlg` + `.dlg-head` + `.dlg-body` + `.dlg-foot` (rendered inside `<KovaModal>`)
 - ✅ Modal sizes: `.dlg.sm` (440px) / `.dlg.md` (540px) / `.dlg.lg` (880px)
 - ✅ Buttons: existing `.btn` + variants (`.btn.primary`, `.btn.secondary`, `.btn.ghost`, `.btn.danger`)
@@ -260,23 +266,28 @@ If any path is missing → STOP and ask founder.
 At cluster boundary (per master guide §8.2), the agent must:
 
 1. Start dev server: `cd kova-open-pencil-1 && bun run dev` (background)
-2. Serve hi-fi HTML at the same origin (or via Playwright `page.goto('file:///...')`)
+2. Serve in-repo hi-fi HTML via the dev server at `/dev/hifi/<cluster>/<file>.html?ci=1` (CI-deterministic per IMPLEMENTATION_PROMPT.md §10)
 3. For each UI surface in cluster:
    ```typescript
-   test('Cluster NN <surface> matches hi-fi', async ({ page }) => {
+   test('Cluster NN <surface> matches hi-fi (screen)', async ({ page }) => {
      await page.goto('http://localhost:1420/dev/cluster-NN/<surface>');
-     const vueRender = await page.screenshot();
-
-     await page.goto('file:///Users/jihoyang/kova-main/main-main-kova-scope/batch-a/dark/<file>.html');
-     const hifiRender = await page.screenshot();
-
-     // Use pixelmatch or @playwright/test snapshot diff
-     expect(pixelmatch(vueRender, hifiRender)).toBeLessThan(0.02 * totalPixels);
+     await page.evaluate(() => document.fonts.ready);
+     await page.waitForLoadState('networkidle');
+     await expect(page).toHaveScreenshot('<surface>-impl.png', {
+       maxDiffPixelRatio: 0.005,  // 0.5% screen-level
+       threshold: 0.2,             // anti-aliasing tolerance
+       animations: 'disabled',
+       mask: [
+         page.locator('[data-test-volatile="avatar"]'),
+         page.locator('[data-test-volatile="timestamp"]'),
+       ],
+     });
    });
    ```
-4. Output: side-by-side comparison images in `tests/snapshots/cluster-NN/`
-5. **Pass threshold: ≤ 2% pixel diff** (anti-aliasing + minor font kerning tolerance)
-6. If > 2% — STOP. Investigate. Fix. Re-run.
+4. **Per-component diff** (against `/dev/components` gallery) uses `maxDiffPixelRatio: 0.001` (0.1%) — primitives are tightly scoped.
+5. Output: side-by-side comparison images in `tests/snapshots/cluster-NN/<surface>-{mockup,impl,diff}.png`. **All three committed and referenced in the PR description.**
+6. **Pass thresholds:** ≤ 0.1% component-level, ≤ 0.5% screen-level. **Do NOT loosen if a screen fails.** Investigate, fix, re-run.
+7. **CI determinism prerequisites** (per IMPLEMENTATION_PROMPT.md §10) must be in place: fonts baked locally, Lucide icons baked locally, hover-dependent CSS disabled under `?ci=1`, `document.fonts.ready` awaited, animations disabled at gate-run, volatile regions masked. Without these the gate flakes.
 
 ---
 
@@ -299,14 +310,20 @@ DO NOT guess. DO NOT silently invent. DO NOT pick the "obvious" answer. ASK.
 ## 8. Quality gate checklist (per cluster, before declaring done)
 
 - [ ] All Plan tasks have commits
+- [ ] **Phase 1 gate green**: `KOVA_AUDIT.md` + `tokens-used.md` exist, zero ⚠️ MISSING rows, founder-approved
+- [ ] **Per-screen written diff** at `tests/snapshots/cluster-NN/<surface>-diff.md` is empty for every UI surface
 - [ ] Every Vue component imports `kova-hifi.css` via Tailwind `@theme` (no per-file CSS imports)
-- [ ] Zero hex literals in any Vue SFC or component file
+- [ ] **Zero raw hex literals** in any Vue SFC or component file (lint rule per IMPLEMENTATION_PROMPT.md §9)
+- [ ] **Zero raw `px` literals** in any Vue SFC `<style>` block or class attribute (lint rule per §9; SVG geometry exempt)
 - [ ] Zero `<style>` / `<style scoped>` blocks in Vue SFCs
 - [ ] Zero `<icon-lucide-*>`, `<Icon name="lucide:...">`, `i-lucide-*` references in any Vue SFC
-- [ ] Zero inline `style="hex|px|font-family|color"` patterns
+- [ ] Zero inline `style="hex|px|font-family|color"` patterns (CSS-var dynamic overrides via `style="--name: var(...)"` are exempt)
 - [ ] Every interactive primitive uses Reka UI wrapper from Cluster 11
 - [ ] Every icon uses `<KovaIcon>` from Cluster 11
-- [ ] Playwright visual-diff pass on every UI surface
+- [ ] **Playwright visual-diff per component ≤ 0.1%** on every primitive used
+- [ ] **Playwright visual-diff per screen ≤ 0.5%** on every UI surface
+- [ ] **PR description includes 3-screenshot row** (mockup / impl / diff) per surface
+- [ ] **All tokens used** are present in `kova-hifi.css :root` AND `TOKEN_CANONICAL.md`
 - [ ] `superpowers:code-reviewer` agent reports zero CRITICAL/HIGH design-system violations
 - [ ] Founder browser smoke-test of `/dev/cluster-NN` showcase route
 
