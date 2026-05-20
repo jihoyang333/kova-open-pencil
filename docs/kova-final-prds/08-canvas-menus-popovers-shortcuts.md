@@ -97,7 +97,7 @@ User can: (1) open main menu and every submenu including sub-of-sub (Boolean ops
 | **Engine-side primitives** — Slice node type, Measurement node type, Mask compositing, Effects renderer, Boolean operations engine API, image-fill modes, gradient editor, Eyedropper canvas-extension | **07a + 07b** |
 | **`figma.booleanOperation()` engine wiring** — the menu/shortcut handlers in this PRD CALL it; the engine API exists in `packages/core/figma-api.ts` per Q3 #14 | **07a** (already there per `00c`) |
 | **`useConfirm()` primitive + `<ConfirmDialog>` shell** | **11** |
-| **Toast system + `<KovaModal>` + skeletons + error pages + offline indicator + Command-K palette** | **11** |
+| **Toast system + `<KovaModal>` + skeletons + error pages + offline indicator** | **11** |
 | **Idempotency-key helper for Edge Functions** | **11** (N/A in this PRD — no Edge Functions) |
 | **Trash-confirm modal entry point** — modal logic lives in **09** (Version History + Trash); this PRD only documents the cross-cut so engineers know where the destructive useConfirm-trash variant lives | **09** |
 | **Move-to-trash dispatch from canvas** — explicitly ripped 2026-05-09 (founder). The in-canvas file-name dropdown carries NO trash item; trash only reachable from dashboard file-row right-click | **02 (dashboard right-click trigger) + 09 (confirm + RPC)** |
