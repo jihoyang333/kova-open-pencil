@@ -2005,7 +2005,7 @@ function onCta() {
     <div class="row-actions">
       <button v-if="toast.ctaLabel" data-test="cta" class="btn text" @click="onCta">{{ toast.ctaLabel }}</button>
       <button data-test="dismiss" class="x" aria-label="Dismiss" @click="emit('dismiss', toast.id)">
-        <icon-lucide-x />
+        <KovaIcon name="x" />
       </button>
     </div>
   </div>
@@ -2154,7 +2154,7 @@ const emit = defineEmits<{ 'update:open': [open: boolean] }>()
           <DialogTitle v-if="title" tag="h3">{{ title }}</DialogTitle>
           <DialogDescription v-if="description" class="sub">{{ description }}</DialogDescription>
           <DialogClose data-test="close" class="x" aria-label="Close">
-            <icon-lucide-x />
+            <KovaIcon name="x" />
           </DialogClose>
         </div>
         <div class="dlg-body"><slot /></div>
@@ -2481,6 +2481,28 @@ git add kova-open-pencil-1/src/components/ui/KovaIcon.vue kova-open-pencil-1/src
 git commit -m "feat(cluster-11): <KovaIcon> primitive (W0-4 — sole icon tag for the app)"
 ```
 
+- [ ] **Step 7: CI grep gate — block `<icon-lucide-*>` regression in src/ + spec docs**
+
+Add a CI step (and a lefthook pre-commit hook, if `lefthook.yml` is in use) that fails the build if any `<icon-lucide-NAME>` raw tag reappears in either application code or the impl-plan docs themselves. Negative-reference callouts in `11-shared-ui-infrastructure-plan.md` (Task 4.4 Contract — lines that cite the four forbidden alternates) are allowed via a deliberate `<icon-lucide-*>` literal-asterisk pattern that the regex below does not match.
+
+```bash
+# Source code: zero tolerance for <icon-lucide-NAME> tags. NEVER allowed.
+if grep -rnE '<icon-lucide-[a-z][a-z-]*[\s/>]' kova-open-pencil-1/src/; then
+  echo '::error::Forbidden <icon-lucide-*> tag in src/ — use <KovaIcon name="..."> (W0-4 contract, Task 4.4)'
+  exit 1
+fi
+
+# Spec docs: zero tolerance for <icon-lucide-NAME> tags. Negative-reference
+# callouts that use the literal asterisk (`<icon-lucide-*>`) or backticked
+# template-literal prose (`` `icon-lucide-${name}` ``) are allowed.
+if grep -rnE '<icon-lucide-[a-z][a-z-]*[\s/>]' kova-open-pencil-1/docs/kova-final-impl-plans/; then
+  echo '::error::Forbidden <icon-lucide-*> tag in impl-plan docs — use <KovaIcon name="...">'
+  exit 1
+fi
+```
+
+Wire into `.github/workflows/ci.yml` (or equivalent) as a step before unit tests. The check runs in <100ms — cheap to gate.
+
 ---
 
 ## Phase 5 — Confirm System
@@ -2729,7 +2751,7 @@ const props = withDefaults(defineProps<Props>(), { variant: 'secondary', size: '
     :class="[variant, size, { loading, disabled }]"
     :disabled="disabled || loading"
   >
-    <icon-lucide-loader v-if="loading" data-test="spinner" class="spinner" />
+    <KovaIcon name="loader" v-if="loading" data-test="spinner" class="spinner" />
     <KovaIcon v-else-if="icon && iconPosition === 'leading'" :name="icon" />
     <slot />
     <KovaIcon v-if="icon && iconPosition === 'trailing' && !loading" :name="icon" />
@@ -2960,7 +2982,7 @@ const { status } = useOnlineStatus()
     v-if="status === 'offline'"
     content="You're offline. Changes saved locally and sync when you reconnect."
   >
-    <icon-lucide-cloud-off
+    <KovaIcon name="cloud-off"
       class="h-3.5 w-3.5 text-ink-2"
       aria-label="Offline"
     />
@@ -2970,7 +2992,7 @@ const { status } = useOnlineStatus()
 
 Notes:
 - Renders nothing while `useOnlineStatus().status === 'online'`.
-- When offline, renders a 14×14 `icon-lucide-cloud-off` in `--ink-2` inside a `<KovaTooltip>` whose tooltip content matches the copy above.
+- When offline, renders a 14×14 `<KovaIcon name="cloud-off" />` in `--ink-2` inside a `<KovaTooltip>` whose tooltip content matches the copy above.
 - Positioning is consumer-cluster responsibility (e.g. Cluster 02 topbar mounts this beside the avatar). This component only renders the icon+tooltip pair when offline.
 
 - [ ] **Commit:** `git commit -am "feat(cluster-11): Skeleton + EmptyState + NetworkStatusIndicator (Figma-style icon+tooltip)"`
@@ -2998,7 +3020,7 @@ const auth = useAuthStore()
 <template>
   <div class="err-page">
     <div class="err-card">
-      <div class="err-icon-tile"><icon-lucide-search-x /></div>
+      <div class="err-icon-tile"><KovaIcon name="search-x" /></div>
       <h1>Page not found</h1>
       <p>It may be archived or you don't have access.</p>
       <div class="cta-row">
@@ -3021,7 +3043,7 @@ const router = useRouter()
 <template>
   <div class="err-page">
     <div class="err-card">
-      <div class="err-icon-tile"><icon-lucide-alert-triangle /></div>
+      <div class="err-icon-tile"><KovaIcon name="alert-triangle" /></div>
       <h1>Something broke</h1>
       <p>Try again in a moment.</p>
       <div class="cta-row">
@@ -3042,7 +3064,7 @@ import KovaButton from '@/components/ui/KovaButton.vue'
 <template>
   <div class="err-page">
     <div class="err-card">
-      <div class="err-icon-tile"><icon-lucide-wifi-off /></div>
+      <div class="err-icon-tile"><KovaIcon name="wifi-off" /></div>
       <h1>Can't reach Kova</h1>
       <p>Check your internet connection.</p>
       <div class="cta-row">

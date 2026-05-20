@@ -2948,7 +2948,7 @@ For each (`AuthShell`, `AuthCard`, `AuthHeading`, `AuthCta`, `AuthMedal`, `AuthI
 - [ ] Implement `<Name>.vue` per hi-fi A15 inline CSS:
   - Translate CSS classes (`.auth-shell`, `.auth-card`, `.auth-cta`, `.auth-medal`, `.auth-icon`, `.auth-head`) into Tailwind 4 utility classes via `app.css` @theme
   - OR use scoped class names mapped 1:1 to design system tokens (recommend Tailwind utilities + a thin component class layer)
-  - Use `<icon-lucide-*>` unplugin-icons for icon glyphs
+  - Use `<KovaIcon name="...">` (W0-4 static-registry primitive shipped by Plan 11 Task 4.4) for icon glyphs — raw `<icon-lucide-*>` tags are forbidden
 - [ ] Run test — verify pass
 - [ ] Commit: `feat(auth): component AuthShell` / `AuthCard` / etc.
 

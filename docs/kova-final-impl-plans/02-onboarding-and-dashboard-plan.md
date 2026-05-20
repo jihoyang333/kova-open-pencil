@@ -1586,7 +1586,7 @@ defineEmits<{ next: [] }>()
             <span class="pre">https://</span>
             <input name="brandUrl" v-model="state.brandUrl" type="text" />
           </div>
-          <div v-if="logoUrl" class="help ok"><icon-lucide-check class="w-3 h-3 inline" /> Logo found</div>
+          <div v-if="logoUrl" class="help ok"><KovaIcon name="check" class="w-3 h-3 inline" /> Logo found</div>
         </div>
       </div>
     </div>
@@ -1606,7 +1606,7 @@ defineEmits<{ next: [] }>()
       <span></span>
       <button class="btn primary" :disabled="!canContinue" @click="$emit('next')">
         Continue
-        <icon-lucide-arrow-right class="ic" />
+        <KovaIcon name="arrow-right" class="ic" />
       </button>
     </div>
   </div>
@@ -1755,17 +1755,17 @@ defineExpose({ onFiles, rejectedFiles })
     <p class="onb-lede">Drop in past emails, brand guidelines, or anything that captures voice. Kova extracts colors, fonts, tone, and writing rules. You can refine everything later in Brand Kit.</p>
 
     <div class="onb-drop" @dragover.prevent @drop="onDrop" @click="openPicker">
-      <div class="ic-circle"><icon-lucide-upload-cloud /></div>
+      <div class="ic-circle"><KovaIcon name="upload-cloud" /></div>
       <div class="h">Drop files here, or <span class="underline cursor-pointer">browse</span></div>
       <div class="types">PDF · HTML · .EML · PNG · JPG · up to 25 MB each</div>
     </div>
 
     <div v-if="files.length" class="onb-files">
       <div v-for="f in files" :key="f.name" class="file">
-        <icon-lucide-file-text class="w-3 h-3" />
+        <KovaIcon name="file-text" class="w-3 h-3" />
         <div class="nm">{{ f.name }}</div>
         <div class="sz">{{ (f.size / 1024 / 1024).toFixed(1) }} MB</div>
-        <button class="x" @click="files = files.filter(x => x !== f)"><icon-lucide-x class="w-3 h-3" /></button>
+        <button class="x" @click="files = files.filter(x => x !== f)"><KovaIcon name="x" class="w-3 h-3" /></button>
       </div>
     </div>
 
@@ -1780,23 +1780,23 @@ defineExpose({ onFiles, rejectedFiles })
 
     <div class="onb-ai">
       <div class="top">
-        <icon-lucide-sparkles class="ic" />
+        <KovaIcon name="sparkles" class="ic" />
         <span>Kova will extract</span>
         <span class="pill">AI</span>
       </div>
       <ul class="checks">
-        <li><icon-lucide-check class="ic" /><span>Brand colors and gradients</span></li>
-        <li><icon-lucide-check class="ic" /><span>Typography pairings</span></li>
-        <li><icon-lucide-check class="ic" /><span>Voice and tone snippets</span></li>
-        <li class="pending"><icon-lucide-circle-dashed class="ic" /><span>Writing rules from your notes</span></li>
-        <li class="pending"><icon-lucide-circle-dashed class="ic" /><span>Seed memories</span></li>
+        <li><KovaIcon name="check" class="ic" /><span>Brand colors and gradients</span></li>
+        <li><KovaIcon name="check" class="ic" /><span>Typography pairings</span></li>
+        <li><KovaIcon name="check" class="ic" /><span>Voice and tone snippets</span></li>
+        <li class="pending"><KovaIcon name="circle-dashed" class="ic" /><span>Writing rules from your notes</span></li>
+        <li class="pending"><KovaIcon name="circle-dashed" class="ic" /><span>Seed memories</span></li>
       </ul>
     </div>
 
     <div class="onb-actions">
       <button class="btn" @click="$emit('skip')">Do this later</button>
       <button class="btn primary" @click="$emit('commit', { files, guidelines })">
-        <icon-lucide-sparkles class="ic" />Extract and continue
+        <KovaIcon name="sparkles" class="ic" />Extract and continue
       </button>
     </div>
   </div>
@@ -1858,7 +1858,7 @@ defineEmits<{ enter: []; pick: [kind: 'draft' | 'import' | 'browse' | 'add-brand
 <template>
   <div class="onb-card">
     <div class="onb-splash">
-      <div class="check-medal"><icon-lucide-check class="w-6 h-6" /></div>
+      <div class="check-medal"><KovaIcon name="check" class="w-6 h-6" /></div>
       <div>
         <div class="onb-eyebrow">Workspace ready</div>
         <h1>You're in.</h1>
@@ -1890,7 +1890,7 @@ defineEmits<{ enter: []; pick: [kind: 'draft' | 'import' | 'browse' | 'add-brand
 
       <button class="btn primary enter-btn" @click="$emit('enter')">
         Enter {{ brandName }} workspace
-        <icon-lucide-arrow-right class="ic" />
+        <KovaIcon name="arrow-right" class="ic" />
       </button>
     </div>
   </div>
@@ -2096,7 +2096,7 @@ const searchQuery = ref('')
                    @new-brand="() => { /* TODO(cluster-03): wire BrandModal via useBrandModalStore once Cluster 03 ships */ }"
                    @manage-brands="() => router.push('/account/brands')" />
     <label class="side-search">
-      <icon-lucide-search class="w-3 h-3" />
+      <KovaIcon name="search" class="w-3 h-3" />
       <input v-model="searchQuery" type="search" placeholder="Search" />
     </label>
     <SideNav @nav="(name) => router.push({ name })" />
@@ -2180,7 +2180,7 @@ const brands = useBrandsStore()
       <button class="brand-switch">
         <div class="logo">{{ currentBrand.name.charAt(0) }}</div>
         <div class="name">{{ currentBrand.name }}</div>
-        <span class="caret"><icon-lucide-chevrons-up-down class="w-3 h-3" /></span>
+        <span class="caret"><KovaIcon name="chevrons-up-down" class="w-3 h-3" /></span>
       </button>
     </DropdownMenuTrigger>
     <DropdownMenuPortal>
@@ -2196,10 +2196,10 @@ const brands = useBrandsStore()
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem @click="$emit('manage-brands')">
-          <icon-lucide-layers class="w-3 h-3" />Manage brands
+          <KovaIcon name="layers" class="w-3 h-3" />Manage brands
         </DropdownMenuItem>
         <DropdownMenuItem @click="$emit('new-brand')">
-          <icon-lucide-plus class="w-3 h-3" />New brand
+          <KovaIcon name="plus" class="w-3 h-3" />New brand
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenuPortal>
@@ -2296,7 +2296,7 @@ defineEmits<{ nav: [routeName: string] }>()
         :class="{ active: route.name === item.route }"
         @click="$emit('nav', item.route)"
       >
-        <component :is="`icon-lucide-${item.icon}`" class="ic" />
+        <KovaIcon :name="item.icon" class="ic" />
         <span>{{ item.label }}</span>
         <span v-if="item.soon" class="pill ml-auto" style="font-size:9px;padding:1px 5px;">SOON</span>
         <span v-else-if="item.count !== undefined" class="count">{{ item.count }}</span>
@@ -2449,13 +2449,13 @@ defineEmits<{ 'new-canvas': [] }>()
   <header class="topbar">
     <div class="breadcrumb">
       <span>{{ brandName }}</span>
-      <span class="sep"><icon-lucide-chevron-right class="w-3 h-3" /></span>
+      <span class="sep"><KovaIcon name="chevron-right" class="w-3 h-3" /></span>
       <b>{{ currentPage }}</b>
     </div>
     <div class="actions">
       <slot name="actions" />
       <button class="btn sm" @click="$emit('new-canvas')">
-        <icon-lucide-folder-plus class="ic" />New canvas
+        <KovaIcon name="folder-plus" class="ic" />New canvas
       </button>
     </div>
   </header>
@@ -2527,12 +2527,12 @@ describe('ComposerInputWrap', () => {
   test('idle renders editable input + arrow-right submit', () => {
     const w = mount(ComposerInputWrap, { props: { modelValue: 'Hi', state: 'idle' } })
     expect(w.find('[contenteditable="true"]').exists()).toBe(true)
-    expect(w.find('icon-lucide-arrow-right').exists()).toBe(true)
+    expect(w.findComponent({ name: 'KovaIcon' }).props('name')).toBe('arrow-right')
   })
 
   test('submitting renders loader-2 spinner + aria-readonly', () => {
     const w = mount(ComposerInputWrap, { props: { modelValue: 'Hi', state: 'submitting' } })
-    expect(w.find('icon-lucide-loader-2').exists()).toBe(true)
+    expect(w.findComponent({ name: 'KovaIcon' }).props('name')).toBe('loader-2')
     expect(w.find('[contenteditable]').attributes('aria-readonly')).toBe('true')
   })
 
@@ -2597,8 +2597,8 @@ function onInput(e: Event): void {
       <button class="btn accent go" :disabled="!modelValue.trim() || state !== 'idle'" @click="emit('submit')">
         <span v-if="state === 'review'" class="tick">Ready</span>
         <span v-else>Generate on canvas</span>
-        <icon-lucide-loader-2 v-if="state === 'submitting'" class="ic animate-spin" />
-        <icon-lucide-arrow-right v-else class="ic" />
+        <KovaIcon name="loader-2" v-if="state === 'submitting'" class="ic animate-spin" />
+        <KovaIcon name="arrow-right" v-else class="ic" />
       </button>
     </div>
   </div>
@@ -2660,7 +2660,7 @@ defineEmits<{ select: [preset: ComposerPreset] }>()
 <template>
   <div class="composer-chips">
     <button v-for="p in presets" :key="p.id" class="composer-chip" @click="$emit('select', p)">
-      <component :is="`icon-lucide-${p.icon}`" class="ic" />{{ p.label }}
+      <KovaIcon :name="p.icon" class="ic" />{{ p.label }}
     </button>
   </div>
 </template>
@@ -2963,7 +2963,7 @@ const statusLabel = computed(() => statusKind.value.charAt(0).toUpperCase() + st
     <div class="meta">
       <div class="title">{{ canvas.name }}</div>
       <div class="sub">
-        <icon-lucide-clock class="ic" />
+        <KovaIcon name="clock" class="ic" />
         <span>{{ formatRelativeTime(canvas.updated_at) }}</span>
       </div>
     </div>
@@ -3180,12 +3180,12 @@ import CanvasCreationTransition from '@/components/dashboard/CanvasCreationTrans
 describe('CanvasCreationTransition', () => {
   test('idle renders composer-input-wrap with arrow-right', () => {
     const w = mount(CanvasCreationTransition, { props: { state: 'idle', prompt: 'Spring sale' } })
-    expect(w.find('icon-lucide-arrow-right').exists()).toBe(true)
+    expect(w.findComponent({ name: 'KovaIcon' }).props('name')).toBe('arrow-right')
   })
 
   test('submitting renders loader-2 + "Creating canvas…"', () => {
     const w = mount(CanvasCreationTransition, { props: { state: 'submitting', prompt: 'Spring sale' } })
-    expect(w.find('icon-lucide-loader-2').exists()).toBe(true)
+    expect(w.findComponent({ name: 'KovaIcon' }).props('name')).toBe('loader-2')
     expect(w.text()).toContain('Creating canvas')
   })
 
@@ -3213,7 +3213,7 @@ defineProps<{ state: 'idle' | 'submitting' | 'review' | 'splash'; prompt: string
 
 <template>
   <div v-if="state === 'splash'" class="splash-stage">
-    <icon-lucide-loader-2 class="splash-spinner animate-spin" />
+    <KovaIcon name="loader-2" class="splash-spinner animate-spin" />
     <div class="splash-cap">Setting up your canvas…</div>
   </div>
   <div v-else class="composer">
@@ -3226,15 +3226,15 @@ defineProps<{ state: 'idle' | 'submitting' | 'review' | 'splash'; prompt: string
         <button class="btn accent go" disabled>
           <span v-if="state === 'review'">Ready</span>
           <span v-else>Generate on canvas</span>
-          <icon-lucide-loader-2 v-if="state === 'submitting'" class="ic animate-spin" />
-          <icon-lucide-check v-else-if="state === 'review'" class="ic tick" />
-          <icon-lucide-arrow-right v-else class="ic" />
+          <KovaIcon name="loader-2" v-if="state === 'submitting'" class="ic animate-spin" />
+          <KovaIcon name="check" v-else-if="state === 'review'" class="ic tick" />
+          <KovaIcon name="arrow-right" v-else class="ic" />
         </button>
       </div>
     </div>
     <div v-if="state === 'submitting'" class="composer-status">Creating canvas…</div>
     <div v-else-if="state === 'review'" class="composer-status ready">
-      <icon-lucide-check class="tick" />Ready
+      <KovaIcon name="check" class="tick" />Ready
     </div>
   </div>
 </template>
@@ -3387,17 +3387,17 @@ defineExpose({ onNewCanvas })
       >
         <template #empty>
           <div v-if="grid.hasSearchQuery.value" class="empty-pane small">
-            <icon-lucide-search-x class="w-4 h-4" />
+            <KovaIcon name="search-x" class="w-4 h-4" />
             <h5>Nothing matches here</h5>
             <button class="btn" @click="grid.search('')">Clear search</button>
           </div>
           <div v-else class="empty-pane">
-            <icon-lucide-layout-grid class="w-5 h-5" />
+            <KovaIcon name="layout-grid" class="w-5 h-5" />
             <h5>No canvases yet</h5>
             <p>Start a canvas to design emails, landings, or product pages with Kova.</p>
             <div class="cta-row">
               <button class="btn primary sm" @click="onNewCanvas">
-                <icon-lucide-plus class="ic" />New canvas
+                <KovaIcon name="plus" class="ic" />New canvas
               </button>
             </div>
           </div>
@@ -3731,7 +3731,7 @@ async function onNotifyMe() {
 
 <template>
   <div class="cs-pane">
-    <div class="ic-tile"><component :is="`icon-lucide-${spec.icon}`" class="w-5 h-5" /></div>
+    <div class="ic-tile"><KovaIcon :name="spec.icon" class="w-5 h-5" /></div>
     <div class="eyebrow">{{ spec.eyebrow }}</div>
     <h1>{{ spec.headline }}</h1>
     <p>{{ spec.body }}</p>
@@ -3740,12 +3740,12 @@ async function onNotifyMe() {
     </div>
     <ul class="roadmap">
       <li v-for="r in spec.roadmap" :key="r">
-        <icon-lucide-check class="ic" /><span class="label">{{ r }}</span><span class="tag-mono">PLANNED</span>
+        <KovaIcon name="check" class="ic" /><span class="label">{{ r }}</span><span class="tag-mono">PLANNED</span>
       </li>
     </ul>
     <div class="cta-row">
-      <button class="btn primary sm" @click="onNotifyMe"><icon-lucide-bell class="ic" />Notify me when it's ready</button>
-      <button class="btn sm"><icon-lucide-external-link class="ic" />Read the roadmap</button>
+      <button class="btn primary sm" @click="onNotifyMe"><KovaIcon name="bell" class="ic" />Notify me when it's ready</button>
+      <button class="btn sm"><KovaIcon name="external-link" class="ic" />Read the roadmap</button>
     </div>
   </div>
 </template>

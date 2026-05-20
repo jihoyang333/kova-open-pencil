@@ -1746,7 +1746,7 @@ const { isOpen, mode, close } = usePreferencesModal()
     <template #footer>
       <div class="dlg-foot flex items-center justify-between">
         <div class="l flex items-center gap-2">
-          <icon-lucide-info class="w-3 h-3" />
+          <KovaIcon name="info" class="w-3 h-3" />
           <span>Saved to your account · syncs across devices.</span>
         </div>
         <div class="r flex items-center gap-2">

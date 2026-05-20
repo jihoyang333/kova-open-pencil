@@ -1674,7 +1674,7 @@ const tooltip = computed(() => {
       :aria-label="`Remove ${reference.title}`"
       @click="emit('remove')"
     >
-      <icon-lucide-x class="size-2.5" />
+      <KovaIcon name="x" class="size-2.5" />
     </button>
   </div>
 </template>
@@ -2235,7 +2235,7 @@ watch(pendingMessage, async (msg) => {
         aria-label="Scroll tabs left"
         @click="scrollTabs('left')"
       >
-        <icon-lucide-chevron-left class="size-3.5" />
+        <KovaIcon name="chevron-left" class="size-3.5" />
       </button>
 
       <div
@@ -2266,7 +2266,7 @@ watch(pendingMessage, async (msg) => {
         aria-label="Scroll tabs right"
         @click="scrollTabs('right')"
       >
-        <icon-lucide-chevron-right class="size-3.5" />
+        <KovaIcon name="chevron-right" class="size-3.5" />
       </button>
 
       <!-- New chat button — disabled at cap (founder-locked §12.12 item 3) -->
@@ -2279,7 +2279,7 @@ watch(pendingMessage, async (msg) => {
         :aria-label="isNewChatDisabled ? 'Max 20 chats reached — close one first' : 'New chat'"
         @click="handleNewTab"
       >
-        <icon-lucide-plus class="size-3.5" />
+        <KovaIcon name="plus" class="size-3.5" />
       </button>
     </div>
 
@@ -2291,7 +2291,7 @@ watch(pendingMessage, async (msg) => {
           data-test-id="chat-empty-state"
           class="flex h-full flex-col items-center justify-center gap-3 text-muted"
         >
-          <icon-lucide-message-circle class="size-8 opacity-50" />
+          <KovaIcon name="message-circle" class="size-8 opacity-50" />
           <p class="text-center text-xs">Describe what you want to create or change.</p>
         </div>
 
@@ -2304,7 +2304,7 @@ watch(pendingMessage, async (msg) => {
 
           <div v-if="showContinue" class="flex justify-center py-2">
             <button class="..." @click="handleSubmit('Continue where you left off')">
-              <icon-lucide-play class="size-3" />
+              <KovaIcon name="play" class="size-3" />
               Continue
             </button>
           </div>

@@ -1832,7 +1832,7 @@ function onCancel() {
   <KovaModal size="sm">
     <div class="dlg-head">
       <h3>Add to version history</h3>
-      <button class="x" @click="onCancel"><icon-lucide-x style="width:14px;height:14px" /></button>
+      <button class="x" @click="onCancel"><KovaIcon name="x" style="width:14px;height:14px" /></button>
     </div>
     <div class="dlg-body">
       <div class="fld">
@@ -1923,7 +1923,7 @@ const restoreLabel = computed(() => props.snapshot.label || new Date(props.snaps
     </div>
     <div class="dlg-foot">
       <div class="l">
-        <icon-lucide-info style="width:12px;height:12px" />
+        <KovaIcon name="info" style="width:12px;height:12px" />
         Restoring {{ restoreLabel }}
       </div>
       <div class="r">
@@ -1956,7 +1956,7 @@ Four small components, each a single file + single test. Group into one commit a
 <!-- SnapshotEmptyState.vue (matches hi-fi 17.11 — `.empty-pane` from A11) -->
 <template>
   <div class="empty-pane">
-    <div class="ic-wrap"><icon-lucide-history style="width:18px;height:18px" /></div>
+    <div class="ic-wrap"><KovaIcon name="history" style="width:18px;height:18px" /></div>
     <h5>No version history yet</h5>
     <p>Press <span style="color:var(--ink-2)">⌘+⌥+S</span> to save manually, or autosave will create one in the background.</p>
   </div>
@@ -1972,8 +1972,8 @@ defineEmits<{ toggle: [] }>()
 <template>
   <div class="vh-group-head" @click="$emit('toggle')">
     <div class="dot"><div class="chev">
-      <icon-lucide-chevron-right v-if="collapsed" style="width:10px;height:10px" />
-      <icon-lucide-chevron-down v-else style="width:10px;height:10px" />
+      <KovaIcon name="chevron-right" v-if="collapsed" style="width:10px;height:10px" />
+      <KovaIcon name="chevron-down" v-else style="width:10px;height:10px" />
     </div></div>
     <div class="lbl">{{ count }} autosave version{{ count === 1 ? '' : 's' }}</div>
   </div>
@@ -1999,7 +1999,7 @@ const emit = defineEmits<{ 'update:showAutosaves': [value: boolean] }>()
 <template>
   <div class="menu" style="min-width:200px">
     <div class="item checkable" :class="{ checked: props.showAutosaves }" @click="emit('update:showAutosaves', !props.showAutosaves)">
-      <span class="check"><icon-lucide-check class="ic" /></span>
+      <span class="check"><KovaIcon name="check" class="ic" /></span>
       <span class="lbl">Show autosave versions</span>
     </div>
   </div>
@@ -2143,7 +2143,7 @@ function startRename() { menuOpen.value = false; renaming.value = true }
       </template>
     </div>
     <div data-testid="more" class="more hidden-until-hover" @click.stop="menuOpen = !menuOpen">
-      <icon-lucide-more-horizontal style="width:14px;height:14px" />
+      <KovaIcon name="more-horizontal" style="width:14px;height:14px" />
     </div>
 
     <div v-if="menuOpen" class="menu w-260" style="position:absolute">
@@ -2300,13 +2300,13 @@ function onPreview(id: string) { store.previewSnapshot(id) }
       <div class="ttl">Version history</div>
       <div class="icns">
         <div class="a" :class="{ open: filterOpen }" @click="filterOpen = !filterOpen">
-          <icon-lucide-list-filter />
+          <KovaIcon name="list-filter" />
         </div>
         <div class="a" @click="store.openAddDialog()">
-          <icon-lucide-plus />
+          <KovaIcon name="plus" />
         </div>
         <div class="a" @click="emit('close')">
-          <icon-lucide-x />
+          <KovaIcon name="x" />
         </div>
       </div>
     </div>
@@ -2412,7 +2412,7 @@ const emit = defineEmits<{ confirmed: []; cancelled: [] }>()
         <h3>Move "{{ canvasName }}" to trash?</h3>
         <p class="sub">Restore anytime from Trash.</p>
       </div>
-      <button class="x" @click="emit('cancelled')"><icon-lucide-x style="width:14px;height:14px" /></button>
+      <button class="x" @click="emit('cancelled')"><KovaIcon name="x" style="width:14px;height:14px" /></button>
     </div>
     <div class="dlg-body">
       <p style="margin:0;font-size:12.5px;color:var(--ink-2);line-height:1.55">
