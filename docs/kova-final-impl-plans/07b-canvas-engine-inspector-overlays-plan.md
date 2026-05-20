@@ -2029,6 +2029,39 @@ describe('BooleanOpsRow', () => {
     await wrapper.findAll('button')[0].trigger('click')
     expect(booleanOperationMock).toHaveBeenCalledWith('UNION')
   })
+
+  // C-LOW07b.2: disabled-state when selection < 2
+  it('all 4 buttons disabled when selection has 0 nodes', async () => {
+    mock.module('@/stores/editor', () => ({ useEditorStore: () => ({ selectedNodes: [] }) }))
+    const wrapper = mount(BooleanOpsRow)
+    for (const btn of wrapper.findAll('button')) {
+      expect(btn.attributes('disabled')).toBeDefined()
+    }
+  })
+
+  it('all 4 buttons disabled when selection has 1 node', async () => {
+    mock.module('@/stores/editor', () => ({ useEditorStore: () => ({ selectedNodes: [{ id: 'only' }] }) }))
+    const wrapper = mount(BooleanOpsRow)
+    for (const btn of wrapper.findAll('button')) {
+      expect(btn.attributes('disabled')).toBeDefined()
+    }
+  })
+
+  it('buttons enabled when selection has 2+ nodes', async () => {
+    mock.module('@/stores/editor', () => ({ useEditorStore: () => ({ selectedNodes: [{ id: 'a' }, { id: 'b' }] }) }))
+    const wrapper = mount(BooleanOpsRow)
+    for (const btn of wrapper.findAll('button')) {
+      expect(btn.attributes('disabled')).toBeUndefined()
+    }
+  })
+
+  it('clicking a disabled button does NOT invoke figma.booleanOperation', async () => {
+    mock.module('@/stores/editor', () => ({ useEditorStore: () => ({ selectedNodes: [{ id: 'only' }] }) }))
+    booleanOperationMock.mockClear()
+    const wrapper = mount(BooleanOpsRow)
+    await wrapper.findAll('button')[0].trigger('click')
+    expect(booleanOperationMock).not.toHaveBeenCalled()
+  })
 })
 ```
 
