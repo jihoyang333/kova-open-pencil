@@ -4,11 +4,11 @@
 
 | Field | Value |
 |---|---|
-| **Status** | `DRAFT` 2026-05-15 |
+| **Status** | `IN-REVIEW` 2026-05-17 |
 | **Wave** | 5 (canvas engine pair — sibling of 07a) |
 | **Author** | Claude (Opus 4.7) |
 | **Reviewer** | Jiho Yang (founder) |
-| **Last updated** | 2026-05-15 |
+| **Last updated** | 2026-05-19 |
 | **Depends on PRDs** | 06 (Canvas Editor Core Chrome — hosts the inspector + overlay layer), 07a (Canvas Engine Core + Renderer — ships the NodeTypes, renderer compositing, and tool slots that 07b consumes) |
 | **Blocks PRDs** | 08 (Menus + Popovers + Shortcuts — Boolean-ops shortcuts register into the registry 08 ships), 09 (Version History + Trash — slice-export pipeline must be stable before snapshot diffs ship), 10 (AI Chat + Memory + Tools — AI tool layer reads the same engine state and overlay flags) |
 | **Source artifacts** | Hi-fi: 3 files (Inspector 11, Color Picker 12, Canvas Overlays 09). 03 doc: §2.7 buckets §3C #1c (Inspector wiring) + §3C #1d (App-level overlays). Q-decisions: Q3 (9 features engine-ready), Q20 (eyedropper canvas-only), Q21 (4 image-fill modes), Q22 (JPG export 3-level), Q23 (copy/paste props full set), Q24 (drag-drop semantics — image fill drop), Q3 #14 (boolean ops + Figma shortcuts). Audit §2.A Cluster 07 lines 1614–1683 (cluster 07 spec; 07b lifts 1c + 1d buckets). |
