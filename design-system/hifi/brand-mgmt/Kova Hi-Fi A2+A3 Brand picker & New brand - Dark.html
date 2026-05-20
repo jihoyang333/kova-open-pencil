@@ -1,0 +1,1239 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<title>Kova — Hi-fi · A2 Brand picker + A3 New brand · Dark</title>
+<meta name="viewport" content="width=1440" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+<link rel="stylesheet" href="../../design-system/kova-hifi.css" />
+<script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
+<style>
+/* ============================================================
+   A2 BRAND PICKER (page-level) + A3 NEW BRAND FLOW
+   Sits between auth and dashboard. Multi-brand users land here
+   on login and pick a brand. Single-brand users skip it. The
+   "+ New brand" CTA hands off to A3, which mirrors A1 onboarding
+   chrome (steps 2–4 of A1 extracted into a standalone flow).
+
+   A3 reuses A1's: progress strip · onb-card · onb-id-row ·
+   onb-input-affixed · onb-connect · onb-drop · onb-files ·
+   onb-textarea · onb-ai · splash. Only the step count
+   changes (5 → 3 + done) and we omit the auth step.
+
+   Screens:
+     A2.a Brand picker · populated (4 brands)
+     A2.b Brand picker · empty (zero brands edge case)
+     A3.a New brand · name + URL
+     A3.b New brand · Shopify
+     A3.c New brand · brand kit populate
+     A3.d New brand · done splash
+   ============================================================ */
+
+  /* Section-heading typography rule per handoff §3.1 — bump
+     beats `section.block h2`. */
+  .bp-shell h2,
+  .onb-shell h2,
+  section.block .bp-shell h2,
+  section.block .onb-shell h2 {
+    margin: 0 0 2px;
+    font-size: 16px;
+    font-family: 'Inter', system-ui, sans-serif;
+    letter-spacing: -0.005em;
+    color: var(--ink);
+    font-weight: 600;
+    text-transform: none;
+  }
+
+  /* =========================================================
+     A2 — page-level brand picker chrome
+     ========================================================= */
+
+  .bp-shell {
+    height: 100%;
+    background: var(--page);
+    display: flex; flex-direction: column;
+    min-height: 0;
+  }
+
+  /* Slim top chrome — wordmark left, user pill right.
+     No sidebar (user is between brands), no breadcrumb (no brand
+     selected yet). Calmer than dashboard topbar. */
+  .bp-top {
+    height: 56px;
+    border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 28px;
+    flex-shrink: 0;
+    background: var(--page);
+  }
+  .bp-top .wordmark {
+    display: inline-flex; align-items: center; gap: 9px;
+    font-size: 13.5px; font-weight: 600;
+    color: var(--ink); letter-spacing: -0.01em;
+  }
+  .bp-top .wordmark .glyph {
+    width: 20px; height: 20px; border-radius: 4px;
+    background: #ededea; color: #0d0d0c;
+    display: grid; place-items: center;
+    font-weight: 800; font-size: 12px; letter-spacing: -0.04em;
+  }
+  .bp-top .who {
+    display: inline-flex; align-items: center; gap: 8px;
+    color: var(--ink-2); font-size: 12.5px;
+    padding: 5px 8px 5px 6px;
+    border: 1px solid var(--line); border-radius: 999px;
+    background: var(--page);
+    cursor: pointer;
+    transition: border-color .12s ease;
+  }
+  .bp-top .who:hover { border-color: var(--ink-3); }
+  .bp-top .who .ava {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--warn); color: #fff;
+    display: grid; place-items: center;
+    font-weight: 600; font-size: 9.5px;
+    letter-spacing: 0.01em;
+  }
+  .bp-top .who .nm { color: var(--ink); font-weight: 500; }
+  .bp-top .who .ic { width: 12px; height: 12px; color: var(--ink-3); }
+
+  /* Stage centers the picker block; plenty of breathing room. */
+  .bp-stage {
+    flex: 1; min-height: 0;
+    display: grid; place-items: center;
+    padding: 56px 32px 64px;
+    overflow: auto;
+  }
+  .bp-block {
+    width: 880px; max-width: 100%;
+    display: flex; flex-direction: column; gap: 28px;
+  }
+  .bp-head {
+    display: flex; align-items: flex-end; justify-content: space-between;
+    gap: 24px;
+  }
+  .bp-head .l { display: flex; flex-direction: column; gap: 6px; }
+  .bp-head .eyebrow { font-size: 10.5px; color: var(--ink-3); }
+  .bp-head h1 {
+    margin: 0; font-size: 26px;
+    font-weight: 600; letter-spacing: -0.018em;
+    color: var(--ink); line-height: 1.2;
+  }
+  .bp-head .lede {
+    margin: 0; color: var(--ink-2); font-size: 13.5px;
+    max-width: 540px;
+  }
+  .bp-head .r {
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+
+  /* Search + filter row (above the grid) */
+  .bp-tools {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 10px; align-items: center;
+  }
+  .bp-search {
+    display: flex; align-items: center; gap: 9px;
+    padding: 8px 12px;
+    border: 1px solid var(--line); border-radius: 7px;
+    background: var(--page); color: var(--ink-3);
+    font-size: 13px;
+  }
+  .bp-search input {
+    flex: 1; border: 0; outline: 0;
+    background: transparent; color: var(--ink);
+    font: inherit;
+  }
+  .bp-search input::placeholder { color: var(--ink-3); }
+  .bp-search .kbd {
+    margin-left: auto; font-size: 10px; color: var(--ink-3);
+    background: var(--fill); padding: 1px 5px;
+    border-radius: 3px; border: 1px solid var(--line-2);
+  }
+  .bp-sort {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 11px;
+    border: 1px solid var(--line); border-radius: 7px;
+    background: var(--page); color: var(--ink-2);
+    font-size: 12.5px; cursor: pointer;
+  }
+  .bp-sort:hover { border-color: var(--ink-3); }
+  .bp-sort .ic { width: 13px; height: 13px; color: var(--ink-3); }
+  .bp-sort .lbl { color: var(--ink-3); }
+  .bp-sort .val { color: var(--ink); font-weight: 500; }
+
+  /* ---- Brand grid ---- */
+  .bp-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+  }
+
+  /* Brand card — logo + name + meta + last-edited row + actions */
+  .bp-card {
+    border: 1px solid var(--line);
+    background: var(--page);
+    border-radius: 10px;
+    padding: 18px 18px 14px;
+    display: flex; flex-direction: column; gap: 14px;
+    cursor: pointer;
+    transition: border-color .12s ease, transform .12s ease, background .12s ease;
+    position: relative;
+  }
+  .bp-card:hover {
+    border-color: var(--ink-3);
+    background: #181816;
+  }
+  .bp-card .top {
+    display: flex; align-items: flex-start; gap: 12px;
+  }
+  .bp-card .logo {
+    width: 44px; height: 44px; border-radius: 8px;
+    background: #ededea; color: #0d0d0c;
+    display: grid; place-items: center;
+    font-weight: 800; font-size: 20px;
+    letter-spacing: -0.04em;
+    flex-shrink: 0;
+  }
+  /* Tinted brand glyphs to differentiate cards on the grid.
+     Hex chosen to read at-a-glance against --page (#141412). */
+  .bp-card .logo.k-coral { background: #d8643c; color: #0d0d0c; }
+  .bp-card .logo.k-violet { background: #7d6df0; color: #ededea; }
+  .bp-card .logo.k-sage { background: #94a888; color: #0d0d0c; }
+  .bp-card .logo.k-sand { background: #c8b48b; color: #0d0d0c; }
+  .bp-card .logo.k-graphite { background: #2d2d29; color: #ededea; border: 1px solid var(--line); }
+  .bp-card .heads {
+    display: flex; flex-direction: column; gap: 3px;
+    min-width: 0; flex: 1;
+  }
+  .bp-card .nm {
+    font-size: 14.5px; font-weight: 600;
+    color: var(--ink); letter-spacing: -0.008em;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .bp-card .url { font-size: 10.5px; color: var(--ink-3);
+    letter-spacing: 0.02em;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .bp-card .kebab {
+    width: 26px; height: 26px;
+    display: grid; place-items: center;
+    border-radius: 5px;
+    color: var(--ink-3); cursor: pointer;
+    flex-shrink: 0;
+  }
+  .bp-card .kebab:hover { background: var(--line-2); color: var(--ink); }
+
+  /* Status pills row inside card */
+  .bp-card .pills {
+    display: flex; flex-wrap: wrap; gap: 6px;
+  }
+  .bp-card .pills .pill {
+    font-size: 10.5px; padding: 3px 8px;
+  }
+  .bp-card .pills .pill .ic { width: 11px; height: 11px; }
+  .bp-card .pills .shopify-glyph {
+    width: 11px; height: 11px; border-radius: 2px;
+    background: #95bf47; color: #0d0d0c;
+    display: grid; place-items: center;
+    font-weight: 800; font-size: 7px;
+    letter-spacing: -0.04em;
+    flex-shrink: 0;
+  }
+
+  /* Stats row — canvases + last-edited + tiny avatar */
+  .bp-card .meta {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--line-2);
+    font-size: 11.5px; color: var(--ink-3);
+  }
+  .bp-card .meta .cell {
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .bp-card .meta .lbl { font-size: 9.5px; letter-spacing: 0.1em; color: var(--ink-3);
+  }
+  .bp-card .meta .val { color: var(--ink); font-weight: 500; font-size: 12px; }
+
+  /* "+ New brand" tile — CTA card living inside the grid. Visually
+     differentiated as dashed/quiet so it doesn't compete with brand
+     cards but is clearly tappable. */
+  .bp-newcard {
+    border: 1px dashed var(--line);
+    background: transparent;
+    border-radius: 10px;
+    padding: 18px;
+    display: flex; flex-direction: column; gap: 10px;
+    align-items: center; justify-content: center;
+    text-align: center;
+    cursor: pointer;
+    color: var(--ink-2);
+    min-height: 188px;
+    transition: border-color .12s ease, color .12s ease, background .12s ease;
+  }
+  .bp-newcard:hover {
+    border-color: var(--ink-3); color: var(--ink);
+    background: #181816;
+  }
+  .bp-newcard .plus {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: var(--fill); color: var(--ink);
+    display: grid; place-items: center;
+  }
+  .bp-newcard .h {
+    font-size: 13.5px; font-weight: 600; color: var(--ink);
+    letter-spacing: -0.005em;
+  }
+  .bp-newcard .sub {
+    font-size: 11.5px; color: var(--ink-3);
+    max-width: 200px;
+  }
+
+  /* Footer hint under grid */
+  .bp-foothint {
+    margin-top: 4px;
+    font-size: 11.5px; color: var(--ink-3);
+    text-align: center;
+  }
+  .bp-foothint a { color: var(--ink-2); }
+
+  /* ---- A2.b empty state (zero brands) ---- */
+  .bp-empty {
+    border: 1px solid var(--line);
+    background: var(--rail);
+    border-radius: 10px;
+    padding: 56px 32px;
+    display: flex; flex-direction: column; gap: 14px;
+    align-items: center; text-align: center;
+  }
+  .bp-empty .ic-circle {
+    width: 48px; height: 48px; border-radius: 50%;
+    background: var(--fill); color: var(--ink-2);
+    display: grid; place-items: center;
+    margin-bottom: 4px;
+  }
+  .bp-empty h3 {
+    margin: 0; font-size: 16px; font-weight: 600;
+    letter-spacing: -0.008em; color: var(--ink);
+  }
+  .bp-empty p {
+    margin: 0; max-width: 420px;
+    font-size: 13px; color: var(--ink-2); line-height: 1.55;
+  }
+  .bp-empty .btn { margin-top: 8px; padding: 9px 16px; font-size: 13px; }
+
+  /* =========================================================
+     A3 — new-brand mini-onboarding chrome (mirrors A1)
+     ========================================================= */
+  .onb-shell {
+    height: 100%;
+    background: var(--page);
+    display: flex; flex-direction: column;
+    min-height: 0;
+  }
+  .onb-progress {
+    padding: 16px 28px 14px;
+    border-bottom: 1px solid var(--line-2);
+    display: flex; align-items: center; gap: 16px;
+    flex-shrink: 0;
+  }
+  .onb-progress .wordmark {
+    font-size: 13px; font-weight: 600;
+    letter-spacing: -0.01em; color: var(--ink);
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .onb-progress .wordmark .glyph {
+    width: 18px; height: 18px; border-radius: 4px;
+    background: #ededea; color: #0d0d0c;
+    display: grid; place-items: center;
+    font-weight: 800; font-size: 11px;
+    letter-spacing: -0.04em;
+  }
+  .onb-progress .ctx {
+    display: inline-flex; align-items: center; gap: 6px;
+    color: var(--ink-3); font-size: 11.5px;
+    padding-left: 12px; margin-left: 4px;
+    border-left: 1px solid var(--line-2);
+  }
+  .onb-progress .ctx .ic { width: 12px; height: 12px; }
+  .onb-progress .dots {
+    display: flex; align-items: center; gap: 8px;
+    flex: 1; justify-content: center;
+  }
+  .onb-progress .dot {
+    height: 4px; flex: 0 0 70px; border-radius: 2px;
+    background: var(--line-2);
+    transition: background .15s ease;
+  }
+  .onb-progress .dot.done { background: var(--ink-3); }
+  .onb-progress .dot.active { background: var(--ink); flex-basis: 96px; }
+  .onb-progress .meta { font-size: 10.5px; color: var(--ink-3); min-width: 130px; text-align: right;
+  }
+  /* "Cancel" close button — distinguishes A3 from A1, since user is
+     mid-app rather than mid-signup. Returns to brand picker A2. */
+  .onb-progress .close {
+    display: inline-flex; align-items: center; gap: 6px;
+    color: var(--ink-3); font-size: 12px;
+    padding: 4px 8px; border-radius: 5px;
+    cursor: pointer;
+  }
+  .onb-progress .close:hover { background: var(--line-2); color: var(--ink); }
+  .onb-progress .close .ic { width: 13px; height: 13px; }
+
+  .onb-stage {
+    flex: 1; min-height: 0;
+    display: grid; place-items: center;
+    padding: 40px 24px 56px;
+    overflow: auto;
+  }
+  .onb-card {
+    width: 480px; max-width: 100%;
+    display: flex; flex-direction: column; gap: 22px;
+  }
+  .onb-card.wide { width: 560px; }
+  .onb-eyebrow { font-size: 10.5px; color: var(--ink-3); }
+  .onb-card h1 {
+    margin: 0; font-size: 26px; line-height: 1.2;
+    font-weight: 600; letter-spacing: -0.018em; color: var(--ink);
+  }
+  .onb-lede {
+    margin: 0; color: var(--ink-2); font-size: 14px;
+    line-height: 1.55; max-width: 440px;
+  }
+  .onb-field { display: flex; flex-direction: column; gap: 6px; }
+  .onb-field .lbl {
+    font-size: 11.5px; font-weight: 500; color: var(--ink-2);
+    letter-spacing: -0.005em;
+  }
+  .onb-field .lbl .opt { font-size: 9.5px; color: var(--ink-3);
+    letter-spacing: 0.1em; margin-left: 6px;
+  }
+  .onb-field .input { font-size: 14px; padding: 9px 12px; }
+  .onb-field .help { font-size: 11.5px; color: var(--ink-3); }
+  .onb-field .help.ok { color: var(--ok); }
+  .onb-input-affixed {
+    display: flex; align-items: stretch;
+    border: 1px solid var(--line); border-radius: 6px;
+    background: var(--page); overflow: hidden;
+  }
+  .onb-input-affixed .pre {
+    padding: 9px 11px; background: var(--rail);
+    border-right: 1px solid var(--line);
+    color: var(--ink-3); font-size: 13px;
+    display: grid; place-items: center; }
+  .onb-input-affixed input {
+    flex: 1; border: 0; outline: 0;
+    background: transparent; color: var(--ink);
+    font: inherit; padding: 9px 12px; font-size: 14px;
+  }
+  .onb-input-affixed .post {
+    padding: 0 12px; background: transparent;
+    color: var(--ink-3); font-size: 13px;
+    display: grid; place-items: center; }
+  .onb-actions {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 10px; margin-top: 4px;
+  }
+  .onb-actions .btn { padding: 9px 14px; font-size: 13px; }
+  .onb-actions .btn.primary { padding: 9px 16px; }
+  .onb-actions .btn .ic { width: 14px; height: 14px; }
+
+  .onb-id-row {
+    display: grid; grid-template-columns: 64px 1fr;
+    gap: 14px; align-items: stretch;
+  }
+  .onb-id-row .logo-slot {
+    width: 64px; height: 64px; border-radius: 8px;
+    border: 1px dashed var(--line);
+    background: var(--rail);
+    display: grid; place-items: center;
+    color: var(--ink-3);
+    position: relative; overflow: hidden;
+  }
+  .onb-id-row .logo-slot.fetched {
+    border-style: solid; border-color: var(--line);
+    background: #d8643c; color: #0d0d0c;
+    font-weight: 800; font-size: 26px;
+    letter-spacing: -0.04em;
+  }
+
+  .onb-connect {
+    display: flex; flex-direction: column; gap: 0;
+    border: 1px solid var(--line); border-radius: 8px;
+    background: var(--rail); overflow: hidden;
+  }
+  .onb-connect .head {
+    padding: 16px 18px;
+    display: flex; align-items: center; gap: 14px;
+    border-bottom: 1px solid var(--line-2);
+  }
+  .onb-connect .head .glyph {
+    width: 36px; height: 36px; border-radius: 8px;
+    background: #95bf47; color: #0d0d0c;
+    display: grid; place-items: center;
+    font-weight: 800; font-size: 18px; letter-spacing: -0.04em;
+  }
+  .onb-connect .head .nm {
+    font-size: 14px; font-weight: 600; color: var(--ink);
+    letter-spacing: -0.005em;
+  }
+  .onb-connect .head .sub {
+    font-size: 11.5px; color: var(--ink-3); margin-top: 1px;
+  }
+  .onb-connect .head .pill { margin-left: auto; }
+  .onb-connect .body {
+    padding: 14px 18px 16px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .onb-connect .scope {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 12.5px; color: var(--ink-2);
+  }
+  .onb-connect .scope .ic { width: 13px; height: 13px; color: var(--ok); }
+
+  .onb-store-input { display: flex; flex-direction: column; gap: 6px; }
+  .onb-store-input .lbl { font-size: 11.5px; color: var(--ink-2); font-weight: 500; }
+
+  .onb-drop {
+    border: 1px dashed var(--line);
+    border-radius: 8px;
+    background: var(--rail);
+    padding: 26px 20px;
+    display: flex; flex-direction: column; gap: 8px;
+    align-items: center; text-align: center;
+  }
+  .onb-drop .ic-circle {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: var(--fill); color: var(--ink-2);
+    display: grid; place-items: center;
+    margin-bottom: 4px;
+  }
+  .onb-drop .h {
+    font-size: 13.5px; font-weight: 500; color: var(--ink);
+  }
+  .onb-drop .types { font-size: 10.5px; color: var(--ink-3); }
+
+  .onb-textarea {
+    width: 100%;
+    background: var(--page); border: 1px solid var(--line);
+    border-radius: 6px; padding: 10px 12px;
+    font: inherit; font-size: 13px; color: var(--ink);
+    min-height: 92px; resize: vertical;
+    line-height: 1.55;
+  }
+  .onb-textarea::placeholder { color: var(--ink-3); }
+
+  .onb-files { display: flex; flex-direction: column; gap: 6px; }
+  .onb-files .file {
+    display: grid;
+    grid-template-columns: 22px 1fr auto auto;
+    gap: 10px; align-items: center;
+    padding: 8px 12px;
+    border: 1px solid var(--line); border-radius: 6px;
+    background: var(--page);
+    font-size: 12.5px;
+  }
+  .onb-files .file .nm { color: var(--ink); font-weight: 500; }
+  .onb-files .file .sz { font-size: 10.5px; color: var(--ink-3);
+  }
+  .onb-files .file .x {
+    color: var(--ink-3); cursor: pointer;
+    display: grid; place-items: center;
+  }
+
+  .onb-ai {
+    border: 1px solid var(--accent-2);
+    background: var(--accent-soft);
+    color: var(--accent-ink);
+    border-radius: 8px;
+    padding: 14px 16px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .onb-ai .top {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 12.5px; font-weight: 600;
+    color: var(--accent-ink);
+    letter-spacing: -0.005em;
+  }
+  .onb-ai .top .ic { width: 14px; height: 14px; color: var(--accent); }
+  .onb-ai .top .pill {
+    margin-left: auto;
+    background: rgba(95,125,255,0.16);
+    color: var(--accent-ink); border-color: var(--accent-2);
+    font-size: 10px; }
+  .onb-ai .checks {
+    display: flex; flex-direction: column; gap: 6px;
+    margin: 0; padding: 0; list-style: none;
+  }
+  .onb-ai .checks li {
+    display: grid;
+    grid-template-columns: 16px 1fr auto;
+    gap: 10px; align-items: center;
+    font-size: 12.5px; color: var(--accent-ink);
+  }
+  .onb-ai .checks li .ic { width: 14px; height: 14px; color: var(--accent); }
+  .onb-ai .checks li.pending { color: rgba(169,186,255,0.7); }
+  .onb-ai .checks li.pending .ic { color: rgba(169,186,255,0.5); }
+  .onb-ai .checks li .meta { font-size: 10px; color: rgba(169,186,255,0.7); }
+
+  /* Splash (A3.d) */
+  .onb-splash {
+    display: flex; flex-direction: column; gap: 26px;
+    align-items: center; text-align: center;
+  }
+  .onb-splash .check-medal {
+    width: 56px; height: 56px; border-radius: 50%;
+    background: var(--ok-soft); color: var(--ok);
+    display: grid; place-items: center;
+    border: 1px solid rgba(94,194,125,0.18);
+  }
+  .onb-splash h1 { font-size: 28px; }
+  .onb-splash .lede { text-align: center; margin: 0 auto; }
+  .onb-splash .enter-btn {
+    padding: 11px 18px; font-size: 13.5px;
+  }
+  .onb-foothint {
+    margin-top: 6px;
+    font-size: 11.5px; color: var(--ink-3); text-align: center;
+  }
+
+</style>
+</head>
+<body data-screen-label="A2 Brand picker + A3 New brand">
+
+<header class="page-head">
+  <div class="eyebrow">HI-FI · BATCH A · DARK · A2 + A3</div>
+  <h1>Brand picker · New brand flow</h1>
+  <p>The page-level brand picker (A2) lands multi-brand users between login and dashboard. "+ New brand" hands off to A3, a 3-step mini-onboarding that mirrors A1's chrome (steps 2–4 of A1, extracted into a reusable flow). Single-brand users skip A2 entirely and go straight to their dashboard.</p>
+  <div class="meta">/brands · /brands/new · 6 screens · dark</div>
+  <div class="legend">
+    <span class="sw"><i style="background:var(--ink);"></i>Active step</span>
+    <span class="sw"><i style="background:var(--ink-3);"></i>Completed</span>
+    <span class="sw"><i style="background:var(--line-2);"></i>Upcoming</span>
+    <span class="sw"><i style="background:var(--accent);"></i>AI extraction (A3.c only)</span>
+  </div>
+</header>
+
+
+<!-- ============================================================
+     A2.a — BRAND PICKER · POPULATED
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">A2 · A2.a</div>
+    <h2>Brand picker · populated</h2>
+    <p class="intro">Post-login landing for users with multiple brands. Cards show logo · name · URL · Shopify status · canvas count · last edited. Click a card → brand dashboard. Kebab → A4 brand CRUD modals (rename / archive / delete). The "+ New brand" tile lives in-grid as a peer card, not a floating CTA — equal weight with brands so users with 1 or 2 brands feel "add another" is a normal next step.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Brand picker · 4 brands</div><div class="id">A2.a · /brands</div></div>
+    <div class="canvas tall" data-screen-label="A2.a Brand picker populated">
+      <div class="bp-shell">
+        <div class="bp-top">
+          <div class="wordmark"><div class="glyph">K</div><span>Kova</span></div>
+          <div class="who">
+            <div class="ava">JY</div>
+            <div class="nm">Jiho Yang</div>
+            <i data-lucide="chevron-down" class="ic"></i>
+          </div>
+        </div>
+
+        <div class="bp-stage">
+          <div class="bp-block">
+            <div class="bp-head">
+              <div class="l">
+                <div class="eyebrow">Workspace</div>
+                <h1>Pick a brand to work on.</h1>
+                <p class="lede">Each brand is fully siloed — its own canvases, brand kit, products, and integrations. Switching is a hop, not a context loss.</p>
+              </div>
+              <div class="r">
+                <button class="btn"><i data-lucide="settings-2" class="ic"></i>Account</button>
+                <button class="btn primary"><i data-lucide="plus" class="ic"></i>New brand</button>
+              </div>
+            </div>
+
+            <div class="bp-tools">
+              <div class="bp-search">
+                <i data-lucide="search" style="width:13px;height:13px;"></i>
+                <input type="text" placeholder="Search brands by name or URL…" />
+                <span class="kbd">/</span>
+              </div>
+              <div class="bp-sort">
+                <i data-lucide="arrow-up-down" class="ic"></i>
+                <span class="lbl">Sort</span>
+                <span class="val">Last edited</span>
+                <i data-lucide="chevron-down" class="ic"></i>
+              </div>
+              <div class="bp-sort" title="Show archived">
+                <i data-lucide="archive" class="ic"></i>
+                <span class="val">All</span>
+                <i data-lucide="chevron-down" class="ic"></i>
+              </div>
+            </div>
+
+            <div class="bp-grid">
+
+              <!-- Card 1 — Nike (current) -->
+              <div class="bp-card">
+                <div class="top">
+                  <div class="logo k-coral">N</div>
+                  <div class="heads">
+                    <div class="nm">Nike</div>
+                    <div class="url">nike.com</div>
+                  </div>
+                  <div class="kebab"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+                </div>
+                <div class="pills">
+                  <span class="pill ok dot">Shopify connected</span>
+                  <span class="pill outline">Pro</span>
+                </div>
+                <div class="meta">
+                  <div class="cell">
+                    <span class="lbl">Canvases</span>
+                    <span class="val">42</span>
+                  </div>
+                  <div class="cell">
+                    <span class="lbl">Last edited</span>
+                    <span class="val">2 hours ago</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Card 2 — Allbirds -->
+              <div class="bp-card">
+                <div class="top">
+                  <div class="logo k-sage">A</div>
+                  <div class="heads">
+                    <div class="nm">Allbirds</div>
+                    <div class="url">allbirds.com</div>
+                  </div>
+                  <div class="kebab"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+                </div>
+                <div class="pills">
+                  <span class="pill ok dot">Shopify connected</span>
+                </div>
+                <div class="meta">
+                  <div class="cell">
+                    <span class="lbl">Canvases</span>
+                    <span class="val">17</span>
+                  </div>
+                  <div class="cell">
+                    <span class="lbl">Last edited</span>
+                    <span class="val">Yesterday</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Card 3 — Glossier (token expired) -->
+              <div class="bp-card">
+                <div class="top">
+                  <div class="logo k-sand">G</div>
+                  <div class="heads">
+                    <div class="nm">Glossier</div>
+                    <div class="url">glossier.com</div>
+                  </div>
+                  <div class="kebab"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+                </div>
+                <div class="pills">
+                  <span class="pill warn dot">Shopify · reconnect</span>
+                </div>
+                <div class="meta">
+                  <div class="cell">
+                    <span class="lbl">Canvases</span>
+                    <span class="val">8</span>
+                  </div>
+                  <div class="cell">
+                    <span class="lbl">Last edited</span>
+                    <span class="val">Apr 22</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Card 4 — Studio (no Shopify) -->
+              <div class="bp-card">
+                <div class="top">
+                  <div class="logo k-violet">S</div>
+                  <div class="heads">
+                    <div class="nm">Studio Collective</div>
+                    <div class="url">studiocollective.co</div>
+                  </div>
+                  <div class="kebab"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+                </div>
+                <div class="pills">
+                  <span class="pill outline">Shopify · not connected</span>
+                </div>
+                <div class="meta">
+                  <div class="cell">
+                    <span class="lbl">Canvases</span>
+                    <span class="val">3</span>
+                  </div>
+                  <div class="cell">
+                    <span class="lbl">Last edited</span>
+                    <span class="val">Apr 14</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Card 5 — Field Notes (archived; muted treatment via outline pill only) -->
+              <div class="bp-card" style="opacity:0.78;">
+                <div class="top">
+                  <div class="logo k-graphite">F</div>
+                  <div class="heads">
+                    <div class="nm">Field Notes</div>
+                    <div class="url">fieldnotesbrand.com</div>
+                  </div>
+                  <div class="kebab"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+                </div>
+                <div class="pills">
+                  <span class="pill outline"><i data-lucide="archive" class="ic"></i>Archived</span>
+                </div>
+                <div class="meta">
+                  <div class="cell">
+                    <span class="lbl">Canvases</span>
+                    <span class="val">29</span>
+                  </div>
+                  <div class="cell">
+                    <span class="lbl">Last edited</span>
+                    <span class="val">Mar 02</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- + New brand tile -->
+              <div class="bp-newcard">
+                <div class="plus"><i data-lucide="plus" style="width:18px;height:18px;"></i></div>
+                <div class="h">New brand</div>
+                <div class="sub">Add another client or sub-brand. Takes about 90 seconds.</div>
+              </div>
+
+            </div>
+
+            <div class="bp-foothint">
+              Need to switch the user account or sign out? Use the <a href="#">avatar menu</a>.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Cards carry status, not chrome.</strong> Shopify state is a single pill (connected · reconnect · not-connected); plan is an outline pill on the active brand only. No counts, no charts, no AI badges — picker should disappear in two seconds.</li>
+      <li><strong>"+ New brand" lives in-grid</strong> at peer-card weight rather than floating in the header — for 0/1-brand users the tile reads as the next step instead of an upsell.</li>
+      <li><strong>Archived brands stay visible</strong> at reduced opacity with an "Archived" pill (filterable via the right-hand sort). They're not deleted; the brand-CRUD archive flow (file 5) routes here.</li>
+      <li><strong>Top chrome has no sidebar.</strong> User is between brands — there is no per-brand context to expose yet. Avatar pill on the right opens the same A6 dropdown defined in file 2.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     A2.b — BRAND PICKER · EMPTY STATE
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">A2 · A2.b</div>
+    <h2>Brand picker · zero brands (edge case)</h2>
+    <p class="intro">Edge case for users who completed signup but bailed out of the first-brand step in onboarding (or had their only brand deleted). Single empty pane, single CTA — A3 is the only path forward. Same chrome and grid container as A2.a so the user feels the same room, just empty.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Brand picker · empty</div><div class="id">A2.b · /brands (zero)</div></div>
+    <div class="canvas" data-screen-label="A2.b Brand picker empty">
+      <div class="bp-shell">
+        <div class="bp-top">
+          <div class="wordmark"><div class="glyph">K</div><span>Kova</span></div>
+          <div class="who">
+            <div class="ava">JY</div>
+            <div class="nm">Jiho Yang</div>
+            <i data-lucide="chevron-down" class="ic"></i>
+          </div>
+        </div>
+
+        <div class="bp-stage">
+          <div class="bp-block">
+            <div class="bp-head">
+              <div class="l">
+                <div class="eyebrow">Workspace</div>
+                <h1>No brands yet.</h1>
+                <p class="lede">Set up your first brand to start generating. You can add as many brands as you need — each one stays fully siloed.</p>
+              </div>
+            </div>
+
+            <div class="bp-empty">
+              <div class="ic-circle"><i data-lucide="layers" style="width:22px;height:22px;"></i></div>
+              <h3>Start with one brand</h3>
+              <p>Name it, point it at a website, and Kova pulls in the logo, colors, and product catalog. You'll be designing in two minutes.</p>
+              <button class="btn primary"><i data-lucide="plus" style="width:14px;height:14px;"></i>New brand</button>
+              <div class="onb-foothint" style="margin-top:8px;">
+                Or <a href="#" style="color:var(--ink-2);">view onboarding tour</a> first.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Same shell, same grid container, same head block</strong> — keeps the empty-state structurally identical to A11 patterns (icon-circle → heading → sub-copy → CTA) per handoff §3.5.</li>
+      <li><strong>One CTA, no choice paralysis.</strong> Tour link is a quiet secondary; primary takes the user to A3 immediately.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     A3.a — NEW BRAND · NAME + URL
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">A3 · A3.a</div>
+    <h2>Step 1 · Name + URL</h2>
+    <p class="intro">Same brand-creation surface as A1 step 2, lifted verbatim. Three fields. Logo auto-fetches from the URL. The chrome is the A1 progress strip with 3 dots instead of 5, plus a "Cancel" pill in the top-right corner — user is mid-app, not mid-signup, so they can back out to A2.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">New brand · name + URL</div><div class="id">A3.a · /brands/new</div></div>
+    <div class="canvas tall" data-screen-label="A3.a New brand name">
+      <div class="onb-shell">
+        <div class="onb-progress">
+          <div class="wordmark"><div class="glyph">K</div><span>Kova</span></div>
+          <div class="ctx"><i data-lucide="plus-square" class="ic"></i><span>New brand</span></div>
+          <div class="dots">
+            <div class="dot active"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+          <div class="meta">Step 1 / 3</div>
+          <div class="close"><i data-lucide="x" class="ic"></i><span>Cancel</span></div>
+        </div>
+
+        <div class="onb-stage">
+          <div class="onb-card">
+            <div class="onb-eyebrow">New brand</div>
+            <h1>What are we adding?</h1>
+            <p class="onb-lede">Each brand is its own siloed workspace — canvases, brand kit, integrations. You can rename or delete it later from the brand picker.</p>
+
+            <div class="onb-id-row">
+              <div class="logo-slot fetched" title="Auto-fetched from patagonia.com">P</div>
+              <div style="display:flex;flex-direction:column;gap:10px;">
+                <div class="onb-field">
+                  <div class="lbl">Brand name</div>
+                  <input class="input" type="text" value="Patagonia" />
+                </div>
+                <div class="onb-field">
+                  <div class="lbl">Website</div>
+                  <div class="onb-input-affixed">
+                    <span class="pre">https://</span>
+                    <input type="text" value="patagonia.com" />
+                  </div>
+                  <div class="help ok"><i data-lucide="check" style="width:11px;height:11px;display:inline-block;vertical-align:middle;"></i> Logo found at patagonia.com/favicon</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="onb-field">
+              <div class="lbl">One-line description <span class="opt">Optional</span></div>
+              <input class="input" type="text" placeholder="e.g. Outdoor apparel and gear, B-corp." />
+              <div class="help">Helps Kova frame voice and category context. You can change this anytime in Brand Kit.</div>
+            </div>
+
+            <div class="onb-actions">
+              <button class="btn ghost"><i data-lucide="chevron-left" class="ic"></i>Back to brands</button>
+              <button class="btn primary">Continue<i data-lucide="arrow-right" class="ic"></i></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Progress strip carries the "New brand" context label</strong> — separated from the wordmark with a hairline so users know they're inside a sub-flow, not re-doing onboarding.</li>
+      <li><strong>"Cancel" lives where signup's nothing-to-the-right was.</strong> Backs out to A2 without saving. Guards against accidental discard with A8.4 confirmation if any field is dirty.</li>
+      <li><strong>Logo auto-fetch is the same component as A1.c.</strong> Brand glyph color is sampled from the fetched favicon — the per-card glyph palette in A2.a uses the same sampling.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     A3.b — NEW BRAND · SHOPIFY OAUTH
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">A3 · A3.b</div>
+    <h2>Step 2 · Connect Shopify</h2>
+    <p class="intro">Same connect surface as A1.d. The "what we read / what we don't" trust list is identical — Shopify scope rules don't change between onboarding and add-brand. Skip is a peer ghost button; users can finish without a Shopify store and reconnect from Account later.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">New brand · Shopify connect</div><div class="id">A3.b · /brands/new/shopify</div></div>
+    <div class="canvas tall" data-screen-label="A3.b New brand Shopify">
+      <div class="onb-shell">
+        <div class="onb-progress">
+          <div class="wordmark"><div class="glyph">K</div><span>Kova</span></div>
+          <div class="ctx"><i data-lucide="plus-square" class="ic"></i><span>New brand · Patagonia</span></div>
+          <div class="dots">
+            <div class="dot done"></div>
+            <div class="dot active"></div>
+            <div class="dot"></div>
+          </div>
+          <div class="meta">Step 2 / 3</div>
+          <div class="close"><i data-lucide="x" class="ic"></i><span>Cancel</span></div>
+        </div>
+
+        <div class="onb-stage">
+          <div class="onb-card">
+            <div class="onb-eyebrow">Integrations</div>
+            <h1>Connect Shopify.</h1>
+            <p class="onb-lede">Kova reads your product catalog so generated emails use real products with real images and pricing. Read-only — Kova never writes to your store.</p>
+
+            <div class="onb-connect">
+              <div class="head">
+                <div class="glyph">S</div>
+                <div>
+                  <div class="nm">Shopify</div>
+                  <div class="sub">Read-only access · per-brand scope</div>
+                </div>
+                <span class="pill outline"><span class="dot" style="background:var(--ink-3);width:6px;height:6px;border-radius:50%;display:inline-block;"></span>Not connected</span>
+              </div>
+              <div class="body">
+                <div class="onb-store-input">
+                  <div class="lbl">Your Shopify store URL</div>
+                  <div class="onb-input-affixed">
+                    <span class="pre">https://</span>
+                    <input type="text" value="patagonia" />
+                    <span class="post">.myshopify.com</span>
+                  </div>
+                </div>
+
+                <div style="height:4px;"></div>
+
+                <div class="scope">
+                  <i data-lucide="check" class="ic"></i>
+                  <span>Products, collections, variants, pricing, inventory</span>
+                </div>
+                <div class="scope">
+                  <i data-lucide="check" class="ic"></i>
+                  <span>Product images and media</span>
+                </div>
+                <div class="scope">
+                  <i data-lucide="x" class="ic" style="color:var(--ink-3);"></i>
+                  <span style="color:var(--ink-3);">Customer data · orders · checkout — never accessed</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="onb-actions">
+              <button class="btn ghost">Skip for now</button>
+              <button class="btn primary"><i data-lucide="external-link" class="ic"></i>Connect Shopify</button>
+            </div>
+
+            <div class="onb-foothint">
+              You'll be redirected to Shopify to approve access. <a href="#" style="color:var(--ink-2);">What does Kova read?</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>The connect card is the canonical A10 reconnect component</strong> — same head/body proportions, same scope list. File 5's reconnect modal lifts the whole shell.</li>
+      <li><strong>Progress strip context now reads "New brand · Patagonia"</strong> once a brand name is in play — so users skipping back-and-forth don't lose track of which add-brand attempt they're in.</li>
+      <li><strong>Skip is a real path.</strong> A11 zero-products empty state in the new brand's dashboard is the documented next step.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     A3.c — NEW BRAND · BRAND KIT POPULATE (AI)
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">A3 · A3.c</div>
+    <h2>Step 3 · Brand kit · populate</h2>
+    <p class="intro">Drop assets + paste guidelines → Kova extracts colors, fonts, voice rules, and seed memories. Identical surface to A1.e. AI accent is locked to the extraction card and nothing else on the screen.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">New brand · brand kit</div><div class="id">A3.c · /brands/new/brand-kit</div></div>
+    <div class="canvas tall" data-screen-label="A3.c New brand kit">
+      <div class="onb-shell">
+        <div class="onb-progress">
+          <div class="wordmark"><div class="glyph">K</div><span>Kova</span></div>
+          <div class="ctx"><i data-lucide="plus-square" class="ic"></i><span>New brand · Patagonia</span></div>
+          <div class="dots">
+            <div class="dot done"></div>
+            <div class="dot done"></div>
+            <div class="dot active"></div>
+          </div>
+          <div class="meta">Step 3 / 3</div>
+          <div class="close"><i data-lucide="x" class="ic"></i><span>Cancel</span></div>
+        </div>
+
+        <div class="onb-stage">
+          <div class="onb-card wide">
+            <div class="onb-eyebrow">Brand kit</div>
+            <h1>Teach Kova your brand.</h1>
+            <p class="onb-lede">Drop in past emails, brand guidelines, or anything that captures voice. Kova extracts colors, fonts, tone, and writing rules. You can refine everything later in Brand Kit.</p>
+
+            <div class="onb-drop">
+              <div class="ic-circle"><i data-lucide="upload-cloud" style="width:18px;height:18px;"></i></div>
+              <div class="h">Drop files here, or <span style="text-decoration:underline;cursor:pointer;">browse</span></div>
+              <div class="types">PDF · HTML · .EML · PNG · JPG · up to 25 MB each</div>
+            </div>
+
+            <div class="onb-files">
+              <div class="file">
+                <i data-lucide="file-text" style="width:14px;height:14px;color:var(--ink-3);"></i>
+                <div class="nm">Patagonia Brand Standards.pdf</div>
+                <div class="sz">2.1 MB</div>
+                <div class="x"><i data-lucide="x" style="width:13px;height:13px;"></i></div>
+              </div>
+              <div class="file">
+                <i data-lucide="mail" style="width:14px;height:14px;color:var(--ink-3);"></i>
+                <div class="nm">worn-wear-fall-23.eml</div>
+                <div class="sz">86 KB</div>
+                <div class="x"><i data-lucide="x" style="width:13px;height:13px;"></i></div>
+              </div>
+            </div>
+
+            <div class="onb-field">
+              <div class="lbl">Or paste brand guidelines <span class="opt">Optional</span></div>
+              <textarea class="onb-textarea" placeholder="e.g. Plain spoken. Lead with environmental impact. Avoid superlatives.">Plain spoken. Lead with environmental impact, never with discount or urgency. Avoid superlatives. Reference repair and reuse before new product.</textarea>
+            </div>
+
+            <div class="onb-ai">
+              <div class="top">
+                <i data-lucide="sparkles" class="ic"></i>
+                <span>Kova will extract</span>
+                <span class="pill">AI</span>
+              </div>
+              <ul class="checks">
+                <li><i data-lucide="check" class="ic"></i><span>Brand colors and gradients</span><span class="meta">From standards</span></li>
+                <li><i data-lucide="check" class="ic"></i><span>Typography pairings</span><span class="meta">2 fonts detected</span></li>
+                <li><i data-lucide="check" class="ic"></i><span>Voice and tone snippets</span><span class="meta">From past email</span></li>
+                <li class="pending"><i data-lucide="circle-dashed" class="ic"></i><span>Writing rules from your notes</span><span class="meta">On submit</span></li>
+                <li class="pending"><i data-lucide="circle-dashed" class="ic"></i><span>Seed memories</span><span class="meta">On submit</span></li>
+              </ul>
+            </div>
+
+            <div class="onb-actions">
+              <button class="btn ghost">Do this later</button>
+              <button class="btn primary"><i data-lucide="sparkles" class="ic"></i>Extract and finish</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Identical to A1.e</strong> — same drop, same file list shape, same AI surface, same accent confined to the extraction card.</li>
+      <li><strong>"Do this later" routes straight to A3.d splash</strong> with the brand kit empty (A11 empty panes inside Brand Kit). Extraction is a real but optional step.</li>
+      <li><strong>Wider 560px card</strong> here only — same exception as A1.e to make room for the file list + AI extract list without scroll.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     A3.d — NEW BRAND · DONE SPLASH
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">A3 · A3.d</div>
+    <h2>Done · enter the new brand</h2>
+    <p class="intro">Lighter than A1.f — no 2×2 starter grid, no celebration. The user already knows the product (this is their second-plus brand); they just need confirmation and a clear hand-off into the new brand's dashboard. All three progress segments fill.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">New brand · ready</div><div class="id">A3.d · /brands/new/done</div></div>
+    <div class="canvas" data-screen-label="A3.d New brand done">
+      <div class="onb-shell">
+        <div class="onb-progress">
+          <div class="wordmark"><div class="glyph">K</div><span>Kova</span></div>
+          <div class="ctx"><i data-lucide="plus-square" class="ic"></i><span>New brand · Patagonia</span></div>
+          <div class="dots">
+            <div class="dot done"></div>
+            <div class="dot done"></div>
+            <div class="dot done"></div>
+          </div>
+          <div class="meta">Done</div>
+          <div class="close" style="visibility:hidden;"><i data-lucide="x" class="ic"></i><span>Cancel</span></div>
+        </div>
+
+        <div class="onb-stage">
+          <div class="onb-card">
+            <div class="onb-splash">
+              <div class="check-medal"><i data-lucide="check" style="width:26px;height:26px;"></i></div>
+              <div>
+                <div class="onb-eyebrow" style="margin-bottom:8px;">Brand ready</div>
+                <h1>Patagonia is set up.</h1>
+              </div>
+              <p class="onb-lede">Brand kit populated, Shopify connected, 318 products synced. You can switch back to your other brands anytime from the sidebar.</p>
+
+              <button class="btn primary enter-btn">Enter Patagonia<i data-lucide="arrow-right" class="ic"></i></button>
+
+              <div class="onb-foothint">
+                Or <a href="#" style="color:var(--ink-2);">back to brand picker</a>.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Single primary CTA.</strong> No 2×2 next-move grid (that's first-time-only territory in A1.f). Returning users want one button.</li>
+      <li><strong>Cancel pill is hidden, not removed</strong> — preserves the progress strip's grid balance so the dot row and "Done" meta stay positioned the same as on A3.a–c.</li>
+      <li><strong>"Back to brand picker"</strong> is the quiet alt — for users who want to verify the new brand appears in the grid before diving in.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     Pattern locks (carried for downstream files)
+     ============================================================ -->
+<section class="block" style="background:var(--page);">
+  <header>
+    <div class="tag">A2 + A3 · Pattern locks</div>
+    <h2>What this file establishes</h2>
+    <p class="intro">A4 brand-CRUD modals (file 5) reuse the kebab-action launchpad on .bp-card. A11 zero-brands empty state is already covered here in A2.b — file 7 should reference, not redraw it. New brand glyph palette (coral/sage/sand/violet/graphite) is the canonical sampled-favicon set; reuse on dashboard chrome.</p>
+  </header>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;">
+    <div style="border:1px solid var(--line);border-radius:8px;padding:16px;background:var(--rail);">
+      <div class="mono" style=" font-size:10px; color:var(--ink-3); margin-bottom:6px;">.bp-shell + .bp-top</div>
+      <div style="font-size:13px;color:var(--ink-2);">Sidebar-less chrome for between-brands routes. 56px top with wordmark left + avatar pill right. Reuse for any post-login route that's not yet committed to a brand.</div>
+    </div>
+    <div style="border:1px solid var(--line);border-radius:8px;padding:16px;background:var(--rail);">
+      <div class="mono" style=" font-size:10px; color:var(--ink-3); margin-bottom:6px;">.bp-card</div>
+      <div style="font-size:13px;color:var(--ink-2);">Brand card — logo glyph + name/url + status pills + 2-cell meta footer. Kebab is the launchpad for A4 rename/archive/delete modals.</div>
+    </div>
+    <div style="border:1px solid var(--line);border-radius:8px;padding:16px;background:var(--rail);">
+      <div class="mono" style=" font-size:10px; color:var(--ink-3); margin-bottom:6px;">A3 progress strip</div>
+      <div style="font-size:13px;color:var(--ink-2);">A1's strip + a "context" hairline-divider segment ("New brand · {name}") + a "Cancel" close button on the right. Reuse pattern for any sub-flow launched mid-app.</div>
+    </div>
+    <div style="border:1px solid var(--line);border-radius:8px;padding:16px;background:var(--rail);">
+      <div class="mono" style=" font-size:10px; color:var(--ink-3); margin-bottom:6px;">Brand glyph palette</div>
+      <div style="font-size:13px;color:var(--ink-2);">5 tints (coral / sage / sand / violet / graphite) sampled from favicon. Same set used by sidebar brand-switch and breadcrumb crumb-brand for visual continuity across brands.</div>
+    </div>
+    <div style="border:1px solid var(--line);border-radius:8px;padding:16px;background:var(--rail);">
+      <div class="mono" style=" font-size:10px; color:var(--ink-3); margin-bottom:6px;">A2 zero-state</div>
+      <div style="font-size:13px;color:var(--ink-2);">Already drawn here. File 7 (A11) should not redraw — link/refer.</div>
+    </div>
+    <div style="border:1px solid var(--line);border-radius:8px;padding:16px;background:var(--rail);">
+      <div class="mono" style=" font-size:10px; color:var(--ink-3); margin-bottom:6px;">A3 splash variant</div>
+      <div style="font-size:13px;color:var(--ink-2);">Lighter than A1.f — single CTA, no 2×2 grid, no celebration medal scaling. Returning-user calibrated.</div>
+    </div>
+  </div>
+</section>
+
+<footer style="padding:32px 56px;border-top:1px solid var(--line);background:var(--bg);color:var(--ink-3);font-size:11px; ">
+  Kova · hi-fi · Batch A · A2 Brand picker + A3 New brand · v1
+</footer>
+
+<script>
+  if (window.lucide) window.lucide.createIcons({ attrs: { 'stroke-width': 1.6 } });
+</script>
+</body>
+</html>

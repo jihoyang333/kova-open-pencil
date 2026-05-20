@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<title>Kova — Hi-fi · B10 Stripe Returns · Dark</title>
+<meta name="viewport" content="width=1440" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+<link rel="stylesheet" href="../../design-system/kova-hifi.css" />
+<script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
+<style>
+/* ============================================================
+   FILE B10 — Stripe Checkout return landings
+     B10.1 /account/billing/success    (post-checkout success)
+     B10.2 /account/billing/cancel     (user bailed mid-checkout)
+     B10.3 placeholder-pattern annotation block
+   Standalone full-page surfaces (no app chrome). Lifted entirely
+   from batch-a-additions/dark/batch-0/Kova Hi-Fi B2 Error Pages - Dark.html
+   per CHUNK_3 §3.8 LIFT protocol — same .err-page / .err-card /
+   .err-icon-tile / .err-cta-stack chrome that round-1 shipped, byte-
+   identical, with one extension class (.err-icon-tile.accent) appended
+   below the lifted block per §3.8 extension rule.
+   No new tokens. No new fonts. No monospace on chrome. No status hexes.
+   Status palette deferred per design.md §5 ban 12 — success conveyed
+   via accent check-icon + warm copy; cancel conveyed via neutral
+   arrow-left icon + reassuring copy ("no charge made").
+   ============================================================ */
+
+  body { background: var(--bg); }
+
+  /* ---------- Full-viewport return frame — LIFTED FROM B2 verbatim ---------- */
+  .err-page {
+    position: absolute; inset: 0;
+    background: var(--bg);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 32px 24px;
+    gap: 22px;
+  }
+
+  /* The card — focal element, no outer hairline (per design.md §1.4 — full-bleed surfaces aren't rounded; this is the focal surface) */
+  .err-card {
+    width: 420px; max-width: 100%;
+    padding: 40px 32px;
+    display: flex; flex-direction: column; align-items: center;
+    text-align: center;
+    gap: 14px;
+    background: transparent;
+  }
+
+  .err-icon-tile {
+    width: 48px; height: 48px;
+    border-radius: 6px;
+    background: var(--bg);
+    border: none;
+    display: grid; place-items: center;
+    color: var(--ink-3);
+    margin-bottom: 6px;
+  }
+  .err-icon-tile .ic { width: 24px; height: 24px; }
+
+  .err-card h1 {
+    margin: 0;
+    font-size: 15px; font-weight: 600;
+    letter-spacing: -0.005em;
+    color: var(--ink);
+  }
+  .err-card p {
+    margin: 0;
+    font-size: 12.5px; color: var(--ink-2);
+    line-height: 1.55;
+    max-width: 48ch;
+  }
+
+  .err-cta-stack {
+    width: 100%; max-width: 280px;
+    display: flex; flex-direction: column; align-items: stretch;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .err-cta-stack .btn {
+    justify-content: center;
+    padding: 9px 14px; font-size: 13px;
+  }
+  .err-cta-stack .btn.text {
+    border-color: transparent; background: transparent;
+    color: var(--ink-2); padding: 6px 8px;
+    font-size: 12.5px;
+  }
+  .err-cta-stack .btn.text:hover {
+    color: var(--ink); background: var(--line-2);
+  }
+
+  /* ---------- B10 extensions (append-only, do not modify lifted block) ---------- */
+
+  /* Accent-tinted icon glyph — B10.1 success check-circle.
+     Brief §5.2: success conveyed via Lucide check-circle in var(--accent),
+     NOT a green status hex (status palette deferred per design.md §5 ban 12).
+     The .accent modifier swaps only the glyph color; tile stays invisible. */
+  .err-icon-tile.accent { color: var(--accent); }
+
+  /* Plan-name span — for the templated "Pro" string in B10.1 headline.
+     Visual: just bolds the substring so it's clear which token is templated.
+     Stays in --ink (no accent) — the headline isn't a status pill. */
+  .err-card h1 .plan { font-weight: 600; color: var(--ink); }
+
+  /* B10.3 annotation block — review-time only documentation.
+     Lays out the placeholder-string strategy across A6 / A7.2 / B10.1 in a
+     compact 3-column reference. Not shipped to product. */
+  .b10-pattern {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 14px; margin-top: 8px;
+  }
+  .b10-pattern .row {
+    background: var(--page); border: 1px solid var(--line);
+    border-radius: 8px; padding: 14px 16px;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .b10-pattern .row .src {
+    font-size: 11px; color: var(--ink-3);
+  }
+  .b10-pattern .row .ex {
+    font-size: 13px; color: var(--ink); letter-spacing: -0.005em;
+  }
+  .b10-pattern .row .ex b { color: var(--ink); font-weight: 600; }
+  .b10-pattern .row .note {
+    font-size: 11.5px; color: var(--ink-2); line-height: 1.5;
+  }
+
+</style>
+</head>
+<body data-screen-label="B10 Stripe Returns · Dark">
+
+<header class="page-head">
+  <div class="eyebrow">HI-FI · BATCH A ADDITIONS · DARK · CHUNK 3 · FILE B10</div>
+  <h1>Stripe Checkout return landings · B10.1 · B10.2</h1>
+  <p>Two full-page dark surfaces a Vue Router serves at <code>/account/billing/success</code> and <code>/account/billing/cancel</code> when Stripe redirects the user back from Checkout. Both reuse the round-1 B2 centered-card chrome byte-identical (same <code>.err-page</code> / <code>.err-card</code> / <code>.err-icon-tile</code> / <code>.err-cta-stack</code> blocks). Status palette deferred per design.md §5 ban 12 — success role conveyed via accent <code>check-circle</code> glyph + warm copy; cancel role conveyed via neutral <code>arrow-left</code> glyph + reassuring "no charge made" copy.</p>
+  <div class="meta">2 surfaces + 1 annotation block · all full-viewport · same kova-hifi.css tokens · chrome lifted from B2</div>
+  <div class="legend">
+    <span class="sw"><i style="background: var(--ink);"></i>primary CTA</span>
+    <span class="sw"><i style="background: var(--accent);"></i>success check-icon (B10.1 only)</span>
+    <span class="sw"><i style="background: var(--ink-3);"></i>cancel arrow-icon (B10.2 only)</span>
+    <span class="sw"><i style="background: var(--ink-2);"></i>secondary text-button</span>
+  </div>
+</header>
+
+
+<!-- ============================================================
+     B10.1 · Checkout success — /account/billing/success
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE B10 · §1 · B10.1 · Checkout success</div>
+    <h2>B10.1 · You're on Pro</h2>
+    <p class="intro">Post-Checkout redirect from Stripe after first upgrade or plan change. Welcoming, brief, forward — primary CTA returns the user to the dashboard so they can immediately use the new plan; secondary takes them to <a><code>/account/billing</code></a> (A7.2 Plan &amp; billing card) to see the receipt and confirm the line items. The plan-name string ("Pro") is templated — A6 and A7.2 already render it as a placeholder; B10.1 picks up the same convention so a code-agent doesn't invent a new string format.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Checkout success · /account/billing/success</div><div class="id">B10.1 · hi-fi</div></div>
+    <div class="canvas tall" data-screen-label="B10.1 · Success">
+      <div class="err-page">
+        <div class="err-card">
+          <div class="err-icon-tile accent"><i data-lucide="check-circle" class="ic"></i></div>
+          <h1>You're on <span class="plan">Pro</span></h1>
+          <p>Welcome to Pro. We've unlocked unlimited brands, full version history, and priority support. Manage your plan anytime in Account → Plan &amp; billing.</p>
+          <div class="err-cta-stack">
+            <div class="btn primary"><i data-lucide="layout-grid" class="ic"></i>Go to dashboard</div>
+            <div class="btn text">View plan details</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Accent check, not green.</strong> Status palette deferred (design.md §5 ban 12); the success role is communicated by an accent-blue <code>check-circle</code> glyph + warm copy ("You're on Pro · Welcome to Pro · We've unlocked..."). When the palette ships, swap the <code>.accent</code> modifier for a <code>.success</code> token alias — markup unchanged.</li>
+      <li><strong>Plan name is templated.</strong> The <code>&lt;span class="plan"&gt;Pro&lt;/span&gt;</code> wraps the substring a code-agent will replace at runtime. Same convention used by A6 ("Upgrade to <b>Pro</b>") and A7.2 ("You're on <b>Pro</b>"). One placeholder strategy across the three plan-name surfaces — see B10.3 below for the cross-cut reference.</li>
+      <li><strong>"Go to dashboard" is primary.</strong> The user just upgraded; they want to use the new plan, not re-read the receipt. Receipt-style detail lives behind the secondary "View plan details" link, which routes to A7.2.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     B10.2 · Checkout cancelled — /account/billing/cancel
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE B10 · §1 · B10.2 · Checkout cancelled</div>
+    <h2>B10.2 · Checkout cancelled</h2>
+    <p class="intro">User bailed mid-Checkout — closed the Stripe modal, hit back, or completed it but cancelled. Recoverable, not a fault. Page leads with reassurance ("no charge made") to pre-empt the panic question, then offers two equally-balanced paths: try again or return to dashboard. Neutral <code>arrow-left</code> icon (NOT a warn-icon) — this is a calm "you can leave or you can retry" page, not an error state.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Checkout cancelled · /account/billing/cancel</div><div class="id">B10.2 · hi-fi</div></div>
+    <div class="canvas tall" data-screen-label="B10.2 · Cancel">
+      <div class="err-page">
+        <div class="err-card">
+          <div class="err-icon-tile"><i data-lucide="arrow-left" class="ic"></i></div>
+          <h1>Checkout cancelled</h1>
+          <p>No changes were made and your card wasn't charged. You can try again anytime from Account → Plan &amp; billing.</p>
+          <div class="err-cta-stack">
+            <div class="btn primary"><i data-lucide="rotate-cw" class="ic"></i>Try again</div>
+            <div class="btn text">Back to dashboard</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Neutral icon, not warn.</strong> <code>arrow-left</code> in <code>--ink-3</code> (the lifted <code>.err-icon-tile</code>'s default color) — recoverable state, no alarm. Using <code>alert-triangle</code> here would imply a fault; cancelling is a normal action a user might take many times before committing.</li>
+      <li><strong>"No charge made" lives in the FIRST sentence.</strong> Pre-empts the user's first thought ("did they take my money?") before they get to anywhere else. Trust beats brevity in transactional flows.</li>
+      <li><strong>"Try again" is primary, not "Back to dashboard".</strong> Stripe Checkout cancellation is most often a stumble (modal closed accidentally, payment-method browse), not an explicit reject. Putting Try-again first matches the typical retry intent. A user who really wants out has the secondary text-button right there.</li>
+      <li><strong>Same B2 chrome as B10.1.</strong> Card geometry, padding (40/32), icon-tile invisibility, and CTA-stack max-width 280px are byte-identical to B2.1 / B2.2 / B2.3 / B4.7 / B10.1. Visual continuity tells the user "same product, different state," not "I navigated to a different surface."</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     B10.3 · Plan-name placeholder strategy (annotation only — no scene)
+     ============================================================ -->
+<section class="block" style="background: var(--page);">
+  <header>
+    <div class="tag">FILE B10 · §2 · B10.3 · Cross-cut annotation</div>
+    <h2>B10.3 · Plan-name placeholder strategy</h2>
+    <p class="intro">B10.1 templates the plan name ("Pro") with the same convention A6 and A7.2 already use. This block is annotation-only — visually documents the placeholder pattern in one place so a code-agent wires the same string-substitution everywhere it appears.</p>
+  </header>
+
+  <div class="b10-pattern">
+    <div class="row">
+      <div class="src">A6 Popovers + A8 Dialogs · Upgrade dialog</div>
+      <div class="ex">Upgrade to <b>Pro</b></div>
+      <div class="note">Dialog title in <code>.dlg-head h3</code>. Plan name is the templated substring. Replaced at runtime with the actual plan-string from the user's Stripe customer record.</div>
+    </div>
+    <div class="row">
+      <div class="src">A7.2 Account · Plan &amp; billing card</div>
+      <div class="ex">You're on <b>Pro</b></div>
+      <div class="note">Plan-card headline in the Account page. Same templating as the dialog. The "manage billing" CTA below routes to Stripe Customer Portal in a new tab.</div>
+    </div>
+    <div class="row">
+      <div class="src">B10.1 Checkout success · this file</div>
+      <div class="ex">You're on <b>Pro</b></div>
+      <div class="note">Same headline shape as A7.2 — visual continuity confirms to the user "this is the same product showing me the same plan name". Bold span <code>.plan</code> wraps the substring.</div>
+    </div>
+  </div>
+
+  <div class="annot" style="margin-top: 18px;"><ul>
+    <li><strong>One templating contract across three surfaces.</strong> A code-agent wiring this should treat <code>.plan</code> (B10.1) and the equivalent bolded substrings in A6 / A7.2 as the same template variable. Renaming to <code>{{ planName }}</code> or <code>$planName</code> in HTML is fine — what matters is they all render the SAME string at the SAME time.</li>
+    <li><strong>Free-plan edge case.</strong> If a user lands on B10.1 immediately after a downgrade (Pro → Free), the headline "You're on Free" reads correctly. No special-case markup needed; the placeholder absorbs it.</li>
+    <li><strong>Plan-string source-of-truth.</strong> Read from Supabase user record's <code>stripe_plan_name</code> column (synced from Stripe webhook). If the column is null or a stale value, fall back to "Pro" — this surface is reached only via successful Checkout, so a non-null value is expected.</li>
+  </ul></div>
+</section>
+
+
+<!-- ============================================================
+     Cross-surface notes
+     ============================================================ -->
+<section class="block" style="background: var(--page);">
+  <header>
+    <div class="tag">Coherence notes — what this file commits to</div>
+    <h2>What B10 commits to</h2>
+  </header>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;max-width:1080px;font-size:12.5px;color:var(--ink-2);line-height:1.55;">
+    <div style="background: var(--page); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px;">
+      <h3 style="margin:0 0 8px;font-size:14px;color:var(--ink);font-weight:600;letter-spacing:-0.005em;">Reused, byte-identical (lifted from B2 round-1)</h3>
+      <ul style="margin:6px 0 0;padding-left:18px;">
+        <li><code>.err-page</code> · full-viewport flex-center wrapper</li>
+        <li><code>.err-card</code> · 420×content focal card, no outer hairline</li>
+        <li><code>.err-icon-tile</code> · 48×48 invisible tile (bg = <code>--bg</code>, no border)</li>
+        <li><code>.err-cta-stack</code> · primary on top, text-button below</li>
+        <li><code>.err-cta-stack .btn.text</code> · secondary text-button (transparent border, ink-2 idle, line-2 hover bg)</li>
+      </ul>
+    </div>
+    <div style="background: var(--page); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px;">
+      <h3 style="margin:0 0 8px;font-size:14px;color:var(--ink);font-weight:600;letter-spacing:-0.005em;">New extension classes (2, all append-only)</h3>
+      <ul style="margin:6px 0 0;padding-left:18px;">
+        <li><code>.err-icon-tile.accent</code> · <code>color: var(--accent)</code> override for B10.1 success check-icon. Single line; tile geometry unchanged.</li>
+        <li><code>.err-card h1 .plan</code> · bold-span wrapper for the templated plan-name substring in B10.1.</li>
+      </ul>
+    </div>
+    <div style="background: var(--page); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px;">
+      <h3 style="margin:0 0 8px;font-size:14px;color:var(--ink);font-weight:600;letter-spacing:-0.005em;">Tokens used (none new)</h3>
+      <ul style="margin:6px 0 0;padding-left:18px;">
+        <li>Surface: <code>--bg</code> · <code>--page</code></li>
+        <li>Ink: <code>--ink</code> · <code>--ink-2</code> · <code>--ink-3</code></li>
+        <li>Lines: <code>--line</code> · <code>--line-2</code></li>
+        <li>Accent: <code>--accent</code> (B10.1 success check-icon glyph only — no accent surfaces)</li>
+        <li>Status palette deferred (design.md §5 ban 12) — neither file has red/yellow/green hex anywhere.</li>
+      </ul>
+    </div>
+    <div style="background: var(--page); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px;">
+      <h3 style="margin:0 0 8px;font-size:14px;color:var(--ink);font-weight:600;letter-spacing:-0.005em;">Why standalone (no app chrome)</h3>
+      <ul style="margin:6px 0 0;padding-left:18px;">
+        <li><strong>Pre-hydration timing.</strong> Both routes render in the brief moment between Stripe redirect and Vue Router hydration of the dashboard shell. Sidebar and topbar haven't loaded yet.</li>
+        <li><strong>Mental-model handoff.</strong> User just left a Stripe-branded surface; a calm centered card says "you're back" without forcing them to parse a sidebar.</li>
+        <li><strong>Same chrome family as B2 + B4.7.</strong> Both error pages and auth bridges use this card pattern. Stripe returns are also a "bridge" surface — different content, same chrome.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+
+<footer style="padding:32px 56px;border-top:1px solid var(--line);background:var(--bg);color:var(--ink-3);font-size:11px;">
+  Kova · hi-fi · Batch A additions · CHUNK 3 · B10 Stripe Returns · v1
+</footer>
+
+<script>
+  if (window.lucide) window.lucide.createIcons({ attrs: { 'stroke-width': 1.6 } });
+</script>
+</body>
+</html>

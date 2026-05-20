@@ -1,0 +1,1391 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<title>Kova — Hi-fi · 03 Brand Dashboard · Dark</title>
+<meta name="viewport" content="width=1440" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+<link rel="stylesheet" href="../design-system/kova-hifi.css" />
+<script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
+<style>
+  /* Tokens come from design-system/kova-hifi.css. Page-local rules
+     below consume those tokens; do not redeclare them here. */
+
+  /* --------- Doc chrome (matches wireframe shell) --------- */
+  .page-head {
+    padding: 56px 64px 28px;
+    border-bottom: 1px solid var(--line);
+    background: var(--bg);
+  }
+  .page-head .eyebrow {
+    font-size: 11px;
+    color: var(--ink-3);
+  }
+  .page-head h1 {
+    font-size: 30px;
+    margin: 6px 0 8px;
+    letter-spacing: -0.015em;
+    font-weight: 600;
+  }
+  .page-head p {
+    margin: 0;
+    color: var(--ink-2);
+    max-width: 760px;
+    font-size: 14px;
+  }
+  .page-head .meta {
+    margin-top: 16px;
+    font-size: 11px;
+    color: var(--ink-3);
+  }
+  .page-head .legend {
+    display: flex;
+    gap: 18px;
+    font-size: 11px;
+    color: var(--ink-2);
+    margin-top: 14px;
+  }
+  .page-head .legend .sw { display: inline-flex; align-items: center; gap: 6px; }
+  .page-head .legend .sw i {
+    width: 10px; height: 10px; border-radius: 2px; display: inline-block;
+  }
+
+  section.block {
+    padding: 56px 64px;
+    border-bottom: 1px solid var(--line);
+  }
+  section.block > header { margin-bottom: 24px; max-width: 880px; }
+  section.block .tag {
+    font-size: 10px;
+    color: var(--ink-3);
+  }
+  section.block h2 {
+    font-size: 22px;
+    margin: 4px 0 8px;
+    letter-spacing: -0.01em;
+    font-weight: 600;
+  }
+  section.block .intro {
+    color: var(--ink-2);
+    margin: 0;
+    max-width: 820px;
+  }
+
+  /* --------- Screen frame + caption --------- */
+  .screen {
+    background: var(--page);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.02), 0 12px 40px -20px rgba(0,0,0,0.08);
+  }
+  .screen > .cap {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--line);
+    background: #fafaf8;
+  }
+  .screen > .cap .name { font-weight: 600; font-size: 12px; }
+  .screen > .cap .id {
+    font-size: 10px;
+    color: var(--ink-3);
+  }
+
+  .screen .canvas { position: relative; height: 900px; }
+
+  .annot {
+    padding: 14px 16px;
+    border-top: 1px dashed var(--line);
+    background: #fafaf8;
+    font-size: 12px;
+    color: var(--ink-2);
+  }
+  .annot ul { margin: 0; padding-left: 18px; }
+  .annot li { margin-bottom: 4px; }
+  .annot strong { color: var(--ink); font-weight: 600; }
+
+  /* =========== App chrome (hi-fi) =========== */
+  .app {
+    display: grid;
+    grid-template-columns: 236px 1fr;
+    height: 100%;
+    background: #fff;
+  }
+
+  /* Sidebar */
+  .sidebar {
+    background: #fafaf8;
+    border-right: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    padding: 10px 10px 8px;
+    gap: 10px;
+    font-size: 13px;
+    min-height: 0;
+  }
+  .brand-switch {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    background: #fff;
+    cursor: pointer;
+    transition: border-color 0.12s ease;
+  }
+  .brand-switch:hover { border-color: var(--ink-3); }
+  .brand-switch .logo {
+    width: 24px; height: 24px;
+    border-radius: 5px;
+    background: #111;
+    color: #fff;
+    display: grid; place-items: center;
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: -0.02em;
+    flex-shrink: 0;
+  }
+  .brand-switch .name { font-weight: 600; flex: 1; letter-spacing: -0.005em; }
+  .brand-switch .caret { color: var(--ink-3); display: grid; place-items: center; }
+
+  .side-search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: #fff;
+    color: var(--ink-3);
+    font-size: 12.5px;
+    cursor: text;
+  }
+  .side-search .kbd {
+    margin-left: auto;
+    font-size: 10px;
+    color: var(--ink-3);
+    background: var(--fill);
+    padding: 1px 5px;
+    border-radius: 3px;
+    border: 1px solid var(--line-2);
+  }
+
+  .nav {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    margin-top: 2px;
+  }
+  .nav .section {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--ink-3);
+    padding: 12px 10px 4px;
+    font-weight: 500;
+  }
+  .nav .item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 6px 10px;
+    border-radius: 5px;
+    color: var(--ink-2);
+    cursor: pointer;
+    font-size: 13px;
+    transition: background 0.1s ease, color 0.1s ease;
+  }
+  .nav .item:hover { background: var(--line-2); color: var(--ink); }
+  .nav .item.active {
+    background: var(--fill);
+    color: var(--ink);
+    font-weight: 500;
+  }
+  .nav .item .ic {
+    width: 15px; height: 15px;
+    color: currentColor;
+    opacity: 0.75;
+    flex-shrink: 0;
+  }
+  .nav .item.active .ic { opacity: 1; }
+  .nav .item .count {
+    margin-left: auto;
+    font-size: 10.5px;
+    color: var(--ink-3);
+  }
+
+  .side-footer {
+    margin-top: auto;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 8px;
+    border-top: 1px solid var(--line-2);
+    color: var(--ink-2);
+    font-size: 12px;
+  }
+  .side-footer .avatar {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    background: var(--warn);
+    color: #fff;
+    display: grid; place-items: center;
+    font-weight: 600;
+    font-size: 10.5px;
+    letter-spacing: 0.01em;
+  }
+  .side-footer .who { display: flex; flex-direction: column; line-height: 1.2; }
+  .side-footer .who b { color: var(--ink); font-weight: 600; font-size: 12px; }
+  .side-footer .who span { color: var(--ink-3); font-size: 10.5px; }
+  .side-footer .more {
+    margin-left: auto;
+    color: var(--ink-3);
+    padding: 4px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .side-footer .more:hover { color: var(--ink); background: var(--line-2); }
+
+  /* Main pane */
+  .main { display: flex; flex-direction: column; min-width: 0; background: #fff; }
+  .topbar {
+    height: 52px;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    background: #fff;
+    flex-shrink: 0;
+  }
+  .topbar .breadcrumb {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    color: var(--ink-3);
+    font-size: 13px;
+  }
+  .topbar .breadcrumb .sep {
+    color: var(--ink-3);
+    opacity: 0.6;
+    display: grid;
+    place-items: center;
+  }
+  .topbar .breadcrumb b {
+    color: var(--ink);
+    font-weight: 600;
+    letter-spacing: -0.005em;
+  }
+  .topbar .actions { display: flex; gap: 8px; align-items: center; }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 12px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: #fff;
+    font-size: 12.5px;
+    font-family: inherit;
+    font-weight: 500;
+    color: var(--ink);
+    cursor: pointer;
+    letter-spacing: -0.003em;
+    transition: border-color 0.1s ease, background 0.1s ease;
+  }
+  .btn:hover { border-color: var(--ink-3); }
+  .btn .ic { width: 14px; height: 14px; opacity: 0.8; }
+  .btn.primary {
+    background: var(--ink);
+    color: #fff;
+    border-color: var(--ink);
+  }
+  .btn.primary:hover { background: #000; border-color: #000; }
+  .btn.accent {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+  .btn.accent:hover { background: #2349e6; border-color: #2349e6; }
+  .btn.ghost {
+    border-color: transparent;
+    background: transparent;
+    color: var(--ink-2);
+  }
+  .btn.ghost:hover { background: var(--line-2); color: var(--ink); }
+  .btn.sm { padding: 5px 9px; font-size: 12px; gap: 5px; }
+  .btn.sm .ic { width: 13px; height: 13px; }
+
+  /* Pills */
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 9px;
+    border-radius: 999px;
+    font-size: 11.5px;
+    background: var(--fill);
+    color: var(--ink-2);
+    font-weight: 500;
+    letter-spacing: -0.003em;
+    border: 1px solid transparent;
+  }
+  .pill.accent {
+    background: var(--accent-soft);
+    color: var(--accent-ink);
+    border-color: var(--accent-2);
+  }
+  .pill.accent .ic { color: var(--accent); }
+  .pill.ok {
+    background: var(--ok-soft);
+    color: var(--ok);
+  }
+  .pill .ic { width: 12px; height: 12px; }
+  .pill.dot::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    background: currentColor;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+  }
+  .pill.outline {
+    background: #fff;
+    border: 1px solid var(--line);
+    color: var(--ink-2);
+  }
+
+  /* --------- Content --------- */
+  .content {
+    flex: 1;
+    padding: 48px 32px 40px;
+    overflow: auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+  }
+
+  /* Greeting */
+  .greeting {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    padding: 24px 0 8px;
+  }
+  .greeting .hello {
+    font-size: 28px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+    color: var(--ink);
+    text-align: center;
+  }
+
+  /* Hero composer */
+  .composer {
+    position: relative;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    overflow: visible;
+    max-width: 760px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .composer-input-wrap {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 18px 20px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .composer-input-wrap:focus-within {
+    border-color: var(--ink-3);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+  .composer-input {
+    font-family: inherit;
+    font-size: 15px;
+    line-height: 1.55;
+    color: var(--ink-3);
+    min-height: 56px;
+    letter-spacing: -0.005em;
+  }
+  .composer-input .typed {
+    color: var(--ink-3);
+    font-weight: 400;
+  }
+  .composer-input .caret {
+    display: none;
+  }
+
+  .composer-input-tools {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-top: none;
+    padding-top: 0;
+  }
+  .composer-input-tools .attach-grp {
+    display: flex;
+    gap: 4px;
+  }
+  .composer-input-tools .attach {
+    width: 30px; height: 30px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--ink-2);
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    padding: 0;
+  }
+  .composer-input-tools .attach:hover {
+    background: var(--fill);
+    color: var(--ink);
+  }
+  .composer-input-tools .attach .ic { width: 15px; height: 15px; }
+  .composer-input-tools .grow { flex: 1; }
+  .composer-input-tools .hint {
+    font-size: 11px;
+    color: var(--ink-3);
+  }
+  .composer-input-tools .hint kbd {
+    background: var(--fill);
+    border: 1px solid var(--line-2);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 10px;
+  }
+  .composer-input-tools .go {
+    padding: 7px 14px;
+    font-size: 12px;
+    gap: 5px;
+    border-radius: 999px;
+  }
+
+  .composer-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    justify-content: center;
+  }
+  .composer-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 14px;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    font-size: 12.5px;
+    color: var(--ink-2);
+    cursor: pointer;
+    transition: background 0.1s ease, border-color 0.1s ease, color 0.1s ease;
+  }
+  .composer-chip:hover {
+    background: var(--fill);
+    border-color: var(--ink-3);
+    color: var(--ink);
+  }
+  .composer-chip .ic { width: 13px; height: 13px; color: var(--ink-2); }
+
+  /* Section heads */
+  .sec-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .sec-head .l {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .sec-head h4 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: -0.008em;
+    color: var(--ink);
+  }
+  .sec-head .count {
+    font-size: 11px;
+    color: var(--ink-3);
+  }
+  .sec-head .r {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+  .sec-head .filter {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px 4px 10px;
+    border-radius: 5px;
+    border: 1px solid var(--line);
+    font-size: 12px;
+    color: var(--ink-2);
+    background: #fff;
+    cursor: pointer;
+  }
+  .sec-head .filter .ic { width: 12px; height: 12px; opacity: 0.6; }
+  .sec-head .view-toggle {
+    display: flex;
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    overflow: hidden;
+  }
+  .sec-head .view-toggle .v {
+    width: 28px; height: 26px;
+    display: grid;
+    place-items: center;
+    color: var(--ink-3);
+    background: #fff;
+    cursor: pointer;
+    border-right: 1px solid var(--line-2);
+  }
+  .sec-head .view-toggle .v:last-child { border-right: 0; }
+  .sec-head .view-toggle .v.on {
+    background: var(--fill);
+    color: var(--ink);
+  }
+  .sec-head .view-toggle .v .ic { width: 13px; height: 13px; }
+
+  /* File grid */
+  .file-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+  }
+  .file-card {
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    overflow: hidden;
+    background: #fff;
+    cursor: pointer;
+    transition: border-color 0.12s ease, transform 0.12s ease, box-shadow 0.12s ease;
+  }
+  .file-card:hover {
+    border-color: var(--ink-3);
+    box-shadow: 0 6px 20px -10px rgba(0,0,0,0.1);
+  }
+  .file-card .thumb {
+    aspect-ratio: 4/3;
+    background: #fafaf8;
+    border-bottom: 1px solid var(--line-2);
+    position: relative;
+    overflow: hidden;
+    display: grid;
+    place-items: center;
+  }
+  /* Block-level email frame abstractions (per your direction) */
+  .thumb-frame {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    width: 46%;
+    height: 82%;
+    position: relative;
+    padding: 7px 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+  .thumb-frame .tb { background: var(--fill-2); border-radius: 1px; }
+  .thumb-frame .tb.sm { height: 4px; width: 60%; }
+  .thumb-frame .tb.md { height: 5px; width: 80%; }
+  .thumb-frame .tb.hero {
+    flex: 1;
+    background:
+      repeating-linear-gradient(135deg, #dedddb 0 5px, #e5e4e1 5px 10px);
+    min-height: 28px;
+  }
+  .thumb-frame .tb.row {
+    display: flex;
+    gap: 3px;
+  }
+  .thumb-frame .tb.row > i {
+    flex: 1;
+    height: 14px;
+    background:
+      repeating-linear-gradient(135deg, #dedddb 0 4px, #e5e4e1 4px 8px);
+    border-radius: 1px;
+  }
+  .thumb-frame .tb.cta {
+    height: 7px;
+    background: #1a1a1a;
+    width: 50%;
+    align-self: center;
+    margin-top: 2px;
+  }
+  /* Variant: three stacked mini frames (flow) */
+  .thumb-flow {
+    display: flex;
+    gap: 6px;
+    height: 82%;
+    align-items: center;
+  }
+  .thumb-flow .mini {
+    flex: 1;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    height: 88%;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 4px 3px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.03);
+  }
+  .thumb-flow .mini i {
+    background:
+      repeating-linear-gradient(135deg, #dedddb 0 3px, #e5e4e1 3px 6px);
+    border-radius: 1px;
+    flex: 1;
+  }
+  .thumb-flow .mini u {
+    background: var(--fill-2);
+    height: 3px;
+    border-radius: 1px;
+    width: 70%;
+  }
+  .thumb-flow .mini s {
+    background: #1a1a1a;
+    height: 3px;
+    width: 40%;
+    align-self: center;
+    margin-top: 1px;
+    text-decoration: none;
+  }
+  .thumb-flow .arrow {
+    color: var(--ink-3);
+    font-size: 9px;
+  }
+  /* Variant: A/B split */
+  .thumb-ab {
+    display: flex;
+    gap: 4px;
+    height: 82%;
+  }
+  .thumb-ab .half {
+    flex: 1;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    padding: 6px 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    position: relative;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.03);
+  }
+  .thumb-ab .half::before {
+    content: attr(data-l);
+    position: absolute;
+    top: 2px;
+    right: 3px;
+    font-size: 7px;
+    color: var(--ink-3);
+    background: var(--fill);
+    padding: 0 3px;
+    border-radius: 1px;
+  }
+  .thumb-ab .half i {
+    background:
+      repeating-linear-gradient(135deg, #dedddb 0 3px, #e5e4e1 3px 6px);
+    border-radius: 1px;
+    flex: 1;
+  }
+  .thumb-ab .half u {
+    background: var(--fill-2);
+    height: 3px;
+    border-radius: 1px;
+    width: 75%;
+    margin-top: 2px;
+  }
+
+  .file-card .status-tag {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    font-size: 9.5px;
+    padding: 2px 7px;
+    border-radius: 3px;
+    background: rgba(255,255,255,0.94);
+    border: 1px solid var(--line-2);
+    color: var(--ink-2);
+    backdrop-filter: blur(4px);
+  }
+  .file-card .status-tag.ok { color: var(--ok); border-color: rgba(31,122,58,0.2); }
+  .file-card .status-tag.draft { color: var(--ink-2); }
+  .file-card .status-tag.scheduled { color: var(--accent-ink); border-color: var(--accent-2); background: rgba(230,236,255,0.94); }
+
+  .file-card .frame-count {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    font-size: 10px;
+    color: var(--ink-3);
+    background: rgba(255,255,255,0.9);
+    padding: 2px 6px;
+    border-radius: 3px;
+    border: 1px solid var(--line-2);
+  }
+
+  .file-card .meta {
+    padding: 10px 12px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .file-card .meta .title {
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--ink);
+    letter-spacing: -0.008em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .file-card .meta .sub {
+    color: var(--ink-3);
+    font-size: 11.5px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .file-card .meta .sub .dot {
+    width: 3px; height: 3px;
+    background: var(--ink-3);
+    border-radius: 50%;
+    opacity: 0.6;
+  }
+  .file-card .meta .sub .ic { width: 11px; height: 11px; opacity: 0.75; }
+
+  /* --------- Up-next list (Klaviyo schedule) --------- */
+  .upnext {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .upnext-row {
+    display: grid;
+    grid-template-columns: 150px 1fr auto auto;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--line-2);
+    cursor: pointer;
+    transition: background 0.1s ease;
+  }
+  .upnext-row:last-child { border-bottom: 0; }
+  .upnext-row:hover { background: #fafaf8; }
+  .upnext-row .when {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+  .upnext-row .when .day {
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: -0.005em;
+    color: var(--ink);
+  }
+  .upnext-row .when .time {
+    font-size: 11px;
+    color: var(--ink-3);
+  }
+  .upnext-row .title {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+  .upnext-row .title .t {
+    font-weight: 500;
+    font-size: 13px;
+    color: var(--ink);
+    letter-spacing: -0.005em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .upnext-row .title .sub {
+    font-size: 11.5px;
+    color: var(--ink-3);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .upnext-row .title .sub .dot { width: 3px; height: 3px; background: var(--ink-3); border-radius: 50%; opacity: 0.6; }
+  .upnext-row .status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 500;
+  }
+  .upnext-row .status.ready {
+    background: var(--ok-soft);
+    color: var(--ok);
+  }
+  .upnext-row .status.draft {
+    background: var(--fill);
+    color: var(--ink-2);
+  }
+  .upnext-row .status.review {
+    background: #fff4e5;
+    color: #8a5a00;
+  }
+  .upnext-row .status::before {
+    content: "";
+    width: 5px; height: 5px;
+    background: currentColor;
+    border-radius: 50%;
+  }
+  .upnext-row .go {
+    color: var(--ink-3);
+    display: grid;
+    place-items: center;
+    padding: 4px;
+    border-radius: 4px;
+  }
+  .upnext-row:hover .go { color: var(--ink); }
+  .upnext-row .go .ic { width: 15px; height: 15px; }
+
+  .upnext-foot {
+    padding: 10px 16px;
+    background: #fafaf8;
+    border-top: 1px solid var(--line-2);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    color: var(--ink-3);
+  }
+  .upnext-foot a {
+    color: var(--ink-2);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: 500;
+  }
+  .upnext-foot a:hover { color: var(--ink); }
+  .upnext-foot a .ic { width: 12px; height: 12px; }
+
+  /* Utility */
+  .muted { color: var(--ink-3); }
+  .mono { }
+
+  /* ======================================================
+     === DARK OVERRIDES (this-file-only) ===
+     Tokens come from design-system/kova-hifi.css. The selectors
+     below only flip literal #fff / #111 / #fafaf8 hex values that
+     are baked into the page-local CSS for this file.
+     ====================================================== */
+  [data-theme="dark"] .page-head { background: var(--bg); border-color: var(--line); }
+  [data-theme="dark"] section.block { background: var(--bg); border-color: var(--line); }
+  [data-theme="dark"] section.block[style*="background:#fff"] { background: var(--page) !important; }
+
+  [data-theme="dark"] .screen {
+    background: var(--page);
+    border-color: var(--line);
+    box-shadow: 0 1px 0 rgba(255,255,255,0.02), 0 20px 60px -30px rgba(0,0,0,0.8);
+  }
+  [data-theme="dark"] .screen > .cap { background: var(--rail); border-color: var(--line); }
+  [data-theme="dark"] .annot { background: var(--rail); border-color: var(--line); }
+
+  /* App chrome */
+  [data-theme="dark"] .app { background: var(--page); }
+  [data-theme="dark"] .main { background: var(--page); }
+  [data-theme="dark"] .topbar { background: var(--page); border-color: var(--line); }
+  [data-theme="dark"] .sidebar { background: var(--rail); border-color: var(--line); }
+  [data-theme="dark"] .brand-switch { background: var(--page); border-color: var(--line); }
+  [data-theme="dark"] .brand-switch .logo { background: #ededea; color: #0d0d0c; }
+  [data-theme="dark"] .side-search { background: var(--page); border-color: var(--line); color: var(--ink-3); }
+  [data-theme="dark"] .side-search .kbd { background: var(--fill); border-color: var(--line-2); }
+
+  /* Buttons */
+  [data-theme="dark"] .btn { background: var(--page); border-color: var(--line); color: var(--ink); }
+  [data-theme="dark"] .btn:hover { border-color: var(--ink-3); background: var(--fill); }
+  [data-theme="dark"] .btn.primary { background: #ededea; color: #0d0d0c; border-color: #ededea; }
+  [data-theme="dark"] .btn.primary:hover { background: #ffffff; border-color: #ffffff; }
+  [data-theme="dark"] .btn.ghost { background: transparent; border-color: transparent; color: var(--ink-2); }
+  [data-theme="dark"] .btn.ghost:hover { background: var(--line-2); color: var(--ink); }
+  [data-theme="dark"] .btn.accent { background: var(--accent); color: #fff; border-color: var(--accent); }
+  [data-theme="dark"] .btn.accent:hover { background: #7a93ff; border-color: #7a93ff; }
+
+  /* Composer */
+  [data-theme="dark"] .composer-input-wrap { background: var(--page); border-color: var(--line); box-shadow: 0 1px 2px rgba(0,0,0,0.3); }
+  [data-theme="dark"] .composer-input-wrap:focus-within { border-color: var(--ink-3); box-shadow: 0 2px 8px rgba(0,0,0,0.4); }
+  [data-theme="dark"] .composer-input-tools .attach { background: transparent; border-color: var(--line); color: var(--ink-2); }
+  [data-theme="dark"] .composer-input-tools .attach:hover { background: var(--fill); color: var(--ink); }
+  [data-theme="dark"] .composer-input-tools .hint kbd { background: var(--fill); border-color: var(--line-2); }
+  [data-theme="dark"] .composer-chip { background: var(--page); border-color: var(--line); color: var(--ink-2); }
+  [data-theme="dark"] .composer-chip:hover { background: var(--fill); border-color: var(--ink-3); color: var(--ink); }
+
+  /* Section heads */
+  [data-theme="dark"] .sec-head .filter { background: var(--page); border-color: var(--line); color: var(--ink-2); }
+  [data-theme="dark"] .sec-head .view-toggle { border-color: var(--line); }
+  [data-theme="dark"] .sec-head .view-toggle .v { background: var(--page); color: var(--ink-3); border-color: var(--line-2); }
+  [data-theme="dark"] .sec-head .view-toggle .v.on { background: var(--fill); color: var(--ink); }
+
+  /* File cards */
+  [data-theme="dark"] .file-card { background: var(--page); border-color: var(--line); }
+  [data-theme="dark"] .file-card:hover { border-color: var(--ink-3); box-shadow: 0 6px 20px -10px rgba(0,0,0,0.6); }
+  [data-theme="dark"] .file-card .thumb { background: var(--fill); border-color: var(--line-2); }
+
+  /* Thumbnail abstractions — mini email frames */
+  [data-theme="dark"] .thumb-frame { background: var(--page); border-color: var(--line); box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+  [data-theme="dark"] .thumb-frame .tb { background: var(--fill-2); }
+  [data-theme="dark"] .thumb-frame .tb.hero,
+  [data-theme="dark"] .thumb-frame .tb.row > i {
+    background: repeating-linear-gradient(135deg, #1f1f1d 0 5px, #262622 5px 10px) !important;
+  }
+  [data-theme="dark"] .thumb-frame .tb.cta { background: #ededea; }
+  [data-theme="dark"] .thumb-flow .mini { background: var(--page); border-color: var(--line); box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
+  [data-theme="dark"] .thumb-flow .mini i { background: repeating-linear-gradient(135deg, #1f1f1d 0 3px, #262622 3px 6px) !important; }
+  [data-theme="dark"] .thumb-flow .mini u { background: var(--fill-2); }
+  [data-theme="dark"] .thumb-flow .mini s { background: #ededea; }
+  [data-theme="dark"] .thumb-ab .half { background: var(--page); border-color: var(--line); box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
+  [data-theme="dark"] .thumb-ab .half::before { background: var(--fill); color: var(--ink-3); }
+  [data-theme="dark"] .thumb-ab .half i { background: repeating-linear-gradient(135deg, #1f1f1d 0 3px, #262622 3px 6px) !important; }
+  [data-theme="dark"] .thumb-ab .half u { background: var(--fill-2); }
+
+  /* Status tags */
+  [data-theme="dark"] .file-card .status-tag {
+    background: rgba(20,20,18,0.94); color: var(--ink-2); border-color: var(--line);
+    backdrop-filter: blur(4px);
+  }
+  [data-theme="dark"] .file-card .status-tag.ok { color: var(--ok); border-color: rgba(94,194,125,0.25); background: rgba(15,30,22,0.92); }
+  [data-theme="dark"] .file-card .status-tag.scheduled { color: var(--accent-ink); border-color: var(--accent-2); background: rgba(26,31,61,0.92); }
+  [data-theme="dark"] .file-card .frame-count { background: rgba(20,20,18,0.88); border-color: var(--line-2); color: var(--ink-3); }
+
+  /* Up-next list */
+  [data-theme="dark"] .upnext { background: var(--page); border-color: var(--line); }
+  [data-theme="dark"] .upnext-row:hover { background: var(--rail); }
+  [data-theme="dark"] .upnext-row { border-color: var(--line-2); }
+  [data-theme="dark"] .upnext-foot { background: var(--rail); border-color: var(--line-2); }
+
+  /* Legend primary-action swatch should invert */
+  [data-theme="dark"] .page-head .legend .sw i[style*="background:#111"] { background: #ededea !important; }
+
+  /* Polish notes cards at bottom */
+  [data-theme="dark"] section.block > div > div[style*="background:#fafaf8"] {
+    background: var(--rail) !important;
+    border-color: var(--line) !important;
+  }
+
+  /* Footer */
+  [data-theme="dark"] footer { background: var(--bg) !important; border-color: var(--line) !important; }
+
+</style>
+</head>
+<body>
+
+<header class="page-head">
+  <div class="eyebrow">HI-FI · STAGE 1 · V1</div>
+  <h1>Kova — 03 · Brand dashboard</h1>
+  <p>Hi-fi polish of the brand home surface. Same layout, same color roles, same contextual chrome as the wireframe — tightened typography, real Lucide icons, populated content, and an elevated AI composer that earns the product's "AI-first home" framing.</p>
+  <div class="meta">Scope: Phase 1 · one surface · 1440 design width · light mode · email frames block-level on purpose · sample brand = "Nike" label, generic content</div>
+  <div class="legend">
+    <span class="sw"><i style="background:#111"></i>primary action</span>
+    <span class="sw"><i style="background:#2f5bff"></i>AI / generative</span>
+    <span class="sw"><i style="background:#1f7a3a"></i>sent / ready</span>
+    <span class="sw"><i style="background:#e6e5e2"></i>draft / neutral</span>
+  </div>
+</header>
+
+<section class="block" id="s-dashboard">
+  <header>
+    <div class="tag">03 · Brand dashboard · home</div>
+    <h2>Inside a brand: AI-first home</h2>
+    <p class="intro">Daily landing surface after brand pick. Leads with "what are we making?" composer — Kova is an assistant, not a file browser. Recent canvas files sit beneath it, and the next 3 scheduled Klaviyo sends live just below so marketers never lose the shipping rhythm.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap">
+      <div class="name">Brand dashboard · Home</div>
+      <div class="id">03.a · hi-fi</div>
+    </div>
+    <div class="canvas">
+      <div class="app">
+
+        <!-- SIDEBAR -->
+        <div class="sidebar">
+          <div class="brand-switch">
+            <div class="logo">N</div>
+            <div class="name">Nike</div>
+            <div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div>
+          </div>
+          <div class="side-search">
+            <i data-lucide="search" style="width:13px;height:13px;"></i>
+            <span>Search</span>
+            <span class="kbd">⌘K</span>
+          </div>
+
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item active"><i data-lucide="clock-4" class="ic"></i><span>Recents</span></div>
+            <div class="item"><i data-lucide="calendar-days" class="ic"></i><span>Calendar</span><span class="count">12</span></div>
+
+            <div class="section">Library</div>
+            <div class="item"><i data-lucide="bookmark" class="ic"></i><span>Swipes</span></div>
+            <div class="item"><i data-lucide="layout-template" class="ic"></i><span>Templates</span></div>
+            <div class="item"><i data-lucide="package" class="ic"></i><span>Products</span><span class="count">318</span></div>
+
+            <div class="section">Brand</div>
+            <div class="item"><i data-lucide="sparkles" class="ic"></i><span>Personalization</span></div>
+            <div class="item"><i data-lucide="book-open" class="ic"></i><span>Knowledge base</span></div>
+            <div class="item"><i data-lucide="brain" class="ic"></i><span>Memories</span><span class="count">19</span></div>
+          </div>
+
+          <div class="side-footer">
+            <div class="avatar">JY</div>
+            <div class="who">
+              <b>Jiho Yang</b>
+              <span>Free plan</span>
+            </div>
+            <div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+          </div>
+        </div>
+
+        <!-- MAIN -->
+        <div class="main">
+          <div class="topbar">
+            <div class="breadcrumb">
+              <span>Nike</span>
+              <span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <b>Home</b>
+            </div>
+            <div class="actions">
+              <div class="btn sm">
+                <i data-lucide="folder-plus" class="ic"></i>
+                New canvas
+              </div>
+            </div>
+          </div>
+
+          <div class="content">
+
+            <!-- Greeting -->
+            <div class="greeting">
+              <div class="hello">Good morning, Jiho</div>
+            </div>
+
+            <!-- AI Composer hero -->
+            <div class="composer">
+              <div class="composer-input-wrap">
+                <div class="composer-input">
+                  <span class="typed">How can I help you today?</span>
+                </div>
+                <div class="composer-input-tools">
+                  <div class="attach-grp">
+                    <button class="attach" title="Attach files"><i data-lucide="plus" class="ic"></i></button>
+                  </div>
+                  <div class="grow"></div>
+                  <span class="hint"><kbd>⌘</kbd> <kbd>↵</kbd></span>
+                  <div class="btn accent go">
+                    Generate on canvas
+                    <i data-lucide="arrow-right" class="ic"></i>
+                  </div>
+                </div>
+              </div>
+
+              <div class="composer-chips">
+                <div class="composer-chip"><i data-lucide="tag" class="ic"></i>Promote a sale</div>
+                <div class="composer-chip"><i data-lucide="package" class="ic"></i>Showcase a product</div>
+                <div class="composer-chip"><i data-lucide="book-open" class="ic"></i>Teach customers</div>
+                <div class="composer-chip"><i data-lucide="quote" class="ic"></i>Share reviews</div>
+                <div class="composer-chip"><i data-lucide="users" class="ic"></i>Build community</div>
+              </div>
+            </div>
+
+            <!-- Recent files -->
+            <div>
+              <div class="sec-head" style="margin-bottom:14px;">
+                <div class="l">
+                  <h4>Recent files</h4>
+                  <span class="count">8 canvases</span>
+                </div>
+                <div class="r">
+                  <div class="filter">Last viewed <i data-lucide="chevron-down" class="ic"></i></div>
+                  <div class="view-toggle">
+                    <div class="v on" title="Grid"><i data-lucide="layout-grid" class="ic"></i></div>
+                    <div class="v" title="List"><i data-lucide="list" class="ic"></i></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="file-grid">
+                <div class="file-card">
+                  <div class="thumb">
+                    <span class="status-tag scheduled">Scheduled</span>
+                    <span class="frame-count">4</span>
+                    <div class="thumb-frame">
+                      <div class="tb hero"></div>
+                      <div class="tb md"></div>
+                      <div class="tb sm"></div>
+                      <div class="tb row"><i></i><i></i></div>
+                      <div class="tb cta"></div>
+                    </div>
+                  </div>
+                  <div class="meta">
+                    <div class="title">Spring Drop — teaser + launch</div>
+                    <div class="sub">
+                      <i data-lucide="clock" class="ic"></i>
+                      <span>edited 2h ago</span>
+                      <span class="dot"></span>
+                      <span>3 scheduled</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="file-card">
+                  <div class="thumb">
+                    <span class="status-tag ok">Ready</span>
+                    <span class="frame-count">3</span>
+                    <div class="thumb-flow">
+                      <div class="mini"><i></i><u></u><s></s></div>
+                      <div class="arrow">→</div>
+                      <div class="mini"><i></i><u></u><s></s></div>
+                      <div class="arrow">→</div>
+                      <div class="mini"><i></i><u></u><s></s></div>
+                    </div>
+                  </div>
+                  <div class="meta">
+                    <div class="title">Welcome flow v3</div>
+                    <div class="sub">
+                      <i data-lucide="clock" class="ic"></i>
+                      <span>yesterday</span>
+                      <span class="dot"></span>
+                      <span>3 emails</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="file-card">
+                  <div class="thumb">
+                    <span class="status-tag draft">Draft</span>
+                    <span class="frame-count">3</span>
+                    <div class="thumb-flow">
+                      <div class="mini"><i></i><u></u><s></s></div>
+                      <div class="arrow">→</div>
+                      <div class="mini"><i></i><u></u><s></s></div>
+                      <div class="arrow">→</div>
+                      <div class="mini"><i></i><u></u><s></s></div>
+                    </div>
+                  </div>
+                  <div class="meta">
+                    <div class="title">Abandoned cart rewrite</div>
+                    <div class="sub">
+                      <i data-lucide="clock" class="ic"></i>
+                      <span>2d ago</span>
+                      <span class="dot"></span>
+                      <span>in review</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="file-card">
+                  <div class="thumb">
+                    <span class="status-tag draft">Draft</span>
+                    <span class="frame-count">2</span>
+                    <div class="thumb-ab">
+                      <div class="half" data-l="A"><i></i><u></u></div>
+                      <div class="half" data-l="B"><i></i><u></u></div>
+                    </div>
+                  </div>
+                  <div class="meta">
+                    <div class="title">Air Max anniversary</div>
+                    <div class="sub">
+                      <i data-lucide="clock" class="ic"></i>
+                      <span>3d ago</span>
+                      <span class="dot"></span>
+                      <span>subject-line test</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="file-card">
+                  <div class="thumb">
+                    <span class="status-tag draft">Draft</span>
+                    <span class="frame-count">1</span>
+                    <div class="thumb-frame">
+                      <div class="tb hero"></div>
+                      <div class="tb md"></div>
+                      <div class="tb sm"></div>
+                      <div class="tb cta"></div>
+                    </div>
+                  </div>
+                  <div class="meta">
+                    <div class="title">SNKRS VIP — early access</div>
+                    <div class="sub">
+                      <i data-lucide="clock" class="ic"></i>
+                      <span>4d ago</span>
+                      <span class="dot"></span>
+                      <span>copy draft</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="file-card">
+                  <div class="thumb">
+                    <span class="status-tag draft">Draft</span>
+                    <span class="frame-count">4</span>
+                    <div class="thumb-flow">
+                      <div class="mini"><i></i><u></u><s></s></div>
+                      <div class="arrow">→</div>
+                      <div class="mini"><i></i><u></u><s></s></div>
+                      <div class="arrow">→</div>
+                      <div class="mini"><i></i><u></u><s></s></div>
+                    </div>
+                  </div>
+                  <div class="meta">
+                    <div class="title">Post-purchase nurture</div>
+                    <div class="sub">
+                      <i data-lucide="clock" class="ic"></i>
+                      <span>5d ago</span>
+                      <span class="dot"></span>
+                      <span>4 emails</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="file-card">
+                  <div class="thumb">
+                    <span class="status-tag draft">Draft</span>
+                    <span class="frame-count">2</span>
+                    <div class="thumb-ab">
+                      <div class="half" data-l="A"><i></i><u></u></div>
+                      <div class="half" data-l="B"><i></i><u></u></div>
+                    </div>
+                  </div>
+                  <div class="meta">
+                    <div class="title">Back-in-stock win-back</div>
+                    <div class="sub">
+                      <i data-lucide="clock" class="ic"></i>
+                      <span>1w ago</span>
+                      <span class="dot"></span>
+                      <span>hero test</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="file-card">
+                  <div class="thumb">
+                    <span class="status-tag draft">Draft</span>
+                    <span class="frame-count">1</span>
+                    <div class="thumb-frame">
+                      <div class="tb hero"></div>
+                      <div class="tb md"></div>
+                      <div class="tb row"><i></i><i></i></div>
+                      <div class="tb cta"></div>
+                    </div>
+                  </div>
+                  <div class="meta">
+                    <div class="title">Father's Day gift guide</div>
+                    <div class="sub">
+                      <i data-lucide="clock" class="ic"></i>
+                      <span>1w ago</span>
+                      <span class="dot"></span>
+                      <span>untouched</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot">
+            <ul>
+              <li><strong>Chrome unchanged from wireframe.</strong> Left-rail file-browser shell with the brand switcher — scoped to dashboard / library / settings per the wireframe's aesthetic rules. Canvas and preview get different chrome.</li>
+              <li><strong>Composer leads, quietly.</strong> Centered greeting and a single neutral input framed by a soft light surface. No gradient, no AI mark, no mode toggle — the affordance is the box and the placeholder. "Generate on canvas" is the only primary CTA.</li>
+              <li><strong>Preset chips are plain-English starts.</strong> Five broad campaign intents (Promote a sale · Showcase a product · Teach customers · Share reviews · Build community) — one click seeds the composer with a recipe. Renamed from internal category labels so the user doesn't have to translate.</li>
+              <li><strong>Recent files</strong> carry status tags (Scheduled · Ready · Draft), frame counts, and varied thumbnail abstractions (single-email, 3-email flow, A/B split) so the canvas shape is readable at a glance without rendering real email art. Now two rows × four cards — the library is the list.</li>
+            </ul>
+    </div>
+  </div>
+</section>
+
+<section class="block" style="background:#fff;">
+  <header>
+    <div class="tag">What changed from wireframe v5</div>
+    <h2>Polish notes</h2>
+    <p class="intro">Everything below is a <em>tightening</em>, not a redesign. Layout, color roles, and information architecture are preserved exactly.</p>
+  </header>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">
+    <div style="border:1px solid var(--line);border-radius:8px;padding:16px;background:#fafaf8;">
+      <div class="mono" style="font-size:10px;color:var(--ink-3);margin-bottom:6px;">Greeting</div>
+      <div style="font-size:13px;color:var(--ink-2);">Centered, single-line "Good morning, Jiho" at 34px/400 with tight tracking. No subtitle, no glyph, no sync pills — the hero moment is space and a name, not status. Pure focus on the composer below.</div>
+    </div>
+    <div style="border:1px solid var(--line);border-radius:8px;padding:16px;background:#fafaf8;">
+      <div class="mono" style="font-size:10px;color:var(--ink-3);margin-bottom:6px;">Composer</div>
+      <div style="font-size:13px;color:var(--ink-2);">Stripped to essentials: single rounded input on white, "How can I help you today?" placeholder, one "+" attach control, one "Generate on canvas" CTA. Gradient surface, AI glyph, mode toggle, and context pills all removed. Max-width 760px, centered.</div>
+    </div>
+    <div style="border:1px solid var(--line);border-radius:8px;padding:16px;background:#fafaf8;">
+      <div class="mono" style="font-size:10px;color:var(--ink-3);margin-bottom:6px;">Preset chips</div>
+      <div style="font-size:13px;color:var(--ink-2);">Campaign-type labels rewritten in plain English (Promote a sale · Showcase a product · Teach customers · Share reviews · Build community) and styled as neutral pills. Centered under the composer as entry-points, not taxonomy.</div>
+    </div>
+    <div style="border:1px solid var(--line);border-radius:8px;padding:16px;background:#fafaf8;">
+      <div class="mono" style="font-size:10px;color:var(--ink-3);margin-bottom:6px;">Typography</div>
+      <div style="font-size:13px;color:var(--ink-2);">Inter throughout with negative tracking on display sizes. Mono reserved for IDs, timestamps, counts, kbd shortcuts. Body at 13px for UI, 14–15px for hero prose.</div>
+    </div>
+    <div style="border:1px solid var(--line);border-radius:8px;padding:16px;background:#fafaf8;">
+      <div class="mono" style="font-size:10px;color:var(--ink-3);margin-bottom:6px;">Icons</div>
+      <div style="font-size:13px;color:var(--ink-2);">Lucide throughout at 13–15px with ~0.75 opacity for inactive nav, 1.0 for active and primary actions. Replaces the wireframe's text glyphs without adding visual noise.</div>
+    </div>
+    <div style="border:1px solid var(--line);border-radius:8px;padding:16px;background:#fafaf8;">
+      <div class="mono" style="font-size:10px;color:var(--ink-3);margin-bottom:6px;">File cards</div>
+      <div style="font-size:13px;color:var(--ink-2);">Thumbnails use block-level email abstractions: single-email frame, 3-step flow, A/B split. Status tags + frame counts added. Hover lifts subtly. Two rows × four cards replaces the Up next calendar block — dashboard is now canvas-focused.</div>
+    </div>
+  </div>
+</section>
+
+<footer style="padding:32px 64px;border-top:1px solid var(--line);background:var(--bg);color:var(--ink-3);font-size:11px;">
+  Kova · hi-fi · stage 1 · 03 brand dashboard · 1 surface · light mode · v1
+</footer>
+
+<script>
+  // Initialize Lucide icons
+  if (window.lucide) {
+    window.lucide.createIcons({
+      attrs: { 'stroke-width': 1.6 }
+    });
+  }
+</script>
+
+</body>
+</html>

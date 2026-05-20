@@ -1,0 +1,965 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<title>Kova — Hi-fi · Popovers &amp; Dialogs · Dark</title>
+<meta name="viewport" content="width=1440" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+<link rel="stylesheet" href="../../design-system/kova-hifi.css" />
+<script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
+<style>
+/* ============================================================
+   FILE 2 — A2a sidebar brand-switcher · A6 avatar dropdown ·
+            A8.1 Snapshot · A8.2 Shortcuts · A8.3 Accessibility ·
+            A8.4 Confirmation (3 variants)
+
+   Every surface is anchored on dimmed dashboard chrome so reviewers
+   see the modal/popover in situ. Tokens come from kova-hifi.css.
+   New layout-only classes here; no new tokens, no new fonts.
+   Section heads use the locked Inter 16/600/sentence-case rule.
+   ============================================================ */
+
+  body { background: var(--bg); }
+
+  /* Inherit specificity-bump rule for section heads inside this file */
+  section.block .s-section h2 {
+    margin: 0 0 2px; font-size: 16px;
+    letter-spacing: -0.005em;
+    color: var(--ink); font-weight: 600;
+    font-family: 'Inter', system-ui, sans-serif;
+    text-transform: none;
+  }
+
+  /* ---------- Backdrop / dim ---------- */
+  .modal-backdrop {
+    position: absolute; inset: 0;
+    background: rgba(26,26,29,0.72);
+    backdrop-filter: blur(2px);
+    z-index: 5;
+  }
+
+  /* ---------- Generic dialog shell ---------- */
+  .dlg {
+    position: absolute; left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--page); border: 1px solid var(--line);
+    border-radius: 10px; box-shadow: 0 24px 80px -20px rgba(0,0,0,0.7), 0 1px 0 rgba(255,255,255,0.03) inset;
+    z-index: 10;
+    display: flex; flex-direction: column;
+    min-width: 360px; max-width: 92%;
+  }
+  .dlg.sm { width: 460px; }
+  .dlg.md { width: 540px; }
+  .dlg.lg { width: 880px; max-height: 78%; }
+  .dlg .dlg-head {
+    padding: 18px 22px 12px;
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
+  }
+  .dlg .dlg-head h3 {
+    margin: 0; font-size: 16px; font-weight: 600; letter-spacing: -0.005em; color: var(--ink);
+  }
+  .dlg .dlg-head .sub {
+    margin: 4px 0 0; font-size: 12.5px; color: var(--ink-3); line-height: 1.5;
+  }
+  .dlg .dlg-head .x {
+    width: 26px; height: 26px; border-radius: 5px;
+    display: grid; place-items: center; color: var(--ink-3); cursor: pointer;
+    flex-shrink: 0;
+  }
+  .dlg .dlg-head .x:hover { background: var(--line-2); color: var(--ink); }
+  .dlg .dlg-body {
+    padding: 4px 22px 18px;
+    display: flex; flex-direction: column; gap: 14px;
+    min-height: 0;
+  }
+  .dlg .dlg-body.flush { padding: 0; }
+  .dlg .dlg-foot {
+    padding: 14px 22px;
+    border-top: 1px solid var(--line-2);
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    background: var(--rail);
+    border-bottom-left-radius: 10px; border-bottom-right-radius: 10px;
+  }
+  .dlg .dlg-foot .l { color: var(--ink-3); font-size: 11.5px; display: flex; align-items: center; gap: 6px; }
+  .dlg .dlg-foot .r { display: flex; gap: 8px; }
+
+  /* ---------- Form fields inside dialogs ---------- */
+  .fld { display: flex; flex-direction: column; gap: 6px; }
+  .fld > label {
+    font-size: 12px; font-weight: 500; color: var(--ink); letter-spacing: -0.003em;
+  }
+  .fld > label .opt { color: var(--ink-3); font-weight: 400; margin-left: 6px; font-size: 11px; }
+  .fld .help { color: var(--ink-3); font-size: 11.5px; }
+  .fld input.input, .fld textarea.input {
+    background: var(--page); border: 1px solid var(--line); color: var(--ink);
+    border-radius: 6px; padding: 8px 11px; font: inherit; font-size: 13px;
+    transition: border-color .1s ease, box-shadow .1s ease;
+    width: 100%;
+  }
+  .fld textarea.input { resize: vertical; min-height: 76px; line-height: 1.5; }
+  .fld input.input:focus, .fld textarea.input:focus {
+    outline: none; border-color: var(--ink-2);
+    box-shadow: 0 0 0 3px rgba(237,237,234,0.05);
+  }
+  .fld input.input.confirm-typed { font-size: 13px;
+    letter-spacing: 0.04em;
+  }
+  .fld input.input.confirm-typed.ok {
+    border-color: var(--warn); box-shadow: 0 0 0 3px rgba(232,122,74,0.10);
+  }
+
+  /* ---------- A2a dropdown popover (sidebar brand-switcher) ---------- */
+  .popover {
+    position: absolute; z-index: 10;
+    background: var(--page); border: 1px solid var(--line);
+    border-radius: 8px; padding: 6px;
+    box-shadow: 0 16px 60px -20px rgba(0,0,0,0.7);
+    display: flex; flex-direction: column; gap: 4px;
+    min-width: 240px;
+  }
+  .popover .pop-search {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 8px; margin: 2px 2px 4px;
+    border: 1px solid var(--line); border-radius: 6px;
+    background: var(--rail);
+    font-size: 12.5px; color: var(--ink-3);
+  }
+  .popover .pop-search input {
+    border: 0; outline: 0; background: transparent;
+    color: var(--ink); flex: 1; font: inherit; font-size: 12.5px;
+  }
+  .popover .pop-row {
+    display: flex; align-items: center; gap: 9px;
+    padding: 6px 8px; border-radius: 5px;
+    cursor: pointer; color: var(--ink); font-size: 12.5px;
+  }
+  .popover .pop-row:hover { background: var(--line-2); }
+  .popover .pop-row.active { background: var(--fill); }
+  .popover .pop-row .logo {
+    width: 22px; height: 22px; border-radius: 5px;
+    display: grid; place-items: center;
+    font-weight: 700; font-size: 10px; letter-spacing: -0.02em;
+    color: #0d0d0c; background: #ededea; flex-shrink: 0;
+  }
+  .popover .pop-row .nm { flex: 1; font-weight: 500; letter-spacing: -0.003em; }
+  .popover .pop-row .ck { color: var(--ink); }
+  .popover .pop-row.muted { color: var(--ink-3); }
+  .popover .pop-row.muted .logo { background: var(--fill-2); color: var(--ink-3); }
+  .popover .pop-row .meta { color: var(--ink-3); font-size: 10.5px; }
+  .popover .pop-sep {
+    height: 1px; background: var(--line-2); margin: 4px 4px;
+  }
+  .popover .pop-foot {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 8px; border-radius: 5px;
+    cursor: pointer; color: var(--ink-2); font-size: 12.5px;
+  }
+  .popover .pop-foot:hover { background: var(--line-2); color: var(--ink); }
+  .popover .pop-foot .ic { width: 13px; height: 13px; }
+
+  /* A6 Avatar dropdown specifics */
+  .popover.avatar {
+    min-width: 240px;
+  }
+  .popover.avatar .pop-hdr {
+    padding: 10px 10px 8px;
+    border-bottom: 1px solid var(--line-2);
+    margin: -2px -2px 4px;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .popover.avatar .pop-hdr .row1 {
+    display: flex; align-items: center; gap: 9px;
+  }
+  .popover.avatar .pop-hdr .av {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--warn); color: #fff;
+    display: grid; place-items: center;
+    font-weight: 600; font-size: 11px;
+    flex-shrink: 0;
+  }
+  .popover.avatar .pop-hdr .who b { color: var(--ink); font-size: 12.5px; font-weight: 600; display: block; line-height: 1.2; }
+  .popover.avatar .pop-hdr .who span { color: var(--ink-3); font-size: 10.5px; }
+  .popover.avatar .pop-hdr .plan {
+    margin-left: auto;
+    background: var(--accent-soft); color: var(--accent-ink);
+    border: 1px solid var(--accent-2);
+    padding: 2px 8px; border-radius: 999px;
+    font-size: 10.5px; font-weight: 600; letter-spacing: -0.003em;
+  }
+  .popover.avatar .pop-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 6px 8px; border-radius: 5px;
+    color: var(--ink); font-size: 12.5px; cursor: pointer;
+  }
+  .popover.avatar .pop-item:hover { background: var(--line-2); }
+  .popover.avatar .pop-item .ic { width: 14px; height: 14px; color: var(--ink-3); }
+  .popover.avatar .pop-item:hover .ic { color: var(--ink); }
+  .popover.avatar .pop-item .kbd {
+    margin-left: auto; font-size: 10px;
+    background: var(--fill); color: var(--ink-3);
+    padding: 1px 5px; border-radius: 3px; border: 1px solid var(--line-2);
+  }
+  .popover.avatar .pop-item .soon {
+    margin-left: auto; font-size: 9px;
+    letter-spacing: 0.1em; color: var(--ink-3);
+  }
+  .popover.avatar .pop-item.disabled { color: var(--ink-3); cursor: not-allowed; }
+  .popover.avatar .pop-item.disabled .ic { color: var(--ink-3); }
+  .popover.avatar .pop-item.disabled:hover { background: transparent; }
+
+  /* Pointer arrow on popovers (small) */
+  .popover .arrow {
+    position: absolute; width: 10px; height: 10px;
+    background: var(--page);
+    border-left: 1px solid var(--line); border-top: 1px solid var(--line);
+    transform: rotate(45deg);
+  }
+
+  /* ---------- A8.2 Shortcuts dialog ---------- */
+  .sh-grid { display: grid; grid-template-columns: 168px 1fr; min-height: 460px; }
+  .sh-side {
+    border-right: 1px solid var(--line-2);
+    background: var(--rail);
+    padding: 12px 8px; overflow: auto;
+    display: flex; flex-direction: column; gap: 1px;
+    border-bottom-left-radius: 10px;
+  }
+  .sh-side .cat {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 10px; border-radius: 5px;
+    color: var(--ink-2); cursor: pointer; font-size: 12.5px;
+    letter-spacing: -0.003em;
+  }
+  .sh-side .cat:hover { background: var(--line-2); color: var(--ink); }
+  .sh-side .cat.active { background: var(--fill); color: var(--ink); font-weight: 500; }
+  .sh-main { display: flex; flex-direction: column; min-width: 0; }
+  .sh-search {
+    display: flex; align-items: center; gap: 9px;
+    padding: 12px 16px; border-bottom: 1px solid var(--line-2);
+  }
+  .sh-search input {
+    border: 0; outline: 0; background: transparent;
+    color: var(--ink); font: inherit; font-size: 13px; flex: 1;
+  }
+  .sh-search input::placeholder { color: var(--ink-3); }
+  .sh-list { flex: 1; overflow: auto; padding: 4px 16px 12px; }
+  .sh-row {
+    display: grid; grid-template-columns: 1fr auto;
+    gap: 14px; align-items: center;
+    padding: 9px 0;
+    border-top: 1px solid var(--line-2);
+    font-size: 12.5px; color: var(--ink);
+  }
+  .sh-row:first-child { border-top: 0; }
+  .sh-row .keys {
+    display: inline-flex; gap: 4px;
+  }
+  .kbd { font-size: 10.5px;
+    background: var(--fill); color: var(--ink);
+    padding: 2px 6px; border-radius: 4px; border: 1px solid var(--line-2);
+    min-width: 22px; text-align: center; display: inline-block;
+  }
+
+  /* ---------- A8.3 Accessibility modal ---------- */
+  .ac-row {
+    display: grid; grid-template-columns: 1fr auto;
+    gap: 16px; align-items: center;
+    padding: 12px 0;
+    border-top: 1px solid var(--line-2);
+  }
+  .ac-row:first-child { border-top: 0; padding-top: 4px; }
+  .ac-row .lbl { font-size: 13px; font-weight: 500; color: var(--ink); }
+  .ac-row .lbl .sub { display: block; color: var(--ink-3); font-size: 11.5px; font-weight: 400; margin-top: 2px; line-height: 1.45; }
+
+  /* ---------- A8.4 Confirmation grid (3 variants side-by-side) ---------- */
+  .conf-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+    padding: 56px 64px;
+  }
+  .conf-card {
+    border: 1px solid var(--line); border-radius: 10px;
+    background: var(--page);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 1px 0 rgba(255,255,255,0.02), 0 12px 40px -20px rgba(0,0,0,0.4);
+  }
+  .conf-card .conf-cap {
+    padding: 10px 14px; border-bottom: 1px solid var(--line-2);
+    background: var(--rail); display: flex; justify-content: space-between; gap: 8px;
+    font-size: 11.5px;
+  }
+  .conf-card .conf-cap b { font-weight: 600; color: var(--ink); }
+  .conf-card .conf-cap span { font-size: 10px; color: var(--ink-3); }
+
+  .conf-body {
+    padding: 18px 18px 14px;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .conf-body .icon-circ {
+    width: 32px; height: 32px; border-radius: 50%;
+    display: grid; place-items: center;
+    background: var(--fill); color: var(--ink);
+  }
+  .conf-body .icon-circ.warn {
+    background: var(--warn-soft); color: var(--warn);
+    border: 1px solid var(--warn-edge);
+  }
+  .conf-body h4 {
+    margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -0.005em; color: var(--ink);
+  }
+  .conf-body p {
+    margin: 0; font-size: 12.5px; color: var(--ink-2); line-height: 1.55;
+  }
+  .conf-body p code { font-size: 11.5px;
+    background: var(--fill); padding: 1px 5px; border-radius: 3px;
+    color: var(--ink);
+  }
+  .conf-foot {
+    padding: 12px 18px; border-top: 1px solid var(--line-2);
+    background: var(--rail);
+    display: flex; justify-content: flex-end; gap: 8px;
+  }
+
+  /* Destructive variant */
+  .btn.danger {
+    background: var(--warn); color: #fff; border-color: var(--warn);
+  }
+  .btn.danger:hover { background: #d36a3a; border-color: #d36a3a; }
+  .btn.danger[disabled],
+  .btn.danger.disabled {
+    background: var(--fill); color: var(--ink-3); border-color: var(--line-2);
+    cursor: not-allowed;
+  }
+
+  /* Anchor pin (small dotted line + label, used to point at the trigger) */
+  .anchor-pin {
+    position: absolute; z-index: 4;
+    pointer-events: none;
+  }
+  .anchor-pin .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    border: 2px solid var(--accent); background: var(--page);
+  }
+  .anchor-pin .lbl {
+    position: absolute; left: 14px; top: -2px;
+    background: var(--page); color: var(--ink-2);
+    border: 1px solid var(--line); border-radius: 4px;
+    padding: 2px 6px; font-size: 10.5px; letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+
+  /* Topbar avatar (shown on the right of topbar so A6 has a trigger to anchor on) */
+  .top-avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--warn); color: #fff;
+    display: grid; place-items: center;
+    font-weight: 600; font-size: 10.5px;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: border-color .12s ease;
+  }
+  .top-avatar.open { border-color: var(--ink); }
+
+</style>
+</head>
+<body data-screen-label="A6+A2a Popovers + A8 Dialogs">
+
+<header class="page-head">
+  <div class="eyebrow">HI-FI · BATCH A · DARK · FILE 2</div>
+  <h1>Popovers &amp; Dialogs · A2a · A6 · A8.1–A8.4</h1>
+  <p>Six anchored surfaces shown over dimmed dashboard chrome so each modal/popover lives in its actual trigger context. Inherits the A7 sidebar/topbar/section vocabulary and the locked decisions: brand-picker pill = A2a/A2b shared component; avatar dropdown carries no brand picker; "Pro" plan badge is a placeholder; shortcuts dialog uses 11 categories (Components + Prototyping deferred); typed-confirm uses brand-name for Delete-brand and literal "DELETE" for Delete-account.</p>
+  <div class="meta">6 surfaces · all anchored on app chrome · same kova-hifi.css tokens · density carried from A7</div>
+  <div class="legend">
+    <span class="sw"><i style="background:#ededea"></i>primary action</span>
+    <span class="sw"><i style="background:#5a7dff"></i>AI / accent</span>
+    <span class="sw"><i style="background:#5ec27d"></i>connected / ok</span>
+    <span class="sw"><i style="background:#e87a4a"></i>destructive</span>
+  </div>
+</header>
+
+
+<!-- ============================================================
+     A2a · Sidebar brand-switcher dropdown
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE 2 · §1 · A2a sidebar brand-switcher</div>
+    <h2>A2a · Sidebar brand-switcher dropdown</h2>
+    <p class="intro">Anchored on the existing dashboard sidebar pill (the "N Nike ▾" trigger from 03 Brand Dashboard). Opening the popover shows: search input → active brand row → other brands → divider → "+ Add new brand" footer. Click on a brand row navigates to that brand's dashboard (route change). Same component is reused inline as A2b inside Account → Brand Kit / Integrations (where the click swaps section data instead of routing).</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Dashboard chrome · sidebar brand-switcher open</div><div class="id">A2a · hi-fi</div></div>
+    <div class="canvas tall" data-screen-label="A2a Sidebar Brand-switcher">
+      <div class="app">
+        <!-- Sidebar (anchor for popover) -->
+        <div class="sidebar">
+          <div class="brand-switch" style="border-color: var(--ink); background: var(--page);">
+            <div class="logo">N</div><div class="name">Nike</div>
+            <div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;color:var(--ink);"></i></div>
+          </div>
+          <div class="side-search"><i data-lucide="search" style="width:13px;height:13px;"></i><span>Search</span><span class="kbd">⌘K</span></div>
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item"><i data-lucide="clock-4" class="ic"></i>Recents</div>
+            <div class="item"><i data-lucide="calendar-days" class="ic"></i>Calendar<span class="pill" style="margin-left:auto;font-size:9px;padding:1px 5px;">SOON</span></div>
+            <div class="section">Library</div>
+            <div class="item"><i data-lucide="bookmark" class="ic"></i>Swipes<span class="pill" style="margin-left:auto;font-size:9px;padding:1px 5px;">SOON</span></div>
+            <div class="item"><i data-lucide="layout-template" class="ic"></i>Templates<span class="pill" style="margin-left:auto;font-size:9px;padding:1px 5px;">SOON</span></div>
+            <div class="item"><i data-lucide="package" class="ic"></i>Products<span class="count">318</span></div>
+            <div class="section">Brand</div>
+            <div class="item"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+            <div class="item"><i data-lucide="book-open" class="ic"></i>Knowledge base</div>
+          </div>
+          <div class="side-footer">
+            <div class="avatar">JY</div>
+            <div class="who"><b>Jiho Yang</b><span>Pro plan</span></div>
+            <div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+          </div>
+        </div>
+
+        <!-- Dim main pane behind popover -->
+        <div class="main">
+          <div class="topbar">
+            <div class="breadcrumb">
+              <span><i data-lucide="layout-grid" style="width:14px;height:14px;"></i></span>
+              <b>Brand dashboard</b>
+            </div>
+            <div class="actions">
+              <span class="pill ok dot" style="font-size:11px;">Online</span>
+              <div class="top-avatar">JY</div>
+            </div>
+          </div>
+          <div class="content" style="opacity:.35;">
+            <div class="ph stripes" style="height: 220px; border-radius: 8px;">DASHBOARD CONTENT (DIMMED)</div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">
+              <div class="ph stripes" style="height: 140px; border-radius: 8px;">CARD</div>
+              <div class="ph stripes" style="height: 140px; border-radius: 8px;">CARD</div>
+              <div class="ph stripes" style="height: 140px; border-radius: 8px;">CARD</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Popover anchored under the sidebar pill (sidebar is 236px wide, popover sits 250-510px from left, top ~58px below 50px-ish trigger) -->
+        <div class="popover" style="left: 14px; top: 60px; width: 280px;">
+          <div class="pop-search">
+            <i data-lucide="search" style="width:13px;height:13px;"></i>
+            <input placeholder="Search brands…" />
+          </div>
+          <div class="pop-row active">
+            <div class="logo">N</div>
+            <div class="nm">Nike</div>
+            <span class="meta">12 canvases</span>
+            <i data-lucide="check" class="ck" style="width:14px;height:14px;"></i>
+          </div>
+          <div class="pop-row">
+            <div class="logo" style="background:#fa5400;color:#fff;">A</div>
+            <div class="nm">Allbirds</div>
+            <span class="meta">7</span>
+          </div>
+          <div class="pop-row">
+            <div class="logo" style="background:#1a4be0;color:#fff;">G</div>
+            <div class="nm">Glossier</div>
+            <span class="meta">4</span>
+          </div>
+          <div class="pop-row">
+            <div class="logo" style="background:#5ec27d;color:#0d0d0c;">O</div>
+            <div class="nm">Oatly</div>
+            <span class="meta">2</span>
+          </div>
+          <div class="pop-row muted">
+            <div class="logo">W</div>
+            <div class="nm">Warby Parker</div>
+            <span class="meta tag-mono">archived</span>
+          </div>
+          <div class="pop-sep"></div>
+          <div class="pop-foot">
+            <i data-lucide="plus" class="ic"></i>Add new brand
+          </div>
+        </div>
+
+        <!-- Anchor pin pointing at trigger -->
+        <div class="anchor-pin" style="left: 232px; top: 22px;">
+          <div class="dot"></div>
+          <div class="lbl">trigger · brand-switch pill</div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Same dropdown component as A2b</strong> (the inline pill on Account → Brand Kit). Different anchor, different on-click — sidebar variant routes; account variant swaps section data. Visual content is identical: search, list with active checkmark, divider, "+ Add new brand".</li>
+      <li><strong>Active brand carries a checkmark</strong>; archived brands appear muted with an <code>archived</code> tag-mono so they're visible but visually demoted.</li>
+      <li><strong>Trigger pill stays highlighted</strong> while open (border lifts to <code>--ink</code>) — the same hover treatment Reka DropdownMenu uses for stuck-open state.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     A6 · Avatar dropdown popover
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE 2 · §2 · A6 avatar dropdown</div>
+    <h2>A6 · Avatar dropdown</h2>
+    <p class="intro">Top-right avatar click (we anchor it on the dashboard topbar). Per Q16 revision: header (name + plan-badge "Pro" placeholder) → Account → Help (mailto MVP) → Keyboard shortcuts (⇧⌘?) → What's new (disabled "Coming soon" stub) → Sign out. <strong>No brand picker</strong> — Q17 reversal made this strictly user-account stuff.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Dashboard chrome · avatar dropdown open</div><div class="id">A6 · hi-fi</div></div>
+    <div class="canvas tall" data-screen-label="A6 Avatar dropdown">
+      <div class="app">
+        <div class="sidebar">
+          <div class="brand-switch"><div class="logo">N</div><div class="name">Nike</div><div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div></div>
+          <div class="side-search"><i data-lucide="search" style="width:13px;height:13px;"></i><span>Search</span><span class="kbd">⌘K</span></div>
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item"><i data-lucide="clock-4" class="ic"></i>Recents</div>
+            <div class="item"><i data-lucide="calendar-days" class="ic"></i>Calendar<span class="pill" style="margin-left:auto;font-size:9px;padding:1px 5px;">SOON</span></div>
+            <div class="section">Library</div>
+            <div class="item"><i data-lucide="bookmark" class="ic"></i>Swipes<span class="pill" style="margin-left:auto;font-size:9px;padding:1px 5px;">SOON</span></div>
+            <div class="item"><i data-lucide="layout-template" class="ic"></i>Templates<span class="pill" style="margin-left:auto;font-size:9px;padding:1px 5px;">SOON</span></div>
+            <div class="item"><i data-lucide="package" class="ic"></i>Products<span class="count">318</span></div>
+            <div class="section">Brand</div>
+            <div class="item"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+            <div class="item"><i data-lucide="book-open" class="ic"></i>Knowledge base</div>
+          </div>
+          <div class="side-footer">
+            <div class="avatar">JY</div>
+            <div class="who"><b>Jiho Yang</b><span>Pro plan</span></div>
+            <div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+          </div>
+        </div>
+
+        <div class="main">
+          <div class="topbar">
+            <div class="breadcrumb">
+              <span><i data-lucide="layout-grid" style="width:14px;height:14px;"></i></span>
+              <b>Brand dashboard</b>
+            </div>
+            <div class="actions">
+              <span class="pill ok dot" style="font-size:11px;">Online</span>
+              <div class="top-avatar open">JY</div>
+            </div>
+          </div>
+          <div class="content" style="opacity:.35;">
+            <div class="ph stripes" style="height: 220px; border-radius: 8px;">DASHBOARD CONTENT (DIMMED)</div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">
+              <div class="ph stripes" style="height: 140px; border-radius: 8px;">CARD</div>
+              <div class="ph stripes" style="height: 140px; border-radius: 8px;">CARD</div>
+              <div class="ph stripes" style="height: 140px; border-radius: 8px;">CARD</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Popover anchored at top-right (236 sidebar + main right edge ≈ canvas right minus 20px topbar pad minus avatar ~28px). We position at right=24, top=58. -->
+        <div class="popover avatar" style="right: 24px; top: 58px;">
+          <div class="pop-hdr">
+            <div class="row1">
+              <div class="avatar">JY</div>
+              <div class="who">
+                <b>Jiho Yang</b>
+                <span>jiho@studio.co</span>
+              </div>
+              <span class="plan">Pro</span>
+            </div>
+          </div>
+          <div class="pop-item">
+            <i data-lucide="user" class="ic"></i>
+            Account
+          </div>
+          <div class="pop-item">
+            <i data-lucide="life-buoy" class="ic"></i>
+            Help
+            <span class="kbd" style="font-size:9px;letter-spacing:0.05em;">mailto</span>
+          </div>
+          <div class="pop-item">
+            <i data-lucide="keyboard" class="ic"></i>
+            Keyboard shortcuts
+            <span class="kbd">⇧⌘?</span>
+          </div>
+          <div class="pop-item disabled">
+            <i data-lucide="sparkles" class="ic"></i>
+            What's new
+            <span class="soon">Coming soon</span>
+          </div>
+          <div class="pop-sep"></div>
+          <div class="pop-item">
+            <i data-lucide="log-out" class="ic"></i>
+            Sign out
+          </div>
+        </div>
+
+        <!-- Anchor pin -->
+        <div class="anchor-pin" style="right: 22px; top: 24px;">
+          <div class="dot"></div>
+          <div class="lbl" style="left:auto;right:14px;">trigger · avatar (28px)</div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Plan badge is a placeholder.</strong> The "Pro" pill uses the AI accent vocabulary (soft blue) only because it carries a non-default semantic meaning ("you have a paid plan"); the founder will wire real tier strings + colors later. Same string + role appears in A7.2 Plan &amp; billing card.</li>
+      <li><strong>What's new is disabled, not hidden</strong> (per brief Q's "designer's choice — flag in deliverable notes"). The disabled stub signals the surface is planned; tooltip-equivalent affordance lives in the <code>Coming soon</code> tag-mono.</li>
+      <li><strong>Help shows a <code>mailto</code> tag</strong> instead of an external-link arrow — MVP is a mailto, not a docs site. The visual hint sets correct expectation.</li>
+      <li><strong>No brand picker.</strong> Q17 reversed; brand switching lives only in A2a (sidebar) and A2b (Account section pill).</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     A8.1 · Snapshot dialog
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE 2 · §3 · A8.1 Snapshot dialog</div>
+    <h2>A8.1 · Save to version history</h2>
+    <p class="intro">Triggered by ⌥⌘S from inside the canvas. Small modal — label (required) + description (optional) + Save / Cancel. Manual snapshots are stored as Yjs doc bytes with <code>kind='manual'</code>; the right-side timeline panel that lists snapshots is Batch B.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Canvas chrome · snapshot dialog open</div><div class="id">A8.1 · hi-fi</div></div>
+    <div class="canvas tall" data-screen-label="A8.1 Snapshot dialog">
+      <!-- Stand-in for canvas chrome -->
+      <div class="app">
+        <div class="sidebar" style="width: 56px; padding: 10px 6px;">
+          <div style="width: 36px; height: 36px; border-radius: 7px; background: var(--page); border: 1px solid var(--line); display: grid; place-items: center; font-weight:700;font-size:12px;">N</div>
+          <div style="height:8px"></div>
+          <div style="width:36px;height:36px;border-radius:6px;background:var(--fill);display:grid;place-items:center;color:var(--ink);"><i data-lucide="mouse-pointer-2" style="width:15px;height:15px;"></i></div>
+          <div style="width:36px;height:36px;border-radius:6px;display:grid;place-items:center;color:var(--ink-3);"><i data-lucide="square" style="width:15px;height:15px;"></i></div>
+          <div style="width:36px;height:36px;border-radius:6px;display:grid;place-items:center;color:var(--ink-3);"><i data-lucide="type" style="width:15px;height:15px;"></i></div>
+          <div style="width:36px;height:36px;border-radius:6px;display:grid;place-items:center;color:var(--ink-3);"><i data-lucide="image" style="width:15px;height:15px;"></i></div>
+        </div>
+        <div class="main">
+          <div class="topbar">
+            <div class="breadcrumb">
+              <span class="back"><i data-lucide="chevron-left" style="width:14px;height:14px;"></i></span>
+              <span class="crumb-brand"><span class="logo">N</span>Nike</span>
+              <span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <b>Spring · Air Max launch</b>
+            </div>
+            <div class="actions">
+              <span class="pill outline" style="font-size:11px;">Saved · 12s ago</span>
+              <div class="top-avatar">JY</div>
+            </div>
+          </div>
+          <div class="content" style="opacity:.4; padding: 24px;">
+            <div class="ph stripes" style="height: 100%; border-radius: 8px;">CANVAS (DIMMED)</div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-backdrop"></div>
+
+      <!-- Dialog -->
+      <div class="dlg sm">
+        <div class="dlg-head">
+          <div>
+            <h3>Save to version history</h3>
+            <p class="sub">Capture the current canvas as a named snapshot. You can restore it later from the version timeline.</p>
+          </div>
+          <div class="x"><i data-lucide="x" style="width:14px;height:14px;"></i></div>
+        </div>
+        <div class="dlg-body">
+          <div class="fld">
+            <label>Label</label>
+            <input class="input" value="Spring rollout · pre-Klaviyo handoff" />
+            <span class="help">Shows up in the snapshot timeline. Required.</span>
+          </div>
+          <div class="fld">
+            <label>Description <span class="opt">optional</span></label>
+            <textarea class="input" placeholder="What's different about this version? (e.g. final color pass before client review)"></textarea>
+          </div>
+        </div>
+        <div class="dlg-foot">
+          <div class="l">
+            <i data-lucide="info" style="width:12px;height:12px;"></i>
+            Autosaves run every 30 min in the background.
+          </div>
+          <div class="r">
+            <div class="btn">Cancel</div>
+            <div class="btn primary">Save snapshot</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Trigger surfaced in foot</strong> — the hint about autosave isn't decorative; it pre-empts the obvious user question ("do I need to do this?"). Calm, single line, mono icon.</li>
+      <li><strong>Label is the only required field</strong>; without it Save stays disabled. Description is plainly optional with a placeholder that prompts useful copy.</li>
+      <li><strong>Trigger context is canvas chrome</strong> — left rail compresses to the tool palette to make clear this dialog is opened from inside an open canvas, not from dashboard.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     A8.2 · Keyboard shortcuts dialog
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE 2 · §4 · A8.2 Keyboard shortcuts</div>
+    <h2>A8.2 · Keyboard shortcuts</h2>
+    <p class="intro">Triggered by ⇧⌘? or via avatar dropdown → "Keyboard shortcuts". Larger surface — left side-nav with 11 categories (Components + Prototyping deferred per Q25), right pane with search + scrollable shortcut list. Glyphs use macOS conventions: ⌘ ⇧ ⌥ ⌃. Shown here on the <strong>Essentials</strong> tab.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Any context · shortcuts dialog open</div><div class="id">A8.2 · hi-fi</div></div>
+    <div class="canvas tall" data-screen-label="A8.2 Shortcuts dialog">
+      <div class="app">
+        <div class="sidebar">
+          <div class="brand-switch"><div class="logo">N</div><div class="name">Nike</div><div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div></div>
+          <div class="side-search"><i data-lucide="search" style="width:13px;height:13px;"></i><span>Search</span><span class="kbd">⌘K</span></div>
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item"><i data-lucide="clock-4" class="ic"></i>Recents</div>
+            <div class="section">Brand</div>
+            <div class="item"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+          </div>
+          <div class="side-footer"><div class="avatar">JY</div><div class="who"><b>Jiho Yang</b><span>Pro plan</span></div><div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div></div>
+        </div>
+        <div class="main">
+          <div class="topbar">
+            <div class="breadcrumb"><b>Brand dashboard</b></div>
+            <div class="actions"><div class="top-avatar">JY</div></div>
+          </div>
+          <div class="content" style="opacity:.35;">
+            <div class="ph stripes" style="height: 100%; border-radius: 8px;">DIMMED</div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-backdrop"></div>
+
+      <div class="dlg lg" style="height: 560px;">
+        <div class="dlg-head">
+          <div>
+            <h3>Keyboard shortcuts</h3>
+            <p class="sub">All Kova shortcuts, grouped by category. Search filters across every group.</p>
+          </div>
+          <div class="x"><i data-lucide="x" style="width:14px;height:14px;"></i></div>
+        </div>
+
+        <div class="dlg-body flush" style="flex: 1; min-height: 0;">
+          <div class="sh-grid" style="height: 100%;">
+            <div class="sh-side">
+              <div class="cat active"><i data-lucide="zap" style="width:12px;height:12px;"></i>Essentials</div>
+              <div class="cat"><i data-lucide="wrench" style="width:12px;height:12px;"></i>Tools</div>
+              <div class="cat"><i data-lucide="eye" style="width:12px;height:12px;"></i>View</div>
+              <div class="cat"><i data-lucide="zoom-in" style="width:12px;height:12px;"></i>Zoom</div>
+              <div class="cat"><i data-lucide="type" style="width:12px;height:12px;"></i>Text</div>
+              <div class="cat"><i data-lucide="square" style="width:12px;height:12px;"></i>Shape</div>
+              <div class="cat"><i data-lucide="mouse-pointer-2" style="width:12px;height:12px;"></i>Selection</div>
+              <div class="cat"><i data-lucide="crosshair" style="width:12px;height:12px;"></i>Cursor</div>
+              <div class="cat"><i data-lucide="edit-3" style="width:12px;height:12px;"></i>Edit</div>
+              <div class="cat"><i data-lucide="move" style="width:12px;height:12px;"></i>Transform</div>
+              <div class="cat"><i data-lucide="layers" style="width:12px;height:12px;"></i>Arrange</div>
+            </div>
+            <div class="sh-main">
+              <div class="sh-search">
+                <i data-lucide="search" style="width:14px;height:14px;color:var(--ink-3);"></i>
+                <input placeholder="Search shortcuts…" />
+                <span class="tag-mono">147 across 11</span>
+              </div>
+              <div class="sh-list">
+                <div class="sh-row"><span>Open command palette</span><span class="keys"><span class="kbd">⌘</span><span class="kbd">K</span></span></div>
+                <div class="sh-row"><span>Open keyboard shortcuts</span><span class="keys"><span class="kbd">⇧</span><span class="kbd">⌘</span><span class="kbd">?</span></span></div>
+                <div class="sh-row"><span>Save snapshot</span><span class="keys"><span class="kbd">⌥</span><span class="kbd">⌘</span><span class="kbd">S</span></span></div>
+                <div class="sh-row"><span>Undo</span><span class="keys"><span class="kbd">⌘</span><span class="kbd">Z</span></span></div>
+                <div class="sh-row"><span>Redo</span><span class="keys"><span class="kbd">⇧</span><span class="kbd">⌘</span><span class="kbd">Z</span></span></div>
+                <div class="sh-row"><span>Select all</span><span class="keys"><span class="kbd">⌘</span><span class="kbd">A</span></span></div>
+                <div class="sh-row"><span>Copy</span><span class="keys"><span class="kbd">⌘</span><span class="kbd">C</span></span></div>
+                <div class="sh-row"><span>Paste</span><span class="keys"><span class="kbd">⌘</span><span class="kbd">V</span></span></div>
+                <div class="sh-row"><span>Paste in place</span><span class="keys"><span class="kbd">⌥</span><span class="kbd">⌘</span><span class="kbd">V</span></span></div>
+                <div class="sh-row"><span>Duplicate selection</span><span class="keys"><span class="kbd">⌘</span><span class="kbd">D</span></span></div>
+                <div class="sh-row"><span>Delete</span><span class="keys"><span class="kbd">⌫</span></span></div>
+                <div class="sh-row"><span>Group selection</span><span class="keys"><span class="kbd">⌘</span><span class="kbd">G</span></span></div>
+                <div class="sh-row"><span>Ungroup</span><span class="keys"><span class="kbd">⇧</span><span class="kbd">⌘</span><span class="kbd">G</span></span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="dlg-foot">
+          <div class="l">
+            <i data-lucide="info" style="width:12px;height:12px;"></i>
+            Components &amp; Prototyping shortcuts ship in a later release.
+          </div>
+          <div class="r">
+            <div class="btn">Done</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>11 categories, not 13.</strong> Components and Prototyping are deferred per Q25 — the deferral is acknowledged in the foot rather than hidden.</li>
+      <li><strong>Glyph rendering uses <code>&lt;span class="kbd"&gt;</code></strong> for every key. Min-width keeps single-glyph keys (⌫) the same width as letter keys, giving a clean grid.</li>
+      <li><strong>Search lives at the top of the right pane</strong>, not above the side-nav — search filters across all categories, so anchoring it on the active list (which is the thing being searched) reads more naturally than a global header.</li>
+      <li><strong>Surface is "any context"</strong> — opens from canvas, dashboard, or account. Sidebar is shown collapsed-content (only Home/Brand sections) to reinforce that the dialog overlays whatever route the user is on.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     A8.3 · Accessibility settings modal
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE 2 · §5 · A8.3 Accessibility</div>
+    <h2>A8.3 · Accessibility</h2>
+    <p class="intro">Reachable from main-menu Preferences submenu. Three controls — text size, reduce motion, high contrast — backed by <code>users.preferences.accessibility</code>. <strong>Same controls as A7.1 Profile Accessibility subsection</strong>: design once, expose twice. Saves apply immediately.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Any context · accessibility modal</div><div class="id">A8.3 · hi-fi</div></div>
+    <div class="canvas" data-screen-label="A8.3 Accessibility modal">
+      <div class="app">
+        <div class="sidebar">
+          <div class="brand-switch"><div class="logo">N</div><div class="name">Nike</div><div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div></div>
+          <div class="side-search"><i data-lucide="search" style="width:13px;height:13px;"></i><span>Search</span><span class="kbd">⌘K</span></div>
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item"><i data-lucide="clock-4" class="ic"></i>Recents</div>
+            <div class="section">Brand</div>
+            <div class="item"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+          </div>
+          <div class="side-footer"><div class="avatar">JY</div><div class="who"><b>Jiho Yang</b><span>Pro plan</span></div><div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div></div>
+        </div>
+        <div class="main">
+          <div class="topbar"><div class="breadcrumb"><b>Brand dashboard</b></div><div class="actions"><div class="top-avatar">JY</div></div></div>
+          <div class="content" style="opacity:.35;"><div class="ph stripes" style="height:100%;border-radius:8px;">DIMMED</div></div>
+        </div>
+      </div>
+      <div class="modal-backdrop"></div>
+
+      <div class="dlg md">
+        <div class="dlg-head">
+          <div>
+            <h3>Accessibility</h3>
+            <p class="sub">Visual and motion preferences. Apply across every brand and canvas.</p>
+          </div>
+          <div class="x"><i data-lucide="x" style="width:14px;height:14px;"></i></div>
+        </div>
+        <div class="dlg-body">
+          <div class="ac-row">
+            <div class="lbl">
+              Text size
+              <span class="sub">Affects body, list, and dialog text. Tools and canvas chrome stay fixed.</span>
+            </div>
+            <div class="seg">
+              <div class="o">Small</div>
+              <div class="o on">Medium</div>
+              <div class="o">Large</div>
+            </div>
+          </div>
+          <div class="ac-row">
+            <div class="lbl">
+              Reduce motion
+              <span class="sub">Disables panel slide-ins, hover transitions, and AI streaming animations.</span>
+            </div>
+            <div class="toggle"></div>
+          </div>
+          <div class="ac-row">
+            <div class="lbl">
+              High contrast
+              <span class="sub">Strengthens borders, ink, and focus rings for low-vision use.</span>
+            </div>
+            <div class="toggle"></div>
+          </div>
+        </div>
+        <div class="dlg-foot">
+          <div class="l">
+            <i data-lucide="info" style="width:12px;height:12px;"></i>
+            Saved to your account · syncs across devices.
+          </div>
+          <div class="r">
+            <div class="btn">Cancel</div>
+            <div class="btn primary">Save</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Same three controls as A7.1.</strong> The segmented "Small / Medium / Large" + two toggles are literally the same DOM contract (so a single React component renders both surfaces). Coherence by construction, not by re-drawing.</li>
+      <li><strong>Foot meta</strong> tells the user the prefs are user-level, not device-level — pre-empts a "will this stick on my laptop?" question.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     A8.4 · Confirmation dialog (3 variants side-by-side)
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE 2 · §6 · A8.4 Confirmation dialog (component)</div>
+    <h2>A8.4 · Confirmation dialog · 3 variants</h2>
+    <p class="intro">Generic <code>useConfirm</code> reusable modal. Three variants shown side-by-side as visual reference: <strong>destructive</strong> (warn-color CTA), <strong>neutral</strong> (default primary CTA), <strong>typed-confirm</strong> (input gates the destructive CTA). The typed-confirm variant is what A4 Delete-brand and A9.1 Delete-account both inherit; only the required string differs (brand name vs. literal "DELETE").</p>
+  </header>
+
+  <div class="conf-grid">
+
+    <!-- Variant 1: destructive -->
+    <div class="conf-card">
+      <div class="conf-cap"><b>Destructive</b><span>A8.4 · variant 1</span></div>
+      <div class="conf-body">
+        <div class="icon-circ warn"><i data-lucide="trash-2" style="width:15px;height:15px;"></i></div>
+        <h4>Delete this canvas?</h4>
+        <p>"Spring · Air Max launch" and all of its snapshots will be moved to Trash. You can restore for 30 days, after which it's permanently removed.</p>
+      </div>
+      <div class="conf-foot">
+        <div class="btn">Cancel</div>
+        <div class="btn danger">Delete canvas</div>
+      </div>
+    </div>
+
+    <!-- Variant 2: neutral -->
+    <div class="conf-card">
+      <div class="conf-cap"><b>Neutral</b><span>A8.4 · variant 2</span></div>
+      <div class="conf-body">
+        <div class="icon-circ"><i data-lucide="archive" style="width:15px;height:15px;"></i></div>
+        <h4>Archive "Glossier"?</h4>
+        <p>Archived brands are hidden from the brand picker but keep all canvases, snapshots, and connected integrations. You can restore from Settings → Archive at any time.</p>
+      </div>
+      <div class="conf-foot">
+        <div class="btn">Cancel</div>
+        <div class="btn primary">Archive brand</div>
+      </div>
+    </div>
+
+    <!-- Variant 3: typed-confirm -->
+    <div class="conf-card">
+      <div class="conf-cap"><b>Typed-confirm</b><span>A8.4 · variant 3</span></div>
+      <div class="conf-body">
+        <div class="icon-circ warn"><i data-lucide="trash-2" style="width:15px;height:15px;"></i></div>
+        <h4>Delete brand "Nike"?</h4>
+        <p>This permanently removes the brand, its 12 canvases, all snapshots, and the Shopify connection. <strong style="color:var(--ink);">This cannot be undone.</strong></p>
+        <div class="fld">
+          <label>Type <code>Nike</code> to confirm</label>
+          <input class="input confirm-typed ok" value="Nike" />
+        </div>
+      </div>
+      <div class="conf-foot">
+        <div class="btn">Cancel</div>
+        <div class="btn danger">Delete brand</div>
+      </div>
+    </div>
+
+  </div>
+  <div class="annot" style="margin: 0 64px 56px; border-radius: 8px; border: 1px dashed var(--line); border-top-style: dashed;"><ul>
+    <li><strong>One component, three behaviors.</strong> The shell (head + body + foot) is identical; what varies is the icon-circle color, primary-button class (<code>.danger</code> vs <code>.primary</code>), and whether the body includes a typed-confirm field.</li>
+    <li><strong>Typed-confirm string differs by surface.</strong> A4 Delete-brand uses the brand name (here: "Nike"); A9.1 Delete-account uses the literal "DELETE" — locked decision so both feel like the same component but each is hard to fat-finger.</li>
+    <li><strong>The destructive button uses <code>--warn</code></strong> tokens (#e87a4a in dark mode), matching the danger-zone CTA in A7.5 and the failed-invoice tag in A7.2. One semantic, one color.</li>
+    <li><strong>Field with <code>.ok</code> active state</strong> on the input shows the moment the typed string matches: border lifts to <code>--warn</code> and a soft warn glow appears. The destructive CTA flips from disabled to enabled at the same moment.</li>
+  </ul></div>
+</section>
+
+
+<script>
+  if (window.lucide) {
+    window.lucide.createIcons({ attrs: { 'stroke-width': 1.6 } });
+  }
+</script>
+
+</body>
+</html>

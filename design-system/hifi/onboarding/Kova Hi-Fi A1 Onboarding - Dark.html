@@ -1,0 +1,984 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<title>Kova — Hi-fi · A1 Onboarding · Dark</title>
+<meta name="viewport" content="width=1440" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+<link rel="stylesheet" href="../../design-system/kova-hifi.css" />
+<script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
+<style>
+/* ============================================================
+   A1 ONBOARDING — 5 steps + splash
+   Single-decision-per-screen. Full-page. Calm. Progress bar +
+   step dots at the very top. NO Klaviyo step. AI-blue reserved
+   for the brand-kit-populate extraction state (step 5).
+
+   Screens:
+     01.a Welcome (email → magic-link or OTP)
+     01.b Verify  (link sent / OTP code)
+     01.c Brand   (name, URL, logo auto-fetch)
+     01.d Shopify (OAuth)
+     01.e Brand kit (drop assets · AI extracts)
+     01.f Splash   (you're in)
+   ============================================================ */
+
+  /* Section-heading typography rule per handoff §3.1.
+     Specificity bump beats `section.block h2` from kova-hifi.css. */
+  .onb-shell h2,
+  section.block .onb-shell h2 {
+    margin: 0 0 2px;
+    font-size: 16px;
+    font-family: 'Inter', system-ui, sans-serif;
+    letter-spacing: -0.005em;
+    color: var(--ink);
+    font-weight: 600;
+    text-transform: none;
+  }
+
+  /* ---------- Frame ---------- */
+  .onb-shell {
+    height: 100%;
+    background: var(--page);
+    display: flex; flex-direction: column;
+    min-height: 0;
+  }
+
+  /* Progress strip — thin, at top of frame */
+  .onb-progress {
+    padding: 16px 28px 14px;
+    border-bottom: 1px solid var(--line-2);
+    display: flex; align-items: center; gap: 16px;
+    flex-shrink: 0;
+  }
+  .onb-progress .wordmark {
+    font-size: 13px; font-weight: 600;
+    letter-spacing: -0.01em; color: var(--ink);
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .onb-progress .wordmark .glyph {
+    width: 18px; height: 18px; border-radius: 4px;
+    background: #ededea; color: #0d0d0c;
+    display: grid; place-items: center;
+    font-weight: 800; font-size: 11px;
+    letter-spacing: -0.04em;
+  }
+  .onb-progress .dots {
+    display: flex; align-items: center; gap: 8px;
+    flex: 1; justify-content: center;
+  }
+  .onb-progress .dot {
+    height: 4px; flex: 0 0 56px; border-radius: 2px;
+    background: var(--line-2);
+    transition: background .15s ease;
+  }
+  .onb-progress .dot.done { background: var(--ink-3); }
+  .onb-progress .dot.active { background: var(--ink); flex-basis: 80px; }
+  .onb-progress .meta {
+    font-size: 11px;
+    color: var(--ink-3);
+    min-width: 130px; text-align: right;
+    font-feature-settings: "tnum" 1;
+  }
+  .onb-progress .corner {
+    display: inline-flex; align-items: center; gap: 8px;
+    color: var(--ink-3); font-size: 12px;
+  }
+  .onb-progress .corner a { color: var(--ink-2); }
+
+  /* ---------- Stage / centered card ---------- */
+  .onb-stage {
+    flex: 1; min-height: 0;
+    display: grid; place-items: center;
+    padding: 40px 24px 56px;
+    overflow: auto;
+  }
+  .onb-card {
+    width: 480px; max-width: 100%;
+    display: flex; flex-direction: column; gap: 22px;
+  }
+  .onb-card.wide { width: 560px; }
+
+  .onb-eyebrow {
+    font-size: 11px; color: var(--ink-3);
+    font-weight: 500;
+  }
+  .onb-card h1 {
+    margin: 0; font-size: 26px; line-height: 1.2;
+    font-weight: 600; letter-spacing: -0.018em; color: var(--ink);
+  }
+  .onb-lede {
+    margin: 0; color: var(--ink-2); font-size: 14px;
+    line-height: 1.55; max-width: 440px;
+  }
+
+  /* Form rows */
+  .onb-field { display: flex; flex-direction: column; gap: 6px; }
+  .onb-field .lbl {
+    font-size: 11.5px; font-weight: 500; color: var(--ink-2);
+    letter-spacing: -0.005em;
+  }
+  .onb-field .lbl .opt {
+    font-size: 11px; color: var(--ink-3);
+    margin-left: 6px;
+    font-weight: 400;
+  }
+  .onb-field .input { font-size: 14px; padding: 9px 12px; }
+  .onb-field .help { font-size: 11.5px; color: var(--ink-3); }
+  .onb-field .help.ok { color: var(--ok); }
+
+  .onb-input-affixed {
+    display: flex; align-items: stretch;
+    border: 1px solid var(--line); border-radius: 6px;
+    background: var(--page); overflow: hidden;
+  }
+  .onb-input-affixed .pre {
+    padding: 9px 11px;
+    background: var(--rail);
+    border-right: 1px solid var(--line);
+    color: var(--ink-3); font-size: 13px;
+    display: grid; place-items: center;
+  }
+  .onb-input-affixed input {
+    flex: 1; border: 0; outline: 0;
+    background: transparent; color: var(--ink);
+    font: inherit; padding: 9px 12px; font-size: 14px;
+  }
+  .onb-input-affixed .post {
+    padding: 0 12px;
+    background: transparent;
+    color: var(--ink-3); font-size: 13px;
+    display: grid; place-items: center;
+  }
+
+  /* Action row */
+  .onb-actions {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 10px; margin-top: 4px;
+  }
+  .onb-actions .btn { padding: 9px 14px; font-size: 13px; }
+  .onb-actions .btn.primary { padding: 9px 16px; }
+  .onb-actions .btn .ic { width: 14px; height: 14px; }
+
+  /* Divider with "or" */
+  .onb-or {
+    display: flex; align-items: center; gap: 12px;
+    color: var(--ink-3); font-size: 11px;
+  }
+  .onb-or::before, .onb-or::after {
+    content: ""; flex: 1; height: 1px; background: var(--line-2);
+  }
+
+  /* Identity preview row (logo + name pair) used in step 3 */
+  .onb-id-row {
+    display: grid; grid-template-columns: 64px 1fr;
+    gap: 14px; align-items: stretch;
+  }
+  .onb-id-row .logo-slot {
+    width: 64px; height: 64px; border-radius: 8px;
+    border: 1px dashed var(--line);
+    background: var(--rail);
+    display: grid; place-items: center;
+    color: var(--ink-3);
+    position: relative; overflow: hidden;
+  }
+  .onb-id-row .logo-slot.fetched {
+    border-style: solid; border-color: var(--line);
+    background: #0d0d0c;
+    color: #ededea; font-weight: 800;
+    font-size: 26px; letter-spacing: -0.04em;
+  }
+  .onb-id-row .logo-slot .pulse {
+    position: absolute; inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(237,237,234,0.04), transparent);
+  }
+
+  /* OTP input */
+  .otp {
+    display: flex; gap: 8px; justify-content: flex-start;
+  }
+  .otp .cell {
+    width: 44px; height: 52px;
+    border: 1px solid var(--line); border-radius: 6px;
+    background: var(--page);
+    display: grid; place-items: center;
+    font-size: 18px; font-weight: 500; color: var(--ink);
+    font-feature-settings: "tnum" 1;
+  }
+  .otp .cell.filled { color: var(--ink); }
+  .otp .cell.cursor {
+    border-color: var(--ink-2);
+    box-shadow: 0 0 0 3px rgba(237,237,234,0.05);
+  }
+  .otp .cell.cursor::after {
+    content: ""; width: 1px; height: 22px;
+    background: var(--ink);
+  }
+  .otp .cell.empty { color: var(--ink-3); }
+
+  /* Step 3 — combined name+url stacked card */
+  .onb-stack-card {
+    display: flex; flex-direction: column; gap: 14px;
+    padding: 18px;
+    background: var(--rail);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+  }
+
+  /* Step 4 — Shopify connect surface */
+  .onb-connect {
+    display: flex; flex-direction: column; gap: 0;
+    border: 1px solid var(--line); border-radius: 8px;
+    background: var(--rail);
+    overflow: hidden;
+  }
+  .onb-connect .head {
+    padding: 16px 18px;
+    display: flex; align-items: center; gap: 14px;
+    border-bottom: 1px solid var(--line-2);
+  }
+  .onb-connect .head .glyph {
+    width: 36px; height: 36px; border-radius: 8px;
+    background: #95bf47; color: #0d0d0c;
+    display: grid; place-items: center;
+    font-weight: 800; font-size: 18px; letter-spacing: -0.04em;
+  }
+  .onb-connect .head .nm {
+    font-size: 14px; font-weight: 600; color: var(--ink);
+    letter-spacing: -0.005em;
+  }
+  .onb-connect .head .sub {
+    font-size: 11.5px; color: var(--ink-3);
+    margin-top: 1px;
+  }
+  .onb-connect .head .pill { margin-left: auto; }
+  .onb-connect .body {
+    padding: 14px 18px 16px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .onb-connect .scope {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 12.5px; color: var(--ink-2);
+  }
+  .onb-connect .scope .ic { width: 13px; height: 13px; color: var(--ok); }
+
+  .onb-store-input { display: flex; flex-direction: column; gap: 6px; }
+
+  /* Step 5 — Brand kit drop zone + extraction */
+  .onb-drop {
+    border: 1px dashed var(--line);
+    border-radius: 8px;
+    background: var(--rail);
+    padding: 26px 20px;
+    display: flex; flex-direction: column; gap: 8px;
+    align-items: center; text-align: center;
+  }
+  .onb-drop .ic-circle {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: var(--fill); color: var(--ink-2);
+    display: grid; place-items: center;
+    margin-bottom: 4px;
+  }
+  .onb-drop .h {
+    font-size: 13.5px; font-weight: 500; color: var(--ink);
+    flex-direction: column; gap: 0;
+  }
+  .onb-drop .types {
+    font-size: 11px; color: var(--ink-3);
+  }
+  .onb-drop .or-link {
+    font-size: 12px; color: var(--ink-2);
+  }
+
+  .onb-textarea {
+    width: 100%;
+    background: var(--page); border: 1px solid var(--line);
+    border-radius: 6px; padding: 10px 12px;
+    font: inherit; font-size: 13px; color: var(--ink);
+    min-height: 92px; resize: vertical;
+    line-height: 1.55;
+  }
+  .onb-textarea::placeholder { color: var(--ink-3); }
+
+  /* Uploaded file list (step 5) */
+  .onb-files { display: flex; flex-direction: column; gap: 6px; }
+  .onb-files .file {
+    display: grid;
+    grid-template-columns: 22px 1fr auto auto;
+    gap: 10px; align-items: center;
+    padding: 8px 12px;
+    border: 1px solid var(--line); border-radius: 6px;
+    background: var(--page);
+    font-size: 12.5px;
+  }
+  .onb-files .file .nm { color: var(--ink); font-weight: 500; }
+  .onb-files .file .sz {
+    font-size: 11px; color: var(--ink-3);
+    font-feature-settings: "tnum" 1;
+  }
+  .onb-files .file .x {
+    color: var(--ink-3); cursor: pointer;
+    display: grid; place-items: center;
+  }
+
+  /* AI extraction surface — accent blue, AI-only per token rule */
+  .onb-ai {
+    border: 1px solid var(--accent-2);
+    background: var(--accent-soft);
+    color: var(--accent-ink);
+    border-radius: 8px;
+    padding: 14px 16px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .onb-ai .top {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 12.5px; font-weight: 600;
+    color: var(--accent-ink);
+    letter-spacing: -0.005em;
+  }
+  .onb-ai .top .ic { width: 14px; height: 14px; color: var(--accent); }
+  .onb-ai .top .pill {
+    margin-left: auto;
+    background: rgba(95,125,255,0.16);
+    color: var(--accent-ink); border-color: var(--accent-2);
+    font-size: 10.5px;
+    font-weight: 500;
+  }
+  .onb-ai .checks {
+    display: flex; flex-direction: column; gap: 6px;
+    margin: 0; padding: 0; list-style: none;
+  }
+  .onb-ai .checks li {
+    display: grid;
+    grid-template-columns: 16px 1fr auto;
+    gap: 10px; align-items: center;
+    font-size: 12.5px; color: var(--accent-ink);
+  }
+  .onb-ai .checks li .ic { width: 14px; height: 14px; color: var(--accent); }
+  .onb-ai .checks li.pending {
+    color: rgba(169,186,255,0.7);
+  }
+  .onb-ai .checks li.pending .ic { color: rgba(169,186,255,0.5); }
+  .onb-ai .checks li .meta {
+    font-size: 11px; color: rgba(169,186,255,0.7);
+  }
+
+  /* Splash (step 6) */
+  .onb-splash {
+    display: flex; flex-direction: column; gap: 26px;
+    align-items: center; text-align: center;
+  }
+  .onb-splash .check-medal {
+    width: 56px; height: 56px; border-radius: 50%;
+    background: var(--ok-soft); color: var(--ok);
+    display: grid; place-items: center;
+    border: 1px solid rgba(94,194,125,0.18);
+  }
+  .onb-splash h1 { font-size: 30px; }
+  .onb-splash .lede { text-align: center; margin: 0 auto; }
+  .onb-next {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 10px; width: 100%;
+  }
+  .onb-next .opt {
+    text-align: left;
+    border: 1px solid var(--line); border-radius: 8px;
+    padding: 14px;
+    background: var(--rail);
+    display: flex; flex-direction: column; gap: 4px;
+    cursor: pointer;
+    transition: border-color .12s ease, background .12s ease;
+  }
+  .onb-next .opt:hover { border-color: var(--ink-3); background: var(--page); }
+  .onb-next .opt .lbl {
+    font-size: 10.5px; color: var(--ink-3);
+    font-weight: 500;
+  }
+  .onb-next .opt .nm {
+    font-size: 13.5px; font-weight: 600; color: var(--ink);
+    letter-spacing: -0.005em;
+  }
+  .onb-next .opt .sub {
+    font-size: 11.5px; color: var(--ink-3);
+  }
+  .onb-splash .enter-btn {
+    padding: 11px 18px; font-size: 13.5px;
+  }
+
+  /* Footer hairline below card */
+  .onb-foothint {
+    margin-top: 6px;
+    font-size: 11.5px; color: var(--ink-3); text-align: center;
+  }
+  .onb-foothint a { color: var(--ink-2); }
+
+</style>
+</head>
+<body data-screen-label="A1 Onboarding">
+
+<header class="page-head">
+  <div class="eyebrow">HI-FI · BATCH A · DARK · A1</div>
+  <h1>Onboarding · 5 steps + splash</h1>
+  <p>Single-decision-per-screen full-page flow. Email auth (magic link or OTP fallback) → first brand → Shopify → brand kit → splash. No Klaviyo step (deferred per CLAUDE.md). AI accent reserved for the brand-kit extraction state in step 5.</p>
+  <div class="meta">/onboarding · 6 screens · dark</div>
+  <div class="legend">
+    <span class="sw"><i style="background:var(--ink);"></i>Active step</span>
+    <span class="sw"><i style="background:var(--ink-3);"></i>Completed</span>
+    <span class="sw"><i style="background:var(--line-2);"></i>Upcoming</span>
+    <span class="sw"><i style="background:var(--accent);"></i>AI extraction (step 5 only)</span>
+  </div>
+</header>
+
+<!-- ============================================================
+     01.a · WELCOME (email entry)
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">A1 · 01.a</div>
+    <h2>Step 1 · Welcome</h2>
+    <p class="intro">Single email field → magic-link email is the default path. OTP fallback is a quiet secondary action; users never have to choose between two CTAs of equal weight.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Welcome · email entry</div><div class="id">01.a · /onboarding/welcome</div></div>
+    <div class="canvas tall" data-screen-label="01.a Welcome">
+      <div class="onb-shell">
+        <div class="onb-progress">
+          <div class="wordmark"><div class="glyph">K</div><span>Kova</span></div>
+          <div class="dots">
+            <div class="dot active"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+          <div class="meta">Step 1 / 5</div>
+        </div>
+
+        <div class="onb-stage">
+          <div class="onb-card">
+            <div class="onb-eyebrow">Welcome</div>
+            <h1>Let's set up your workspace.</h1>
+            <p class="onb-lede">Enter your work email and we'll send a sign-in link. Takes about two minutes total — you can skip integrations and finish them later.</p>
+
+            <div class="onb-field">
+              <div class="lbl">Work email</div>
+              <input class="input" type="email" value="jiho@studiocollective.co" />
+              <div class="help">We'll create your account on first sign-in.</div>
+            </div>
+
+            <div class="onb-actions">
+              <button class="btn ghost"><i data-lucide="key-round" class="ic"></i>Use a code instead</button>
+              <button class="btn primary">Send magic link<i data-lucide="arrow-right" class="ic"></i></button>
+            </div>
+
+            <div class="onb-foothint">
+              By continuing you agree to Kova's <a href="#">Terms</a> and <a href="#">Privacy Policy</a>.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Magic link is the primary path.</strong> "Use a code instead" is a ghost button — present but visually quieter, so the flow has one obvious choice.</li>
+      <li><strong>No password field.</strong> Supabase magic-link / OTP only (per brief A1 + A15 auth conventions).</li>
+      <li><strong>Progress bar is at the top of the frame</strong>, not floating. Five segments + step counter on the right. The active segment is wider for emphasis.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     01.b · VERIFY (link sent + OTP fallback combined)
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">A1 · 01.b</div>
+    <h2>Step 1.5 · Verify identity</h2>
+    <p class="intro">Same screen renders two states. Default: "link sent — check your inbox". OTP fallback: 6-cell code entry. The verify step does NOT consume its own progress segment — it remains under "Step 1".</p>
+  </header>
+
+  <!-- 01.b.i Magic-link sent -->
+  <div class="screen">
+    <div class="cap"><div class="name">Verify · magic-link sent</div><div class="id">01.b.i</div></div>
+    <div class="canvas" data-screen-label="01.b.i Magic link sent">
+      <div class="onb-shell">
+        <div class="onb-progress">
+          <div class="wordmark"><div class="glyph">K</div><span>Kova</span></div>
+          <div class="dots">
+            <div class="dot active"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+          <div class="meta">Step 1 / 5</div>
+        </div>
+
+        <div class="onb-stage">
+          <div class="onb-card">
+            <div class="onb-eyebrow">Check your inbox</div>
+            <h1>We sent a link to<br/>jiho@studiocollective.co</h1>
+            <p class="onb-lede">Click the link in the email to continue. The link expires in 15 minutes. You can close this tab — we'll pick up where you left off.</p>
+
+            <div class="onb-stack-card" style="gap:8px;">
+              <div style="display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--ink-2);">
+                <i data-lucide="mail" style="width:14px;height:14px;color:var(--ink-3);"></i>
+                <span>Sent to <b style="color:var(--ink);">jiho@studiocollective.co</b></span>
+                <span class="tag-mono ok" style="margin-left:auto;">DELIVERED</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;font-size:11.5px;color:var(--ink-3);">
+                <i data-lucide="clock" style="width:13px;height:13px;"></i>
+                <span>Resend available in 0:42</span>
+              </div>
+            </div>
+
+            <div class="onb-actions">
+              <button class="btn ghost"><i data-lucide="chevron-left" class="ic"></i>Wrong email</button>
+              <button class="btn"><i data-lucide="key-round" class="ic"></i>Enter code instead</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Two-action footer:</strong> ghost "wrong email" goes back to 01.a; standard "enter code" swaps in the OTP state on the same route.</li>
+      <li><strong>Resend timer</strong> is shown but not as a CTA — prevents accidental re-send mashing.</li>
+      <li><strong>Headline contains the email address</strong> so the user can confirm correctness without scanning a body row.</li>
+    </ul></div>
+  </div>
+
+  <!-- 01.b.ii OTP fallback -->
+  <div class="screen">
+    <div class="cap"><div class="name">Verify · OTP code entry</div><div class="id">01.b.ii</div></div>
+    <div class="canvas" data-screen-label="01.b.ii OTP entry">
+      <div class="onb-shell">
+        <div class="onb-progress">
+          <div class="wordmark"><div class="glyph">K</div><span>Kova</span></div>
+          <div class="dots">
+            <div class="dot active"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+          <div class="meta">Step 1 / 5</div>
+        </div>
+
+        <div class="onb-stage">
+          <div class="onb-card">
+            <div class="onb-eyebrow">Enter code</div>
+            <h1>We emailed a 6-digit code.</h1>
+            <p class="onb-lede">It's faster than the magic link if your inbox is slow. Enter the code below — we'll sign you in instantly.</p>
+
+            <div class="onb-field">
+              <div class="lbl">Verification code <span class="opt">6 digits</span></div>
+              <div class="otp">
+                <div class="cell filled">4</div>
+                <div class="cell filled">1</div>
+                <div class="cell filled">9</div>
+                <div class="cell filled">2</div>
+                <div class="cell cursor"></div>
+                <div class="cell empty"></div>
+              </div>
+              <div class="help">Sent to jiho@studiocollective.co · <a style="color:var(--ink-2);">Resend (0:42)</a></div>
+            </div>
+
+            <div class="onb-actions">
+              <button class="btn ghost"><i data-lucide="chevron-left" class="ic"></i>Back to link</button>
+              <button class="btn primary disabled">Continue<i data-lucide="arrow-right" class="ic"></i></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>OTP is 6-cell mono.</strong> Cursor cell uses the same focus ring as <code>.input:focus</code> — visually consistent with text inputs elsewhere in the app.</li>
+      <li><strong>"Continue" stays disabled until 6 digits are entered.</strong> No auto-submit on paste yet; reviewer should confirm before wiring.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     01.c · CREATE FIRST BRAND
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">A1 · 01.c</div>
+    <h2>Step 2 · Create your first brand</h2>
+    <p class="intro">Three fields. Logo auto-fetches from the URL (per wireframe v6 §02 annotation: "Logo is auto-fetched from the brand's website on add"). User can override.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">First brand · name + URL</div><div class="id">01.c · /onboarding/brand</div></div>
+    <div class="canvas tall" data-screen-label="01.c First brand">
+      <div class="onb-shell">
+        <div class="onb-progress">
+          <div class="wordmark"><div class="glyph">K</div><span>Kova</span></div>
+          <div class="dots">
+            <div class="dot done"></div>
+            <div class="dot active"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+          <div class="meta">Step 2 / 5</div>
+        </div>
+
+        <div class="onb-stage">
+          <div class="onb-card">
+            <div class="onb-eyebrow">Your first brand</div>
+            <h1>What are we working on?</h1>
+            <p class="onb-lede">Each brand in Kova is fully siloed — its own canvases, brand kit, and integrations. You can add more later from the brand picker.</p>
+
+            <div class="onb-id-row">
+              <div class="logo-slot fetched" title="Auto-fetched from nike.com">N</div>
+              <div style="display:flex;flex-direction:column;gap:10px;">
+                <div class="onb-field">
+                  <div class="lbl">Brand name</div>
+                  <input class="input" type="text" value="Nike" />
+                </div>
+                <div class="onb-field">
+                  <div class="lbl">Website</div>
+                  <div class="onb-input-affixed">
+                    <span class="pre">https://</span>
+                    <input type="text" value="nike.com" />
+                  </div>
+                  <div class="help ok"><i data-lucide="check" style="width:11px;height:11px;display:inline-block;vertical-align:middle;"></i> Logo found at nike.com/favicon</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="onb-field">
+              <div class="lbl">One-line description <span class="opt">Optional</span></div>
+              <input class="input" type="text" placeholder="Global athletic footwear and apparel." />
+              <div class="help">Helps Kova frame voice and category context. You can change this anytime in Brand Kit.</div>
+            </div>
+
+            <div class="onb-actions">
+              <button class="btn ghost"><i data-lucide="chevron-left" class="ic"></i>Back</button>
+              <button class="btn primary">Continue<i data-lucide="arrow-right" class="ic"></i></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Logo auto-fetched</strong> from the URL after debounce. Solid border + black tile = success state; dashed border = empty/loading. Failure falls back to first-letter monogram (still solid).</li>
+      <li><strong>URL field uses the affixed-input pattern</strong> (<code>https://</code> prefix as a non-editable rail) — same shape Kova will reuse for the Shopify store URL on the next screen.</li>
+      <li><strong>Industry was dropped</strong> from wireframe v6 — it added a third structured field with no MVP consumer. The one-line description (free text) covers the same ground for AI context.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     01.d · SHOPIFY OAUTH
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">A1 · 01.d</div>
+    <h2>Step 3 · Connect Shopify</h2>
+    <p class="intro">OAuth connect — same surface as A10 reconnect (file 5) and the Account → Integrations card. Skip-for-now is a real path; the user can finish onboarding without a Shopify store and reconnect from Account later.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Shopify · OAuth connect</div><div class="id">01.d · /onboarding/shopify</div></div>
+    <div class="canvas tall" data-screen-label="01.d Shopify connect">
+      <div class="onb-shell">
+        <div class="onb-progress">
+          <div class="wordmark"><div class="glyph">K</div><span>Kova</span></div>
+          <div class="dots">
+            <div class="dot done"></div>
+            <div class="dot done"></div>
+            <div class="dot active"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+          <div class="meta">Step 3 / 5</div>
+        </div>
+
+        <div class="onb-stage">
+          <div class="onb-card">
+            <div class="onb-eyebrow">Integrations</div>
+            <h1>Connect Shopify.</h1>
+            <p class="onb-lede">Kova reads your product catalog so generated emails use real products with real images and pricing. Read-only — Kova never writes to your store.</p>
+
+            <div class="onb-connect">
+              <div class="head">
+                <div class="glyph">S</div>
+                <div>
+                  <div class="nm">Shopify</div>
+                  <div class="sub">Read-only access · per-brand scope</div>
+                </div>
+                <span class="pill outline"><span class="dot" style="background:var(--ink-3);width:6px;height:6px;border-radius:50%;display:inline-block;"></span>Not connected</span>
+              </div>
+              <div class="body">
+                <div class="onb-store-input">
+                  <div class="lbl" style="font-size:11.5px;color:var(--ink-2);font-weight:500;">Your Shopify store URL</div>
+                  <div class="onb-input-affixed">
+                    <span class="pre">https://</span>
+                    <input type="text" value="nike" />
+                    <span class="post">.myshopify.com</span>
+                  </div>
+                </div>
+
+                <div style="height:4px;"></div>
+
+                <div class="scope">
+                  <i data-lucide="check" class="ic"></i>
+                  <span>Products, collections, variants, pricing, inventory</span>
+                </div>
+                <div class="scope">
+                  <i data-lucide="check" class="ic"></i>
+                  <span>Product images and media</span>
+                </div>
+                <div class="scope">
+                  <i data-lucide="x" class="ic" style="color:var(--ink-3);"></i>
+                  <span style="color:var(--ink-3);">Customer data · orders · checkout — never accessed</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="onb-actions">
+              <button class="btn ghost">Skip for now</button>
+              <button class="btn primary"><i data-lucide="external-link" class="ic"></i>Connect Shopify</button>
+            </div>
+
+            <div class="onb-foothint">
+              You'll be redirected to Shopify to approve access. <a href="#">What does Kova read?</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>The "what we read / what we don't" list</strong> is the trust surface. The explicit X on customer data is the line a marketing-tooling buyer needs to see before they OAuth.</li>
+      <li><strong>The connect card is the same component as A10 reconnect</strong> — same head/body proportions, same scope list. Reuse the markup verbatim in file 5.</li>
+      <li><strong>Skip is a peer ghost button</strong>, not a tertiary link. Skipping is a supported path (verifier-checks A11 zero-products empty state in dashboard).</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     01.e · BRAND KIT POPULATE (with AI extraction)
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">A1 · 01.e</div>
+    <h2>Step 4 · Brand kit · populate</h2>
+    <p class="intro">Drop assets + paste guidelines → Kova extracts colors, fonts, voice rules, and seed memories into Brand Kit. This is the only screen in onboarding that uses the AI accent — and only inside the extraction surface.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Brand kit · drop assets</div><div class="id">01.e · /onboarding/brand-kit</div></div>
+    <div class="canvas tall" data-screen-label="01.e Brand kit populate">
+      <div class="onb-shell">
+        <div class="onb-progress">
+          <div class="wordmark"><div class="glyph">K</div><span>Kova</span></div>
+          <div class="dots">
+            <div class="dot done"></div>
+            <div class="dot done"></div>
+            <div class="dot done"></div>
+            <div class="dot active"></div>
+            <div class="dot"></div>
+          </div>
+          <div class="meta">Step 4 / 5</div>
+        </div>
+
+        <div class="onb-stage">
+          <div class="onb-card wide">
+            <div class="onb-eyebrow">Brand kit</div>
+            <h1>Teach Kova your brand.</h1>
+            <p class="onb-lede">Drop in past emails, brand guidelines, or anything that captures voice. Kova extracts colors, fonts, tone, and writing rules. You can refine everything later in Brand Kit.</p>
+
+            <div class="onb-drop">
+              <div class="ic-circle"><i data-lucide="upload-cloud" style="width:18px;height:18px;"></i></div>
+              <div class="h">Drop files here, or <span style="text-decoration:underline;cursor:pointer;">browse</span></div>
+              <div class="types">PDF · HTML · .EML · PNG · JPG · up to 25 MB each</div>
+            </div>
+
+            <div class="onb-files">
+              <div class="file">
+                <i data-lucide="file-text" style="width:14px;height:14px;color:var(--ink-3);"></i>
+                <div class="nm">Nike Brand Book 2024.pdf</div>
+                <div class="sz">3.4 MB</div>
+                <div class="x"><i data-lucide="x" style="width:13px;height:13px;"></i></div>
+              </div>
+              <div class="file">
+                <i data-lucide="mail" style="width:14px;height:14px;color:var(--ink-3);"></i>
+                <div class="nm">spring-24-launch.eml</div>
+                <div class="sz">128 KB</div>
+                <div class="x"><i data-lucide="x" style="width:13px;height:13px;"></i></div>
+              </div>
+              <div class="file">
+                <i data-lucide="image" style="width:14px;height:14px;color:var(--ink-3);"></i>
+                <div class="nm">color-system.png</div>
+                <div class="sz">312 KB</div>
+                <div class="x"><i data-lucide="x" style="width:13px;height:13px;"></i></div>
+              </div>
+            </div>
+
+            <div class="onb-field">
+              <div class="lbl">Or paste brand guidelines <span class="opt">Optional</span></div>
+              <textarea class="onb-textarea" placeholder="e.g. Don't use bolds in body copy. Highlight futuristic, lightweight aspects — not materials. Avoid yellow.">Don't use bolds in body copy. Avoid exclamation marks. Highlight futuristic, lightweight aspects — not materials. Never use yellow as a primary or accent.</textarea>
+            </div>
+
+            <!-- AI extraction surface — accent blue, AI only -->
+            <div class="onb-ai">
+              <div class="top">
+                <i data-lucide="sparkles" class="ic"></i>
+                <span>Kova will extract</span>
+                <span class="pill">AI</span>
+              </div>
+              <ul class="checks">
+                <li><i data-lucide="check" class="ic"></i><span>Brand colors and gradients</span><span class="meta">From brand book</span></li>
+                <li><i data-lucide="check" class="ic"></i><span>Typography pairings</span><span class="meta">2 fonts detected</span></li>
+                <li><i data-lucide="check" class="ic"></i><span>Voice and tone snippets</span><span class="meta">From past email</span></li>
+                <li class="pending"><i data-lucide="circle-dashed" class="ic"></i><span>Writing rules from your notes</span><span class="meta">On submit</span></li>
+                <li class="pending"><i data-lucide="circle-dashed" class="ic"></i><span>Seed memories</span><span class="meta">On submit</span></li>
+              </ul>
+            </div>
+
+            <div class="onb-actions">
+              <button class="btn ghost">Do this later</button>
+              <button class="btn primary"><i data-lucide="sparkles" class="ic"></i>Extract and continue</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>AI accent surface</strong> uses the existing <code>--accent-soft</code> / <code>--accent-2</code> / <code>--accent-ink</code> tokens. Same hue Brand Kit's "Draft via interview" buttons use; same hue ⌘K AI chat will use. Never bleeds outside this card.</li>
+      <li><strong>The "AI" pill in mono uppercase</strong> is the literal "this is generative" affordance. Reuse anywhere AI does inference on the user's behalf.</li>
+      <li><strong>"Do this later"</strong> bypasses extraction — Brand Kit shows zero-state empty panes (covered in A11). The user can return any time.</li>
+      <li><strong>Wider card (560px)</strong> here only — content density needs the room. All other steps use the standard 480px card to enforce single-decision focus.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     01.f · POST-ONBOARDING SPLASH
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">A1 · 01.f</div>
+    <h2>Step 5 · You're in</h2>
+    <p class="intro">Single primary action ("Enter Nike workspace") + a quiet 2×2 of "next move" suggestions for users who want a starting point. Progress strip is filled — the visual reward for completion.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Splash · you're in</div><div class="id">01.f · /onboarding/done</div></div>
+    <div class="canvas tall" data-screen-label="01.f Splash">
+      <div class="onb-shell">
+        <div class="onb-progress">
+          <div class="wordmark"><div class="glyph">K</div><span>Kova</span></div>
+          <div class="dots">
+            <div class="dot done"></div>
+            <div class="dot done"></div>
+            <div class="dot done"></div>
+            <div class="dot done"></div>
+            <div class="dot done"></div>
+          </div>
+          <div class="meta">Done</div>
+        </div>
+
+        <div class="onb-stage">
+          <div class="onb-card">
+            <div class="onb-splash">
+              <div class="check-medal"><i data-lucide="check" style="width:26px;height:26px;"></i></div>
+              <div>
+                <div class="onb-eyebrow" style="margin-bottom:8px;">Workspace ready</div>
+                <h1>You're in.</h1>
+              </div>
+              <p class="onb-lede">Nike's brand kit is populated and Shopify is synced. Pick a starting point — or just dive in.</p>
+
+              <div class="onb-next">
+                <div class="opt">
+                  <div class="lbl">Generate</div>
+                  <div class="nm">Draft your first email</div>
+                  <div class="sub">Kova will pitch 3 ideas based on your catalog.</div>
+                </div>
+                <div class="opt">
+                  <div class="lbl">Import</div>
+                  <div class="nm">Bring in past sends</div>
+                  <div class="sub">Build a swipe library from your sent emails.</div>
+                </div>
+                <div class="opt">
+                  <div class="lbl">Browse</div>
+                  <div class="nm">Kova swipes</div>
+                  <div class="sub">DTC reference designs for inspiration.</div>
+                </div>
+                <div class="opt">
+                  <div class="lbl">Add</div>
+                  <div class="nm">Another brand</div>
+                  <div class="sub">Run multiple clients siloed in one workspace.</div>
+                </div>
+              </div>
+
+              <button class="btn primary enter-btn">Enter Nike workspace<i data-lucide="arrow-right" class="ic"></i></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>All five progress segments are filled</strong> — the visual finish line. The "Done" meta replaces "Step N / 5".</li>
+      <li><strong>Two CTA tiers:</strong> 4 starter cards (low-commitment) + 1 primary "Enter workspace" button. Card click navigates to the relevant route inside the workspace; primary skips to plain dashboard.</li>
+      <li><strong>No celebratory animation, no confetti.</strong> Tone matches the rest of Kova: calm, professional, get-out-of-the-way.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     Cross-step notes — for delivery write-up
+     ============================================================ -->
+<section class="block" style="background:var(--page);">
+  <header>
+    <div class="tag">A1 · Pattern locks for downstream files</div>
+    <h2>What this file establishes</h2>
+    <p class="intro">A3 New-brand flow (file 4) inherits all of this verbatim — same progress strip, same card, same connect surface, same brand-kit drop+AI surface. Only the step-1 (auth) screen is omitted.</p>
+  </header>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;">
+    <div style="border:1px solid var(--line);border-radius:8px;padding:16px;background:var(--rail);">
+      <div style="font-size:11px;color:var(--ink-3);font-weight:500;margin-bottom:6px;">Progress strip</div>
+      <div style="font-size:13px;color:var(--ink-2);">Wordmark · 5 dot segments · "Step N / 5" mono. Top of frame, full bleed under a 1px line. Active dot is wider; completed are <code>--ink-3</code>; upcoming are <code>--line-2</code>.</div>
+    </div>
+    <div style="border:1px solid var(--line);border-radius:8px;padding:16px;background:var(--rail);">
+      <div style="font-size:11px;color:var(--ink-3);font-weight:500;margin-bottom:6px;">Onboarding card</div>
+      <div style="font-size:13px;color:var(--ink-2);">480px (560 for brand-kit only). Eyebrow mono · 26px H1 · 14px lede · field stack · ghost+primary action row. Centered in stage.</div>
+    </div>
+    <div style="border:1px solid var(--line);border-radius:8px;padding:16px;background:var(--rail);">
+      <div style="font-size:11px;color:var(--ink-3);font-weight:500;margin-bottom:6px;">Affixed input</div>
+      <div style="font-size:13px;color:var(--ink-2);">Mono <code>https://</code> prefix rail + free-text middle + optional mono suffix (<code>.myshopify.com</code>). Reuse for any structured URL field across the app.</div>
+    </div>
+    <div style="border:1px solid var(--line);border-radius:8px;padding:16px;background:var(--rail);">
+      <div style="font-size:11px;color:var(--ink-3);font-weight:500;margin-bottom:6px;">OTP cells</div>
+      <div style="font-size:13px;color:var(--ink-2);">6 cells, 44×52, mono 18px. Cursor cell uses the input focus ring. Empty cells dim to <code>--ink-3</code>. Reuse for A15 light-mode auth OTP.</div>
+    </div>
+    <div style="border:1px solid var(--line);border-radius:8px;padding:16px;background:var(--rail);">
+      <div style="font-size:11px;color:var(--ink-3);font-weight:500;margin-bottom:6px;">Connect surface</div>
+      <div style="font-size:13px;color:var(--ink-2);">Card with logo glyph + name/sub + status pill, body shows scope list with check/cross icons. Reuse for A10 reconnect modal and Account → Integrations cards.</div>
+    </div>
+    <div style="border:1px solid var(--line);border-radius:8px;padding:16px;background:var(--rail);">
+      <div style="font-size:11px;color:var(--ink-3);font-weight:500;margin-bottom:6px;">AI extraction surface</div>
+      <div style="font-size:13px;color:var(--ink-2);">Accent-soft bg, accent-2 border, accent-ink text. "AI" mono pill. Check/circle-dashed list with mono meta. The accent is locked to inference surfaces — never decoration.</div>
+    </div>
+  </div>
+</section>
+
+<footer style="padding:32px 56px;border-top:1px solid var(--line);background:var(--bg);color:var(--ink-3);font-size:11px;">
+  Kova · hi-fi · Batch A · A1 Onboarding · 5 steps + splash · v1
+</footer>
+
+<script>
+  if (window.lucide) window.lucide.createIcons({ attrs: { 'stroke-width': 1.6 } });
+</script>
+</body>
+</html>

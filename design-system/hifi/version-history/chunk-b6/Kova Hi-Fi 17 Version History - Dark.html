@@ -1,0 +1,2237 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<title>Kova — Hi-fi · 17 Version History · Dark</title>
+<meta name="viewport" content="width=1440" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+<link rel="stylesheet" href="../../design-system/kova-hifi.css" />
+<script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
+<style>
+/* ============================================================
+   17 Version History — right-panel mode-swap
+
+   This file uses ONE design-token system (kova-hifi.css :root) plus
+   four LIFTED chrome blocks. No invented hex outside lifted blocks.
+
+   LIFT 1 — `.kc {}` shell (canvas-embedded chrome)
+            SOURCE: batch-b/Kova Canvas - Final.html, .kc rules
+            (token block + topbar + body grid + left/center/right
+            shells + toolbar + zoom). Lifted byte-for-byte; the
+            §3.10 diff in DELIVERY_NOTES.md proves zero divergence.
+
+   LIFT 2 — `.dlg` modal chrome + `.fld` form fields
+            SOURCE: batch-a/dark/A6+A2a Popovers + A8 Dialogs - Dark.html
+            CORRECTION (intentional — §3.10 known trap): source's
+            .modal-backdrop carries the pre-rewire warm-brown backdrop
+            value flagged by §3.9 grep; this file patches it to
+            rgba(26,26,29,0.72) so it matches locked --bg #1a1a1d.
+            That single value is the only deviation from source.
+
+   LIFT 3 — `.menu` Reka DropdownMenu shell
+            SOURCE: batch-b/Kova Hi-Fi 08 Top Chrome Menus - Dark.html
+            Lifted byte-for-byte for both the per-row right-click menu
+            and the filter dropdown.
+
+   LIFT 4 — `.empty-pane`
+            SOURCE: batch-a/dark/Kova Hi-Fi A11+A12+A13+A_canvas_nav - Dark.html
+            Lifted byte-for-byte for the version-history empty state.
+
+   NEW — `.vh-*` Version-history-specific layout
+         All values resolve through var(--*); no hex outside :root /
+         lifted blocks. The vertical timeline connector (1px hairline)
+         + dot glyphs are the only structural addition.
+   ============================================================ */
+
+  body { background: var(--bg); }
+
+  /* ============================================================
+     LIFT 1 — `.kc {}` shell (lines 75-411 of Final.html).
+     Comments and structure preserved.
+     ============================================================ */
+  .kc {
+    --bg:    #1a1a1d;        /* side panels */
+    --rail:  #1a1a1d;
+    --canvas:#242428;        /* canvas (per spec) */
+    --fill:  #26262b;
+    --fill2: #303035;
+    --line:  #2c2c30;
+    --line2: #232327;
+    --ink:   #ebebee;
+    --ink2:  #a8a8ad;
+    --ink3:  #6e6e73;
+    --ink4:  #4a4a4f;
+    --select:#3b82f6;
+    --select-soft: rgba(59,130,246,0.16);
+    --accent:#3b82f6;
+    --accent-soft: rgba(59,130,246,0.14);
+    --accent-ink:#a9c4ff;
+    background: var(--bg);
+    color: var(--ink);
+    font-size: 12px;
+    display: grid;
+    grid-template-rows: 44px 1fr;
+  }
+
+  /* TOPBAR ----------------------------------------------------------- */
+  .kc .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--rail);
+    border-bottom: 1px solid var(--line);
+    padding: 0 12px;
+    height: 44px;
+  }
+  .kc .topbar .l, .kc .topbar .r {
+    display:flex; align-items:center; gap: 12px;
+  }
+  .kc .topbar .logo {
+    width: 24px; height: 24px;
+    border-radius: 6px; background: var(--ink); color: var(--bg);
+    display:grid; place-items:center;
+    font-weight: 700; font-size: 11px;
+    letter-spacing: -0.04em;
+  }
+  .kc .topbar .file {
+    display: flex; align-items: center; gap: 8px;
+    color: var(--ink2); font-size: 13px;
+  }
+  .kc .topbar .file .crumb-brand { display: inline-flex; align-items: center; gap: 6px; }
+  .kc .topbar .file .crumb-brand .b {
+    width: 14px; height: 14px; border-radius: 4px; background: #c24a1e;
+  }
+  .kc .topbar .file .sep { color: var(--ink4); }
+  .kc .topbar .file b {
+    color: var(--ink); font-weight: 600; letter-spacing: -0.005em;
+  }
+  .kc .topbar .file .caret { color: var(--ink3); display:grid; place-items:center; }
+  .kc .topbar .icon-btn {
+    width: 28px; height: 28px;
+    display:grid; place-items:center;
+    color: var(--ink2); border-radius: 5px;
+  }
+  .kc .topbar .icon-btn:hover { background: var(--line2); color: var(--ink); }
+  .kc .topbar .avatar {
+    width: 26px; height: 26px;
+    border-radius: 50%; background: #c24a1e; color: #fff;
+    display:grid; place-items:center;
+    font-weight: 600; font-size: 10.5px;
+  }
+
+  /* BODY ------------------------------------------------------------- */
+  .kc .body { display: grid; grid-template-columns: 240px 1fr 264px; min-height: 0; }
+
+  /* LEFT PANEL ------------------------------------------------------- */
+  .kc .left {
+    background: var(--rail);
+    border-right: 1px solid var(--line);
+    display: flex; flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .kc .left .file-row {
+    padding: 14px;
+    border-bottom: 1px solid var(--line2);
+    display:flex; align-items:center; gap: 10px;
+  }
+  .kc .left .file-row .file-icon {
+    width: 30px; height: 30px;
+    border-radius: 7px; background: var(--fill);
+    display: grid; place-items: center;
+    color: var(--ink2);
+  }
+  .kc .left .file-row .name { font-weight: 600; font-size: 13px; color: var(--ink); }
+  .kc .left .file-row .meta { font-size: 11.5px; color: var(--ink3); margin-top: 2px; }
+  .kc .left .sec {
+    padding: 14px 14px 6px;
+    display: flex; align-items:center; justify-content: space-between;
+  }
+  .kc .left .sec h5 {
+    margin: 0; font-size: 11px; font-weight: 500;
+    color: var(--ink3); letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .kc .left .sec .add {
+    width: 20px; height: 20px;
+    display:grid; place-items:center; color: var(--ink3);
+    border-radius: 5px;
+  }
+  .kc .left .pages { padding: 0 8px 6px; }
+  .kc .left .page-row {
+    display:flex; align-items:center; gap: 8px;
+    padding: 7px 10px;
+    border-radius: 7px;
+    color: var(--ink2); font-size: 12.5px;
+  }
+  .kc .left .page-row.active { background: var(--fill); color: var(--ink); }
+  .kc .left .layers { flex: 1; overflow: auto; padding: 0 6px 16px; }
+  .kc .left .layer {
+    display: flex; align-items: center; gap: 7px;
+    padding: 5px 8px;
+    height: 28px;
+    font-size: 12.5px;
+    color: var(--ink2);
+    border-radius: 6px;
+    line-height: 1.3;
+    white-space: nowrap;
+  }
+  .kc .left .layer:hover { background: var(--line2); color: var(--ink); }
+  .kc .left .layer.selected {
+    background: var(--select-soft);
+    color: var(--ink);
+  }
+  .kc .left .layer .caret { width: 10px; color: var(--ink3); display:grid; place-items:center; }
+  .kc .left .layer .ic { color: var(--ink3); display:grid; place-items:center; flex-shrink:0; }
+  .kc .left .layer.selected .ic { color: var(--ink); }
+  .kc .left .layer .name { flex: 1; overflow:hidden; text-overflow:ellipsis; }
+  .kc .left .layer .mask, .kc .left .layer .vis { color: var(--ink3); display:grid; place-items:center; flex-shrink:0; }
+  .kc .left .layer .vis { opacity: 0; }
+  .kc .left .layer:hover .vis, .kc .left .layer.selected .vis { opacity: 1; }
+  .kc .left .layer.dim { color: var(--ink4); }
+  .kc .left .layer.dim .ic { color: var(--ink4); }
+  .kc .left .indent-1 { padding-left: 24px; }
+  .kc .left .indent-2 { padding-left: 40px; }
+
+  /* CENTER (CANVAS) -------------------------------------------------- */
+  .kc .center {
+    background: var(--canvas);
+    position: relative;
+    overflow: hidden;
+  }
+  .kc .center .canvas-grid {
+    position: absolute; inset: 0;
+    background-image:
+      radial-gradient(circle, rgba(255,255,255,0.025) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+  .kc .frames-row {
+    position: absolute; top: 78px; left: 50%;
+    transform: translateX(-50%) scale(0.62);
+    transform-origin: top center;
+    display: flex; gap: 72px;
+  }
+  .kc .frame {
+    width: 600px; height: 900px;
+    background: #fff; color: #111;
+    position: relative; flex-shrink: 0;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .kc .frame-label {
+    position: absolute; top: -24px; left: 0;
+    color: var(--ink2); font-size: 14.5px;
+    white-space: nowrap; letter-spacing: -0.003em;
+  }
+  .kc .frame.selected .frame-label { color: var(--select); font-weight: 500; }
+  .kc .frame.selected {
+    outline: 2px solid var(--select);
+    outline-offset: 0;
+    border-radius: 6px;
+  }
+  .kc .handle {
+    position: absolute; width: 9px; height: 9px;
+    background: #fff;
+    border: 1.5px solid var(--select);
+    border-radius: 2px;
+  }
+  .kc .handle.tl { top:-1px; left:-1px; }
+  .kc .handle.tm { top:-1px; left:50%; transform:translateX(-50%); }
+  .kc .handle.tr { top:-1px; right:-1px; }
+  .kc .handle.lm { top:50%; left:-1px; transform:translateY(-50%); }
+  .kc .handle.rm { top:50%; right:-1px; transform:translateY(-50%); }
+  .kc .handle.bl { bottom:-1px; left:-1px; }
+  .kc .handle.bm { bottom:-1px; left:50%; transform:translateX(-50%); }
+  .kc .handle.br { bottom:-1px; right:-1px; }
+  .kc .size-chip {
+    position: absolute; bottom: -36px; left: 50%; transform: translateX(-50%);
+    background: var(--select); color: #fff;
+    font-size: 15px; padding: 5px 12px; border-radius: 6px;
+    font-weight: 500; letter-spacing: 0.01em;
+  }
+
+  /* TOOLBAR (V1 Kova-Loud chrome, V3 #3b82f6 selection) ------------- */
+  .kc .toolbar {
+    position: absolute;
+    bottom: 22px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1a1a1d;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 6px;
+    display: flex;
+    gap: 2px;
+    box-shadow: 0 8px 24px -6px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.04) inset;
+  }
+  .kc .toolbar .tool {
+    width: 36px; height: 36px;
+    display: grid; place-items:center;
+    color: var(--ink2);
+    border-radius: 6px;
+    cursor: pointer;
+    position: relative;
+  }
+  .kc .toolbar .tool:hover { background: var(--line2); color: var(--ink); }
+  .kc .toolbar .tool.active {
+    background: var(--accent);  /* #3b82f6 — never lilac */
+    color: #fff;
+  }
+  .kc .toolbar .divider {
+    width: 1px; background: var(--line2); margin: 6px 4px;
+  }
+  .kc .toolbar .tool.ai { color: var(--accent-ink); }
+  .kc .toolbar .tool.ai:hover { background: var(--accent-soft); }
+  .kc .toolbar .caret-mini {
+    position: absolute; right: 2px; bottom: 2px;
+    color: var(--ink3); display:grid; place-items:center;
+  }
+
+  /* Zoom HUD --------------------------------------------------------- */
+  .kc .zoom {
+    position: absolute;
+    bottom: 22px;
+    right: 22px;
+    background: #1a1a1d;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 6px 10px;
+    display: flex; align-items:center; gap: 6px;
+    color: var(--ink2);
+    font-size: 12px;
+    letter-spacing: 0.01em;
+  }
+  .kc .zoom .caret { display:grid; place-items:center; color: var(--ink3); }
+
+  /* RIGHT PANEL (vertically descending properties) ------------------ */
+  .kc .right {
+    background: var(--rail);
+    border-left: 1px solid var(--line);
+    display: flex; flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* Tabs row — Design only + zoom on the right */
+  .kc .right .tabs {
+    display: flex; border-bottom: 1px solid var(--line2);
+    padding: 0 14px; height: 44px; align-items: stretch;
+    gap: 4px;
+    justify-content: space-between;
+  }
+  .kc .right .tabs .tabs-l { display: flex; gap: 4px; }
+  .kc .right .tabs .tab {
+    display:flex; align-items:center; padding: 0 4px;
+    font-size: 13px; color: var(--ink3);
+  }
+  .kc .right .tabs .tab.active {
+    color: var(--ink);
+    background: var(--fill);
+    padding: 4px 10px;
+    border-radius: 5px;
+    margin: 8px 0;
+    font-weight: 500;
+  }
+  .kc .right .tabs .zoom-r {
+    display:flex; align-items:center; gap: 4px;
+    color: var(--ink2); font-size: 12px;
+  }
+
+  /* Frame header — title + quick actions */
+  .kc .right .frame-head {
+    padding: 14px 14px 14px;
+    border-bottom: 1px solid var(--line2);
+    display:flex; align-items:center; justify-content: space-between;
+  }
+  .kc .right .frame-head .title {
+    display:flex; align-items:center; gap: 6px;
+    font-size: 15px; font-weight: 600; color: var(--ink);
+    letter-spacing: -0.005em;
+  }
+  .kc .right .frame-head .title .caret { color: var(--ink3); display:grid; place-items:center; }
+  .kc .right .frame-head .actions { display:flex; gap: 2px; color: var(--ink2); }
+  .kc .right .frame-head .actions .a {
+    width: 26px; height: 26px;
+    display: grid; place-items: center; border-radius: 5px;
+  }
+  .kc .right .frame-head .actions .a:hover { background: var(--fill); color: var(--ink); }
+
+  /* Body scroll */
+  .kc .right .pbody { flex: 1; overflow: auto; }
+
+  /* Each property GROUP is a vertically-stacked section */
+  .kc .right .group {
+    padding: 14px 14px 16px;
+    border-bottom: 1px solid var(--line2);
+  }
+  .kc .right .group .ghead {
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom: 12px;
+  }
+  .kc .right .group .ghead h6 {
+    margin: 0; font-size: 13px; font-weight: 600;
+    color: var(--ink); letter-spacing: -0.005em;
+  }
+  .kc .right .group .ghead .actions { display:flex; gap: 2px; color: var(--ink2); }
+  .kc .right .group .ghead .actions .a {
+    width: 24px; height: 24px;
+    display: grid; place-items: center; border-radius: 5px;
+  }
+  .kc .right .group .ghead .actions .a:hover { background: var(--fill); color: var(--ink); }
+
+  /* Sub-section (Alignment, Position, Rotation, Flow, Dimensions...) */
+  .kc .right .sub { margin-bottom: 12px; }
+  .kc .right .sub:last-child { margin-bottom: 0; }
+  .kc .right .sub .lbl-row {
+    color: var(--ink2);
+    font-size: 12px;
+    margin-bottom: 6px;
+    letter-spacing: -0.003em;
+  }
+
+  /* Inputs — Inter everywhere (no monospace) */
+  .kc .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .kc .row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+  .kc .row-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .kc .ipt {
+    background: var(--fill);
+    border: 1px solid transparent;
+    border-radius: 5px;
+    padding: 0 9px;
+    display: flex; align-items: center; gap: 6px;
+    height: 30px; font-size: 12.5px;
+  }
+  .kc .ipt:hover { border-color: var(--line); }
+  .kc .ipt .lbl { color: var(--ink3); font-size: 12px; font-weight: 500; }
+  .kc .ipt .val { color: var(--ink); font-size: 12.5px; flex: 1; }
+  .kc .ipt .unit { color: var(--ink3); font-size: 12px; }
+
+  /* Segmented controls */
+  .kc .seg {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    background: var(--fill);
+    border-radius: 5px;
+    padding: 2px;
+    gap: 1px;
+  }
+  .kc .seg .s {
+    height: 26px; display:grid; place-items:center;
+    color: var(--ink3); border-radius: 4px;
+  }
+  .kc .seg .s.active { background: var(--fill2); color: var(--ink); }
+  .kc .seg .s:hover { color: var(--ink2); }
+  .kc .seg .s.active:hover { color: var(--ink); }
+  .kc .seg .gap { width: 6px; }
+
+  /* Two segments side-by-side */
+  .kc .seg-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+
+  /* Swatch box */
+  .kc .swatch {
+    width: 18px; height: 18px; border-radius: 3px;
+    background: #fff; border: 1px solid var(--line); flex-shrink: 0;
+  }
+
+  /* Empty/collapsed groups (Stroke / Effects / Layout guide) */
+  .kc .empty-row {
+    color: var(--ink3); font-size: 12.5px;
+  }
+
+  /* Checkbox row */
+  .kc .checkbox-row {
+    display:flex; align-items:center; gap: 8px;
+    font-size: 12.5px; color: var(--ink2);
+  }
+  .kc .checkbox-row .cb {
+    width: 14px; height: 14px;
+    border: 1px solid var(--line);
+    border-radius: 3px; background: var(--bg);
+    display:grid; place-items:center;
+  }
+  .kc .checkbox-row.checked .cb {
+    background: var(--select); border-color: var(--select); color: #fff;
+  }
+
+  /* Fill row layout: swatch | hex | opacity | eye | minus */
+  .kc .fill-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto auto auto;
+    gap: 4px;
+    align-items: center;
+    background: var(--fill);
+    border-radius: 5px;
+    padding: 0 6px;
+    height: 30px;
+  }
+  .kc .fill-row .hex { color: var(--ink); font-size: 12.5px; padding-left: 4px; }
+  .kc .fill-row .pct { color: var(--ink); font-size: 12.5px; padding: 0 6px; border-left: 1px solid var(--line2); }
+  .kc .fill-row .ico { width: 20px; height: 20px; display:grid; place-items:center; color: var(--ink3); border-radius: 4px; }
+  .kc .fill-row .ico:hover { background: var(--fill2); color: var(--ink); }
+
+  /* Floating help button */
+  .kc .help-fab {
+    position: absolute; bottom: 14px; right: 14px;
+    width: 28px; height: 28px;
+    border-radius: 50%; background: var(--fill);
+    border: 1px solid var(--line);
+    display:grid; place-items:center;
+    color: var(--ink2); font-size: 13px;
+  }
+
+  /* ============================================================
+     LIFT 2 — `.dlg` modal chrome + `.fld` form fields.
+     SOURCE: A6+A2a lines 36-111. .modal-backdrop background is
+     intentionally patched (only deviation): the source ships the
+     pre-rewire warm-brown backdrop value flagged by §3.9 grep.
+     Locked --bg is #1a1a1d, so the correct backdrop is
+     rgba(26,26,29,0.72). Patch documented in DELIVERY_NOTES.md.
+     ============================================================ */
+  .modal-backdrop {
+    position: absolute; inset: 0;
+    background: rgba(26,26,29,0.72);          /* PATCHED — see header */
+    backdrop-filter: blur(2px);
+    z-index: 5;
+  }
+
+  .dlg {
+    position: absolute; left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--page); border: 1px solid var(--line);
+    border-radius: 10px; box-shadow: 0 24px 80px -20px rgba(0,0,0,0.7), 0 1px 0 rgba(255,255,255,0.03) inset;
+    z-index: 10;
+    display: flex; flex-direction: column;
+    min-width: 360px; max-width: 92%;
+  }
+  .dlg.sm { width: 460px; }
+  .dlg.md { width: 540px; }
+  .dlg.lg { width: 880px; max-height: 78%; }
+  .dlg .dlg-head {
+    padding: 18px 22px 12px;
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
+  }
+  .dlg .dlg-head h3 {
+    margin: 0; font-size: 16px; font-weight: 600; letter-spacing: -0.005em; color: var(--ink);
+  }
+  .dlg .dlg-head .sub {
+    margin: 4px 0 0; font-size: 12.5px; color: var(--ink-3); line-height: 1.5;
+  }
+  .dlg .dlg-head .x {
+    width: 26px; height: 26px; border-radius: 5px;
+    display: grid; place-items: center; color: var(--ink-3); cursor: pointer;
+    flex-shrink: 0;
+  }
+  .dlg .dlg-head .x:hover { background: var(--line-2); color: var(--ink); }
+  .dlg .dlg-body {
+    padding: 4px 22px 18px;
+    display: flex; flex-direction: column; gap: 14px;
+    min-height: 0;
+  }
+  .dlg .dlg-body.flush { padding: 0; }
+  .dlg .dlg-foot {
+    padding: 14px 22px;
+    border-top: 1px solid var(--line-2);
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    background: var(--rail);
+    border-bottom-left-radius: 10px; border-bottom-right-radius: 10px;
+  }
+  .dlg .dlg-foot .l { color: var(--ink-3); font-size: 11.5px; display: flex; align-items: center; gap: 6px; }
+  .dlg .dlg-foot .r { display: flex; gap: 8px; }
+
+  /* Form fields inside dialogs (LIFT 2 continued — A6+A2a §.fld) */
+  .fld { display: flex; flex-direction: column; gap: 6px; }
+  .fld > label {
+    font-size: 12px; font-weight: 500; color: var(--ink); letter-spacing: -0.003em;
+  }
+  .fld > label .opt { color: var(--ink-3); font-weight: 400; margin-left: 6px; font-size: 11px; }
+  .fld .help { color: var(--ink-3); font-size: 11.5px; }
+  .fld input.input, .fld textarea.input {
+    background: var(--page); border: 1px solid var(--line); color: var(--ink);
+    border-radius: 6px; padding: 8px 11px; font: inherit; font-size: 13px;
+    transition: border-color .1s ease, box-shadow .1s ease;
+    width: 100%;
+  }
+  .fld textarea.input { resize: vertical; min-height: 76px; line-height: 1.5; }
+  .fld input.input:focus, .fld textarea.input:focus {
+    outline: none; border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(59,130,246,0.18);
+  }
+
+  /* ============================================================
+     LIFT 3 — `.menu` Reka DropdownMenu shell (lines 117-200 of 08).
+     ============================================================ */
+  .menu {
+    position: absolute;
+    background: var(--rail);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 4px;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.55), 0 1px 0 rgba(255,255,255,0.03);
+    min-width: 220px;
+    z-index: 10;
+    font-size: 12.5px;
+    color: var(--ink);
+    user-select: none;
+  }
+  .menu.w-260 { min-width: 260px; }
+  .menu.w-280 { min-width: 280px; }
+
+  .menu .item {
+    display: flex; align-items: center; gap: 10px;
+    height: 26px;
+    padding: 0 8px 0 10px;
+    border-radius: 5px;
+    color: var(--ink);
+    cursor: pointer;
+    line-height: 1;
+  }
+  .menu .item:hover { background: var(--line-2); }
+  .menu .item.hovered { background: var(--fill); }
+  .menu .item .lbl { flex: 1; min-width: 0; }
+  .menu .item .check {
+    width: 12px; height: 12px; flex-shrink: 0;
+    color: var(--ink); opacity: 0;
+  }
+  .menu .item.checked .check { opacity: 1; }
+  .menu .item .check .ic { width: 12px; height: 12px; }
+  .menu .item.checkable { padding-left: 6px; gap: 6px; }
+  .menu .item.checkable .lbl { padding-left: 4px; }
+
+  .menu .item .kbd-row {
+    display: inline-flex; align-items: center; gap: 2px;
+    color: var(--ink-3);
+    font-size: 11px;
+    flex-shrink: 0;
+  }
+  .menu .item:hover .kbd-row { color: var(--ink-2); }
+  .menu .item .arr {
+    color: var(--ink-3);
+    display: grid; place-items: center;
+    flex-shrink: 0;
+  }
+  .menu .item .arr .ic { width: 12px; height: 12px; }
+  .menu .item:hover .arr { color: var(--ink-2); }
+
+  /* Disabled item */
+  .menu .item.disabled { color: var(--ink-3); cursor: default; }
+  .menu .item.disabled:hover { background: transparent; }
+  .menu .item.disabled .kbd-row { color: var(--ink-3); opacity: 0.6; }
+
+  /* Destructive */
+  .menu .item.destructive { color: var(--warn); }
+  .menu .item.destructive:hover { background: var(--warn-soft); color: var(--warn); }
+  .menu .item.destructive .kbd-row { color: var(--warn); opacity: 0.7; }
+
+  /* Hovered (open submenu) parent */
+  .menu .item.has-sub { padding-right: 6px; }
+
+  /* Separator */
+  .menu .sep {
+    height: 1px; background: var(--line-2);
+    margin: 4px 4px;
+  }
+
+  /* Section label inside menu (for grouped popovers) */
+  .menu .group {
+    font-size: 9.5px;
+    font-weight: 500;
+    color: var(--ink-3);
+    padding: 8px 10px 4px;
+  }
+
+  /* ============================================================
+     LIFT 4 — `.empty-pane` (lines 34-48 of A11+A12+A13).
+     ============================================================ */
+  .empty-pane {
+    border: 1px dashed var(--line); border-radius: 8px;
+    padding: 36px 24px; text-align: center;
+    background: var(--page);
+    display: flex; flex-direction: column; gap: 6px; align-items: center;
+  }
+  .empty-pane .ic-wrap {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: var(--rail); border: 1px solid var(--line);
+    display: grid; place-items: center; color: var(--ink-3);
+    margin-bottom: 4px;
+  }
+  .empty-pane h5 { margin: 0; font-size: 13px; color: var(--ink); font-weight: 600; letter-spacing: -0.005em; }
+  .empty-pane p { margin: 0; font-size: 12px; color: var(--ink-3); max-width: 360px; line-height: 1.5; }
+  .empty-pane .cta-row { display: flex; gap: 8px; margin-top: 10px; }
+
+  /* ============================================================
+     NEW — Version-history-specific layout (extension only).
+     All values resolve through tokens scoped inside .kc or kova-hifi.css :root.
+     No invented hex, no monospace, no purple, no left-border accent.
+     ============================================================ */
+
+  /* Panel header (replaces .kc .right .frame-head when in version-history mode) */
+  .kc .right .vh-head {
+    padding: 0 14px; height: 44px;
+    border-bottom: 1px solid var(--line2);
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .kc .right .vh-head .ttl {
+    font-size: 15px; font-weight: 600; color: var(--ink);
+    letter-spacing: -0.005em;
+  }
+  .kc .right .vh-head .icns { display: flex; align-items: center; gap: 2px; }
+  .kc .right .vh-head .a {
+    width: 26px; height: 26px;
+    display: grid; place-items: center; border-radius: 5px;
+    color: var(--ink2); cursor: pointer;
+  }
+  .kc .right .vh-head .a:hover { background: var(--fill); color: var(--ink); }
+  .kc .right .vh-head .a.open { background: var(--fill); color: var(--ink); }
+
+  /* Instruction text below header */
+  .kc .right .vh-instructions {
+    padding: 12px 14px;
+    color: var(--ink3);
+    font-size: 11.5px;
+    line-height: 1.5;
+    border-bottom: 1px solid var(--line2);
+  }
+  .kc .right .vh-instructions .glyph {
+    color: var(--ink2);
+    font-feature-settings: "tnum" 1;
+  }
+
+  /* Panel body (scrollable timeline area) */
+  .kc .right .vh-body { flex: 1; overflow: auto; padding: 8px 0 16px; }
+
+  /* Timeline column — provides the 1px hairline running through rows */
+  .kc .vh-timeline {
+    position: relative;
+    padding: 0 14px;
+  }
+  .kc .vh-timeline::before {
+    content: "";
+    position: absolute;
+    top: 18px; bottom: 12px;
+    left: 21px;          /* aligns to the centre of the dot column (dot Ø ~10px) */
+    width: 1px;
+    background: var(--line);
+  }
+
+  /* A row in the timeline (current / autosave / named) */
+  .kc .vh-row {
+    position: relative;
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 6px 8px 6px 24px;     /* left padding leaves room for dot + line */
+    border-radius: 5px;
+    color: var(--ink2);
+    cursor: pointer;
+    margin: 0 -8px;                /* lets hover bg breathe to panel padding */
+  }
+  .kc .vh-row:hover { background: var(--line2); color: var(--ink); }
+  .kc .vh-row.active {
+    background: var(--accent-soft);
+    color: var(--ink);
+  }
+
+  /* Dot glyph — sits ON the timeline hairline */
+  .kc .vh-row .dot {
+    position: absolute;
+    left: 9px; top: 9px;
+    width: 10px; height: 10px;
+    display: grid; place-items: center;
+    flex-shrink: 0;
+  }
+  .kc .vh-row .dot .core {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--rail);
+    border: 1px solid var(--ink3);
+    box-shadow: 0 0 0 2px var(--rail);  /* mask 1px line behind dot */
+  }
+  .kc .vh-row.current .dot .core {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+  .kc .vh-row.named .dot .core {
+    background: var(--ink);
+    border-color: var(--ink);
+  }
+  .kc .vh-row.active .dot .core {
+    border-color: var(--accent);
+  }
+
+  /* Row body — text stack */
+  .kc .vh-row .body {
+    flex: 1; min-width: 0;
+    display: flex; flex-direction: column; gap: 3px;
+  }
+  .kc .vh-row .ttl {
+    font-size: 12.5px; font-weight: 500; color: var(--ink);
+    letter-spacing: -0.003em;
+    line-height: 1.3;
+  }
+  .kc .vh-row .ttl-cur {
+    font-size: 12.5px; font-weight: 500; color: var(--ink);
+    letter-spacing: -0.003em; line-height: 1.3;
+  }
+  .kc .vh-row .desc {
+    font-size: 11.5px; color: var(--ink3);
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .kc .vh-row .by {
+    display: flex; align-items: center; gap: 6px;
+    color: var(--ink3); font-size: 11px;
+  }
+  .kc .vh-row .by .av {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--fill);
+    color: var(--ink2);
+    display: grid; place-items: center;
+    font-size: 8.5px; font-weight: 600;
+    overflow: hidden;
+  }
+  .kc .vh-row .by .av.brand { background: #c24a1e; color: #fff; }
+
+  /* Trailing ••• icon — hidden until row hover/active */
+  .kc .vh-row .more {
+    width: 22px; height: 22px;
+    display: grid; place-items: center;
+    color: var(--ink3); border-radius: 4px;
+    flex-shrink: 0;
+    opacity: 0;
+    margin-top: -2px;
+  }
+  .kc .vh-row:hover .more, .kc .vh-row.active .more { opacity: 1; }
+  .kc .vh-row .more:hover { background: var(--fill); color: var(--ink); }
+
+  /* Inline rename input (replaces title region during rename) */
+  .kc .vh-row .rename {
+    background: var(--page);
+    border: 1px solid var(--accent);
+    border-radius: 4px;
+    color: var(--ink); font: inherit;
+    font-size: 12.5px; font-weight: 500;
+    padding: 3px 6px;
+    width: 100%;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(59,130,246,0.18);
+  }
+
+  /* Autosave group head (chevron + N autosave versions) */
+  .kc .vh-group-head {
+    position: relative;
+    display: flex; align-items: center; gap: 10px;
+    padding: 6px 8px 6px 24px;
+    color: var(--ink2);
+    cursor: pointer;
+    margin: 0 -8px;
+    border-radius: 5px;
+    font-size: 12.5px;
+  }
+  .kc .vh-group-head:hover { background: var(--line2); color: var(--ink); }
+  .kc .vh-group-head .dot {
+    position: absolute;
+    left: 9px; top: 9px;
+    width: 10px; height: 10px;
+    display: grid; place-items: center;
+    color: var(--ink2);
+  }
+  .kc .vh-group-head .dot .chev {
+    width: 10px; height: 10px;
+    background: var(--rail);
+    box-shadow: 0 0 0 2px var(--rail);
+    border-radius: 2px;
+    display: grid; place-items: center;
+  }
+  .kc .vh-group-head .lbl { flex: 1; }
+  .kc .vh-group-head .count {
+    color: var(--ink3); font-size: 11px;
+  }
+
+  /* Stage / screen adjustments — single-stage host with full-bleed kc + overlays */
+  .stage {
+    position: relative;
+    height: 100%;
+    overflow: hidden;
+  }
+  .stage .kc {
+    position: absolute; inset: 0;
+    border-radius: 0;
+  }
+
+  /* Dim helpers for muted left/center context */
+  .kc.scene .center > .canvas-grid { opacity: 0.7; }
+  .kc.scene .center .frames-row { opacity: 0.55; }
+  .kc.scene .left { opacity: 0.85; }
+
+  /* Anchor pin — small leader pointing to the trigger of a popover */
+  .anchor-pin {
+    position: absolute; z-index: 9;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 4px rgba(59,130,246,0.18);
+  }
+  .anchor-pin::after {
+    content: ""; position: absolute;
+    left: 50%; top: 50%;
+    width: 4px; height: 4px;
+    border-radius: 50%;
+    background: var(--page);
+    transform: translate(-50%,-50%);
+  }
+  .anchor-pin .lbl {
+    position: absolute; left: 16px; top: -3px;
+    background: var(--page); color: var(--ink-2);
+    border: 1px solid var(--line); border-radius: 4px;
+    padding: 2px 6px; font-size: 10.5px; letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+</style>
+</head>
+<body data-screen-label="17 Version History">
+
+<header class="page-head">
+  <div class="eyebrow">HI-FI · BATCH B · CHUNK B6 · DARK</div>
+  <h1>17 · Version history</h1>
+  <p>Right-panel mode-swap modeled on Figma's Version history pattern. Replaces the deferred Snapshot timeline panel and retires A8.1. Eleven scenes cover the populated panel, autosave group expand/collapse, mixed named + autosave timeline, row hover &amp; right-click menu, inline rename, filter dropdown, Add-to-version-history modal (initial + filled), restore confirm, and empty state.</p>
+  <div class="meta">11 scenes · canvas chrome from Kova Canvas - Final.html · `.dlg` from A6+A2a · `.menu` from 08 · `.empty-pane` from A11 · single accent `#3b82f6` · Inter only · diff proofs in DELIVERY_NOTES.md</div>
+</header>
+
+
+<!-- ============================================================
+     17.1 · Panel populated · autosave group expanded
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">17.1 · Panel populated, autosave group expanded</div>
+    <h2>17.1 · Panel populated · autosave group expanded</h2>
+    <p class="intro">Right panel in version-history mode. Header carries the title, the filter <code>≡</code>, the add <code>+</code>, and the close <code>X</code>. Below: instruction text with the <code>⌘+⌥+S</code> hint. Body shows Current version marker, then the "8 autosave versions" group expanded with the timeline connector running through eight timestamped rows.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Canvas chrome · Version history panel populated</div><div class="id">17.1 · hi-fi</div></div>
+    <div class="canvas tall" data-screen-label="17.1 Panel populated">
+      <div class="stage">
+        <div class="kc scene">
+
+          <!-- TOPBAR (lifted vocabulary from Final.html) -->
+          <div class="topbar">
+            <div class="l">
+              <div class="logo">K</div>
+              <div class="file">
+                <span class="crumb-brand"><span class="b"></span>Wildgrove</span>
+                <span class="sep">/</span>
+                <b>Spring Drop · 04</b>
+                <span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span>
+              </div>
+            </div>
+            <div class="r">
+              <div class="icon-btn" title="Notifications"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/></svg></div>
+              <div class="icon-btn" title="Present"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
+              <div class="icon-btn" title="Comments"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+              <div class="avatar">JM</div>
+            </div>
+          </div>
+
+          <div class="body">
+
+            <!-- LEFT (compact) -->
+            <div class="left">
+              <div class="file-row">
+                <div class="file-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+                <div>
+                  <div class="name">Spring Drop · 04</div>
+                  <div class="meta">3 emails · edited 2m ago</div>
+                </div>
+              </div>
+              <div class="sec"><h5>Pages</h5></div>
+              <div class="pages">
+                <div class="page-row active">
+                  <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg></span>
+                  <span>Spring Drop · 04</span>
+                </div>
+              </div>
+              <div class="sec"><h5>Layers</h5></div>
+              <div class="layers">
+                <div class="layer">
+                  <span class="caret"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></span>
+                  <span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg></span>
+                  <span class="name">Teaser #1</span>
+            <span class="vis"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span>
+          </div>
+                <div class="layer selected">
+                  <span class="caret"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></span>
+                  <span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg></span>
+                  <span class="name">Teaser #2 (A/B)</span>
+            <span class="vis"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span>
+          </div>
+                <div class="layer indent-1">
+                  <span class="ic"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/></svg></span>
+                  <span class="name">Hero image</span>
+            <span class="vis"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span>
+          </div>
+                <div class="layer indent-1">
+                  <span class="ic"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h14v3M9 4v16M7 20h10"/></svg></span>
+                  <span class="name">Headline</span>
+            <span class="vis"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span>
+          </div>
+                <div class="layer indent-1 dim">
+                  <span class="ic"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/></svg></span>
+                  <span class="name">CTA · Shop the drop</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- CENTER (muted canvas + toolbar visible) -->
+            <div class="center">
+              <div class="canvas-grid"></div>
+              <div class="frames-row">
+                <div class="frame">
+                  <div class="frame-label">Teaser #1</div>
+                </div>
+                <div class="frame selected">
+                  <div class="frame-label">Teaser #2 (A/B)</div>
+                  
+                  <div class="handle tl"></div><div class="handle tm"></div><div class="handle tr"></div>
+                  <div class="handle lm"></div><div class="handle rm"></div>
+                  <div class="handle bl"></div><div class="handle bm"></div><div class="handle br"></div>
+                  <div class="size-chip">600 × 900</div>
+                </div>
+                <div class="frame">
+                  <div class="frame-label">Reminder · 48h</div>
+                </div>
+              </div>
+              <div class="toolbar">
+                <div class="tool active" title="Move"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 2l7 18 2-7 7-2z"/></svg></div>
+                <div class="tool" title="Frame"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg></div>
+                <div class="tool" title="Rectangle"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="2"/></svg></div>
+                <div class="tool" title="Ellipse"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/></svg></div>
+                <div class="tool" title="Pen"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.5 7.5"/></svg></div>
+                <div class="tool" title="Text"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h14v3M9 4v16M7 20h10"/></svg></div>
+                <div class="tool" title="Comment"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+                <div class="divider"></div>
+                <div class="tool ai" title="Ask Kova"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/><path d="M19 14l.7 2.1L22 17l-2.3.9L19 20l-.7-2.1L16 17l2.3-.9L19 14z"/></svg></div>
+                <div class="tool" title="Components"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>
+              </div>
+              <div class="zoom">100%<span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div>
+            </div>
+
+            <!-- RIGHT (Version history mode-swap) -->
+            <div class="right">
+              <div class="vh-head">
+                <div class="ttl">Version history</div>
+                <div class="icns">
+                  <div class="a" title="Filter"><i data-lucide="list-filter"></i></div>
+                  <div class="a" title="Add to version history"><i data-lucide="plus"></i></div>
+                  <div class="a" title="Close"><i data-lucide="x"></i></div>
+                </div>
+              </div>
+              <div class="vh-instructions">
+                Press <span class="glyph">⌘</span> + <span class="glyph">⌥</span> + <span class="glyph">S</span> to add to version history while editing.
+              </div>
+              <div class="vh-body">
+                <div class="vh-timeline">
+
+                  <div class="vh-row current">
+                    <div class="dot"><div class="core"></div></div>
+                    <div class="body">
+                      <div class="ttl-cur">Current version</div>
+                    </div>
+                  </div>
+
+                  <div class="vh-group-head">
+                    <div class="dot"><div class="chev"><i data-lucide="chevron-down" style="width:10px;height:10px;"></i></div></div>
+                    <div class="lbl">8 autosave versions</div>
+                  </div>
+
+                  <div class="vh-row">
+                    <div class="dot"><div class="core"></div></div>
+                    <div class="body">
+                      <div class="ttl">Apr 28, 6:17 PM</div>
+                      <div class="by"><span class="av brand">JM</span>Jiho</div>
+                    </div>
+                    <div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+                  </div>
+
+                  <div class="vh-row">
+                    <div class="dot"><div class="core"></div></div>
+                    <div class="body">
+                      <div class="ttl">Apr 28, 5:12 PM</div>
+                      <div class="by"><span class="av brand">JM</span>Jiho</div>
+                    </div>
+                    <div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+                  </div>
+
+                  <div class="vh-row">
+                    <div class="dot"><div class="core"></div></div>
+                    <div class="body">
+                      <div class="ttl">Apr 28, 1:52 PM</div>
+                      <div class="by"><span class="av brand">JM</span>Jiho</div>
+                    </div>
+                    <div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+                  </div>
+
+                  <div class="vh-row">
+                    <div class="dot"><div class="core"></div></div>
+                    <div class="body">
+                      <div class="ttl">Apr 25, 11:20 AM</div>
+                      <div class="by"><span class="av brand">JM</span>Jiho</div>
+                    </div>
+                    <div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+                  </div>
+
+                  <div class="vh-row">
+                    <div class="dot"><div class="core"></div></div>
+                    <div class="body">
+                      <div class="ttl">Apr 24, 12:56 AM</div>
+                      <div class="by"><span class="av brand">JM</span>Jiho</div>
+                    </div>
+                    <div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+                  </div>
+
+                  <div class="vh-row">
+                    <div class="dot"><div class="core"></div></div>
+                    <div class="body">
+                      <div class="ttl">Apr 23, 10:44 PM</div>
+                      <div class="by"><span class="av brand">JM</span>Jiho</div>
+                    </div>
+                    <div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+                  </div>
+
+                  <div class="vh-row">
+                    <div class="dot"><div class="core"></div></div>
+                    <div class="body">
+                      <div class="ttl">Apr 23, 3:50 PM</div>
+                      <div class="by"><span class="av brand">JM</span>Jiho</div>
+                    </div>
+                    <div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+                  </div>
+
+                  <div class="vh-row">
+                    <div class="dot"><div class="core"></div></div>
+                    <div class="body">
+                      <div class="ttl">Apr 23, 2:58 PM</div>
+                      <div class="by"><span class="av brand">JM</span>Jiho</div>
+                    </div>
+                    <div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Right-panel mode-swap.</strong> The 264px-wide rail container persists; only the inspector content area is replaced. Topbar + tabs row are not reused — Version history is a peer mode to Design, not a sub-tab.</li>
+      <li><strong>Vertical timeline connector</strong> runs at <code>--line</code> 1px between the dot column and the row text. Dots use a <code>--rail</code>-coloured 2px box-shadow ring to "mask" the line through their centre — the same visual rhythm as Figma's pattern.</li>
+      <li><strong>Current-version dot</strong> is the only solid <code>--accent</code> glyph in the timeline, marking "you are here". Autosave dots are hollow <code>--ink-3</code> circles (open ring on the timeline).</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     17.2 · Panel populated · autosave group collapsed
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">17.2 · Panel populated, autosave group collapsed</div>
+    <h2>17.2 · Panel populated · autosave group collapsed</h2>
+    <p class="intro">Same panel state as 17.1 with the autosave group chevron flipped to collapsed — the eight rows are tucked under the "8 autosave versions" header. The timeline connector ends at the group head.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Canvas chrome · Version history panel · group collapsed</div><div class="id">17.2 · hi-fi</div></div>
+    <div class="canvas tall" data-screen-label="17.2 Panel populated, group collapsed">
+      <div class="stage">
+        <div class="kc scene">
+
+          <div class="topbar">
+            <div class="l">
+              <div class="logo">K</div>
+              <div class="file">
+                <span class="crumb-brand"><span class="b"></span>Wildgrove</span>
+                <span class="sep">/</span>
+                <b>Spring Drop · 04</b>
+                <span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span>
+              </div>
+            </div>
+            <div class="r">
+              <div class="icon-btn" title="Notifications"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/></svg></div>
+              <div class="icon-btn" title="Present"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
+              <div class="icon-btn" title="Comments"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+              <div class="avatar">JM</div>
+            </div>
+          </div>
+
+          <div class="body">
+
+            <div class="left">
+              <div class="file-row">
+                <div class="file-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+                <div>
+                  <div class="name">Spring Drop · 04</div>
+                  <div class="meta">3 emails</div>
+                </div>
+              </div>
+              <div class="sec"><h5>Layers</h5></div>
+              <div class="layers">
+                <div class="layer selected">
+                  <span class="caret"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></span>
+                  <span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg></span>
+                  <span class="name">Teaser #2 (A/B)</span>
+            <span class="vis"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span>
+          </div>
+              </div>
+            </div>
+
+            <div class="center">
+              <div class="canvas-grid"></div>
+              <div class="frames-row">
+                <div class="frame selected">
+                  <div class="frame-label">Teaser #2 (A/B)</div>
+                  
+                </div>
+              </div>
+              <div class="toolbar">
+                <div class="tool active" title="Move"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 2l7 18 2-7 7-2z"/></svg></div>
+                <div class="tool" title="Frame"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg></div>
+                <div class="tool" title="Rectangle"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="2"/></svg></div>
+                <div class="tool" title="Ellipse"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/></svg></div>
+                <div class="tool" title="Pen"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.5 7.5"/></svg></div>
+                <div class="tool" title="Text"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h14v3M9 4v16M7 20h10"/></svg></div>
+                <div class="tool" title="Comment"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+                <div class="divider"></div>
+                <div class="tool ai" title="Ask Kova"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/><path d="M19 14l.7 2.1L22 17l-2.3.9L19 20l-.7-2.1L16 17l2.3-.9L19 14z"/></svg></div>
+                <div class="tool" title="Components"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>
+              </div>
+              <div class="zoom">100%<span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div>
+            </div>
+
+            <div class="right">
+              <div class="vh-head">
+                <div class="ttl">Version history</div>
+                <div class="icns">
+                  <div class="a" title="Filter"><i data-lucide="list-filter"></i></div>
+                  <div class="a" title="Add to version history"><i data-lucide="plus"></i></div>
+                  <div class="a" title="Close"><i data-lucide="x"></i></div>
+                </div>
+              </div>
+              <div class="vh-instructions">
+                Press <span class="glyph">⌘</span> + <span class="glyph">⌥</span> + <span class="glyph">S</span> to add to version history while editing.
+              </div>
+              <div class="vh-body">
+                <div class="vh-timeline" style="--vh-bottom: 6px;">
+                  <div class="vh-row current">
+                    <div class="dot"><div class="core"></div></div>
+                    <div class="body"><div class="ttl-cur">Current version</div></div>
+                  </div>
+
+                  <div class="vh-group-head">
+                    <div class="dot"><div class="chev"><i data-lucide="chevron-right" style="width:10px;height:10px;"></i></div></div>
+                    <div class="lbl">8 autosave versions</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Chevron rotates, list collapses.</strong> No animation styling shown — collapsed state is pure structure (chevron-right + zero rows below). The timeline connector ends at the group head dot, since no children render below.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     17.3 · Panel populated · mixed named + autosave
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">17.3 · Mixed named + autosave</div>
+    <h2>17.3 · Panel populated · named versions interleaved</h2>
+    <p class="intro">Two named versions (with title + description) interleave with the autosave group. Named versions render OUTSIDE the autosave group with a distinct dot (filled <code>--ink</code> vs. hollow <code>--ink-3</code> for autosave) and carry a description line clamped to 2 lines. Decision logged in DELIVERY_NOTES.md: naming an autosave promotes it out of the group.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Canvas chrome · mixed named + autosave timeline</div><div class="id">17.3 · hi-fi</div></div>
+    <div class="canvas tall" data-screen-label="17.3 Mixed named + autosave">
+      <div class="stage">
+        <div class="kc scene">
+
+          <div class="topbar">
+            <div class="l">
+              <div class="logo">K</div>
+              <div class="file">
+                <span class="crumb-brand"><span class="b"></span>Wildgrove</span>
+                <span class="sep">/</span>
+                <b>Spring Drop · 04</b>
+              </div>
+            </div>
+            <div class="r"><div class="icon-btn" title="Notifications"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/></svg></div><div class="icon-btn" title="Present"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="5 3 19 12 5 21 5 3"/></svg></div><div class="icon-btn" title="Comments"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div class="avatar">JM</div></div>
+          </div>
+
+          <div class="body">
+
+            <div class="left">
+              <div class="file-row">
+                <div class="file-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+                <div><div class="name">Spring Drop · 04</div><div class="meta">3 emails</div></div>
+              </div>
+              <div class="sec"><h5>Layers</h5></div>
+              <div class="layers">
+                <div class="layer selected">
+                  <span class="caret"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></span>
+                  <span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg></span>
+                  <span class="name">Teaser #2 (A/B)</span>
+            <span class="vis"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span>
+          </div>
+              </div>
+            </div>
+
+            <div class="center">
+              <div class="canvas-grid"></div>
+              <div class="frames-row">
+                <div class="frame selected">
+                  <div class="frame-label">Teaser #2 (A/B)</div>
+                  
+                </div>
+              </div>
+              <div class="toolbar">
+                <div class="tool active" title="Move"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 2l7 18 2-7 7-2z"/></svg></div>
+                <div class="tool" title="Frame"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg></div>
+                <div class="tool" title="Rectangle"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="2"/></svg></div>
+                <div class="tool" title="Ellipse"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/></svg></div>
+                <div class="tool" title="Pen"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.5 7.5"/></svg></div>
+                <div class="tool" title="Text"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h14v3M9 4v16M7 20h10"/></svg></div>
+                <div class="tool" title="Comment"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+                <div class="divider"></div>
+                <div class="tool ai" title="Ask Kova"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/><path d="M19 14l.7 2.1L22 17l-2.3.9L19 20l-.7-2.1L16 17l2.3-.9L19 14z"/></svg></div>
+                <div class="tool" title="Components"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>
+              </div>
+              <div class="zoom">100%<span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div>
+            </div>
+
+            <div class="right">
+              <div class="vh-head">
+                <div class="ttl">Version history</div>
+                <div class="icns">
+                  <div class="a" title="Filter"><i data-lucide="list-filter"></i></div>
+                  <div class="a" title="Add to version history"><i data-lucide="plus"></i></div>
+                  <div class="a" title="Close"><i data-lucide="x"></i></div>
+                </div>
+              </div>
+              <div class="vh-instructions">
+                Press <span class="glyph">⌘</span> + <span class="glyph">⌥</span> + <span class="glyph">S</span> to add to version history while editing.
+              </div>
+              <div class="vh-body">
+                <div class="vh-timeline">
+
+                  <div class="vh-row current">
+                    <div class="dot"><div class="core"></div></div>
+                    <div class="body"><div class="ttl-cur">Current version</div></div>
+                  </div>
+
+                  <div class="vh-row named">
+                    <div class="dot"><div class="core"></div></div>
+                    <div class="body">
+                      <div class="ttl">v3 · final color pass</div>
+                      <div class="desc">Punched up the hero crop and warmed the headline ink — last review before client sign-off.</div>
+                      <div class="by"><span class="av brand">JM</span>Jiho · Apr 28, 6:42 PM</div>
+                    </div>
+                    <div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+                  </div>
+
+                  <div class="vh-group-head">
+                    <div class="dot"><div class="chev"><i data-lucide="chevron-down" style="width:10px;height:10px;"></i></div></div>
+                    <div class="lbl">6 autosave versions</div>
+                  </div>
+
+                  <div class="vh-row">
+                    <div class="dot"><div class="core"></div></div>
+                    <div class="body">
+                      <div class="ttl">Apr 28, 6:17 PM</div>
+                      <div class="by"><span class="av brand">JM</span>Jiho</div>
+                    </div>
+                    <div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+                  </div>
+                  <div class="vh-row">
+                    <div class="dot"><div class="core"></div></div>
+                    <div class="body">
+                      <div class="ttl">Apr 28, 5:12 PM</div>
+                      <div class="by"><span class="av brand">JM</span>Jiho</div>
+                    </div>
+                    <div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+                  </div>
+                  <div class="vh-row">
+                    <div class="dot"><div class="core"></div></div>
+                    <div class="body">
+                      <div class="ttl">Apr 28, 1:52 PM</div>
+                      <div class="by"><span class="av brand">JM</span>Jiho</div>
+                    </div>
+                    <div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+                  </div>
+
+                  <div class="vh-row named">
+                    <div class="dot"><div class="core"></div></div>
+                    <div class="body">
+                      <div class="ttl">v2 · hero update</div>
+                      <div class="desc">Updated hero CTA copy + replaced product hero image with the spring lineup.</div>
+                      <div class="by"><span class="av brand">JM</span>Jiho · Apr 25, 11:20 AM</div>
+                    </div>
+                    <div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+                  </div>
+
+                  <div class="vh-row">
+                    <div class="dot"><div class="core"></div></div>
+                    <div class="body">
+                      <div class="ttl">Apr 24, 12:56 AM</div>
+                      <div class="by"><span class="av brand">JM</span>Jiho</div>
+                    </div>
+                    <div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+                  </div>
+                  <div class="vh-row">
+                    <div class="dot"><div class="core"></div></div>
+                    <div class="body">
+                      <div class="ttl">Apr 23, 10:44 PM</div>
+                      <div class="by"><span class="av brand">JM</span>Jiho</div>
+                    </div>
+                    <div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+                  </div>
+                  <div class="vh-row">
+                    <div class="dot"><div class="core"></div></div>
+                    <div class="body">
+                      <div class="ttl">Apr 23, 2:58 PM</div>
+                      <div class="by"><span class="av brand">JM</span>Jiho</div>
+                    </div>
+                    <div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Named version dot is filled <code>--ink</code></strong> — same shape as autosave (10px circle on the timeline) but solid white-ish, signalling "user-created" vs. autosave's hollow ring. Choice logged in DELIVERY_NOTES §4.</li>
+      <li><strong>Description clamps to 2 lines</strong> with ellipsis. Soft 280-char limit on entry (logged in DELIVERY_NOTES §4); display layer truncates regardless.</li>
+      <li><strong>Promote-out behavior:</strong> when an autosave is named via the right-click menu, it leaves the autosave group and renders inline at its chronological position. Group count drops by one.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     17.4 · Row hovered
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">17.4 · Row hovered</div>
+    <h2>17.4 · Row hovered · trailing ••• revealed</h2>
+    <p class="intro">Hover state on the second autosave row. Background lifts to <code>--line2</code>, ink lifts to <code>--ink</code>, the trailing <code>•••</code> icon-button fades in. Same reveal pattern as the existing canonical layer-row hover.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Canvas chrome · Version history panel · row hover</div><div class="id">17.4 · hi-fi</div></div>
+    <div class="canvas tall" data-screen-label="17.4 Row hovered">
+      <div class="stage">
+        <div class="kc scene">
+
+          <div class="topbar">
+            <div class="l"><div class="logo">K</div><div class="file"><b>Spring Drop · 04</b></div></div>
+            <div class="r"><div class="icon-btn" title="Notifications"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/></svg></div><div class="icon-btn" title="Present"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="5 3 19 12 5 21 5 3"/></svg></div><div class="icon-btn" title="Comments"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div class="avatar">JM</div></div>
+          </div>
+
+          <div class="body">
+
+            <div class="left">
+              <div class="file-row"><div class="file-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg></div><div><div class="name">Spring Drop · 04</div><div class="meta">3 emails</div></div></div>
+              <div class="sec"><h5>Layers</h5></div>
+              <div class="layers">
+                <div class="layer selected"><span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="1"/></svg></span><span class="name">Teaser #2 (A/B)</span>
+            <span class="vis"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span>
+          </div>
+              </div>
+            </div>
+
+            <div class="center">
+              <div class="canvas-grid"></div>
+              <div class="frames-row"><div class="frame selected"><div class="frame-label">Teaser #2 (A/B)</div></div></div>
+              <div class="toolbar">
+                <div class="tool active" title="Move"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 2l7 18 2-7 7-2z"/></svg></div>
+                <div class="tool" title="Frame"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg></div>
+                <div class="tool" title="Rectangle"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="2"/></svg></div>
+                <div class="tool" title="Ellipse"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/></svg></div>
+                <div class="tool" title="Pen"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.5 7.5"/></svg></div>
+                <div class="tool" title="Text"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h14v3M9 4v16M7 20h10"/></svg></div>
+                <div class="tool" title="Comment"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+                <div class="divider"></div>
+                <div class="tool ai" title="Ask Kova"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/><path d="M19 14l.7 2.1L22 17l-2.3.9L19 20l-.7-2.1L16 17l2.3-.9L19 14z"/></svg></div>
+                <div class="tool" title="Components"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>
+              </div>
+              <div class="zoom">100%<span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div>
+            </div>
+
+            <div class="right">
+              <div class="vh-head">
+                <div class="ttl">Version history</div>
+                <div class="icns">
+                  <div class="a"><i data-lucide="list-filter"></i></div>
+                  <div class="a"><i data-lucide="plus"></i></div>
+                  <div class="a"><i data-lucide="x"></i></div>
+                </div>
+              </div>
+              <div class="vh-instructions">
+                Press <span class="glyph">⌘</span> + <span class="glyph">⌥</span> + <span class="glyph">S</span> to add to version history while editing.
+              </div>
+              <div class="vh-body">
+                <div class="vh-timeline">
+                  <div class="vh-row current"><div class="dot"><div class="core"></div></div><div class="body"><div class="ttl-cur">Current version</div></div></div>
+                  <div class="vh-group-head"><div class="dot"><div class="chev"><i data-lucide="chevron-down" style="width:10px;height:10px;"></i></div></div><div class="lbl">8 autosave versions</div></div>
+                  <div class="vh-row"><div class="dot"><div class="core"></div></div><div class="body"><div class="ttl">Apr 28, 6:17 PM</div><div class="by"><span class="av brand">JM</span>Jiho</div></div><div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div></div>
+
+                  <!-- HOVERED ROW — explicit hover styling via inline override -->
+                  <div class="vh-row" style="background: var(--line2); color: var(--ink);">
+                    <div class="dot"><div class="core"></div></div>
+                    <div class="body">
+                      <div class="ttl">Apr 28, 5:12 PM</div>
+                      <div class="by"><span class="av brand">JM</span>Jiho</div>
+                    </div>
+                    <div class="more" style="opacity:1;color:var(--ink);"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+                  </div>
+
+                  <div class="vh-row"><div class="dot"><div class="core"></div></div><div class="body"><div class="ttl">Apr 28, 1:52 PM</div><div class="by"><span class="av brand">JM</span>Jiho</div></div><div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div></div>
+                  <div class="vh-row"><div class="dot"><div class="core"></div></div><div class="body"><div class="ttl">Apr 25, 11:20 AM</div><div class="by"><span class="av brand">JM</span>Jiho</div></div><div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div></div>
+                  <div class="vh-row"><div class="dot"><div class="core"></div></div><div class="body"><div class="ttl">Apr 24, 12:56 AM</div><div class="by"><span class="av brand">JM</span>Jiho</div></div><div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div></div>
+                  <div class="vh-row"><div class="dot"><div class="core"></div></div><div class="body"><div class="ttl">Apr 23, 10:44 PM</div><div class="by"><span class="av brand">JM</span>Jiho</div></div><div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div></div>
+                  <div class="vh-row"><div class="dot"><div class="core"></div></div><div class="body"><div class="ttl">Apr 23, 3:50 PM</div><div class="by"><span class="av brand">JM</span>Jiho</div></div><div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div></div>
+                  <div class="vh-row"><div class="dot"><div class="core"></div></div><div class="body"><div class="ttl">Apr 23, 2:58 PM</div><div class="by"><span class="av brand">JM</span>Jiho</div></div><div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div></div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Reveal-on-hover.</strong> The <code>•••</code> button is invisible until row hover/active so the timeline reads as a calm vertical list. Same affordance pattern as the canonical left-panel layer rows.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     17.5 · Row right-click menu open
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">17.5 · Row right-click menu</div>
+    <h2>17.5 · Per-row dropdown · 5 items</h2>
+    <p class="intro">Right-click on the second autosave row opens the Reka DropdownMenu shell (lifted byte-for-byte from 08). Five items: Name this version / Restore this version / Duplicate / Delete version info (disabled because the row is an autosave) / Copy link. The row stays in active state while the menu is open.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Canvas chrome · per-row right-click menu</div><div class="id">17.5 · hi-fi</div></div>
+    <div class="canvas tall" data-screen-label="17.5 Row right-click menu">
+      <div class="stage">
+        <div class="kc scene">
+
+          <div class="topbar">
+            <div class="l"><div class="logo">K</div><div class="file"><b>Spring Drop · 04</b></div></div>
+            <div class="r"><div class="icon-btn" title="Notifications"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/></svg></div><div class="icon-btn" title="Present"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="5 3 19 12 5 21 5 3"/></svg></div><div class="icon-btn" title="Comments"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div class="avatar">JM</div></div>
+          </div>
+
+          <div class="body">
+
+            <div class="left">
+              <div class="file-row"><div class="file-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg></div><div><div class="name">Spring Drop · 04</div></div></div>
+              <div class="sec"><h5>Layers</h5></div>
+              <div class="layers">
+                <div class="layer selected"><span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="1"/></svg></span><span class="name">Teaser #2 (A/B)</span>
+            <span class="vis"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span>
+          </div>
+              </div>
+            </div>
+
+            <div class="center">
+              <div class="canvas-grid"></div>
+              <div class="frames-row"><div class="frame selected"><div class="frame-label">Teaser #2 (A/B)</div></div></div>
+              <div class="toolbar">
+                <div class="tool active" title="Move"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 2l7 18 2-7 7-2z"/></svg></div>
+                <div class="tool" title="Frame"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg></div>
+                <div class="tool" title="Rectangle"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="2"/></svg></div>
+                <div class="tool" title="Ellipse"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/></svg></div>
+                <div class="tool" title="Pen"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.5 7.5"/></svg></div>
+                <div class="tool" title="Text"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h14v3M9 4v16M7 20h10"/></svg></div>
+                <div class="tool" title="Comment"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+                <div class="divider"></div>
+                <div class="tool ai" title="Ask Kova"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/><path d="M19 14l.7 2.1L22 17l-2.3.9L19 20l-.7-2.1L16 17l2.3-.9L19 14z"/></svg></div>
+                <div class="tool" title="Components"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>
+              </div>
+              <div class="zoom">100%<span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div>
+            </div>
+
+            <div class="right">
+              <div class="vh-head">
+                <div class="ttl">Version history</div>
+                <div class="icns">
+                  <div class="a"><i data-lucide="list-filter"></i></div>
+                  <div class="a"><i data-lucide="plus"></i></div>
+                  <div class="a"><i data-lucide="x"></i></div>
+                </div>
+              </div>
+              <div class="vh-instructions">
+                Press <span class="glyph">⌘</span> + <span class="glyph">⌥</span> + <span class="glyph">S</span> to add to version history while editing.
+              </div>
+              <div class="vh-body">
+                <div class="vh-timeline">
+                  <div class="vh-row current"><div class="dot"><div class="core"></div></div><div class="body"><div class="ttl-cur">Current version</div></div></div>
+                  <div class="vh-group-head"><div class="dot"><div class="chev"><i data-lucide="chevron-down" style="width:10px;height:10px;"></i></div></div><div class="lbl">8 autosave versions</div></div>
+                  <div class="vh-row"><div class="dot"><div class="core"></div></div><div class="body"><div class="ttl">Apr 28, 6:17 PM</div><div class="by"><span class="av brand">JM</span>Jiho</div></div><div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div></div>
+                  <!-- ACTIVE (menu open on this row) -->
+                  <div class="vh-row active">
+                    <div class="dot"><div class="core"></div></div>
+                    <div class="body">
+                      <div class="ttl">Apr 28, 5:12 PM</div>
+                      <div class="by"><span class="av brand">JM</span>Jiho</div>
+                    </div>
+                    <div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+                  </div>
+                  <div class="vh-row"><div class="dot"><div class="core"></div></div><div class="body"><div class="ttl">Apr 28, 1:52 PM</div><div class="by"><span class="av brand">JM</span>Jiho</div></div><div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div></div>
+                  <div class="vh-row"><div class="dot"><div class="core"></div></div><div class="body"><div class="ttl">Apr 25, 11:20 AM</div><div class="by"><span class="av brand">JM</span>Jiho</div></div><div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div></div>
+                  <div class="vh-row"><div class="dot"><div class="core"></div></div><div class="body"><div class="ttl">Apr 24, 12:56 AM</div><div class="by"><span class="av brand">JM</span>Jiho</div></div><div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div></div>
+                  <div class="vh-row"><div class="dot"><div class="core"></div></div><div class="body"><div class="ttl">Apr 23, 10:44 PM</div><div class="by"><span class="av brand">JM</span>Jiho</div></div><div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div></div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- ROW RIGHT-CLICK MENU (anchored over the right rail at the active row) -->
+          <div class="menu w-260" style="right: 14px; top: 192px; min-width: 220px;">
+            <div class="item"><span class="lbl">Name this version</span></div>
+            <div class="item"><span class="lbl">Restore this version</span></div>
+            <div class="item"><span class="lbl">Duplicate</span></div>
+            <div class="item disabled"><span class="lbl">Delete version info</span></div>
+            <div class="item"><span class="lbl">Copy link</span></div>
+          </div>
+
+          <!-- Anchor pin onto the row's ••• -->
+          <div class="anchor-pin" style="right: 30px; top: 198px;">
+            <div class="lbl" style="left:auto;right:18px;">trigger · row · right-click or •••</div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>5 items, no shortcuts.</strong> Mirrors Figma <code>version-history-3.png</code> exactly. No <code>kbd</code> chips on these items — destructive (Delete) is greyed-disabled when the row is an autosave because there's no user-added info to remove.</li>
+      <li><strong>Menu chrome from 08.</strong> <code>--rail</code> background, <code>--line</code> hairline border, 8px radius, 24px tall items, 5px item radius — same vocabulary as the canonical Reka shell.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     17.6 · Inline rename
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">17.6 · Inline rename</div>
+    <h2>17.6 · Inline rename in progress</h2>
+    <p class="intro">"Name this version" turns the row's title region into an inline text field with focus ring matching the canonical <code>.input:focus</code> treatment. Esc cancels, Enter commits. Same UX contract as B3.2 page rename and B1.11 file rename.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Canvas chrome · row inline rename</div><div class="id">17.6 · hi-fi</div></div>
+    <div class="canvas tall" data-screen-label="17.6 Inline rename">
+      <div class="stage">
+        <div class="kc scene">
+
+          <div class="topbar">
+            <div class="l"><div class="logo">K</div><div class="file"><b>Spring Drop · 04</b></div></div>
+            <div class="r"><div class="icon-btn" title="Notifications"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/></svg></div><div class="icon-btn" title="Present"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="5 3 19 12 5 21 5 3"/></svg></div><div class="icon-btn" title="Comments"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div class="avatar">JM</div></div>
+          </div>
+
+          <div class="body">
+
+            <div class="left">
+              <div class="file-row"><div class="file-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg></div><div><div class="name">Spring Drop · 04</div></div></div>
+              <div class="sec"><h5>Layers</h5></div>
+              <div class="layers"><div class="layer selected"><span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="1"/></svg></span><span class="name">Teaser #2 (A/B)</span><span class="vis"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span></div></div>
+            </div>
+
+            <div class="center">
+              <div class="canvas-grid"></div>
+              <div class="frames-row"><div class="frame selected"><div class="frame-label">Teaser #2 (A/B)</div></div></div>
+              <div class="toolbar">
+                <div class="tool active" title="Move"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 2l7 18 2-7 7-2z"/></svg></div>
+                <div class="tool" title="Frame"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg></div>
+                <div class="tool" title="Rectangle"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="2"/></svg></div>
+                <div class="tool" title="Ellipse"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/></svg></div>
+                <div class="tool" title="Pen"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.5 7.5"/></svg></div>
+                <div class="tool" title="Text"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h14v3M9 4v16M7 20h10"/></svg></div>
+                <div class="tool" title="Comment"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+                <div class="divider"></div>
+                <div class="tool ai" title="Ask Kova"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/><path d="M19 14l.7 2.1L22 17l-2.3.9L19 20l-.7-2.1L16 17l2.3-.9L19 14z"/></svg></div>
+                <div class="tool" title="Components"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>
+              </div>
+              <div class="zoom">100%<span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div>
+            </div>
+
+            <div class="right">
+              <div class="vh-head">
+                <div class="ttl">Version history</div>
+                <div class="icns">
+                  <div class="a"><i data-lucide="list-filter"></i></div>
+                  <div class="a"><i data-lucide="plus"></i></div>
+                  <div class="a"><i data-lucide="x"></i></div>
+                </div>
+              </div>
+              <div class="vh-instructions">
+                Press <span class="glyph">⌘</span> + <span class="glyph">⌥</span> + <span class="glyph">S</span> to add to version history while editing.
+              </div>
+              <div class="vh-body">
+                <div class="vh-timeline">
+                  <div class="vh-row current"><div class="dot"><div class="core"></div></div><div class="body"><div class="ttl-cur">Current version</div></div></div>
+                  <div class="vh-group-head"><div class="dot"><div class="chev"><i data-lucide="chevron-down" style="width:10px;height:10px;"></i></div></div><div class="lbl">8 autosave versions</div></div>
+                  <div class="vh-row"><div class="dot"><div class="core"></div></div><div class="body"><div class="ttl">Apr 28, 6:17 PM</div><div class="by"><span class="av brand">JM</span>Jiho</div></div><div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div></div>
+                  <!-- RENAME IN PROGRESS -->
+                  <div class="vh-row active">
+                    <div class="dot"><div class="core"></div></div>
+                    <div class="body">
+                      <input class="rename" value="Pre-Klaviyo handoff" />
+                      <div class="by"><span class="av brand">JM</span>Jiho · Apr 28, 5:12 PM</div>
+                    </div>
+                  </div>
+                  <div class="vh-row"><div class="dot"><div class="core"></div></div><div class="body"><div class="ttl">Apr 28, 1:52 PM</div><div class="by"><span class="av brand">JM</span>Jiho</div></div><div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div></div>
+                  <div class="vh-row"><div class="dot"><div class="core"></div></div><div class="body"><div class="ttl">Apr 25, 11:20 AM</div><div class="by"><span class="av brand">JM</span>Jiho</div></div><div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div></div>
+                  <div class="vh-row"><div class="dot"><div class="core"></div></div><div class="body"><div class="ttl">Apr 24, 12:56 AM</div><div class="by"><span class="av brand">JM</span>Jiho</div></div><div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div></div>
+                  <div class="vh-row"><div class="dot"><div class="core"></div></div><div class="body"><div class="ttl">Apr 23, 10:44 PM</div><div class="by"><span class="av brand">JM</span>Jiho</div></div><div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div></div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Title region only.</strong> The user line (avatar + name + timestamp) re-renders below the input — once committed, the row promotes out of the autosave group and the timestamp drops underneath the new title (see 17.3 named-row layout).</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     17.7 · Filter dropdown open
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">17.7 · Filter dropdown</div>
+    <h2>17.7 · Filter dropdown open</h2>
+    <p class="intro">Click the filter <code>≡</code> in the panel header. Reka DropdownMenu (08 shell) shows ✓&nbsp;All / Only yours, separator, ✓&nbsp;Show autosave versions. Visibility filter is single-select; autosave toggle is independent.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Canvas chrome · filter dropdown open</div><div class="id">17.7 · hi-fi</div></div>
+    <div class="canvas tall" data-screen-label="17.7 Filter dropdown">
+      <div class="stage">
+        <div class="kc scene">
+
+          <div class="topbar">
+            <div class="l"><div class="logo">K</div><div class="file"><b>Spring Drop · 04</b></div></div>
+            <div class="r"><div class="icon-btn" title="Notifications"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/></svg></div><div class="icon-btn" title="Present"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="5 3 19 12 5 21 5 3"/></svg></div><div class="icon-btn" title="Comments"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div class="avatar">JM</div></div>
+          </div>
+
+          <div class="body">
+
+            <div class="left">
+              <div class="file-row"><div class="file-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg></div><div><div class="name">Spring Drop · 04</div></div></div>
+              <div class="sec"><h5>Layers</h5></div>
+              <div class="layers"><div class="layer selected"><span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="1"/></svg></span><span class="name">Teaser #2 (A/B)</span><span class="vis"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span></div></div>
+            </div>
+
+            <div class="center">
+              <div class="canvas-grid"></div>
+              <div class="frames-row"><div class="frame selected"><div class="frame-label">Teaser #2 (A/B)</div></div></div>
+              <div class="toolbar">
+                <div class="tool active" title="Move"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 2l7 18 2-7 7-2z"/></svg></div>
+                <div class="tool" title="Frame"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg></div>
+                <div class="tool" title="Rectangle"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="2"/></svg></div>
+                <div class="tool" title="Ellipse"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/></svg></div>
+                <div class="tool" title="Pen"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.5 7.5"/></svg></div>
+                <div class="tool" title="Text"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h14v3M9 4v16M7 20h10"/></svg></div>
+                <div class="tool" title="Comment"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+                <div class="divider"></div>
+                <div class="tool ai" title="Ask Kova"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/><path d="M19 14l.7 2.1L22 17l-2.3.9L19 20l-.7-2.1L16 17l2.3-.9L19 14z"/></svg></div>
+                <div class="tool" title="Components"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>
+              </div>
+              <div class="zoom">100%<span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div>
+            </div>
+
+            <div class="right">
+              <div class="vh-head">
+                <div class="ttl">Version history</div>
+                <div class="icns">
+                  <div class="a open"><i data-lucide="list-filter"></i></div>
+                  <div class="a"><i data-lucide="plus"></i></div>
+                  <div class="a"><i data-lucide="x"></i></div>
+                </div>
+              </div>
+              <div class="vh-instructions">
+                Press <span class="glyph">⌘</span> + <span class="glyph">⌥</span> + <span class="glyph">S</span> to add to version history while editing.
+              </div>
+              <div class="vh-body">
+                <div class="vh-timeline">
+                  <div class="vh-row current"><div class="dot"><div class="core"></div></div><div class="body"><div class="ttl-cur">Current version</div></div></div>
+                  <div class="vh-group-head"><div class="dot"><div class="chev"><i data-lucide="chevron-down" style="width:10px;height:10px;"></i></div></div><div class="lbl">8 autosave versions</div></div>
+                  <div class="vh-row"><div class="dot"><div class="core"></div></div><div class="body"><div class="ttl">Apr 28, 6:17 PM</div><div class="by"><span class="av brand">JM</span>Jiho</div></div><div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div></div>
+                  <div class="vh-row"><div class="dot"><div class="core"></div></div><div class="body"><div class="ttl">Apr 28, 5:12 PM</div><div class="by"><span class="av brand">JM</span>Jiho</div></div><div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div></div>
+                  <div class="vh-row"><div class="dot"><div class="core"></div></div><div class="body"><div class="ttl">Apr 28, 1:52 PM</div><div class="by"><span class="av brand">JM</span>Jiho</div></div><div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div></div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- FILTER DROPDOWN — anchored to filter icon -->
+          <div class="menu" style="right: 84px; top: 76px; min-width: 200px;">
+            <div class="item checkable checked">
+              <span class="check"><i data-lucide="check" class="ic"></i></span>
+              <span class="lbl">All</span>
+            </div>
+            <div class="item checkable">
+              <span class="check"><i data-lucide="check" class="ic"></i></span>
+              <span class="lbl">Only yours</span>
+            </div>
+            <div class="sep"></div>
+            <div class="item checkable checked">
+              <span class="check"><i data-lucide="check" class="ic"></i></span>
+              <span class="lbl">Show autosave versions</span>
+            </div>
+          </div>
+
+          <div class="anchor-pin" style="right: 88px; top: 56px;">
+            <div class="lbl" style="left:auto;right:18px;">trigger · filter ≡</div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Visibility filter (All / Only yours)</strong> behaves as single-select — toggling one un-checks the other. The autosave toggle is independent. When OFF, the autosave group hides entirely and the timeline shrinks; no placeholder needed (logged in DELIVERY_NOTES §4).</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     17.8 · Add-to-version-history modal · initial state
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">17.8 · Add-to-version-history modal · initial</div>
+    <h2>17.8 · Add modal · Title focused, Save disabled</h2>
+    <p class="intro">Triggered by the panel <code>+</code> button OR the <code>⌘+⌥+S</code> shortcut. <strong>This modal supersedes the retired A8.1 Snapshot dialog</strong> — the keyboard handler now opens this surface. <code>.dlg</code> chrome via LIFT 2 (A6+A2a); modal-backdrop patched to <code>rgba(26,26,29,0.72)</code>.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Canvas chrome · Add modal initial</div><div class="id">17.8 · hi-fi</div></div>
+    <div class="canvas tall" data-screen-label="17.8 Add modal initial">
+      <div class="stage">
+        <div class="kc scene">
+
+          <div class="topbar">
+            <div class="l"><div class="logo">K</div><div class="file"><b>Spring Drop · 04</b></div></div>
+            <div class="r"><div class="icon-btn" title="Notifications"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/></svg></div><div class="icon-btn" title="Present"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="5 3 19 12 5 21 5 3"/></svg></div><div class="icon-btn" title="Comments"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div class="avatar">JM</div></div>
+          </div>
+
+          <div class="body">
+
+            <div class="left">
+              <div class="file-row"><div class="file-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg></div><div><div class="name">Spring Drop · 04</div></div></div>
+              <div class="sec"><h5>Layers</h5></div>
+              <div class="layers"><div class="layer selected"><span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="1"/></svg></span><span class="name">Teaser #2 (A/B)</span><span class="vis"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span></div></div>
+            </div>
+
+            <div class="center">
+              <div class="canvas-grid"></div>
+              <div class="frames-row"><div class="frame selected"><div class="frame-label">Teaser #2 (A/B)</div></div></div>
+              <div class="toolbar">
+                <div class="tool active" title="Move"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 2l7 18 2-7 7-2z"/></svg></div>
+                <div class="tool" title="Frame"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg></div>
+                <div class="tool" title="Rectangle"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="2"/></svg></div>
+                <div class="tool" title="Ellipse"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/></svg></div>
+                <div class="tool" title="Pen"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.5 7.5"/></svg></div>
+                <div class="tool" title="Text"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h14v3M9 4v16M7 20h10"/></svg></div>
+                <div class="tool" title="Comment"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+                <div class="divider"></div>
+                <div class="tool ai" title="Ask Kova"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/><path d="M19 14l.7 2.1L22 17l-2.3.9L19 20l-.7-2.1L16 17l2.3-.9L19 14z"/></svg></div>
+                <div class="tool" title="Components"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>
+              </div>
+              <div class="zoom">100%<span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div>
+            </div>
+
+            <div class="right">
+              <div class="vh-head">
+                <div class="ttl">Version history</div>
+                <div class="icns">
+                  <div class="a"><i data-lucide="list-filter"></i></div>
+                  <div class="a open"><i data-lucide="plus"></i></div>
+                  <div class="a"><i data-lucide="x"></i></div>
+                </div>
+              </div>
+              <div class="vh-instructions">
+                Press <span class="glyph">⌘</span> + <span class="glyph">⌥</span> + <span class="glyph">S</span> to add to version history while editing.
+              </div>
+              <div class="vh-body">
+                <div class="vh-timeline">
+                  <div class="vh-row current"><div class="dot"><div class="core"></div></div><div class="body"><div class="ttl-cur">Current version</div></div></div>
+                  <div class="vh-group-head"><div class="dot"><div class="chev"><i data-lucide="chevron-down" style="width:10px;height:10px;"></i></div></div><div class="lbl">8 autosave versions</div></div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- BACKDROP + MODAL -->
+          <div class="modal-backdrop"></div>
+          <div class="dlg sm">
+            <div class="dlg-head">
+              <div>
+                <h3>Add to version history</h3>
+              </div>
+              <div class="x"><i data-lucide="x" style="width:14px;height:14px;"></i></div>
+            </div>
+            <div class="dlg-body">
+              <div class="fld">
+                <input class="input" placeholder="Title" autofocus style="border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59,130,246,0.18);" />
+              </div>
+              <div class="fld">
+                <textarea class="input" placeholder="Describe what changed"></textarea>
+              </div>
+            </div>
+            <div class="dlg-foot">
+              <div class="l"></div>
+              <div class="r">
+                <div class="btn">Cancel</div>
+                <div class="btn primary disabled">Save</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="anchor-pin" style="right: 56px; top: 56px;">
+            <div class="lbl" style="left:auto;right:18px;">trigger · panel + button OR ⌘+⌥+S</div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>A8.1 retirement.</strong> The Snapshot dialog (A8.1) is retired. The keyboard shortcut <code>⌘+⌥+S</code> now opens this Add-to-version-history modal. Logged in DELIVERY_NOTES §6 with cross-cuts.</li>
+      <li><strong>Save disabled until Title entered.</strong> Initial state has Title input focused (blue ring), Description empty, Save in canonical <code>.btn:disabled</code> styling (<code>--ink-3</code> ink, <code>--line-2</code> border, <code>--page</code> bg).</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     17.9 · Add-to-version-history modal · filled
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">17.9 · Add modal · filled, Save enabled</div>
+    <h2>17.9 · Add modal · Title and description entered</h2>
+    <p class="intro">Title and Description filled. Save flips from disabled to <code>.btn.primary</code>. Cancel discards; Save commits — the new named version appears in the timeline outside the autosave group.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Canvas chrome · Add modal filled</div><div class="id">17.9 · hi-fi</div></div>
+    <div class="canvas tall" data-screen-label="17.9 Add modal filled">
+      <div class="stage">
+        <div class="kc scene">
+
+          <div class="topbar">
+            <div class="l"><div class="logo">K</div><div class="file"><b>Spring Drop · 04</b></div></div>
+            <div class="r"><div class="icon-btn" title="Notifications"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/></svg></div><div class="icon-btn" title="Present"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="5 3 19 12 5 21 5 3"/></svg></div><div class="icon-btn" title="Comments"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div class="avatar">JM</div></div>
+          </div>
+
+          <div class="body">
+
+            <div class="left">
+              <div class="file-row"><div class="file-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg></div><div><div class="name">Spring Drop · 04</div></div></div>
+              <div class="sec"><h5>Layers</h5></div>
+              <div class="layers"><div class="layer selected"><span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="1"/></svg></span><span class="name">Teaser #2 (A/B)</span><span class="vis"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span></div></div>
+            </div>
+
+            <div class="center">
+              <div class="canvas-grid"></div>
+              <div class="frames-row"><div class="frame selected"><div class="frame-label">Teaser #2 (A/B)</div></div></div>
+              <div class="toolbar">
+                <div class="tool active" title="Move"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 2l7 18 2-7 7-2z"/></svg></div>
+                <div class="tool" title="Frame"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg></div>
+                <div class="tool" title="Rectangle"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="2"/></svg></div>
+                <div class="tool" title="Ellipse"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/></svg></div>
+                <div class="tool" title="Pen"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.5 7.5"/></svg></div>
+                <div class="tool" title="Text"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h14v3M9 4v16M7 20h10"/></svg></div>
+                <div class="tool" title="Comment"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+                <div class="divider"></div>
+                <div class="tool ai" title="Ask Kova"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/><path d="M19 14l.7 2.1L22 17l-2.3.9L19 20l-.7-2.1L16 17l2.3-.9L19 14z"/></svg></div>
+                <div class="tool" title="Components"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>
+              </div>
+              <div class="zoom">100%<span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div>
+            </div>
+
+            <div class="right">
+              <div class="vh-head">
+                <div class="ttl">Version history</div>
+                <div class="icns">
+                  <div class="a"><i data-lucide="list-filter"></i></div>
+                  <div class="a open"><i data-lucide="plus"></i></div>
+                  <div class="a"><i data-lucide="x"></i></div>
+                </div>
+              </div>
+              <div class="vh-instructions">
+                Press <span class="glyph">⌘</span> + <span class="glyph">⌥</span> + <span class="glyph">S</span> to add to version history while editing.
+              </div>
+              <div class="vh-body">
+                <div class="vh-timeline">
+                  <div class="vh-row current"><div class="dot"><div class="core"></div></div><div class="body"><div class="ttl-cur">Current version</div></div></div>
+                  <div class="vh-group-head"><div class="dot"><div class="chev"><i data-lucide="chevron-down" style="width:10px;height:10px;"></i></div></div><div class="lbl">8 autosave versions</div></div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="modal-backdrop"></div>
+          <div class="dlg sm">
+            <div class="dlg-head">
+              <div><h3>Add to version history</h3></div>
+              <div class="x"><i data-lucide="x" style="width:14px;height:14px;"></i></div>
+            </div>
+            <div class="dlg-body">
+              <div class="fld">
+                <input class="input" value="v2 hero update" />
+              </div>
+              <div class="fld">
+                <textarea class="input">Updated hero CTA + replaced product hero image with the spring lineup.</textarea>
+              </div>
+            </div>
+            <div class="dlg-foot">
+              <div class="l"></div>
+              <div class="r">
+                <div class="btn">Cancel</div>
+                <div class="btn primary">Save</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Save uses <code>.btn.primary</code></strong> — high-contrast ink-on-page (canonical primary button). No accent fill — that variant is reserved for danger or tool-active.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     17.10 · Restore confirm modal
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">17.10 · Restore confirm</div>
+    <h2>17.10 · Restore this version? · non-destructive</h2>
+    <p class="intro">Triggered from "Restore this version" in the per-row dropdown. Uses A8.4 <code>useConfirm</code> non-destructive variant — primary button is <code>.btn.primary</code>, NOT <code>.btn.danger</code>. Per Q7 atomic restore: current state is auto-saved as a backup snapshot before the target restores; the action is reversible via <code>⌘Z</code>.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Canvas chrome · restore confirm modal</div><div class="id">17.10 · hi-fi</div></div>
+    <div class="canvas tall" data-screen-label="17.10 Restore confirm">
+      <div class="stage">
+        <div class="kc scene">
+
+          <div class="topbar">
+            <div class="l"><div class="logo">K</div><div class="file"><b>Spring Drop · 04</b></div></div>
+            <div class="r"><div class="icon-btn" title="Notifications"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/></svg></div><div class="icon-btn" title="Present"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="5 3 19 12 5 21 5 3"/></svg></div><div class="icon-btn" title="Comments"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div class="avatar">JM</div></div>
+          </div>
+
+          <div class="body">
+
+            <div class="left">
+              <div class="file-row"><div class="file-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg></div><div><div class="name">Spring Drop · 04</div></div></div>
+              <div class="sec"><h5>Layers</h5></div>
+              <div class="layers"><div class="layer selected"><span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="1"/></svg></span><span class="name">Teaser #2 (A/B)</span><span class="vis"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span></div></div>
+            </div>
+
+            <div class="center">
+              <div class="canvas-grid"></div>
+              <div class="frames-row"><div class="frame selected"><div class="frame-label">Teaser #2 (A/B)</div></div></div>
+              <div class="toolbar">
+                <div class="tool active" title="Move"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 2l7 18 2-7 7-2z"/></svg></div>
+                <div class="tool" title="Frame"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg></div>
+                <div class="tool" title="Rectangle"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="2"/></svg></div>
+                <div class="tool" title="Ellipse"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/></svg></div>
+                <div class="tool" title="Pen"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.5 7.5"/></svg></div>
+                <div class="tool" title="Text"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h14v3M9 4v16M7 20h10"/></svg></div>
+                <div class="tool" title="Comment"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+                <div class="divider"></div>
+                <div class="tool ai" title="Ask Kova"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/><path d="M19 14l.7 2.1L22 17l-2.3.9L19 20l-.7-2.1L16 17l2.3-.9L19 14z"/></svg></div>
+                <div class="tool" title="Components"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>
+              </div>
+              <div class="zoom">100%<span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div>
+            </div>
+
+            <div class="right">
+              <div class="vh-head">
+                <div class="ttl">Version history</div>
+                <div class="icns">
+                  <div class="a"><i data-lucide="list-filter"></i></div>
+                  <div class="a"><i data-lucide="plus"></i></div>
+                  <div class="a"><i data-lucide="x"></i></div>
+                </div>
+              </div>
+              <div class="vh-instructions">
+                Press <span class="glyph">⌘</span> + <span class="glyph">⌥</span> + <span class="glyph">S</span> to add to version history while editing.
+              </div>
+              <div class="vh-body">
+                <div class="vh-timeline">
+                  <div class="vh-row current"><div class="dot"><div class="core"></div></div><div class="body"><div class="ttl-cur">Current version</div></div></div>
+                  <div class="vh-group-head"><div class="dot"><div class="chev"><i data-lucide="chevron-down" style="width:10px;height:10px;"></i></div></div><div class="lbl">8 autosave versions</div></div>
+                  <div class="vh-row active"><div class="dot"><div class="core"></div></div><div class="body"><div class="ttl">Apr 28, 5:12 PM</div><div class="by"><span class="av brand">JM</span>Jiho</div></div></div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="modal-backdrop"></div>
+          <div class="dlg sm">
+            <div class="dlg-head">
+              <div>
+                <h3>Restore this version?</h3>
+                <p class="sub">Your current canvas will be saved as a backup snapshot before restoring. You can undo with ⌘Z.</p>
+              </div>
+              <div class="x"><i data-lucide="x" style="width:14px;height:14px;"></i></div>
+            </div>
+            <div class="dlg-foot">
+              <div class="l">
+                <i data-lucide="info" style="width:12px;height:12px;"></i>
+                Restoring Apr 28, 5:12 PM
+              </div>
+              <div class="r">
+                <div class="btn">Cancel</div>
+                <div class="btn primary">Restore</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Non-destructive.</strong> Restore is reversible (atomic + undo entry pushed). The CTA uses <code>.btn.primary</code>, not <code>.btn.danger</code> — the orange destructive treatment is reserved for irreversible actions like Delete brand / Delete account (A8.4 v1, v3).</li>
+      <li><strong>Modal-backdrop = <code>rgba(26,26,29,0.72)</code></strong> — derived from locked <code>--bg #1a1a1d</code>. Source A6+A2a ships the pre-rewire warm-brown backdrop value (banned by §3.9 grep); this file patches that single value. Logged in DELIVERY_NOTES §3.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     17.11 · Empty state
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">17.11 · Empty state</div>
+    <h2>17.11 · Version history empty state</h2>
+    <p class="intro">When zero named versions and zero autosaves exist (rare — autosaves accrue immediately on edit). <code>.empty-pane</code> from A11 with the keyboard hint as sub-copy. No CTA: the keyboard shortcut is the action.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Canvas chrome · empty state</div><div class="id">17.11 · hi-fi</div></div>
+    <div class="canvas tall" data-screen-label="17.11 Empty state">
+      <div class="stage">
+        <div class="kc scene">
+
+          <div class="topbar">
+            <div class="l"><div class="logo">K</div><div class="file"><b>Untitled · 01</b></div></div>
+            <div class="r"><div class="icon-btn" title="Notifications"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/></svg></div><div class="icon-btn" title="Present"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="5 3 19 12 5 21 5 3"/></svg></div><div class="icon-btn" title="Comments"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div class="avatar">JM</div></div>
+          </div>
+
+          <div class="body">
+
+            <div class="left">
+              <div class="file-row"><div class="file-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg></div><div><div class="name">Untitled · 01</div><div class="meta">just created</div></div></div>
+            </div>
+
+            <div class="center">
+              <div class="canvas-grid"></div>
+              <div class="toolbar">
+                <div class="tool active" title="Move"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 2l7 18 2-7 7-2z"/></svg></div>
+                <div class="tool" title="Frame"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg></div>
+                <div class="tool" title="Rectangle"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="2"/></svg></div>
+                <div class="tool" title="Ellipse"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/></svg></div>
+                <div class="tool" title="Pen"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.5 7.5"/></svg></div>
+                <div class="tool" title="Text"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h14v3M9 4v16M7 20h10"/></svg></div>
+                <div class="tool" title="Comment"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+                <div class="divider"></div>
+                <div class="tool ai" title="Ask Kova"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/><path d="M19 14l.7 2.1L22 17l-2.3.9L19 20l-.7-2.1L16 17l2.3-.9L19 14z"/></svg></div>
+                <div class="tool" title="Components"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>
+              </div>
+              <div class="zoom">100%<span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div>
+            </div>
+
+            <div class="right">
+              <div class="vh-head">
+                <div class="ttl">Version history</div>
+                <div class="icns">
+                  <div class="a"><i data-lucide="list-filter"></i></div>
+                  <div class="a"><i data-lucide="plus"></i></div>
+                  <div class="a"><i data-lucide="x"></i></div>
+                </div>
+              </div>
+              <div class="vh-body" style="padding: 14px;">
+                <div class="empty-pane">
+                  <div class="ic-wrap"><i data-lucide="history" style="width:18px;height:18px;"></i></div>
+                  <h5>No version history yet</h5>
+                  <p>Press <span style="color:var(--ink-2);">⌘+⌥+S</span> to save manually, or autosave will create one in the background.</p>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong><code>.empty-pane</code> straight from A11.</strong> Dashed <code>--line</code> border, <code>--rail</code> ic-wrap circle, h5 in <code>--ink</code>, p in <code>--ink-3</code>. No CTA — the keyboard hint is the affordance.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<script>
+  if (window.lucide) {
+    window.lucide.createIcons({ attrs: { 'stroke-width': 1.6 } });
+  }
+</script>
+
+</body>
+</html>
