@@ -330,7 +330,7 @@ Per scope plan §5.5 mandatory section.
 | `buildSystemPrompt` builder | **REUSE + EXTEND** | Verbatim 11-layer composition; EXTEND with 2 new layers: tone-snippet exemplars (between Layer 4 brand kit and Layer 5 image handling) + active product references (after Layer 8b chat attachments). SYSTEM_PROMPT constant (Layer 1) IMMUTABLE per CLAUDE.md hard constraint ✅. |
 | `ChatPopup.vue` (floating popup, current MVP) | **RE-SPEC** | DELETE. Replaced by `ChatPanel.vue` mounted as the right-panel "AI" tab content. The popup chrome (lines 269–317) carries forward as the tab strip + composer pattern but mounts inside the right panel, not floating bottom-left. Removal points: `EditorView.vue` line 282 `<ChatPopup>` render + line 33 import — replaced by `<ChatPanel>` mount inside the right panel (Cluster 06 PRD must spec the slot). |
 | `ChatPanel.vue` (existing, ~unused) | **REFACTOR** | Currently a stub that imports `useAIChat()` but no per-conversation tab strip + no composer chip row. EXTEND to mirror `ChatPopup.vue`'s tab strip + persistence wiring + add chip row above text input. |
-| `ChatInput.vue` | **EXTEND** | Insert chip row above the existing attachment row + form. Pass active references in via a new `productReferences` prop; emit `remove-reference` event on `×` click. |
+| `ChatInput.vue` | **EXTEND** | Insert chip row **between** the existing attachment-thumbnail row and the `<form>` element — i.e. **below** attachments, **above** the textarea (per §3.2 founder-locked stack order + §12.12 item 7; W4 C-MED28 close-out). Pass active references in via a new `productReferences` prop; emit `remove-reference` event on `×` click. |
 
 **No re-spec from scratch.** Per dispatch instruction: "Reference existing implementation; do NOT re-spec from scratch." This PRD is an EXTENSION pass on top of M5 / M5.5 / M9.
 
@@ -632,7 +632,7 @@ Composition mirrors `ChatPopup.vue` but mounted inside the right-panel slot (no 
 
 #### 6.4.2 `<ChatInput>` — EXTEND existing
 
-File: `src/components/chat/ChatInput.vue`. EXTEND to accept and render the chip row above the existing attachment-thumbnail row.
+File: `src/components/chat/ChatInput.vue`. EXTEND to accept and render the chip row **BELOW** the existing attachment-thumbnail row (matches §3.2 founder-locked stack order `image attachment thumbnails → product chip row → textarea → send/stop buttons` per §12.12 item 7; W4 C-MED28 reconciles a prior draft that incorrectly said "above").
 
 | New Prop | Type | Notes |
 |---|---|---|
