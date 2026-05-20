@@ -50,7 +50,7 @@ User can: (1) land on `/brands` after login if they have 2+ brands, (2) see ever
 **Data + backend:**
 - `brands` table extension: `archived_at timestamptz`, `color text` (CHECK in `('coral','violet','sage','sand','graphite')`), `slug text` (derived from name on insert, immutable per A4.1 spec), `url text` (display URL field captured at create), `description text` (optional, captured at A3.a step).
 - Partial index `idx_brands_active_per_user` for hot-path "list my active brands" query.
-- 6 SECURITY DEFINER RPCs: `create_brand`, `rename_brand`, `archive_brand`, **`restore_brand` (REAL — clears `archived_at`)**, `delete_brand`, `list_active_brands` (+ `list_archived_brands` getter via `list_brands(p_filter text)` overload — see §5).
+- 7 SECURITY DEFINER RPCs: `create_brand`, `rename_brand`, `archive_brand`, **`restore_brand` (REAL — clears `archived_at`)**, `delete_brand`, `list_active_brands`, **`list_archived_brands`** (real RPC, MVP per 2026-05-17 reversal — see §5).
 - 5 Edge Functions: `POST /api/brands/create`, `POST /api/brands/rename`, `POST /api/brands/archive`, **`POST /api/brands/restore`**, `DELETE /api/brands/delete` (the last calls `delete_brand` RPC then sweeps Storage paths). All authenticated, all rate-limited via `idempotency_keys` (Cluster 11 ships table + helper).
 - Storage sweep helper: `purgeBrandStorageObjects(brand_id, user_id)` — deletes per-brand Storage paths in `media-assets/{brand_id}/`, `brand-fonts/{brand_id}/`, `brand-logos/{brand_id}/`, `canvas-snapshots/{brand_id}/`. Storage doesn't cascade via DB FK, so this is explicit.
 - Audit events `brand.created`, `brand.renamed`, `brand.archived`, **`brand.restored`**, `brand.deleted` via `writeAudit(event, payload)` helper — **breadcrumb stopgap** (console + Sentry) until Cluster 11 ships `audit_log` table, at which point helper internals swap to INSERT. Signature unchanged. See §12.1.
@@ -226,7 +226,7 @@ COMMIT;
 
 RLS is already enabled on `public.brands` (migration `20260317_m2_dashboard.sql`). The four existing policies (SELECT / INSERT / UPDATE / DELETE — all `USING (user_id = auth.uid())`) cover everything this PRD does. **No new policies needed.** Verify on deploy: the migration script logs the row count for `SELECT * FROM pg_policies WHERE tablename = 'brands'` and asserts exactly 4 rows.
 
-The 5 RPCs introduced in §5.2 are `SECURITY DEFINER` and re-enforce `user_id = auth.uid()` inside each function body (defense-in-depth — never trust the caller's role).
+The 7 RPCs introduced in §5.2 are `SECURITY DEFINER` and re-enforce `user_id = auth.uid()` inside each function body (defense-in-depth — never trust the caller's role).
 
 ### 4.3 Storage buckets
 
