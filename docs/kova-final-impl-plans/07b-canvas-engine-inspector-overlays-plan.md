@@ -330,7 +330,7 @@ describe('useClipboardStore', () => {
       cornerRadius: 4,
       paddingLeft: 0, paddingRight: 0, paddingTop: 0, paddingBottom: 0,
       layoutMode: 'NONE',
-    } as any
+    } as unknown as SceneNode
     store.copyProps(node)
     expect(store.copiedProps).not.toBeNull()
     expect(store.copiedProps!.sourceNodeId).toBe('n1')
@@ -340,9 +340,62 @@ describe('useClipboardStore', () => {
 
   it('clear resets copiedProps to null', () => {
     const store = useClipboardStore()
-    store.copyProps({ id: 'n1', type: 'RECTANGLE' } as any)
+    store.copyProps({ id: 'n1', type: 'RECTANGLE' } as unknown as SceneNode)
     store.clear()
     expect(store.copiedProps).toBeNull()
+  })
+
+  // C-LOW07b.4: pasteProps must skip fields the target node type does not support
+  it('pasteProps skips incompatible fields when source/target node types differ', () => {
+    const store = useClipboardStore()
+    const src = {
+      id: 'rect-1',
+      type: 'RECTANGLE',
+      fills: [{ type: 'SOLID', color: { r: 1, g: 0, b: 0, a: 1 } }],
+      strokes: [],
+      strokeWeight: 4,
+      strokeAlign: 'CENTER',
+      cornerRadius: 12,      // rectangle-only — TextNode should NOT receive this
+      opacity: 0.5,
+      effects: [],
+      blendMode: 'NORMAL',
+    } as unknown as SceneNode
+    store.copyProps(src)
+    const tgt = {
+      id: 'text-1',
+      type: 'TEXT',
+      fills: [{ type: 'SOLID', color: { r: 0, g: 0, b: 0, a: 1 } }],
+      opacity: 1,
+      content: 'hi',
+      fontSize: 14,
+      // NOTE: no `cornerRadius` field on TEXT — paste must skip it
+    } as unknown as Record<string, unknown>
+    store.pasteProps([tgt as unknown as SceneNode])
+    // compatible fields applied
+    expect(tgt.fills).toEqual(src.fills as unknown)
+    expect(tgt.opacity).toBe(0.5)
+    // incompatible (rectangle-only) field NOT introduced on target
+    expect('cornerRadius' in tgt).toBe(false)
+  })
+
+  it('pasteProps preserves text-only fields when overwriting text→text', () => {
+    const store = useClipboardStore()
+    const src = { id: 'text-a', type: 'TEXT', content: 'A', fontSize: 18, fills: [], opacity: 1 } as unknown as SceneNode
+    store.copyProps(src)
+    const tgt = { id: 'text-b', type: 'TEXT', content: 'B', fontSize: 12, fills: [], opacity: 1 } as Record<string, unknown>
+    store.pasteProps([tgt as unknown as SceneNode])
+    // Both fields shared — both copied
+    expect(tgt.fontSize).toBe(18)
+    // content is intentionally NOT in the Q23 paste set — verify it stays unchanged
+    expect(tgt.content).toBe('B')
+  })
+
+  it('pasteProps is a no-op when clipboard is empty', () => {
+    const store = useClipboardStore()
+    const tgt = { id: 'n1', type: 'RECTANGLE', fills: [], opacity: 1 } as Record<string, unknown>
+    const before = { ...tgt }
+    store.pasteProps([tgt as unknown as SceneNode])
+    expect(tgt).toEqual(before)
   })
 })
 ```
@@ -936,6 +989,67 @@ git add kova-open-pencil-1/src/composables/use-eyedropper.ts kova-open-pencil-1/
 git commit -m "feat(07b): add useEyedropper composable"
 ```
 
+**Feature flag: `EYEDROPPER_NATIVE_TAURI` (C-LOW07b.5 — gate macOS Tauri-native screen sampling behind a Phase-2 flag)**
+
+MVP ships canvas-only sampling via the Vue/Web composable above (matches PRD 07b §12.9 + Q20 lock `EYEDROPPER_CANVAS_ONLY: true`). The flag below lights up screen-wide sampling via a native Tauri IPC once the macOS Tauri build is signed + notarized post-launch.
+
+Default: `false` (MVP). Switch to `true` only when:
+1. macOS Tauri build ships with `eyedropper_sample_screen` Rust command implemented,
+2. Founder has verified the screen-permissions prompt UX,
+3. Q20 lock is explicitly lifted in PRD 07b.
+
+```ts
+// kova-open-pencil-1/src/config/feature-flags.ts (EXTEND)
+export const EYEDROPPER_NATIVE_TAURI = import.meta.env.VITE_EYEDROPPER_NATIVE_TAURI === 'true'
+```
+
+```ts
+// kova-open-pencil-1/src/composables/use-eyedropper.ts (EXTEND activate path)
+import { EYEDROPPER_NATIVE_TAURI } from '@/config/feature-flags'
+import { isTauri } from '@/lib/runtime'
+import { invoke } from '@tauri-apps/api/core'
+
+// inside activate(cb):
+async function activate(onSample: (hex: string) => void): Promise<void> {
+  if (EYEDROPPER_NATIVE_TAURI && isTauri()) {
+    const hex = await invoke<string>('eyedropper_sample_screen')
+    onSample(hex)
+    return
+  }
+  // MVP canvas-only path (Q20 lock):
+  store.activate(onSample)
+}
+```
+
+Add to `.env.example`:
+
+```
+# Cluster 07b (C-LOW07b.5) — Phase 2 flag for macOS Tauri-native screen-wide eyedropper.
+# Keep false until: (1) Tauri eyedropper_sample_screen Rust command shipped, (2) macOS build signed/notarized, (3) PRD 07b §12.9 Q20 lock lifted by founder.
+VITE_EYEDROPPER_NATIVE_TAURI=false
+```
+
+Test (asserts MVP default stays Q20-compliant):
+
+```ts
+// tests/unit/composables/use-eyedropper-feature-flag.test.ts
+import { describe, expect, it } from 'bun:test'
+import { EYEDROPPER_NATIVE_TAURI } from '@/config/feature-flags'
+
+describe('EYEDROPPER_NATIVE_TAURI feature flag (C-LOW07b.5)', () => {
+  it('defaults to false in MVP (Q20 canvas-only lock active)', () => {
+    expect(EYEDROPPER_NATIVE_TAURI).toBe(false)
+  })
+})
+```
+
+Commit (separate atom):
+
+```bash
+git add kova-open-pencil-1/src/config/feature-flags.ts kova-open-pencil-1/src/composables/use-eyedropper.ts kova-open-pencil-1/tests/unit/composables/use-eyedropper-feature-flag.test.ts .env.example
+git commit -m "feat(07b): EYEDROPPER_NATIVE_TAURI feature flag (default false; macOS Tauri Phase 2) (C-LOW07b.5)"
+```
+
 ### Task 2.3: useSliceTool — failing test
 
 **Files:**
@@ -1378,10 +1492,17 @@ const buildSceneGraph = (names: string[]) => ({
     names.map((name, i) => ({ id: `n${i}`, name })).filter(predicate),
 })
 
+// B-LOW typed test-globals (no `as any`)
+interface MockFigmaGlobal {
+  figma: { currentPage: ReturnType<typeof buildSceneGraph>; getNodeById?: (id: string) => unknown }
+  window: { innerWidth: number; innerHeight: number }
+}
+const G = globalThis as unknown as MockFigmaGlobal
+
 describe('useFindSearch', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
-    ;(globalThis as any).figma = {
+    G.figma = {
       currentPage: buildSceneGraph(['Frame 1', 'Frame 4', 'Frame 5', 'Header', 'Footer']),
     }
   })
@@ -1426,7 +1547,7 @@ describe('useFindSearch', () => {
 
   it('runQuery returns max 200 results', async () => {
     const manyNames = Array.from({ length: 500 }, (_, i) => `Frame ${i}`)
-    ;(globalThis as any).figma.currentPage = buildSceneGraph(manyNames)
+    G.figma.currentPage = buildSceneGraph(manyNames)
     const store = useFindStore()
     const { runQuery } = useFindSearch()
     runQuery('frame')
@@ -1528,12 +1649,18 @@ git commit -m "feat(07b): add useFindSearch composable (PRD §12.12 — query �
 import { describe, expect, it, beforeEach } from 'bun:test'
 import { useCameraPan } from '@/composables/use-camera-pan'
 
+// B-LOW typed test-globals (no `as any`)
+interface ViewportMock { center: { x: number; y: number }; zoom: number }
+interface FigmaMock { viewport: ViewportMock; getNodeById: (id: string) => { id: string; absoluteBoundingBox: { x: number; y: number; width: number; height: number } } }
+interface MockGlobals { figma: FigmaMock; window: { innerWidth: number; innerHeight: number } }
+const G = globalThis as unknown as MockGlobals
+
 describe('useCameraPan', () => {
-  let viewport: { center: { x: number; y: number }; zoom: number }
+  let viewport: ViewportMock
 
   beforeEach(() => {
     viewport = { center: { x: 0, y: 0 }, zoom: 1 }
-    ;(globalThis as any).figma = {
+    G.figma = {
       viewport,
       getNodeById: (id: string) => ({
         id,
@@ -1564,7 +1691,7 @@ describe('useCameraPan', () => {
     // → effective viewport target: 1000 * 0.9 = 900 × 600 * 0.9 = 540
     // → zoom = min(900/200, 540/100) = min(4.5, 5.4) = 4.5
     const { panToNode } = useCameraPan()
-    ;(globalThis as any).window = { innerWidth: 1000, innerHeight: 600 }
+    G.window = { innerWidth: 1000, innerHeight: 600 }
     await panToNode('n1')
     expect(viewport.zoom).toBeCloseTo(4.5, 1)
   })
@@ -1573,7 +1700,7 @@ describe('useCameraPan', () => {
     const { panToNode } = useCameraPan()
     const p1 = panToNode('n1')
     await new Promise(r => setTimeout(r, 50)) // mid-flight
-    ;(globalThis as any).figma.getNodeById = (id: string) => ({
+    G.figma.getNodeById = (id: string) => ({
       id,
       absoluteBoundingBox: { x: 0, y: 0, width: 100, height: 100 },
     })
@@ -1650,8 +1777,8 @@ export function useCameraPan() {
     const bbox = node.absoluteBoundingBox
     const targetCenter = { x: bbox.x + bbox.width / 2, y: bbox.y + bbox.height / 2 }
 
-    const viewportW = (globalThis as any).window?.innerWidth ?? 1000
-    const viewportH = (globalThis as any).window?.innerHeight ?? 600
+    const viewportW = typeof window !== 'undefined' ? window.innerWidth : 1000
+    const viewportH = typeof window !== 'undefined' ? window.innerHeight : 600
     const paddingFactor = 1 - CAMERA_PAN.PADDING_PCT / 100
     const targetZoom = Math.min(
       (viewportW * paddingFactor) / bbox.width,
@@ -1763,9 +1890,9 @@ const props = defineProps<{ modelValue: Vertical }>()
 const emit = defineEmits<{ 'update:modelValue': [value: Vertical] }>()
 
 const OPTIONS: Array<{ value: Vertical; label: string; icon: string }> = [
-  { value: 'TOP',    label: 'Top',    icon: 'i-lucide-align-vertical-justify-start' },
-  { value: 'CENTER', label: 'Middle', icon: 'i-lucide-align-vertical-justify-center' },
-  { value: 'BOTTOM', label: 'Bottom', icon: 'i-lucide-align-vertical-justify-end' },
+  { value: 'TOP',    label: 'Top',    icon: 'align-vertical-justify-start' },
+  { value: 'CENTER', label: 'Middle', icon: 'align-vertical-justify-center' },
+  { value: 'BOTTOM', label: 'Bottom', icon: 'align-vertical-justify-end' },
 ]
 </script>
 
@@ -2016,6 +2143,39 @@ describe('BooleanOpsRow', () => {
     await wrapper.findAll('button')[0].trigger('click')
     expect(booleanOperationMock).toHaveBeenCalledWith('UNION')
   })
+
+  // C-LOW07b.2: disabled-state when selection < 2
+  it('all 4 buttons disabled when selection has 0 nodes', async () => {
+    mock.module('@/stores/editor', () => ({ useEditorStore: () => ({ selectedNodes: [] }) }))
+    const wrapper = mount(BooleanOpsRow)
+    for (const btn of wrapper.findAll('button')) {
+      expect(btn.attributes('disabled')).toBeDefined()
+    }
+  })
+
+  it('all 4 buttons disabled when selection has 1 node', async () => {
+    mock.module('@/stores/editor', () => ({ useEditorStore: () => ({ selectedNodes: [{ id: 'only' }] }) }))
+    const wrapper = mount(BooleanOpsRow)
+    for (const btn of wrapper.findAll('button')) {
+      expect(btn.attributes('disabled')).toBeDefined()
+    }
+  })
+
+  it('buttons enabled when selection has 2+ nodes', async () => {
+    mock.module('@/stores/editor', () => ({ useEditorStore: () => ({ selectedNodes: [{ id: 'a' }, { id: 'b' }] }) }))
+    const wrapper = mount(BooleanOpsRow)
+    for (const btn of wrapper.findAll('button')) {
+      expect(btn.attributes('disabled')).toBeUndefined()
+    }
+  })
+
+  it('clicking a disabled button does NOT invoke figma.booleanOperation', async () => {
+    mock.module('@/stores/editor', () => ({ useEditorStore: () => ({ selectedNodes: [{ id: 'only' }] }) }))
+    booleanOperationMock.mockClear()
+    const wrapper = mount(BooleanOpsRow)
+    await wrapper.findAll('button')[0].trigger('click')
+    expect(booleanOperationMock).not.toHaveBeenCalled()
+  })
 })
 ```
 
@@ -2034,10 +2194,10 @@ import { figma } from '@open-pencil/core'
 type BoolOp = 'UNION' | 'SUBTRACT' | 'INTERSECT' | 'EXCLUDE'
 
 const OPS: Array<{ op: BoolOp; label: string; shortcut: string; icon: string }> = [
-  { op: 'UNION',     label: 'Union',     shortcut: '⌘⌥U', icon: 'i-lucide-square' },
-  { op: 'SUBTRACT',  label: 'Subtract',  shortcut: '⌘⌥S', icon: 'i-lucide-square-minus' },
-  { op: 'INTERSECT', label: 'Intersect', shortcut: '⌘⌥I', icon: 'i-lucide-square-dot' },
-  { op: 'EXCLUDE',   label: 'Exclude',   shortcut: '⌘⌥X', icon: 'i-lucide-square-x' },
+  { op: 'UNION',     label: 'Union',     shortcut: '⌘⌥U', icon: 'square' },
+  { op: 'SUBTRACT',  label: 'Subtract',  shortcut: '⌘⌥S', icon: 'square-minus' },
+  { op: 'INTERSECT', label: 'Intersect', shortcut: '⌘⌥I', icon: 'square-dot' },
+  { op: 'EXCLUDE',   label: 'Exclude',   shortcut: '⌘⌥X', icon: 'square-x' },
 ]
 
 function applyOp(op: BoolOp): void {
@@ -2257,7 +2417,7 @@ describe('PaintEditor', () => {
     for (const m of ['linear', 'radial', 'angular', 'diamond'] as const) {
       const wrapper = mount(PaintEditor, {
         props: {
-          modelValue: { type: `GRADIENT_${m.toUpperCase()}`, gradientStops: [] } as any,
+          modelValue: { type: `GRADIENT_${m.toUpperCase()}`, gradientStops: [] } as unknown as GradientPaint,
           mode: m,
         },
       })
@@ -2267,25 +2427,41 @@ describe('PaintEditor', () => {
 
   it('renders angle input for Linear + Angular (not for Radial + Diamond)', () => {
     const linearWrap = mount(PaintEditor, {
-      props: { modelValue: { type: 'GRADIENT_LINEAR', gradientStops: [] } as any, mode: 'linear' },
+      props: { modelValue: { type: 'GRADIENT_LINEAR', gradientStops: [] } as unknown as GradientPaint, mode: 'linear' },
     })
     expect(linearWrap.find('[data-test="gradient-angle"]').exists()).toBe(true)
 
     const angularWrap = mount(PaintEditor, {
-      props: { modelValue: { type: 'GRADIENT_ANGULAR', gradientStops: [] } as any, mode: 'angular' },
+      props: { modelValue: { type: 'GRADIENT_ANGULAR', gradientStops: [] } as unknown as GradientPaint, mode: 'angular' },
     })
     expect(angularWrap.find('[data-test="gradient-angle"]').exists()).toBe(true)
 
     const radialWrap = mount(PaintEditor, {
-      props: { modelValue: { type: 'GRADIENT_RADIAL', gradientStops: [] } as any, mode: 'radial' },
+      props: { modelValue: { type: 'GRADIENT_RADIAL', gradientStops: [] } as unknown as GradientPaint, mode: 'radial' },
     })
     expect(radialWrap.find('[data-test="gradient-angle"]').exists()).toBe(false)
 
     const diamondWrap = mount(PaintEditor, {
-      props: { modelValue: { type: 'GRADIENT_DIAMOND', gradientStops: [] } as any, mode: 'diamond' },
+      props: { modelValue: { type: 'GRADIENT_DIAMOND', gradientStops: [] } as unknown as GradientPaint, mode: 'diamond' },
     })
     expect(diamondWrap.find('[data-test="gradient-angle"]').exists()).toBe(false)
   })
+
+  // C-LOW07b.3: explicit per-type test (one it() per gradient type) so a regression in any single type fails its own named test
+  for (const [m, hasAngle] of [['linear', true], ['radial', false], ['angular', true], ['diamond', false]] as const) {
+    it(`renders ${m} gradient — has stops UI, angle input ${hasAngle ? 'visible' : 'hidden'} per Figma`, () => {
+      const wrapper = mount(PaintEditor, {
+        props: {
+          modelValue: { type: `GRADIENT_${m.toUpperCase()}` as const, gradientStops: [{position:0,color:{r:0,g:0,b:0,a:1}},{position:1,color:{r:1,g:1,b:1,a:1}}] } as unknown as GradientPaint,
+          mode: m,
+        },
+      })
+      expect(wrapper.find('[data-test="gradient-stops"]').exists()).toBe(true)
+      expect(wrapper.findAll('[data-stop]').length).toBe(2)
+      expect(wrapper.find('[data-test="gradient-angle"]').exists()).toBe(hasAngle)
+      expect(wrapper.find(`[data-gradient-type="${m}"]`).exists()).toBe(true)
+    })
+  }
 })
 ```
 
@@ -2320,12 +2496,12 @@ const emit = defineEmits<{
 
 // PRD §12.5 founder decision (2026-05-17): all 4 gradient types in MVP — match Figma.
 const TABS: Array<{ value: Mode; label: string; icon: string }> = [
-  { value: 'solid',   label: 'Solid',   icon: 'i-lucide-square' },
-  { value: 'linear',  label: 'Linear',  icon: 'i-lucide-move-right' },
-  { value: 'radial',  label: 'Radial',  icon: 'i-lucide-circle' },
-  { value: 'angular', label: 'Angular', icon: 'i-lucide-pie-chart' },
-  { value: 'diamond', label: 'Diamond', icon: 'i-lucide-diamond' },
-  { value: 'image',   label: 'Image',   icon: 'i-lucide-image' },
+  { value: 'solid',   label: 'Solid',   icon: 'square' },
+  { value: 'linear',  label: 'Linear',  icon: 'move-right' },
+  { value: 'radial',  label: 'Radial',  icon: 'circle' },
+  { value: 'angular', label: 'Angular', icon: 'pie-chart' },
+  { value: 'diamond', label: 'Diamond', icon: 'diamond' },
+  { value: 'image',   label: 'Image',   icon: 'image' },
 ]
 
 // Hi-fi 12.12: page-bg context hides mode tabs (single-mode picker)
@@ -2388,8 +2564,8 @@ function pickColor(): void {
       max="360"
       step="1"
       class="rounded border border-border bg-surface px-2 py-1 text-xs"
-      :value="(modelValue as any).rotation ?? 90"
-      @input="emit('update:modelValue', { ...(modelValue as any), rotation: Number(($event.target as HTMLInputElement).value) })"
+      :value="(modelValue as GradientPaint).rotation ?? 90"
+      @input="emit('update:modelValue', { ...(modelValue as GradientPaint), rotation: Number(($event.target as HTMLInputElement).value) })"
     />
 
     <!-- Eyedropper trigger (always visible — hi-fi 12.5) -->
@@ -2399,7 +2575,7 @@ function pickColor(): void {
       class="self-end text-ink3 hover:text-ink"
       @click="pickColor"
     >
-      <span class="i-lucide-pipette size-4" />
+      <KovaIcon name="pipette" size="sm" />
     </button>
   </div>
 </template>
@@ -2683,7 +2859,7 @@ const meta = computed(() => {
     :class="isSelected ? 'bg-fill2 ring-1 ring-accent' : ''"
     @click="emit('select')"
   >
-    <span class="i-lucide-grip-vertical size-3 cursor-grab text-ink3" />
+    <KovaIcon name="grip-vertical" size="xs" class="cursor-grab text-ink3" />
     <span class="flex-1">{{ TYPE_LABELS[effect.type] || effect.type }}</span>
     <span class="font-mono text-ink3">{{ meta }}</span>
     <button
@@ -2693,7 +2869,7 @@ const meta = computed(() => {
       :title="effect.visible ? 'Hide effect' : 'Show effect'"
       @click.stop="emit('toggle-visibility')"
     >
-      <span :class="effect.visible ? 'i-lucide-eye' : 'i-lucide-eye-off'" class="size-3" />
+      <KovaIcon :name="effect.visible ? 'eye' : 'eye-off'" size="xs" />
     </button>
     <button
       type="button"
@@ -2992,7 +3168,7 @@ function fillLabel(fill: Fill): string {
       data-test="fill-row"
       class="flex items-center gap-2 rounded px-2 py-1 text-xs hover:bg-fill2"
     >
-      <span class="i-lucide-grip-vertical size-3 cursor-grab text-ink3" />
+      <KovaIcon name="grip-vertical" size="xs" class="cursor-grab text-ink3" />
       <span class="size-4 rounded border border-border" :style="fillSwatch(fill)" />
       <span class="flex-1">{{ fillLabel(fill) }}</span>
       <span class="font-mono text-ink3">{{ Math.round((fill.opacity ?? 1) * 100) }}%</span>
@@ -3002,7 +3178,7 @@ function fillLabel(fill: Fill): string {
         :title="fill.visible ? 'Hide' : 'Show'"
         @click="emit('toggle-visibility', index)"
       >
-        <span :class="fill.visible !== false ? 'i-lucide-eye' : 'i-lucide-eye-off'" class="size-3" />
+        <KovaIcon :name="fill.visible !== false ? 'eye' : 'eye-off'" size="xs" />
       </button>
       <button
         type="button"
@@ -3395,61 +3571,105 @@ git add kova-open-pencil-1/src/components/canvas-overlays/SliceRegionOverlay.vue
 git commit -m "feat(07b): add SliceRegionOverlay"
 ```
 
-### Task 4.5–4.10: Remaining 6 overlays (PixelGrid, LayoutGuides, HoverContour, SnapIndicators, FindHighlight, EyedropperCrosshair, MeasurementAnnotations)
+### Tasks 4.5 – 4.12: Per-overlay TDD (8 overlays — each a discrete RED → GREEN → COMMIT cycle)
 
-Each follows the same pattern as 4.2–4.4. The component files mirror the spec in PRD §6.4.3. Per-task structure:
+C-MED-07b.1 split: each overlay below is its OWN task with its own failing test, implementation, and atomic commit. Follow the explicit 4-step pattern from Task 4.4 (failing test → run test (FAIL) → implementation → run test (PASS) → commit). Listed compactly below to avoid plan bloat, but the engineer MUST execute each as a separate TDD cycle and SEPARATE commit per the dispatch's "one commit per overlay" rule.
 
 #### Task 4.5: PixelGridOverlay
 
-- [ ] Test asserts: hidden when zoom ≤ 8.0; visible when zoom > 8.0; uses `OVERLAY_COLOR.PIXEL_GRID` 18% gray, 8×8 background.
-- [ ] Component reads `useCanvas().zoom` (existing composable). Renders single absolute div with `linear-gradient` background.
-- [ ] Commit: `feat(07b): add PixelGridOverlay (auto > 800% zoom)`
+**Files:**
+- Create: `kova-open-pencil-1/src/components/canvas-overlays/PixelGridOverlay.vue`
+- Test: `kova-open-pencil-1/tests/unit/components/canvas-overlays/PixelGridOverlay.test.ts`
+
+- [ ] **Step 1 (RED):** Test asserts hidden when `useCanvas().zoom <= 8.0`; visible when zoom > 8.0; uses `OVERLAY_COLOR.PIXEL_GRID` 18% gray; 8×8 `linear-gradient` background; z-index = `OVERLAY_Z.PIXEL_GRID`.
+- [ ] **Step 2 (verify FAIL):** `bun test tests/unit/components/canvas-overlays/PixelGridOverlay.test.ts` → FAIL (component missing).
+- [ ] **Step 3 (GREEN):** Component reads `useCanvas().zoom` (existing composable). Renders single absolute div with `linear-gradient` background when `zoom > 8`. `v-if="zoom > 8"` guard.
+- [ ] **Step 4 (verify PASS):** Re-run; expect PASS.
+- [ ] **Step 5 (COMMIT):** `git add ... && git commit -m "feat(07b): add PixelGridOverlay (auto > 800% zoom)"`
 
 #### Task 4.6: LayoutGuidesOverlay
 
-- [ ] Test asserts: per-frame layout-grid read; Uniform / Columns / Rows render correctly with red 10% (`OVERLAY_COLOR.LAYOUT_GUIDE_RED`); default ON per Q24.
-- [ ] Component iterates `figma.currentPage.children.filter(n => n.type === 'FRAME')` and reads `frame.layoutGrids: LayoutGrid[]`. Per-grid renders.
-- [ ] Commit: `feat(07b): add LayoutGuidesOverlay (Q24 default-ON red 10%)`
+**Files:**
+- Create: `kova-open-pencil-1/src/components/canvas-overlays/LayoutGuidesOverlay.vue`
+- Test: `kova-open-pencil-1/tests/unit/components/canvas-overlays/LayoutGuidesOverlay.test.ts`
+
+- [ ] **Step 1 (RED):** Test asserts per-frame `layoutGrids: LayoutGrid[]` read; Uniform / Columns / Rows render correctly with red 10% (`OVERLAY_COLOR.LAYOUT_GUIDE_RED`); default ON per Q24.
+- [ ] **Step 2 (verify FAIL).**
+- [ ] **Step 3 (GREEN):** Component iterates `figma.currentPage.children.filter(n => n.type === 'FRAME')` and reads `frame.layoutGrids: LayoutGrid[]`. Per-grid renders.
+- [ ] **Step 4 (verify PASS).**
+- [ ] **Step 5 (COMMIT):** `git commit -m "feat(07b): add LayoutGuidesOverlay (Q24 default-ON red 10%)"`
 
 #### Task 4.7: HoverContourOverlay
 
-- [ ] Test asserts: hidden when `useCanvasInput.hoveredNodeId` is null; renders contour when set; 1.5px `var(--select)` border-radius 0.
-- [ ] Component reads existing composable. Single absolute div per hovered node.
-- [ ] Commit: `feat(07b): add HoverContourOverlay`
+**Files:**
+- Create: `kova-open-pencil-1/src/components/canvas-overlays/HoverContourOverlay.vue`
+- Test: `kova-open-pencil-1/tests/unit/components/canvas-overlays/HoverContourOverlay.test.ts`
+
+- [ ] **Step 1 (RED):** Test asserts hidden when `useCanvasInput.hoveredNodeId === null`; renders contour when set; 1.5px `var(--select)`; border-radius 0; z-index = `OVERLAY_Z.HOVER_CONTOUR`.
+- [ ] **Step 2 (verify FAIL).**
+- [ ] **Step 3 (GREEN):** Component reads existing composable. Single absolute div per hovered node sized to bbox.
+- [ ] **Step 4 (verify PASS).**
+- [ ] **Step 5 (COMMIT):** `git commit -m "feat(07b): add HoverContourOverlay"`
 
 #### Task 4.8: SnapIndicatorsOverlay
 
-- [ ] Test asserts: empty render when no `snapHits`; renders snap-pixel + spacing-tag chrome when array populated; uses `OVERLAY_COLOR.SNAP_RED`.
-- [ ] Component reads snap-state from `useCanvas` (existing OpenPencil hook; 07a confirms API).
-- [ ] Commit: `feat(07b): add SnapIndicatorsOverlay (hi-fi B8.1)`
+**Files:**
+- Create: `kova-open-pencil-1/src/components/canvas-overlays/SnapIndicatorsOverlay.vue`
+- Test: `kova-open-pencil-1/tests/unit/components/canvas-overlays/SnapIndicatorsOverlay.test.ts`
+
+- [ ] **Step 1 (RED):** Test asserts empty render when no `snapHits`; renders snap-pixel + spacing-tag chrome when array populated; uses `OVERLAY_COLOR.SNAP_RED`; z-index = `OVERLAY_Z.SNAP`.
+- [ ] **Step 2 (verify FAIL).**
+- [ ] **Step 3 (GREEN):** Component reads snap-state from `useCanvas` (existing OpenPencil hook; 07a confirms API). Renders per snap-hit.
+- [ ] **Step 4 (verify PASS).**
+- [ ] **Step 5 (COMMIT):** `git commit -m "feat(07b): add SnapIndicatorsOverlay (hi-fi B8.1)"`
 
 #### Task 4.9: DimLayerOverlay (PRD §12.12 — primitive for find focus mode)
 
-- [ ] Test asserts: pure-render component; `dimmedNodeIds: string[]` prop drives output; renders absolute-positioned div with `rgba(0, 0, 0, 0.6)` (from `OVERLAY_COLOR.FIND_DIM`) over each dimmed node's screen-space bbox; empty array → renders nothing; z-index = `OVERLAY_Z.DIM_LAYER` (6); pointer-events: none on the dim layer itself (input handling lives on FindOverlay).
-- [ ] Component reads node bbox via `figma.getNodeById(id).absoluteBoundingBox` for each ID in prop; transforms world coords → screen coords via `figma.viewport.center` + `figma.viewport.zoom`.
-- [ ] Commit: `feat(07b): add DimLayerOverlay (PRD §12.12 — primitive for find focus mode)`
+**Files:**
+- Create: `kova-open-pencil-1/src/components/canvas-overlays/DimLayerOverlay.vue`
+- Test: `kova-open-pencil-1/tests/unit/components/canvas-overlays/DimLayerOverlay.test.ts`
+
+- [ ] **Step 1 (RED):** Test asserts pure-render component; `dimmedNodeIds: string[]` prop drives output; renders absolute-positioned div with `rgba(0, 0, 0, 0.6)` (from `OVERLAY_COLOR.FIND_DIM`) over each dimmed node's screen-space bbox; empty array → renders nothing; z-index = `OVERLAY_Z.DIM_LAYER` (6); `pointer-events: none` on the dim layer itself (input handling lives on FindOverlay).
+- [ ] **Step 2 (verify FAIL).**
+- [ ] **Step 3 (GREEN):** Component reads node bbox via `figma.getNodeById(id).absoluteBoundingBox` for each ID in prop; transforms world coords → screen coords via `figma.viewport.center` + `figma.viewport.zoom`.
+- [ ] **Step 4 (verify PASS).**
+- [ ] **Step 5 (COMMIT):** `git commit -m "feat(07b): add DimLayerOverlay (PRD §12.12 — primitive for find focus mode)"`
 
 #### Task 4.10: FindOverlay (PRD §12.12 — orchestrator + clickthrough)
 
-- [ ] Test asserts: mounts only when `useFindStore.active === true`; composes `<DimLayerOverlay :dimmedNodeIds="findStore.dimmedNodeIds">`; attaches `@click` on canvas-overlay-layer that, if click position hits a node NOT in `findStore.matchedNodeIds`, calls `findStore.exitOnDimClick(clickedNodeId)` + sets new selection on `useEditorStore`; if click hits a matched node, does NOT exit find (lets event bubble for normal selection).
-- [ ] Component test mocks `useFindStore` and `useEditorStore`; simulates click at screen coords that resolve to a known node ID; asserts `findStore.exitOnDimClick` called with correct ID for dim click, NOT called for matched click.
-- [ ] Component code: `dimmedNodeIds` is computed from the inverse of `findStore.matchedNodeIds` within the viewport — done in the overlay (not the store) so it can use viewport culling + scene-graph traversal.
-- [ ] Re-enables pointer-events: `class="pointer-events-auto"` on the wrapper (overrides parent `pointer-events: none`).
-- [ ] Commit: `feat(07b): add FindOverlay (PRD §12.12 — clickthrough orchestrator)`
+**Files:**
+- Create: `kova-open-pencil-1/src/components/canvas-overlays/FindOverlay.vue`
+- Test: `kova-open-pencil-1/tests/unit/components/canvas-overlays/FindOverlay.test.ts`
 
-#### Task 4.10b: EyedropperCrosshair
+- [ ] **Step 1 (RED):** Test asserts mounts only when `useFindStore.active === true`; composes `<DimLayerOverlay :dimmedNodeIds="findStore.dimmedNodeIds">`; attaches `@click` on canvas-overlay-layer that, if click position hits a node NOT in `findStore.matchedNodeIds`, calls `findStore.exitOnDimClick(clickedNodeId)` + sets new selection on `useEditorStore`; if click hits a matched node, does NOT exit find (lets event bubble for normal selection).
+- [ ] **Step 2 (verify FAIL):** Component test mocks `useFindStore` and `useEditorStore`; simulates click at screen coords that resolve to a known node ID; asserts `findStore.exitOnDimClick` called with correct ID for dim click, NOT called for matched click.
+- [ ] **Step 3 (GREEN):** Component code: `dimmedNodeIds` is computed from the inverse of `findStore.matchedNodeIds` within the viewport — done in the overlay (not the store) so it can use viewport culling + scene-graph traversal. Re-enables pointer-events: `class="pointer-events-auto"` on the wrapper (overrides parent `pointer-events: none`).
+- [ ] **Step 4 (verify PASS).**
+- [ ] **Step 5 (COMMIT):** `git commit -m "feat(07b): add FindOverlay (PRD §12.12 — clickthrough orchestrator)"`
 
-- [ ] Test asserts: hidden when `useEyedropperStore.active=false`; renders 96px magnifier + 16px reticle + hex chip when active.
-- [ ] Component reads pointer position via `useCanvasInput`. Hex sample via `figma.canvas.readPixel(x, y)` (07a API per PRD §12.9).
-- [ ] Commit: `feat(07b): add EyedropperCrosshair (hi-fi B8.7)`
+#### Task 4.11: EyedropperCrosshair
 
-#### Task 4.11: MeasurementAnnotations
+**Files:**
+- Create: `kova-open-pencil-1/src/components/canvas-overlays/EyedropperCrosshair.vue`
+- Test: `kova-open-pencil-1/tests/unit/components/canvas-overlays/EyedropperCrosshair.test.ts`
 
-- [ ] Test asserts: renders one annotation per MEASUREMENT NodeType in viewport; dashed `#F24822` line + caps + label per hi-fi B8.9.
-- [ ] Component iterates `figma.currentPage.children.filter(n => n.type === 'MEASUREMENT')`.
-- [ ] Commit: `feat(07b): add MeasurementAnnotations (hi-fi B8.9)`
+- [ ] **Step 1 (RED):** Test asserts hidden when `useEyedropperStore.active === false`; renders 96px magnifier + 16px reticle + hex chip when active; z-index = `OVERLAY_Z.EYEDROPPER`.
+- [ ] **Step 2 (verify FAIL).**
+- [ ] **Step 3 (GREEN):** Component reads pointer position via `useCanvasInput`. Hex sample via `figma.canvas.readPixel(x, y)` (07a API per PRD §12.9).
+- [ ] **Step 4 (verify PASS).**
+- [ ] **Step 5 (COMMIT):** `git commit -m "feat(07b): add EyedropperCrosshair (hi-fi B8.7)"`
 
-(Each task above gets its own failing test → component → pass test → commit cycle, identical in shape to Tasks 4.2–4.4. Listed concise here to avoid plan bloat — when executing, follow the 4-step pattern from 4.2.)
+#### Task 4.11b: MeasurementAnnotations
+
+**Files:**
+- Create: `kova-open-pencil-1/src/components/canvas-overlays/MeasurementAnnotations.vue`
+- Test: `kova-open-pencil-1/tests/unit/components/canvas-overlays/MeasurementAnnotations.test.ts`
+
+- [ ] **Step 1 (RED):** Test asserts renders one annotation per page-level measurement (via `figma.currentPage.getMeasurements()`) in viewport; dashed `#F24822` line + caps + label per hi-fi B8.9; z-index = `OVERLAY_Z.MEASUREMENT`.
+- [ ] **Step 2 (verify FAIL).**
+- [ ] **Step 3 (GREEN):** Component iterates `figma.currentPage.getMeasurements()` (page-level Measurement system per PRD 07a §7.1b — NOT a NodeType filter). For each measurement, computes start/end anchor screen coords and renders annotation.
+- [ ] **Step 4 (verify PASS).**
+- [ ] **Step 5 (COMMIT):** `git commit -m "feat(07b): add MeasurementAnnotations (hi-fi B8.9 — page-level addMeasurement model)"`
 
 ---
 
@@ -3569,7 +3789,7 @@ const resultCountLabel = computed(() => {
         class="text-ink3 hover:text-ink"
         @click="findStore.close()"
       >
-        <span class="i-lucide-x size-4" />
+        <KovaIcon name="x" size="sm" />
       </button>
     </div>
 
@@ -3633,8 +3853,13 @@ import { mount } from '@vue/test-utils'
 import { setActivePinia, createPinia } from 'pinia'
 import SearchResultRow from '@/components/find/SearchResultRow.vue'
 
+// B-LOW typed test-globals (no `as any`)
+interface FigmaNodeMock { id: string; name: string; type: string; parent: { name: string } }
+interface MockGlobals { figma: { getNodeById: (id: string) => FigmaNodeMock } }
+const G = globalThis as unknown as MockGlobals
+
 beforeEach(() => {
-  ;(globalThis as any).figma = {
+  G.figma = {
     getNodeById: (id: string) => ({ id, name: `Node ${id}`, type: 'FRAME', parent: { name: 'Page' } }),
   }
 })
@@ -3687,15 +3912,15 @@ defineEmits<{ click: [] }>()
 const node = computed(() => figma.getNodeById(props.nodeId))
 
 const ICON_BY_TYPE: Record<string, string> = {
-  FRAME: 'i-lucide-frame',
-  TEXT: 'i-lucide-type',
-  RECTANGLE: 'i-lucide-square',
-  ELLIPSE: 'i-lucide-circle',
-  VECTOR: 'i-lucide-pen-tool',
-  IMAGE: 'i-lucide-image',
-  GROUP: 'i-lucide-folder',
+  FRAME: 'frame',
+  TEXT: 'type',
+  RECTANGLE: 'square',
+  ELLIPSE: 'circle',
+  VECTOR: 'pen-tool',
+  IMAGE: 'image',
+  GROUP: 'folder',
 }
-const icon = computed(() => ICON_BY_TYPE[node.value?.type ?? ''] ?? 'i-lucide-box')
+const icon = computed(() => ICON_BY_TYPE[node.value?.type ?? ''] ?? 'box')
 </script>
 
 <template>

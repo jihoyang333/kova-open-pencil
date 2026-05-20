@@ -144,7 +144,7 @@ User can: (1) navigate to `/canvas/:canvasId` and see topbar with brand breadcru
 | Version history right-panel timeline (mounts in right panel when active — Cluster 09 specifies how to overlay/replace inspector while open) | 09 — Version History + Trash |
 | `<ChatPanel>` component (mounts in right-panel AI tab slot owned by this PRD); chat data layer (`useChatStore`, `useChatProductReferencesStore.importProducts`); AI tool registrations; ChatPopup REMOVAL (Cluster 10 removes the component file; this PRD removes the EditorView import + render) | 10 — AI Chat + Memory + Tools |
 | Brand-kit drag SOURCES (color swatches, font rows, logo, saved-block grip) + 5 MIME-type contracts; voice-draft confirm modal; brand-kit settings sub-tabs | 05 — Brand Kit & Drag-Drop |
-| `<KovaModal>`, `useToast`, `useConfirm`, skeletons, network status pill, error pages, Command-K palette; idempotency-key helper; Realtime channel naming convention; Tauri command-surface naming | 11 — Shared UI Infrastructure |
+| `<KovaModal>`, `useToast`, `useConfirm`, skeletons, network status pill, error pages; idempotency-key helper; Realtime channel naming convention; Tauri command-surface naming | 11 — Shared UI Infrastructure |
 | `useBrandsStore` reads (active brand selection), `<BrandPicker>` component (A2a sidebar variant) | 03 — Brand Management |
 | `/dashboard` route (target of brand-label click + logo dropdown "Back to dashboard") | 02 — Onboarding & Dashboard |
 | `/account` route (target of avatar dropdown Account item) | 04 — Account & Stripe |
@@ -579,7 +579,7 @@ Every line is testable in code or browser. No "feels right." Engineers verify be
 - [ ] Right panel renders exactly TWO tabs: **Design** + **AI** (default-active = **AI** on first canvas open; per-canvas localStorage overrides on subsequent opens)
 - [ ] Layer click on canvas does NOT switch tab (sticky behavior — `useRightPanelStore.activeTab` value before click === value after click for both tabs)
 - [ ] **Prototype tab is NOT rendered anywhere** in the DOM (verified via DOM inspection in E2E test) — per founder ratification 2026-05-15, scope plan §3 Cluster 06 "Prototype DEFERRED" line is superseded by "Prototype out of scope entirely"
-- [ ] Default-active tab on canvas open = Design (matches Figma's first-tab default)
+- [ ] Default-active tab on canvas open = AI (founder ratification 2026-05-17 §12.13; W0-7 propagation 2026-05-19)
 - [ ] Click AI tab → `useRightPanelStore.activeTab = 'ai'` → `<RightPanelAiSlot>` renders Cluster 10's `<ChatPanel>`
 - [ ] Click Design tab → `<InspectorRouter>` renders
 - [ ] Tab state persists per-canvas via `usePreferencesStore` Layer 2 (localStorage)

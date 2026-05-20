@@ -488,6 +488,8 @@ git commit -m "feat(cluster-06): useRightPanelStore — AI-default tab framework
 - Create: `src/stores/tool-registry.ts`
 - Test: `tests/unit/stores/tool-registry.test.ts`
 
+**Icon convention (B-HIGH7 — W0-4 lock):** `ToolDef.icon` is a KovaIcon registry name (short form, e.g. `'mouse-pointer-2'`, `'crop'`, `'ruler'`, `'frame'`, `'square'`, `'circle'`, `'pen-tool'`, `'type'`, `'sparkles'`, `'component'`). The bottom toolbar passes the string into `<KovaIcon :name="tool.icon" />`. Forbidden alternates (`'i-lucide-*'` UnoCSS class strings, `<icon-lucide-*>` raw tags, `<component :is="\`icon-lucide-${name}\`">` template-literal resolution) are NOT permitted — see Cluster 11 Task 4.4 contract. ALL icon names registered above MUST be added to `src/components/ui/kova-icon-registry.ts` before this task ships.
+
 - [ ] **Step 1: Write failing test**
 
 ```ts
@@ -497,9 +499,9 @@ import { setActivePinia, createPinia } from 'pinia'
 import { useToolRegistry } from '@/stores/tool-registry'
 import type { ToolDef } from '@/types/tool-registry'
 
-const move: ToolDef = { id: 'move', slot: 'move', icon: 'i-lucide-mouse-pointer-2', label: 'Move', key: 'V', onActivate: () => {} }
-const slice: ToolDef = { id: 'slice', slot: 'frame', parent: 'frame', icon: 'i-lucide-crop', label: 'Slice', key: 'S', onActivate: () => {} }
-const measurement: ToolDef = { id: 'measurement', slot: 'measurement', icon: 'i-lucide-ruler', label: 'Measurement', keySequence: ['Shift','M'], onActivate: () => {} }
+const move: ToolDef = { id: 'move', slot: 'move', icon: 'mouse-pointer-2', label: 'Move', key: 'V', onActivate: () => {} }
+const slice: ToolDef = { id: 'slice', slot: 'frame', parent: 'frame', icon: 'crop', label: 'Slice', key: 'S', onActivate: () => {} }
+const measurement: ToolDef = { id: 'measurement', slot: 'measurement', icon: 'ruler', label: 'Measurement', keySequence: ['Shift','M'], onActivate: () => {} }
 
 describe('useToolRegistry', () => {
   beforeEach(() => setActivePinia(createPinia()))
@@ -623,14 +625,14 @@ import { useToolRegistry } from '@/stores/tool-registry'
 
 // after pinia setup, before mount:
 const registry = useToolRegistry()
-registry.register({ id: 'move',       slot: 'move',       icon: 'i-lucide-mouse-pointer-2', label: 'Move',      key: 'V', onActivate: () => useEditorStore().setActiveTool('move') })
-registry.register({ id: 'frame',      slot: 'frame',      icon: 'i-lucide-frame',           label: 'Frame',     key: 'F', onActivate: () => useEditorStore().setActiveTool('frame') })
-registry.register({ id: 'rectangle',  slot: 'rectangle',  icon: 'i-lucide-square',          label: 'Rectangle', key: 'R', onActivate: () => useEditorStore().setActiveTool('rectangle') })
-registry.register({ id: 'ellipse',    slot: 'ellipse',    icon: 'i-lucide-circle',          label: 'Ellipse',   key: 'O', onActivate: () => useEditorStore().setActiveTool('ellipse') })
-registry.register({ id: 'pen',        slot: 'pen',        icon: 'i-lucide-pen-tool',        label: 'Pen',       key: 'P', onActivate: () => useEditorStore().setActiveTool('pen') })
-registry.register({ id: 'text',       slot: 'text',       icon: 'i-lucide-type',            label: 'Text',      key: 'T', onActivate: () => useEditorStore().setActiveTool('text') })
-registry.register({ id: 'ai',         slot: 'ai',         icon: 'i-lucide-sparkles',        label: 'Ask Kova',  onActivate: () => useRightPanelTab().focusAiComposer() })
-registry.register({ id: 'components', slot: 'components', icon: 'i-lucide-component',       label: 'Components — Phase 2', disabled: true, onActivate: () => {} })
+registry.register({ id: 'move',       slot: 'move',       icon: 'mouse-pointer-2', label: 'Move',      key: 'V', onActivate: () => useEditorStore().setActiveTool('move') })
+registry.register({ id: 'frame',      slot: 'frame',      icon: 'frame',           label: 'Frame',     key: 'F', onActivate: () => useEditorStore().setActiveTool('frame') })
+registry.register({ id: 'rectangle',  slot: 'rectangle',  icon: 'square',          label: 'Rectangle', key: 'R', onActivate: () => useEditorStore().setActiveTool('rectangle') })
+registry.register({ id: 'ellipse',    slot: 'ellipse',    icon: 'circle',          label: 'Ellipse',   key: 'O', onActivate: () => useEditorStore().setActiveTool('ellipse') })
+registry.register({ id: 'pen',        slot: 'pen',        icon: 'pen-tool',        label: 'Pen',       key: 'P', onActivate: () => useEditorStore().setActiveTool('pen') })
+registry.register({ id: 'text',       slot: 'text',       icon: 'type',            label: 'Text',      key: 'T', onActivate: () => useEditorStore().setActiveTool('text') })
+registry.register({ id: 'ai',         slot: 'ai',         icon: 'sparkles',        label: 'Ask Kova',  onActivate: () => useRightPanelTab().focusAiComposer() })
+registry.register({ id: 'components', slot: 'components', icon: 'component',       label: 'Components — Phase 2', disabled: true, onActivate: () => {} })
 // Slice + Measurement registered by Cluster 07a (Wave 5)
 ```
 
@@ -1423,13 +1425,64 @@ git add src/composables/use-canvas-drop.ts tests/unit/composables/use-canvas-dro
 git commit -m "feat(cluster-06): use-canvas-drop — 5 MIME dispatch + modifier-key behavior + valibot validation"
 ```
 
+**Sub-test 8.6: Crash-resistance against malformed drop payload (C-MED18)**
+
+Valibot covers schema-shape validation; this sub-test adds explicit coverage for truncated / non-MIME drops so a malformed paste cannot crash the editor or corrupt scene state.
+
+```ts
+// tests/integration/editor/drop-malformed-payload.test.ts
+import { describe, test, expect } from 'bun:test'
+import { mountEditorHost } from '@/test/mount-editor-host'
+
+describe('use-canvas-drop — malformed payload (C-MED18)', () => {
+  test('truncated saved-block JSON does not crash editor; surfaces error toast', async () => {
+    const host = await mountEditorHost()
+    const dt = new DataTransfer()
+    dt.setData('application/x-kova-saved-block', '{"id":"abc","payl')  // truncated mid-JSON
+    const ev = new DragEvent('drop', { dataTransfer: dt })
+    host.canvas.dispatchEvent(ev)
+    await host.flush()
+    expect(host.toastQueue).toContainEqual(
+      expect.objectContaining({ variant: 'error', code: 'drop_invalid_payload' })
+    )
+    expect(host.editorStateChanged).toBe(false)
+  })
+
+  test('non-MIME plain-text drop is a silent no-op', async () => {
+    const host = await mountEditorHost()
+    const dt = new DataTransfer()
+    dt.setData('text/plain', 'lol')
+    const ev = new DragEvent('drop', { dataTransfer: dt })
+    host.canvas.dispatchEvent(ev)
+    await host.flush()
+    expect(host.editorStateChanged).toBe(false)
+    expect(host.toastQueue).toHaveLength(0)
+  })
+
+  test('empty DataTransfer is a silent no-op', async () => {
+    const host = await mountEditorHost()
+    const ev = new DragEvent('drop', { dataTransfer: new DataTransfer() })
+    host.canvas.dispatchEvent(ev)
+    await host.flush()
+    expect(host.editorStateChanged).toBe(false)
+  })
+})
+```
+
+Commit (separate from Step 5 commit above so the crash-resistance test ships as its own atomic change):
+
+```bash
+git add tests/integration/editor/drop-malformed-payload.test.ts
+git commit -m "test(cluster-06): malformed drop payload crash-resistance (C-MED18)"
+```
+
 ---
 
 ### Task 9: TopChrome + 4 sub-components
 
 **Files:**
 - Create: `src/components/editor/TopChrome.vue`, `TopChromeLogo.vue`, `FileBreadcrumb.vue`, `TopChromeActions.vue`, `AvatarDropdown.vue`, `MissingFontsPill.vue`
-- Test: `tests/unit/components/editor/TopChrome.test.ts`, `AvatarDropdown.test.ts`, `FileBreadcrumb.test.ts`
+- Test: `tests/unit/components/editor/TopChrome.test.ts`, `AvatarDropdown.test.ts`, `FileBreadcrumb.test.ts`, `MissingFontsPill.test.ts`
 
 - [ ] **Step 1: Write failing tests** (4 component tests covering: 5-item avatar dropdown per Q16; brand-click emit; topbar renders all children; **TopChromeActions renders NO Comments slot — RATIFIED HIDE 2026-05-17 §12.3**)
 
@@ -1463,6 +1516,58 @@ describe('TopChromeActions — RATIFIED 2026-05-17 §12.3 (Comments HIDDEN)', ()
 git add src/components/editor/TopChrome.vue src/components/editor/TopChromeLogo.vue src/components/editor/FileBreadcrumb.vue src/components/editor/TopChromeActions.vue src/components/editor/AvatarDropdown.vue src/components/editor/MissingFontsPill.vue tests/unit/components/editor/TopChrome.test.ts tests/unit/components/editor/TopChromeActions.test.ts tests/unit/components/editor/AvatarDropdown.test.ts tests/unit/components/editor/FileBreadcrumb.test.ts
 git commit -m "feat(cluster-06): top chrome — logo + file breadcrumb (Q17 navigate) + actions (Comments hidden per §12.3 2026-05-17) + 5-item avatar dropdown (Q16)"
 ```
+
+**Sub-test 9.x: `<MissingFontsPill>` mount + click handler (C-LOW06.4)**
+
+```ts
+// tests/unit/components/editor/MissingFontsPill.test.ts
+import { describe, test, expect } from 'bun:test'
+import { mount } from '@vue/test-utils'
+import MissingFontsPill from '@/components/editor/MissingFontsPill.vue'
+
+describe('<MissingFontsPill> (C-LOW06.4)', () => {
+  test('renders count text when missingCount > 0', () => {
+    const w = mount(MissingFontsPill, { props: { missingCount: 2 } })
+    expect(w.text()).toContain('2')
+    expect(w.text()).toMatch(/missing/i)
+  })
+
+  test('does not render when missingCount = 0', () => {
+    const w = mount(MissingFontsPill, { props: { missingCount: 0 } })
+    expect(w.find('[data-testid="missing-fonts-pill"]').exists()).toBe(false)
+  })
+
+  test('click emits open-font-manager event', async () => {
+    const w = mount(MissingFontsPill, { props: { missingCount: 1 } })
+    await w.find('[data-testid="missing-fonts-pill"]').trigger('click')
+    expect(w.emitted('open-font-manager')).toBeTruthy()
+  })
+
+  test('aria-label includes count for screen readers', () => {
+    const w = mount(MissingFontsPill, { props: { missingCount: 3 } })
+    expect(w.find('[data-testid="missing-fonts-pill"]').attributes('aria-label'))
+      .toMatch(/3.*missing fonts/i)
+  })
+})
+```
+
+**Version history event contract (C-MED26 — ratified W3 fix dispatch):**
+
+The file-menu items "Show version history" and "Save to version history (⌥⌘S)" (defined in Plan 08 §3.3 file-name dropdown rows) dispatch via a global event bus that Cluster 09's `<VersionHistoryPanel>` consumes. TopChrome itself only hosts the file-name trigger surface (`FileBreadcrumb.vue`); it does NOT mount the panel.
+
+Event surface (defined here; consumed by Plan 09 W4):
+
+```ts
+// src/lib/editor-bus.ts (Cluster 11 shared)
+export interface EditorBusEvents {
+  'editor:open-version-history':  { canvasId: string; brandId: string }
+  'editor:save-version-snapshot': { canvasId: string; label?: string }
+}
+```
+
+- Plan 08 file-name dropdown row handlers call `editorBus.emit('editor:open-version-history', { canvasId, brandId })`.
+- Plan 09 (W4) mounts `<VersionHistoryPanel>` listening for both events; on `open-version-history` it slides the right panel over the inspector; on `save-version-snapshot` it triggers snapshot RPC + toast.
+- TopChrome integration test: assert `FileBreadcrumb` emits no panel-mount logic itself (decoupling guard).
 
 ---
 
@@ -1609,6 +1714,130 @@ export const useLeftPanelStore = defineStore('left-panel', () => {
 git commit -m "feat(cluster-06): left panel — 3 stacked sections (Pages + Layers + Shop) per §12.1 2026-05-17 + virtual scroll + mask/slice glyphs + useLeftPanelStore persisted collapse state"
 ```
 
+**Sub-spec 11.x: Inter-section ResizeHandle (C-LOW06.3)**
+
+Between the three stacked sections (Pages ↔ Layers ↔ Shop) render a 4px-tall draggable `<ResizeHandle>` row. Dragging adjusts the height of the section ABOVE the handle (Pages or Layers); the lower section flexes to consume remaining space. Persist heights per-user.
+
+Files:
+- Create: `src/components/editor/ResizeHandle.vue`
+- Modify: `src/components/editor/LeftPanel.vue` (insert handles between sections)
+- Modify: `src/stores/left-panel.ts` (add `sectionHeights` state)
+
+Store extension:
+
+```ts
+// src/stores/left-panel.ts (EXTEND)
+interface SectionHeights {
+  pages: number   // px — min 80, max 600, default 160
+  layers: number  // px — min 120, max 800, default 360
+  // shop flexes to fill remaining
+}
+const STORAGE_HEIGHTS_KEY = 'left-panel-section-heights'
+
+// inside defineStore:
+const sectionHeights = reactive<SectionHeights>(loadInitialHeights())
+function setSectionHeight(section: keyof SectionHeights, px: number) {
+  const clamped = clampHeight(section, px)
+  sectionHeights[section] = clamped
+}
+watch(sectionHeights, (next) => {
+  try { localStorage.setItem(STORAGE_HEIGHTS_KEY, JSON.stringify(next)) } catch {}
+}, { deep: true })
+```
+
+Component:
+
+```vue
+<!-- src/components/editor/ResizeHandle.vue -->
+<script setup lang="ts">
+import { ref } from 'vue'
+
+const props = defineProps<{
+  /** which section's height this handle controls */
+  section: 'pages' | 'layers'
+  /** current height in px */
+  modelValue: number
+  min: number
+  max: number
+}>()
+const emit = defineEmits<{ 'update:modelValue': [px: number] }>()
+
+const dragging = ref(false)
+const startY = ref(0)
+const startH = ref(0)
+
+function onDown(e: PointerEvent) {
+  dragging.value = true
+  startY.value = e.clientY
+  startH.value = props.modelValue
+  ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+}
+function onMove(e: PointerEvent) {
+  if (!dragging.value) return
+  const delta = e.clientY - startY.value
+  const next = Math.min(props.max, Math.max(props.min, startH.value + delta))
+  emit('update:modelValue', next)
+}
+function onUp(e: PointerEvent) {
+  dragging.value = false
+  ;(e.target as HTMLElement).releasePointerCapture(e.pointerId)
+}
+</script>
+<template>
+  <div
+    class="rh"
+    :class="{ dragging }"
+    role="separator"
+    aria-orientation="horizontal"
+    :aria-label="`Resize ${section} section`"
+    @pointerdown="onDown"
+    @pointermove="onMove"
+    @pointerup="onUp"
+    @pointercancel="onUp"
+  />
+</template>
+<style scoped>
+.rh { height: 4px; cursor: row-resize; }
+.rh:hover, .rh.dragging { background: var(--kc-border-focus); }
+</style>
+```
+
+Tests:
+
+```ts
+// tests/unit/components/editor/ResizeHandle.test.ts
+import { describe, test, expect } from 'bun:test'
+import { mount } from '@vue/test-utils'
+import ResizeHandle from '@/components/editor/ResizeHandle.vue'
+
+describe('<ResizeHandle> (C-LOW06.3)', () => {
+  test('emits update:modelValue clamped to min/max while dragging', async () => {
+    const w = mount(ResizeHandle, { props: { section: 'pages', modelValue: 200, min: 80, max: 600 } })
+    await w.trigger('pointerdown', { clientY: 100 })
+    await w.trigger('pointermove', { clientY: 150 })  // +50 → 250
+    expect(w.emitted('update:modelValue')?.[0]).toEqual([250])
+    await w.trigger('pointermove', { clientY: 800 })  // would be 900 → clamped 600
+    expect(w.emitted('update:modelValue')?.at(-1)).toEqual([600])
+  })
+
+  test('setSectionHeight clamps and persists to localStorage', () => {
+    const store = useLeftPanelStore()
+    store.setSectionHeight('pages', 50)   // below min 80
+    expect(store.sectionHeights.pages).toBe(80)
+    store.setSectionHeight('pages', 1000) // above max 600
+    expect(store.sectionHeights.pages).toBe(600)
+    expect(JSON.parse(localStorage.getItem('left-panel-section-heights')!).pages).toBe(600)
+  })
+})
+```
+
+Commit (separate from Task 11 Step 3):
+
+```bash
+git add src/components/editor/ResizeHandle.vue src/components/editor/LeftPanel.vue src/stores/left-panel.ts tests/unit/components/editor/ResizeHandle.test.ts tests/unit/stores/left-panel.test.ts
+git commit -m "feat(cluster-06): LeftPanel ResizeHandle between sections + persisted sectionHeights (C-LOW06.3)"
+```
+
 ---
 
 ### Task 12: Shop panel REWORK per Shopify spec §4.1 + §5.2
@@ -1733,6 +1962,43 @@ watch(() => route.params.canvasId, (id) => {
 git add -u && git rm src/canvas-extensions/product-variant/ src/stores/product-variant-bindings.ts ... [all from Task 13]
 git add src/views/EditorView.vue tests/integration/editor/editor-view-refactor.test.ts vercel.json api/shopify/cron/purge-worker.ts
 git commit -m "refactor(cluster-06): EditorView refactor — remove ChatPopup + product-variant extension + drag-place model (per Shopify spec §5.1 RIP)"
+```
+
+**Sub-spec 14.x: `<MissingFontsPill>` anchor location (C-LOW06.5)**
+
+EditorView refactor mounts `<MissingFontsPill>` inside `<CanvasOverlayHost>` (Task 16) — NOT inside `<TopChrome>`. Anchor: top-right of the canvas viewport, offset from the chrome edges.
+
+```css
+/* src/components/editor/MissingFontsPill.vue (scoped) */
+.missing-fonts-pill {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 30;
+}
+```
+
+Z-index stack (canvas viewport overlays):
+- `z-0` — canvas surface
+- `z-10` — selection-box overlay
+- `z-20` — frame-outlines / measurement annotations
+- `z-30` — `<MissingFontsPill>` (this pill) + zoom HUD
+- `z-50` — modal layer (`<KovaModal>`, `<ConfirmDialog>`)
+
+Rationale: pill must be visible above marquee/selection visuals but below modal layers; anchoring to the canvas viewport (not the topbar) keeps it visible when the topbar is hidden in minimized UI mode (`useEditorStore.showUI === 'minimized'`).
+
+E2E regression:
+
+```ts
+// tests/e2e/editor/missing-fonts-pill-anchor.spec.ts
+test('MissingFontsPill anchors top-right of canvas viewport, not topbar', async ({ page }) => {
+  await loadEditorWithMissingFonts(page, 2)
+  const pill = page.locator('[data-testid="missing-fonts-pill"]')
+  const box = await pill.boundingBox()
+  const viewport = await page.locator('[data-testid="canvas-viewport"]').boundingBox()
+  expect(box!.x + box!.width).toBeCloseTo(viewport!.x + viewport!.width - 12, 0)
+  expect(box!.y).toBeCloseTo(viewport!.y + 12, 0)
+})
 ```
 
 ---
@@ -1863,11 +2129,11 @@ describe('tool registration end-to-end', () => {
     setActivePinia(createPinia())
     const registry = useToolRegistry()
     // Default 9 (registered in main.ts but here we simulate)
-    registry.register({ id: 'move', slot: 'move', icon: 'i-lucide-mouse-pointer-2', label: 'Move', key: 'V', onActivate: () => {} })
+    registry.register({ id: 'move', slot: 'move', icon: 'mouse-pointer-2', label: 'Move', key: 'V', onActivate: () => {} })
     // ... register all 8 default
     // Simulate Cluster 07a
-    registry.register({ id: 'slice', slot: 'frame', parent: 'frame', icon: 'i-lucide-crop', label: 'Slice', key: 'S', onActivate: () => {} })
-    registry.register({ id: 'measurement', slot: 'measurement', icon: 'i-lucide-ruler', label: 'Measurement', keySequence: ['Shift','M'], onActivate: () => {} })
+    registry.register({ id: 'slice', slot: 'frame', parent: 'frame', icon: 'crop', label: 'Slice', key: 'S', onActivate: () => {} })
+    registry.register({ id: 'measurement', slot: 'measurement', icon: 'ruler', label: 'Measurement', keySequence: ['Shift','M'], onActivate: () => {} })
 
     const wrap = mount(BottomToolbar)
     expect(wrap.text()).toContain('Measurement')

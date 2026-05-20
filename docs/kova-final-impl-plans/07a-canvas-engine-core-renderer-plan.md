@@ -420,6 +420,55 @@ describe('Measurement system — page-level', () => {
     graph.reparent(nodeA, frame.id, 0)
     expect(graph.getMeasurements(canvasId)).toHaveLength(1)
   })
+
+  // C-LOW07a.1: additional explicit trigger-condition coverage per event
+  test('addMeasurement emits measurement:created with full measurement payload', () => {
+    const events: unknown[] = []
+    graph.emitter.on('measurement:created', (e) => events.push(e))
+    const m = graph.addMeasurement(canvasId, { nodeId: nodeA, side: 'TOP' }, { nodeId: nodeB, side: 'BOTTOM' })
+    expect(events).toHaveLength(1)
+    expect(events[0]).toMatchObject({ measurementId: m.id, canvasId })
+  })
+
+  test('editMeasurement emits measurement:updated with prev + next snapshots', () => {
+    const m = graph.addMeasurement(canvasId, { nodeId: nodeA, side: 'TOP' }, { nodeId: nodeB, side: 'BOTTOM' })
+    const events: unknown[] = []
+    graph.emitter.on('measurement:updated', (e) => events.push(e))
+    graph.editMeasurement(canvasId, m.id, { offset: { type: 'INNER', relative: 0.25 } })
+    expect(events).toHaveLength(1)
+    expect(events[0]).toMatchObject({ measurementId: m.id, canvasId })
+  })
+
+  test('deleteMeasurement emits measurement:deleted', () => {
+    const m = graph.addMeasurement(canvasId, { nodeId: nodeA, side: 'TOP' }, { nodeId: nodeB, side: 'BOTTOM' })
+    const events: unknown[] = []
+    graph.emitter.on('measurement:deleted', (e) => events.push(e))
+    graph.deleteMeasurement(canvasId, m.id)
+    expect(events).toHaveLength(1)
+    expect(events[0]).toMatchObject({ measurementId: m.id, canvasId })
+  })
+
+  test('removing BOTH anchors emits measurement:broken twice (once per anchor) for the same measurement', () => {
+    const m = graph.addMeasurement(canvasId, { nodeId: nodeA, side: 'TOP' }, { nodeId: nodeB, side: 'BOTTOM' })
+    const events: any[] = []
+    graph.emitter.on('measurement:broken', (e) => events.push(e))
+    graph.removeNode(nodeA)
+    graph.removeNode(nodeB)
+    expect(events).toHaveLength(2)
+    expect(events.map(e => e.brokenAnchorNodeId).sort()).toEqual([nodeA, nodeB].sort())
+    expect(events.every(e => e.measurementId === m.id)).toBe(true)
+  })
+
+  test('deleting a CANVAS containing measurements emits measurement:dropped for ALL its measurements', () => {
+    graph.addMeasurement(canvasId, { nodeId: nodeA, side: 'TOP' }, { nodeId: nodeB, side: 'BOTTOM' })
+    graph.addMeasurement(canvasId, { nodeId: nodeA, side: 'LEFT' }, { nodeId: nodeB, side: 'RIGHT' })
+    const events: any[] = []
+    graph.emitter.on('measurement:dropped', (e) => events.push(e))
+    graph.removeNode(canvasId)
+    expect(events).toHaveLength(1)
+    expect(events[0].measurementIds).toHaveLength(2)
+    expect(events[0].sourceCanvasId).toBe(canvasId)
+  })
 })
 ```
 
@@ -2168,6 +2217,46 @@ git add packages/core/src/kiwi/ tests/engine/kiwi/
 git commit -m "feat(engine): bump Kiwi schema to v2.0.0; add SLICE enum + page-level Measurement structs + new SceneNode + CharacterStyleOverride fields (Cluster 07a)"
 ```
 
+- [ ] **Step 8.11: format_version coordination with Cluster 09 snapshot migration (C-LOW07a.3)**
+
+Files:
+- Modify: `packages/core/src/kiwi/protocol.ts` (exports `FORMAT_VERSION` const matching the Kiwi schema bump from Step 8.6)
+- Modify: `docs/kova-final-impl-plans/09-version-history-and-trash-plan.md` (cross-link to snapshot-migration registry; Cluster 09 W4 fix agent applies this)
+
+Contract:
+- Every Kiwi schema bump in `packages/core/src/kiwi/` MUST bump the exported `FORMAT_VERSION` const (semver — additive = minor, breaking = major).
+- Every bump REQUIRES a registered migration in Cluster 09's `snapshot-migration-registry.ts` (keyed by previous `formatVersion`).
+- `loadSnapshot(snap)` in Cluster 09 reads `snap.formatVersion`, looks up the registered migration chain, and applies migrations in order until `snap.formatVersion === FORMAT_VERSION`.
+- Loading a snapshot with `formatVersion > FORMAT_VERSION` (newer client wrote it; current client cannot read) MUST surface `error_code: 'snapshot_format_too_new'` toast and refuse to load.
+
+```ts
+// packages/core/src/kiwi/protocol.ts (EXTEND — exported alongside schema)
+export const FORMAT_VERSION = '2.0.0' as const  // bump in lockstep with Step 8.6 Kiwi schema version
+```
+
+Test (engine-side guard against silent bump drift):
+
+```ts
+// tests/engine/kiwi/format-version-coordination.test.ts
+import { describe, test, expect } from 'bun:test'
+import { FORMAT_VERSION, KIWI_SCHEMA_VERSION } from '@/packages/core/src/kiwi/protocol'
+
+describe('format_version ↔ Kiwi schema lockstep (C-LOW07a.3)', () => {
+  test('FORMAT_VERSION matches KIWI_SCHEMA_VERSION exactly', () => {
+    expect(FORMAT_VERSION).toBe(KIWI_SCHEMA_VERSION)
+  })
+})
+```
+
+Commit (separate from Step 8.10):
+
+```bash
+git add packages/core/src/kiwi/protocol.ts tests/engine/kiwi/format-version-coordination.test.ts
+git commit -m "feat(engine): export FORMAT_VERSION lockstep with Kiwi schema; Plan 09 snapshot migration coord (C-LOW07a.3)"
+```
+
+Cross-cluster handoff: Wave 4 Cluster 09 fix agent MUST add to Plan 09 a `snapshot-migration-registry.ts` task that includes a `'1.0.0' → '2.0.0'` migration entry for the SLICE + page-level Measurement schema additions. Reference: PR title in Plan 09 SHOULD include `(coord: Cluster 07a FORMAT_VERSION 2.0.0)`.
+
 ---
 
 ## Task 9: Renderer mask compositing (renderChildren refactor)
@@ -2563,6 +2652,140 @@ Expected: green. The renderer refactor risks subtle visual regressions on existi
 ```bash
 git add packages/core/src/renderer/scene.ts packages/core/src/renderer/renderer.ts tests/engine/renderer/
 git commit -m "feat(engine): sibling-traversal mask compositing for ALPHA + VECTOR + LUMINANCE (Cluster 07a)"
+```
+
+- [ ] **Step 9.13: Mask-compositing perf benchmark (C-LOW07a.2)**
+
+Files:
+- Create: `tests/bench/mask-compositing.bench.ts`
+
+Budget: render must complete in < 16ms (60fps) for 100 / 200 / 300 masked nodes inside a single frame. Catches accidental O(n²) compositing regressions in the sibling-traversal pass.
+
+```ts
+// tests/bench/mask-compositing.bench.ts
+import { describe, bench } from 'bun:test'
+import { SceneGraph } from '@/packages/core/src/scene-graph'
+import { Renderer } from '@/packages/core/src/renderer/renderer'
+
+function makeMaskedScene(n: number): { graph: SceneGraph, renderer: Renderer, frameId: string } {
+  const graph = new SceneGraph()
+  const canvas = graph.createNode('CANVAS', graph.rootId)
+  const frame = graph.createNode('FRAME', canvas.id, { width: 1200, height: 800, clipsContent: true })
+  for (let i = 0; i < n; i++) {
+    const mask = graph.createNode('VECTOR', frame.id, { isMask: true, maskType: 'ALPHA', x: i * 10, y: i * 10, width: 80, height: 80 })
+    void mask
+    graph.createNode('RECTANGLE', frame.id, { x: i * 10, y: i * 10, width: 80, height: 80, fills: [{ type: 'SOLID', color: { r: 0.5, g: 0.5, b: 0.5, a: 1 } }] })
+  }
+  const renderer = new Renderer({ canvas: document.createElement('canvas') })
+  return { graph, renderer, frameId: frame.id }
+}
+
+describe('mask compositing perf (C-LOW07a.2 — 50–300 nodes, 60fps budget)', () => {
+  for (const n of [100, 200, 300]) {
+    bench(`render ${n} masked nodes < 16ms`, () => {
+      const { renderer, graph, frameId } = makeMaskedScene(n)
+      const t0 = performance.now()
+      renderer.renderNode(graph.getNodeById(frameId)!)
+      const dt = performance.now() - t0
+      if (dt >= 16) throw new Error(`render exceeded budget: ${dt.toFixed(2)}ms (n=${n})`)
+    })
+  }
+})
+```
+
+Commit (separate from Step 9.12):
+
+```bash
+git add tests/bench/mask-compositing.bench.ts
+git commit -m "test(engine): mask-compositing perf benchmark — 100/200/300 nodes < 16ms (C-LOW07a.2)"
+```
+
+Wire into CI gate: extend `bun run test:bench` script in package.json to include `tests/bench/`. Add `bun run test:bench` to the `bun run check` chain or gate it behind a separate `bun run check:perf` step.
+
+- [ ] **Step 9.14: `node:errored` event surface (C-LOW07a.4 — Cluster 11 ToastStack dep)**
+
+Files:
+- Modify: `packages/core/src/scene-graph.ts` (extend `SceneGraphEvents` union; add emit sites)
+- Modify: `packages/core/src/renderer/renderer.ts` (catch render exceptions; emit `node:errored`)
+- Create: `tests/engine/scene-graph/node-errored.test.ts`
+
+Event surface:
+
+```ts
+// packages/core/src/scene-graph.ts (EXTEND SceneGraphEvents)
+export interface NodeErroredEvent {
+  type: 'node:errored'
+  nodeId: string
+  errorCode: 'render_failed' | 'invalid_state'
+  message: string
+}
+```
+
+Emit triggers (engine-side):
+- `render_failed` — Renderer catches an exception thrown inside a node's draw function; emits `node:errored` with the error message; SKIPS the node + continues rendering siblings (defensive renderer — never let one bad node halt the frame).
+- `invalid_state` — Scene-graph invariant violated (orphan parent ref, cycle detected, leaf-node received `appendChild` against the guard). Emitted from inside `appendChild`, `reparent`, and the leaf-guard check.
+
+Subscriber (NOT in this PRD — Cluster 11 owns):
+- `<ToastStack>` (Cluster 11) subscribes via `editorBus.on('node:errored', ...)`; surfaces a toast with `variant: 'error'` + `code: errorCode` + the message body. Founder ratification 2026-05-17 §12.x: per-node render failures should be a recoverable in-app surface, NOT a global crash.
+
+Tests:
+
+```ts
+// tests/engine/scene-graph/node-errored.test.ts
+import { describe, test, expect, beforeEach } from 'bun:test'
+import { SceneGraph } from '@/packages/core/src/scene-graph'
+import { Renderer } from '@/packages/core/src/renderer/renderer'
+
+describe('node:errored event surface (C-LOW07a.4)', () => {
+  let graph: SceneGraph
+  beforeEach(() => { graph = new SceneGraph() })
+
+  test('renderer catches draw exception; emits node:errored with render_failed; sibling renders complete', () => {
+    const canvas = graph.createNode('CANVAS', graph.rootId)
+    const good = graph.createNode('RECTANGLE', canvas.id, { fills: [{ type: 'SOLID', color: { r: 1, g: 0, b: 0, a: 1 } }] })
+    const bad = graph.createNode('RECTANGLE', canvas.id)
+    // Inject a draw failure on `bad`:
+    graph.patchNode(bad.id, { __drawHook: () => { throw new Error('boom') } })
+
+    const events: any[] = []
+    graph.emitter.on('node:errored', (e) => events.push(e))
+
+    const renderer = new Renderer({ canvas: document.createElement('canvas') })
+    renderer.renderNode(graph.getNodeById(canvas.id)!)
+
+    expect(events).toHaveLength(1)
+    expect(events[0]).toMatchObject({
+      type: 'node:errored',
+      nodeId: bad.id,
+      errorCode: 'render_failed',
+      message: 'boom',
+    })
+    // sibling `good` still rendered — pixel-check or call-count assertion
+    expect(renderer.lastFrameDrawnNodeIds).toContain(good.id)
+  })
+
+  test('appendChild on a leaf node emits node:errored with invalid_state and throws', () => {
+    const canvas = graph.createNode('CANVAS', graph.rootId)
+    const text = graph.createNode('TEXT', canvas.id)  // leaf
+    const events: any[] = []
+    graph.emitter.on('node:errored', (e) => events.push(e))
+    expect(() => graph.appendChild(text.id, graph.createNode('RECTANGLE', canvas.id).id)).toThrow()
+    expect(events).toHaveLength(1)
+    expect(events[0]).toMatchObject({
+      type: 'node:errored',
+      nodeId: text.id,
+      errorCode: 'invalid_state',
+    })
+    expect(events[0].message).toMatch(/leaf/i)
+  })
+})
+```
+
+Commit:
+
+```bash
+git add packages/core/src/scene-graph.ts packages/core/src/renderer/renderer.ts tests/engine/scene-graph/node-errored.test.ts
+git commit -m "feat(engine): node:errored event surface for renderer + scene-graph invariant violations (C-LOW07a.4)"
 ```
 
 ---
