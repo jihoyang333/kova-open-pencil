@@ -2698,7 +2698,7 @@ export default async function handler(req: Request): Promise<Response> {
   if (delErr) return new Response(JSON.stringify({ error: 'delete_failed' }), { status: 500 })
   pruned = ids.length
 
-  // Optional 7th-day sweep — implement when cron is in production; out of scope for this draft.
+  // W4 C-HIGH9: 7th-day Storage sweep moved to its own weekly cron (see Task 20b below).
 
   return Response.json({ scanned, pruned, storage_failures: storageFailures })
 }
@@ -2709,13 +2709,14 @@ export default async function handler(req: Request): Promise<Response> {
 ```json
 {
   "crons": [
-    { "path": "/api/cron/delete-account",  "schedule": "0 3 * * *" },
-    { "path": "/api/cron/snapshot-prune",  "schedule": "0 4 * * *" }
+    { "path": "/api/cron/delete-account",          "schedule": "0 3 * * *" },
+    { "path": "/api/cron/snapshot-prune",          "schedule": "0 4 * * *" },
+    { "path": "/api/cron/snapshot-storage-sweep",  "schedule": "0 5 * * 0" }
   ]
 }
 ```
 
-(If `vercel.json` already has the delete-account cron from Cluster 01, add the snapshot-prune entry as a sibling. If neither exists yet, create the file.)
+(If `vercel.json` already has the delete-account cron from Cluster 01, add the snapshot-prune + snapshot-storage-sweep entries as siblings. If neither exists yet, create the file. The sweep cron runs Sundays 05:00 UTC — covers the "7th day" cadence from PRD 09 §8.3 with a single weekly invocation rather than a day-of-month modulo.)
 
 - [ ] **Step 4: Integration test**
 
@@ -2734,6 +2735,130 @@ git add kova-open-pencil-1/api/cron/snapshot-prune.ts \
         kova-open-pencil-1/tests/unit/api/cron/snapshot-prune.test.ts \
         kova-open-pencil-1/tests/integration/api/cron-snapshot-prune.test.ts
 git commit -m "feat(09): snapshot-prune cron + vercel.json wiring"
+```
+
+---
+
+## Task 20b (C-HIGH9): Weekly Storage sweep — orphan blob cleanup
+
+**Files:**
+- Create: `kova-open-pencil-1/api/cron/snapshot-storage-sweep.ts`
+- Test: `kova-open-pencil-1/tests/unit/api/cron/snapshot-storage-sweep.test.ts`
+- Test: `kova-open-pencil-1/tests/integration/api/cron-snapshot-storage-sweep.test.ts`
+
+**Why (W4):** `C-HIGH9` (CONSOLIDATED-TRIAGE.md). PRD 09 §8.3 ("Storage cascade") is silently uncovered by the placeholder note "implement when cron is in production." Without the sweep, every Storage `remove()` failure inside `snapshot-prune` (network blip, S3 5xx, transient permission denial) leaks an orphan blob forever, eating quota across all brands. The sweep diffs Storage against the DB once a week and deletes orphans.
+
+- [ ] **Step 1: Unit test**
+
+```typescript
+// kova-open-pencil-1/tests/unit/api/cron/snapshot-storage-sweep.test.ts
+import { describe, expect, it } from 'bun:test'
+import handler from '@/api/cron/snapshot-storage-sweep'
+
+describe('POST /api/cron/snapshot-storage-sweep', () => {
+  it('401 without CRON_SECRET', async () => {
+    const res = await handler(new Request('http://x', { method: 'POST', body: '{}' }))
+    expect(res.status).toBe(401)
+  })
+
+  it('deletes Storage objects with no matching canvas_snapshots row', async () => {
+    // Mock storage.list → 100 paths; mock SELECT scene_blob_path → 80 of those
+    // Assert storage.remove called with the 20 orphan paths
+  })
+
+  it('preserves Storage objects referenced by initial_state_blob_path (C-HIGH7)', async () => {
+    // A blob may be referenced by canvases.initial_state_blob_path even after the source
+    // snapshot row is deleted — the sweep MUST diff against both column sets.
+  })
+})
+```
+
+- [ ] **Step 2: Edge handler**
+
+```typescript
+// kova-open-pencil-1/api/cron/snapshot-storage-sweep.ts
+import { createClient } from '@supabase/supabase-js'
+
+export const config = { runtime: 'edge' }
+
+const SUPABASE_URL = process.env.SUPABASE_URL!
+const SERVICE_KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY!
+const CRON_SECRET  = process.env.CRON_SECRET!
+
+export default async function handler(req: Request): Promise<Response> {
+  const auth = req.headers.get('authorization')
+  if (auth !== `Bearer ${CRON_SECRET}`) return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401 })
+
+  const supabase = createClient(SUPABASE_URL, SERVICE_KEY)
+
+  // 1. List Storage objects (paginated; bucket can hold tens of thousands)
+  const storagePaths = new Set<string>()
+  let offset = 0
+  const PAGE = 1000
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const { data, error } = await supabase.storage
+      .from('canvas-snapshots')
+      .list('', { limit: PAGE, offset, sortBy: { column: 'name', order: 'asc' } })
+    if (error) return new Response(JSON.stringify({ error: 'list_failed' }), { status: 500 })
+    for (const obj of data ?? []) storagePaths.add(obj.name)
+    if (!data || data.length < PAGE) break
+    offset += PAGE
+  }
+
+  // 2. Read every DB-referenced path (snapshots + canvas-seed hydration)
+  const dbPaths = new Set<string>()
+  const [snapPaths, canvasPaths] = await Promise.all([
+    supabase.from('canvas_snapshots').select('scene_blob_path, thumbnail_path'),
+    supabase.from('canvases').select('initial_state_blob_path'),
+  ])
+  for (const r of (snapPaths.data ?? []) as Array<{ scene_blob_path: string; thumbnail_path: string | null }>) {
+    dbPaths.add(r.scene_blob_path)
+    if (r.thumbnail_path) dbPaths.add(r.thumbnail_path)
+  }
+  for (const r of (canvasPaths.data ?? []) as Array<{ initial_state_blob_path: string | null }>) {
+    if (r.initial_state_blob_path) dbPaths.add(r.initial_state_blob_path)
+  }
+
+  // 3. Diff: paths in Storage but not in DB are orphans
+  const orphans: string[] = []
+  for (const p of storagePaths) if (!dbPaths.has(p)) orphans.push(p)
+
+  // 4. Chunked delete (100 paths per call)
+  let removed = 0, removeFailures = 0
+  for (let i = 0; i < orphans.length; i += 100) {
+    const chunk = orphans.slice(i, i + 100)
+    const { error: rmErr } = await supabase.storage.from('canvas-snapshots').remove(chunk)
+    if (rmErr) removeFailures += chunk.length
+    else removed += chunk.length
+  }
+
+  return Response.json({
+    storage_objects: storagePaths.size,
+    db_paths: dbPaths.size,
+    orphans: orphans.length,
+    removed,
+    remove_failures: removeFailures,
+  })
+}
+```
+
+- [ ] **Step 3: Integration test**
+
+```typescript
+// Seed 50 snapshot rows + 50 matching blobs + 5 stray blobs (no row)
+// Invoke handler → assert response.orphans === 5 + 5 Storage objects removed
+```
+
+- [ ] **Step 4: Run + commit**
+
+```bash
+bun test ./tests/unit/api/cron/snapshot-storage-sweep.test.ts
+bun test ./tests/integration/api/cron-snapshot-storage-sweep.test.ts
+git add kova-open-pencil-1/api/cron/snapshot-storage-sweep.ts \
+        kova-open-pencil-1/tests/unit/api/cron/snapshot-storage-sweep.test.ts \
+        kova-open-pencil-1/tests/integration/api/cron-snapshot-storage-sweep.test.ts
+git commit -m "feat(09): weekly snapshot-storage-sweep cron (W4 C-HIGH9)"
 ```
 
 ---
