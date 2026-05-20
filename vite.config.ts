@@ -11,6 +11,7 @@ import { copyFileSync, existsSync, mkdirSync } from 'fs'
 
 import { apiPlugin } from './src/dev/api-plugin'
 import { automationPlugin } from './src/automation/vite-plugin'
+import { hifiServePlugin } from './src/dev/hifi-serve-plugin'
 
 // @ts-expect-error process is a nodejs global
 const host = process.env.TAURI_DEV_HOST
@@ -87,6 +88,7 @@ export default defineConfig(async () => ({
     Components({ resolvers: [IconsResolver({ prefix: 'icon' })] }),
     apiPlugin(),
     automationPlugin(),
+    hifiServePlugin(),
     vue(),
     VitePWA({
       registerType: 'autoUpdate',
