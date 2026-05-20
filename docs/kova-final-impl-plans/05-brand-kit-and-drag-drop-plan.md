@@ -1063,7 +1063,7 @@ describe('useBrandKitStore', () => {
       writing_rules: { no_em_dash: true },
       identity: { about: { content: 'About Nike', last_edited_at: '2026-01-01', last_edited_by: 'u1', word_count: 2 } },
       colors: [],
-    } as any
+    } as any  // test-fixture: bun:test convention
   })
 
   test('toneSnippets getter returns sorted by order', () => {
@@ -1074,7 +1074,7 @@ describe('useBrandKitStore', () => {
 
   test('addToneSnippet calls add_tone_snippet RPC and optimistically updates', async () => {
     const store = useBrandKitStore()
-    rpcMock.mockResolvedValueOnce({ data: 'new-uuid', error: null } as any)
+    rpcMock.mockResolvedValueOnce({ data: 'new-uuid', error: null } as any)  // test-fixture: bun:test convention
     await store.addToneSnippet('B', 'Y', 'b')
     expect(rpcMock).toHaveBeenCalledWith('add_tone_snippet', {
       p_brand_id: 'b1', p_label: 'B', p_category: 'Y', p_content: 'b',
@@ -1086,7 +1086,7 @@ describe('useBrandKitStore', () => {
 
   test('addToneSnippet rolls back on error', async () => {
     const store = useBrandKitStore()
-    rpcMock.mockResolvedValueOnce({ data: null, error: { code: 'P0001', message: 'cap_exceeded' } } as any)
+    rpcMock.mockResolvedValueOnce({ data: null, error: { code: 'P0001', message: 'cap_exceeded' } } as any)  // test-fixture: bun:test convention
     await expect(store.addToneSnippet('B', 'Y', 'b')).rejects.toThrow()
     const brands = useBrandsStore()
     expect(brands.selectedBrand?.tone_snippets).toHaveLength(1) // rolled back
@@ -1304,7 +1304,7 @@ const fetchMock = mock(() => Promise.resolve(new Response(JSON.stringify({
   font_id: 'f1', file_path: 'brand-fonts/b1/f1.woff2', family_name: 'Test',
 }), { status: 200 })))
 
-global.fetch = fetchMock as any
+global.fetch = fetchMock as any  // test-fixture: bun:test convention
 
 describe('useBrandFontsStore', () => {
   beforeEach(() => {
@@ -1499,7 +1499,7 @@ describe('useBrandKitDrag', () => {
     const { onColorDragStart } = useBrandKitDrag('brand-1')
     const e = makeDragEvent()
     onColorDragStart({ id: 's1', hex: '#FA5400', label: 'Flame', order: 1 }, e)
-    expect((e.dataTransfer!.setData as any)).toHaveBeenCalledWith(
+    expect((e.dataTransfer!.setData as any)).toHaveBeenCalledWith(  // test-fixture: bun:test convention
       'application/x-kova-brand-color',
       JSON.stringify({ hex: '#FA5400', swatchId: 's1', brandId: 'brand-1' }),
     )
@@ -1509,8 +1509,8 @@ describe('useBrandKitDrag', () => {
   test('onFontDragStart sets x-kova-brand-font MIME', () => {
     const { onFontDragStart } = useBrandKitDrag('brand-1')
     const e = makeDragEvent()
-    onFontDragStart({ id: 'f1', family_name: 'Inter Tight', file_path: 'p' } as any, e)
-    expect((e.dataTransfer!.setData as any)).toHaveBeenCalledWith(
+    onFontDragStart({ id: 'f1', family_name: 'Inter Tight', file_path: 'p' } as any, e)  // test-fixture: bun:test convention
+    expect((e.dataTransfer!.setData as any)).toHaveBeenCalledWith(  // test-fixture: bun:test convention
       'application/x-kova-brand-font',
       expect.stringContaining('Inter Tight'),
     )
@@ -1520,7 +1520,7 @@ describe('useBrandKitDrag', () => {
     const { onLogoDragStart } = useBrandKitDrag('brand-1')
     const e = makeDragEvent()
     onLogoDragStart({ assetId: 'a1', kind: 'logo', url: 'https://.../logo.svg' }, e)
-    expect((e.dataTransfer!.setData as any)).toHaveBeenCalledWith(
+    expect((e.dataTransfer!.setData as any)).toHaveBeenCalledWith(  // test-fixture: bun:test convention
       'application/x-kova-brand-asset',
       JSON.stringify({ assetId: 'a1', kind: 'logo', url: 'https://.../logo.svg', brandId: 'brand-1' }),
     )
@@ -1530,7 +1530,7 @@ describe('useBrandKitDrag', () => {
     const { onSavedBlockDragStart } = useBrandKitDrag('brand-1')
     const e = makeDragEvent()
     onSavedBlockDragStart({ id: 'b1', label: 'CTA', category: 'CTA', content: 'Shop now', type: 'cta', order: 0 }, e)
-    const setDataCall = (e.dataTransfer!.setData as any).mock.calls[0]
+    const setDataCall = (e.dataTransfer!.setData as any).mock.calls[0]  // test-fixture: bun:test convention
     expect(setDataCall[0]).toBe('application/x-kova-saved-block')
     const payload = JSON.parse(setDataCall[1])
     expect(payload).toEqual({
@@ -1630,7 +1630,7 @@ const supabaseFromMock = mock(() => ({
 }))
 
 const fetchMock = mock(() => Promise.resolve(new Response(JSON.stringify({ success: true }), { status: 200 })))
-global.fetch = fetchMock as any
+global.fetch = fetchMock as any  // test-fixture: bun:test convention
 
 mock.module('@/lib/supabase', () => ({
   supabase: { from: supabaseFromMock, auth: { getSession: () => Promise.resolve({ data: { session: { access_token: 'tok' } } }) } },
@@ -1646,7 +1646,7 @@ describe('useVoiceDraft', () => {
         draft_payload: { voice: { content: 'V' }, tone_snippets: [] },
         created_at: '2026-01-01', confirmed_at: null, discarded_at: null,
       }, error: null }) }) }) }),
-    } as any)
+    } as any)  // test-fixture: bun:test convention
     const vd = useVoiceDraft()
     await vd.loadDraftForBrand('b1')
     expect(vd.draft.value?.id).toBe('d1')
@@ -1668,7 +1668,7 @@ describe('useVoiceDraft', () => {
     const body = JSON.parse(init.body as string)
     expect(body.draft_id).toBe('d1')
     expect(body.edited_payload.voice.content).toBe('edited')
-    expect((init.headers as any)['X-Idempotency-Key']).toBeTruthy()
+    expect((init.headers as any)['X-Idempotency-Key']).toBeTruthy()  // test-fixture: bun:test convention
   })
 
   test('discardDraft POSTs to discard endpoint and clears state', async () => {
@@ -1836,7 +1836,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Read back counts for response
   const { data: brand } = await supabase.from('brands').select('identity, tone_snippets').eq('id', brandId).single()
   const voiceWordCount = brand?.identity?.voice?.word_count ?? 0
-  const toneSnippetCount = (brand?.tone_snippets as any[])?.length ?? 0
+  const toneSnippetCount = (brand?.tone_snippets as any[])?.length ?? 0  // W0-9 Bucket D: tone_snippets jsonb column — Supabase typegen renders as Json (untyped)
 
   const body = { success: true, voice_word_count: voiceWordCount, tone_snippet_count: toneSnippetCount }
   if (idempKey) await recordIdempotency(auth.userId, idempKey, { status: 200, body })
