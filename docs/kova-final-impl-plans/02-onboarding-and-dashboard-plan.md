@@ -880,7 +880,7 @@ describe('fetchFavicon', () => {
       onerror: (() => void) | null = null
       set src(_v: string) { queueMicrotask(() => this.onload?.()) }
     }
-    global.Image = MockImage as any
+    global.Image = MockImage as any  // test-fixture: bun:test convention
     const result = await fetchFavicon('nike.com')
     expect(result).toBe('https://nike.com/favicon.ico')
   })
@@ -891,7 +891,7 @@ describe('fetchFavicon', () => {
       onerror: (() => void) | null = null
       set src(_v: string) { queueMicrotask(() => this.onerror?.()) }
     }
-    global.Image = MockImage as any
+    global.Image = MockImage as any  // test-fixture: bun:test convention
     const result = await fetchFavicon('does-not-exist.example')
     expect(result).toBeNull()
   })
@@ -1071,7 +1071,7 @@ describe('useGreeting', () => {
   test('morning 04:00–11:59', () => {
     mock.module('@/utils/clock', () => ({ now: () => at(8) }))
     const auth = useAuthStore()
-    auth.profile = { name: 'Jiho Yang' } as any
+    auth.profile = { name: 'Jiho Yang' } as any  // test-fixture: bun:test convention
     expect(useGreeting().value).toBe('Good morning, Jiho')
   })
 
@@ -1726,8 +1726,8 @@ describe('BrandKitStep', () => {
   test('rejects files >25 MB', async () => {
     const w = mount(BrandKitStep)
     const big = new File(['x'.repeat(26_000_000)], 'huge.pdf', { type: 'application/pdf' })
-    await (w.vm as any).onFiles([big])
-    expect((w.vm as any).rejectedFiles[0].reason).toBe('too-large')
+    await (w.vm as any).onFiles([big])  // test-fixture: bun:test convention
+    expect((w.vm as any).rejectedFiles[0].reason).toBe('too-large')  // test-fixture: bun:test convention
   })
 
   test('emits skip on "Do this later"', async () => {
@@ -1738,7 +1738,7 @@ describe('BrandKitStep', () => {
 
   test('emits commit with files + guidelines on "Extract and continue"', async () => {
     const w = mount(BrandKitStep)
-    ;(w.vm as any).guidelines = 'No bolds in body copy.'
+    ;(w.vm as any).guidelines = 'No bolds in body copy.'  // test-fixture: bun:test convention
     await w.find('button.btn.primary').trigger('click')
     expect(w.emitted('commit')?.[0][0]).toEqual({ files: [], guidelines: 'No bolds in body copy.' })
   })
@@ -2183,14 +2183,14 @@ describe('BrandSwitcher', () => {
 
   test('shows current brand name + caret', () => {
     const store = useBrandsStore()
-    store.brands = [{ id: 'b1', name: 'Nike' }, { id: 'b2', name: 'Allbirds' }] as any
+    store.brands = [{ id: 'b1', name: 'Nike' }, { id: 'b2', name: 'Allbirds' }] as any  // test-fixture: bun:test convention
     const w = mount(BrandSwitcher, { props: { currentBrand: store.brands[0] } })
     expect(w.find('.brand-switch .name').text()).toBe('Nike')
   })
 
   test('emits select on dropdown brand click', async () => {
     const store = useBrandsStore()
-    store.brands = [{ id: 'b1', name: 'Nike' }, { id: 'b2', name: 'Allbirds' }] as any
+    store.brands = [{ id: 'b1', name: 'Nike' }, { id: 'b2', name: 'Allbirds' }] as any  // test-fixture: bun:test convention
     const w = mount(BrandSwitcher, { props: { currentBrand: store.brands[0] } })
     await w.find('.brand-switch').trigger('click')
     // Reka DropdownMenu items are in a portal; query by aria-label or test-id
@@ -2382,7 +2382,7 @@ describe('SideFooter', () => {
   test('shows user initials in avatar', () => {
     setActivePinia(createPinia())
     const auth = useAuthStore()
-    auth.profile = { name: 'Jiho Yang', email: 'jiho@example.com', plan: 'free' } as any
+    auth.profile = { name: 'Jiho Yang', email: 'jiho@example.com', plan: 'free' } as any  // test-fixture: bun:test convention
     const w = mount(SideFooter)
     expect(w.find('.avatar').text()).toBe('JY')
   })
@@ -2390,7 +2390,7 @@ describe('SideFooter', () => {
   test('shows plan label', () => {
     setActivePinia(createPinia())
     const auth = useAuthStore()
-    auth.profile = { name: 'Jiho Yang', email: 'jiho@example.com', plan: 'pro' } as any
+    auth.profile = { name: 'Jiho Yang', email: 'jiho@example.com', plan: 'pro' } as any  // test-fixture: bun:test convention
     const w = mount(SideFooter)
     expect(w.find('.who span').text()).toBe('Pro plan')
   })
@@ -2398,7 +2398,7 @@ describe('SideFooter', () => {
   test('plan defaults to "Free plan" when users.plan absent', () => {
     setActivePinia(createPinia())
     const auth = useAuthStore()
-    auth.profile = { name: 'Anon', email: 'a@b' } as any
+    auth.profile = { name: 'Anon', email: 'a@b' } as any  // test-fixture: bun:test convention
     const w = mount(SideFooter)
     expect(w.find('.who span').text()).toBe('Free plan')
   })
@@ -2423,7 +2423,7 @@ const initials = computed(() => {
 })
 
 const planLabel = computed(() => {
-  const plan = (auth.profile as any)?.plan ?? 'free'
+  const plan = (auth.profile as any)?.plan ?? 'free'  // W0-9 Bucket D: profile field populated by Cluster 04 billing layer
   return plan === 'pro' ? 'Pro plan' : 'Free plan'
 })
 </script>
@@ -2740,7 +2740,7 @@ describe('Composer', () => {
   test('chip click seeds composer input with preset.seedText', async () => {
     const w = mount(Composer)
     await w.findAll('.composer-chip')[0].trigger('click')
-    expect((w.vm as any).draft).toContain('Promote a sale:')
+    expect((w.vm as any).draft).toContain('Promote a sale:')  // test-fixture: bun:test convention
   })
 
   test('submit with empty input is no-op', async () => {
@@ -2751,7 +2751,7 @@ describe('Composer', () => {
 
   test('submit emits with current draft', async () => {
     const w = mount(Composer)
-    ;(w.vm as any).draft = 'Spring sale'
+    ;(w.vm as any).draft = 'Spring sale'  // test-fixture: bun:test convention
     await w.find('button.btn.accent.go').trigger('click')
     expect(w.emitted('submit')?.[0][0]).toBe('Spring sale')
   })
@@ -2782,7 +2782,7 @@ function onSubmit(): void {
   if (!draft.value.trim() || state.value !== 'idle') return
   // Parent owns the actual submit — emit and let parent drive state transitions
   // via prop binding through CanvasCreationTransition
-  ;(window as any).__lastComposerSubmit = draft.value  // for test hooks
+  ;(window as any).__lastComposerSubmit = draft.value  // for test hooks  // W0-9 Bucket D: cross-cluster ambient window global
 }
 
 defineExpose({ draft, state })
@@ -2823,18 +2823,18 @@ import FileThumbnail from '@/components/dashboard/FileThumbnail.vue'
 
 describe('FileThumbnail', () => {
   test('renders thumbnail_url img when present', () => {
-    const w = mount(FileThumbnail, { props: { canvas: { id: 'c1', name: 'A', thumbnail_url: '/x.png' } as any } })
+    const w = mount(FileThumbnail, { props: { canvas: { id: 'c1', name: 'A', thumbnail_url: '/x.png' } as any } })  // test-fixture: bun:test convention
     expect(w.find('img').attributes('src')).toBe('/x.png')
   })
 
   test('falls back to abstraction when no thumbnail_url', () => {
-    const w = mount(FileThumbnail, { props: { canvas: { id: 'c1', name: 'A', thumbnail_url: null } as any } })
+    const w = mount(FileThumbnail, { props: { canvas: { id: 'c1', name: 'A', thumbnail_url: null } as any } })  // test-fixture: bun:test convention
     expect(w.find('.thumb-frame, .thumb-flow, .thumb-ab').exists()).toBe(true)
   })
 
   test('abstraction deterministic for same canvas id', () => {
-    const w1 = mount(FileThumbnail, { props: { canvas: { id: 'c1', name: 'A', thumbnail_url: null } as any } })
-    const w2 = mount(FileThumbnail, { props: { canvas: { id: 'c1', name: 'A', thumbnail_url: null } as any } })
+    const w1 = mount(FileThumbnail, { props: { canvas: { id: 'c1', name: 'A', thumbnail_url: null } as any } })  // test-fixture: bun:test convention
+    const w2 = mount(FileThumbnail, { props: { canvas: { id: 'c1', name: 'A', thumbnail_url: null } as any } })  // test-fixture: bun:test convention
     expect(w1.html()).toBe(w2.html())
   })
 })
@@ -2960,20 +2960,20 @@ describe('FileCard', () => {
     const w = mount(FileCard, { props: { canvas: {
       id: 'c1', name: 'Spring Drop', status: 'scheduled', frame_count: 4,
       updated_at: new Date().toISOString(), thumbnail_url: null,
-    } as any } })
+    } as any } })  // test-fixture: bun:test convention
     expect(w.find('.title').text()).toBe('Spring Drop')
     expect(w.find('.status-tag').text().toLowerCase()).toBe('scheduled')
     expect(w.find('.frame-count').text()).toBe('4')
   })
 
   test('emits open on click', async () => {
-    const w = mount(FileCard, { props: { canvas: { id: 'c1', name: 'X', updated_at: '' } as any } })
+    const w = mount(FileCard, { props: { canvas: { id: 'c1', name: 'X', updated_at: '' } as any } })  // test-fixture: bun:test convention
     await w.find('.file-card').trigger('click')
     expect(w.emitted('open')).toBeTruthy()
   })
 
   test('emits context-menu on right-click', async () => {
-    const w = mount(FileCard, { props: { canvas: { id: 'c1', name: 'X', updated_at: '' } as any } })
+    const w = mount(FileCard, { props: { canvas: { id: 'c1', name: 'X', updated_at: '' } as any } })  // test-fixture: bun:test convention
     await w.find('.file-card').trigger('contextmenu')
     expect(w.emitted('context-menu')).toBeTruthy()
   })
@@ -2992,7 +2992,7 @@ import type { Canvas } from '@/types/kova/database'
 const props = defineProps<{ canvas: Canvas }>()
 defineEmits<{ open: [canvasId: string]; 'context-menu': [{ canvasId: string; position: { x: number; y: number } }] }>()
 
-const statusKind = computed(() => (props.canvas as any).status ?? 'draft')
+const statusKind = computed(() => (props.canvas as any).status ?? 'draft')  // W0-9 Bucket D: extended Canvas fields populated by Cluster 06 (engine internals)
 const statusLabel = computed(() => statusKind.value.charAt(0).toUpperCase() + statusKind.value.slice(1))
 </script>
 
@@ -3004,7 +3004,7 @@ const statusLabel = computed(() => statusKind.value.charAt(0).toUpperCase() + st
   >
     <FileThumbnail :canvas="canvas" />
     <span class="status-tag" :class="statusKind">{{ statusLabel }}</span>
-    <span v-if="(canvas as any).frame_count" class="frame-count">{{ (canvas as any).frame_count }}</span>
+    <span v-if="(canvas as any).frame_count" class="frame-count">{{ (canvas as any).frame_count }}</span>  // W0-9 Bucket D: extended Canvas fields populated by Cluster 06 (engine internals)
     <div class="meta">
       <div class="title">{{ canvas.name }}</div>
       <div class="sub">
@@ -3590,7 +3590,7 @@ watch(() => route.params.brandId, (next) => {
 })
 
 function onNewCanvas() {
-  const recents = router.currentRoute.value.matched[1]?.instances?.default as any
+  const recents = router.currentRoute.value.matched[1]?.instances?.default as any  // W0-9 Bucket D: vue-router internal API (instances field) — typings narrow
   if (recents?.onNewCanvas) void recents.onNewCanvas()
 }
 </script>
