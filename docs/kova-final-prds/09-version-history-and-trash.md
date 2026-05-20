@@ -517,7 +517,9 @@ ON CONFLICT (id) DO NOTHING;
 
 Two Vercel Functions under `kova-open-pencil-1/api/`. Fluid Compute runtime (matches PRD 01 + M9 pattern). Idempotency-key handling per Cluster 11 cross-cut.
 
-**Hardening (W0-5 / founder lock #15):** every `CREATE FUNCTION ... SECURITY DEFINER` RPC defined by this PRD MUST include `SET search_path = public, pg_temp` within the same function definition. CI-enforced — `bun run check:rls` (Plan 11 Task 11.5) fails on any DEFINER block missing the clause. CT-013 from CONSOLIDATED-TRIAGE.md flagged the 3 DEFINER RPCs in this cluster as missing the lock; the Cluster 09 Wave-4 fix agent adds the clause during its pass.
+**Hardening (W0-5 / founder lock #15):** every `CREATE FUNCTION ... SECURITY DEFINER` RPC defined by this PRD MUST include `SET search_path = public, pg_temp` within the same function definition. CI-enforced — `bun run check:rls` (Plan 11 Task 11.5) fails on any DEFINER block missing the clause.
+
+**CT-013 status (W4, 2026-05-19): CLOSED.** Verified all 4 SECURITY DEFINER RPCs in §4.1 (`create_snapshot` line 251, `restore_snapshot` line 315, `rename_snapshot` line 365, `purge_canvas_snapshot_paths` line 398) declare `SECURITY DEFINER` immediately followed by `SET search_path = public, pg_temp` on the next line. No remediation edits needed; the lock was already present at PRD-authoring time. The W4 fix agent confirmed via grep + line-level read and added this close-out note.
 
 ---
 
