@@ -755,7 +755,7 @@ Engine tools registered via `toolsToAI(CORE_TOOLS, ...)` in `createAITools(store
 
 - [ ] Right panel has exactly two tabs visible: Design and **AI** (default-active on first canvas open per PRD 06 §12.13 founder ratification 2026-05-17). Prototype tab is NOT rendered anywhere in Kova. Tab labels visible at all viewport widths ≥ 1024px.
 - [ ] Clicking the AI tab activates a `<ChatPanel>` content slot that renders empty-state, message list (if messages exist), per-conversation tab strip, and composer.
-- [ ] Default-active tab on canvas load = Design (matches Figma's first-tab default).
+- [ ] Default-active tab on first canvas open = **AI** (per PRD 06 §12.13 founder ratification 2026-05-17; W0-7 propagation 2026-05-19; W4 CT-005 close-out). Subsequent opens read per-canvas `localStorage[right-panel-tab:${canvasId}]`.
 - [ ] The previous `<ChatPopup>` floating element no longer renders on `/canvas/:canvasId`. Removed from `EditorView.vue`.
 - [ ] Chat persistence (per-canvas, multiple conversations) works identically to M5 — switching canvases switches the conversation list; switching tabs within a canvas switches the active message stream.
 - [ ] Switching from canvas A to canvas B preserves canvas A's chat state (per-canvas independence per M5 decision); returning to canvas A restores its active conversation + messages from Supabase.
@@ -969,7 +969,7 @@ Dispatch recommends cap=10 with "first 10 by user-defined order." If a brand has
 
 **Decisions ratified by founder during PRD 10 review:**
 - Final right-panel tab order: **Design / AI** (2 tabs only).
-- Default-active tab on canvas load: **Design** (matches Figma's first-tab default per CLAUDE.md "what Figma does, Kova does" rule).
+- Default-active tab on first canvas open: **AI** (per PRD 06 §12.13 founder ratification 2026-05-17 — surfacing the chat-first differentiator. Supersedes the earlier "Design default" pick from initial drafts; W0-7 propagation 2026-05-19; W4 CT-005 close-out 2026-05-19.). Subsequent opens persist per-canvas via `localStorage[right-panel-tab:${canvasId}]`.
 - **Figma's Prototype tab is dropped entirely** from Kova's right-panel. Reason: Kova exports static email images, not clickable interactive prototypes. Prototype tab has zero use case in the email-design pipeline.
 - Scope plan §3 Cluster 06 line 237 ("Design only at MVP — Prototype DEFERRED") is **superseded** by "Design + AI tabs only; Prototype out of scope entirely."
 
