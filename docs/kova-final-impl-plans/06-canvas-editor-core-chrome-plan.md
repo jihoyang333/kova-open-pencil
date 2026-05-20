@@ -1834,8 +1834,8 @@ function onUp(e: PointerEvent) {
 </script>
 <template>
   <div
-    class="rh"
-    :class="{ dragging }"
+    class="h-1 cursor-row-resize hover:bg-[var(--kc-border-focus)]"
+    :class="{ 'bg-[var(--kc-border-focus)]': dragging }"
     role="separator"
     aria-orientation="horizontal"
     :aria-label="`Resize ${section} section`"
@@ -1845,11 +1845,9 @@ function onUp(e: PointerEvent) {
     @pointercancel="onUp"
   />
 </template>
-<style scoped>
-.rh { height: 4px; cursor: row-resize; }
-.rh:hover, .rh.dragging { background: var(--kc-border-focus); }
-</style>
 ```
+
+(No `<style scoped>` block — CLAUDE.md `Styling` rule: Tailwind utility classes only. The 4px height / row-resize cursor / hover-and-dragging background are all expressible inline. `var(--kc-border-focus)` flows through Tailwind's arbitrary-value syntax `bg-[var(...)]`.)
 
 Tests:
 

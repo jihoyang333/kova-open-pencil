@@ -3097,37 +3097,29 @@ In `CanvasView.vue` wrap the canvas stage with a pointer-events overlay tied to 
        longer need a JS handler to "let those events through." The previous
        window.__spaceHeld global hack is gone; the space-drag composable
        (Cluster 06) owns its own pannable ref. -->
-  <div class="canvas-stage" :class="{ 'edit-locked': editLock.isLocked.value }">
+  <div
+    class="relative"
+    :class="editLock.isLocked.value
+      ? '[&_.toolbar_.tool:not(.move)]:opacity-40 [&_.toolbar_.tool:not(.move)]:pointer-events-none'
+      : ''"
+  >
     <CanvasRenderer />
-    <div class="edit-lock-overlay" aria-hidden="true" />
+    <div
+      class="absolute inset-0"
+      :class="editLock.isLocked.value
+        ? 'pointer-events-auto cursor-not-allowed'
+        : 'pointer-events-none cursor-default'"
+      aria-hidden="true"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 const editLock = useCanvasEditLock()
 </script>
-
-<style scoped>
-/* Default: overlay is in the DOM but transparent to pointer events. */
-.edit-lock-overlay {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  cursor: default;
-}
-/* When the panel locks the canvas, the overlay swallows mouse-down + click and shows
-   the "not-allowed" cursor. Window-level keydown (pan / zoom / nudge) is unaffected
-   because keyboard events do not propagate through pointer-events. */
-.canvas-stage.edit-locked .edit-lock-overlay {
-  pointer-events: auto;
-  cursor: not-allowed;
-}
-.canvas-stage.edit-locked .toolbar .tool:not(.move) {
-  opacity: 0.4;
-  pointer-events: none;
-}
-</style>
 ```
+
+(No `<style scoped>` block — CLAUDE.md `Styling` rule: Tailwind utility classes only. The three former CSS rules — overlay default-passthrough, overlay locked-swallow, toolbar non-move-tool dim — are all expressible inline. The cross-component descendant selector (`.toolbar .tool:not(.move)`) uses Tailwind 4's arbitrary-variant syntax `[&_<selector>]:`; only fires when `editLock.isLocked.value` is true. Window-level keydown (pan / zoom / nudge) is still unaffected because pointer-events isolation doesn't touch keyboard events.)
 
 The toolbar-disable selector targets Cluster 06's `.toolbar .tool` markup. Cluster 06's PRD must confirm this is the expected class — if not, refactor to use the `useCanvasEditLock.isLocked` ref in the toolbar component itself.
 
