@@ -3134,7 +3134,7 @@ describe('DashboardSkeleton', () => {
 
   test('shimmer animation class applied', () => {
     const w = mount(DashboardSkeleton)
-    expect(w.findAll('.shimmer').length).toBeGreaterThan(0)
+    expect(w.findAll('.animate-shimmer').length).toBeGreaterThan(0)
   })
 })
 ```
@@ -3147,37 +3147,46 @@ describe('DashboardSkeleton', () => {
 <template>
   <div class="dashboard-skeleton">
     <aside class="sidebar">
-      <div class="shimmer h-10 m-3 rounded" />
-      <div v-for="i in 6" :key="i" class="shimmer h-6 mx-3 my-1 rounded" />
+      <div class="bg-[linear-gradient(90deg,var(--rail)_0%,var(--fill)_50%,var(--rail)_100%)] [background-size:200%_100%] animate-shimmer h-10 m-3 rounded" />
+      <div v-for="i in 6" :key="i" class="bg-[linear-gradient(90deg,var(--rail)_0%,var(--fill)_50%,var(--rail)_100%)] [background-size:200%_100%] animate-shimmer h-6 mx-3 my-1 rounded" />
     </aside>
     <main class="main">
-      <header class="topbar"><div class="shimmer h-5 w-32 rounded" /></header>
+      <header class="topbar"><div class="bg-[linear-gradient(90deg,var(--rail)_0%,var(--fill)_50%,var(--rail)_100%)] [background-size:200%_100%] animate-shimmer h-5 w-32 rounded" /></header>
       <div class="content">
-        <div class="shimmer h-7 w-64 mx-auto rounded mt-6" />
-        <div class="shimmer h-24 w-full max-w-[760px] mx-auto rounded-2xl mt-6" />
+        <div class="bg-[linear-gradient(90deg,var(--rail)_0%,var(--fill)_50%,var(--rail)_100%)] [background-size:200%_100%] animate-shimmer h-7 w-64 mx-auto rounded mt-6" />
+        <div class="bg-[linear-gradient(90deg,var(--rail)_0%,var(--fill)_50%,var(--rail)_100%)] [background-size:200%_100%] animate-shimmer h-24 w-full max-w-[760px] mx-auto rounded-2xl mt-6" />
         <div class="file-grid mt-10">
           <div v-for="i in 8" :key="i" class="skeleton-card">
-            <div class="shimmer aspect-[4/3] rounded" />
-            <div class="shimmer h-3 w-3/4 mt-3 rounded" />
-            <div class="shimmer h-3 w-1/2 mt-1 rounded" />
+            <div class="bg-[linear-gradient(90deg,var(--rail)_0%,var(--fill)_50%,var(--rail)_100%)] [background-size:200%_100%] animate-shimmer aspect-[4/3] rounded" />
+            <div class="bg-[linear-gradient(90deg,var(--rail)_0%,var(--fill)_50%,var(--rail)_100%)] [background-size:200%_100%] animate-shimmer h-3 w-3/4 mt-3 rounded" />
+            <div class="bg-[linear-gradient(90deg,var(--rail)_0%,var(--fill)_50%,var(--rail)_100%)] [background-size:200%_100%] animate-shimmer h-3 w-1/2 mt-1 rounded" />
           </div>
         </div>
       </div>
     </main>
   </div>
 </template>
-
-<style scoped>
-.shimmer {
-  background: linear-gradient(90deg, var(--rail) 0%, var(--fill) 50%, var(--rail) 100%);
-  background-size: 200% 100%;
-  animation: shimmer 1.4s ease-in-out infinite;
-}
-@keyframes shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
-</style>
 ```
 
-(Note: CLAUDE.md `Styling` rule says Tailwind only — no `<style>` blocks. Use Tailwind animation utilities + global keyframe declared in `app.css`. Engineer adjusts on commit.)
+**Tailwind shimmer setup (one-time, in `src/app.css` + `tailwind.config.ts`):**
+
+```css
+/* src/app.css — global keyframe (no <style scoped> blocks per CLAUDE.md) */
+@keyframes shimmer {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
+}
+```
+
+```ts
+// tailwind.config.ts — register animate-shimmer utility (Tailwind 4 @theme syntax)
+// @theme {
+//   --animate-shimmer: shimmer 1.4s ease-in-out infinite;
+// }
+// Or equivalent v3 config: theme.extend.animation.shimmer = 'shimmer 1.4s ease-in-out infinite'
+```
+
+After the keyframe + utility are registered, `animate-shimmer` is a standard Tailwind class — no inline `<style>` block, no `.shimmer` class. CLAUDE.md `Styling` rule satisfied (Tailwind utility classes only).
 
 - [ ] **Step 4: PASS**
 
