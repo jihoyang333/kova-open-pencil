@@ -2,17 +2,17 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Ship the Figma-exact version-history panel + 30-min autosnapshot heartbeat + atomic restore + trash-confirm modal for PRD 09 (`docs/prd/09-version-history-and-trash.md`).
+**Goal:** Ship the Figma-exact version-history panel + 30-min autosnapshot heartbeat + atomic restore + trash-confirm modal for PRD 09 (`docs/kova-final-prds/09-version-history-and-trash.md`).
 
 **Architecture:** Single Postgres migration (1 table + 4 RPCs + RLS) + 1 private Storage bucket (`canvas-snapshots`) + 2 Vercel Edge Functions (`duplicate-to-canvas`, `cron/snapshot-prune`) + Pinia store + 6 composables + 9 Vue components. Snapshot bytes are Yjs Kiwi-encoded + Zstd-compressed. Restore is atomic with a pre-restore snapshot pushed to Yjs undo. Trash is dashboard-only (per founder 2026-05-09); the canvas-side dropdown does NOT carry "Move to trash". This PRD does NOT modify `packages/core/` (CLAUDE.md hard constraint preserved).
 
 **Tech Stack:** Supabase Postgres + Storage; SECURITY DEFINER RPCs (`plpgsql`); Vercel Functions (Fluid Compute) in `kova-open-pencil-1/api/`; `@supabase/supabase-js`; existing `yjs`, `kiwi-schema`, `@bokuweb/zstd-wasm` deps from OpenPencil `packages/core/codec`; Vue 3 Composition API + Pinia setup stores + Reka UI primitives + Tailwind CSS 4 + Lucide icons via `unplugin-icons`. Tests: `bun:test` (unit + integration via local Supabase) + Playwright/Vercel Agent Browser (E2E).
 
 **Reference docs:**
-- PRD: `kova-open-pencil-1/docs/prd/09-version-history-and-trash.md`
+- PRD: `kova-open-pencil-1/docs/kova-final-prds/09-version-history-and-trash.md`
 - Hi-fi: `main-main-kova-scope/batch-b/chunk-b6/Kova Hi-Fi 17 Version History - Dark.html` (11 scenes), `main-main-kova-scope/batch-b/chunk-b2/Kova Hi-Fi 15 Trash Confirm - Dark.html` (3 scenes)
 - Design system: `main-main-kova-scope/design-system/{design.md, kova-hifi.css, TOKEN_CANONICAL.md}`
-- Audit base: `kova-open-pencil-1/docs/prd/00c-COMPREHENSIVE_AUDIT_REPORT.md` lines 1764–1945
+- Audit base: `kova-open-pencil-1/docs/kova-final-prds/00c-COMPREHENSIVE_AUDIT_REPORT.md` lines 1764–1945
 
 ---
 
@@ -149,7 +149,7 @@ Expected: FAIL with "table canvas_snapshots does not exist" (migration not yet a
 
 - [ ] **Step 3: Write the migration**
 
-Open `kova-open-pencil-1/docs/prd/09-version-history-and-trash.md` §4.1 and copy the SQL block verbatim into `kova-open-pencil-1/supabase/migrations/20260615_09_canvas_snapshots.sql`. Then append the bucket-provisioning SQL from §4.3 and the two test-helper RPCs:
+Open `kova-open-pencil-1/docs/kova-final-prds/09-version-history-and-trash.md` §4.1 and copy the SQL block verbatim into `kova-open-pencil-1/supabase/migrations/20260615_09_canvas_snapshots.sql`. Then append the bucket-provisioning SQL from §4.3 and the two test-helper RPCs:
 
 ```sql
 -- ---- 5. Test-helper RPCs (used by integration tests only; safe in prod — read-only meta) ----
@@ -1129,7 +1129,7 @@ describe('useSnapshotsStore', () => {
 
 - [ ] **Step 2: Implement store from PRD §6.2 verbatim**
 
-Open `kova-open-pencil-1/docs/prd/09-version-history-and-trash.md` §6.2; reproduce the body 1:1 in `kova-open-pencil-1/src/stores/snapshots.ts`. Replace inline `// ...` placeholders with concrete bodies that satisfy the tests above:
+Open `kova-open-pencil-1/docs/kova-final-prds/09-version-history-and-trash.md` §6.2; reproduce the body 1:1 in `kova-open-pencil-1/src/stores/snapshots.ts`. Replace inline `// ...` placeholders with concrete bodies that satisfy the tests above:
 
 ```typescript
 // kova-open-pencil-1/src/stores/snapshots.ts (excerpt — full body from PRD §6.2)
@@ -3172,13 +3172,13 @@ Expected: all green; jscpd < 3%; no oxlint errors.
 
 - [ ] **Step 3: Bump PRD §0 status to `IN-IMPLEMENTATION` once smoke is green; bump to `SHIPPED` once production deploy completes**
 
-- [ ] **Step 4: Update `docs/prd/00a-PRD_AUTHORING_GUIDE.md` §7 tracker row for Cluster 09: status `IN-IMPLEMENTATION` then `SHIPPED`**
+- [ ] **Step 4: Update `docs/kova-final-prds/00a-PRD_AUTHORING_GUIDE.md` §7 tracker row for Cluster 09: status `IN-IMPLEMENTATION` then `SHIPPED`**
 
 - [ ] **Step 5: Final commit**
 
 ```bash
-git add kova-open-pencil-1/docs/prd/09-version-history-and-trash.md \
-        kova-open-pencil-1/docs/prd/00a-PRD_AUTHORING_GUIDE.md
+git add kova-open-pencil-1/docs/kova-final-prds/09-version-history-and-trash.md \
+        kova-open-pencil-1/docs/kova-final-prds/00a-PRD_AUTHORING_GUIDE.md
 git commit -m "docs(09): mark PRD 09 as IN-IMPLEMENTATION"
 ```
 
