@@ -4,11 +4,11 @@
 
 | Field | Value |
 |---|---|
-| **Status** | `DRAFT` 2026-05-15 (author: Claude Opus 4.7) |
+| **Status** | `IN-REVIEW 2026-05-17` (founder-finalized 2026-05-17; W4 QA pass 2026-05-19) |
 | **Wave** | 6 (closing wave) |
 | **Author** | Claude (Opus 4.7) |
 | **Reviewer** | Jiho Yang (founder) |
-| **Last updated** | 2026-05-15 |
+| **Last updated** | 2026-05-19 |
 | **Depends on PRDs** | 05 (Brand Kit ships `tone_snippets` read API); 06 (canvas chrome hosts the chat tab in the right panel); 07a (Slice NodeType + **page-level Measurement methods** on the CANVAS-typed SceneNode — Measurement is NOT a NodeType, per PRD 07a §7.1b / §12.10; W0-7 propagation 2026-05-19; W4 CT-004 close-out 2026-05-19 — the AI tool wrappers in this PRD register against these); 11 (toast, modal, skeleton primitives). |
 | **Blocks PRDs** | None (closing-wave cluster). |
 | **Source artifacts** | M5 + M5.5 prior implementation (`useChatStore`, `useBrandMemoriesStore`, `buildSystemPrompt`, `createKovaTools`, `ai-proxy/v1/messages`). Audit `00c §2.A` Cluster 10 lines 1946–2007 (lifted as base draft). `00c §1.E.1` Check 5 (no-Shopify-connected error UX gap). Shopify product-reference spec `docs/superpowers/specs/2026-05-14-shopify-product-reference-design.md` Rev 2 (composer-chip architecture D1–D9). Q-decisions: Q3 #14 (Boolean ops engine-ready), Q8 (tone-snippet injection), Q11 (Measurement — superseded 2026-05-17: measurements are page-level on CANVAS, NOT a NodeType, per PRD 07a §7.1b / §12.10; W0-7 propagation 2026-05-19), Q24 (saved-blocks payload — owned by 05, not this PRD). 03 doc cross-cuts §2.5 (Brand Kit), §2.7 (AI text suggestions DEFERRED), §2.13 (brand assets). |
