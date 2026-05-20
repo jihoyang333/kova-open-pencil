@@ -2478,7 +2478,7 @@ async function handleImport(): Promise<void> {
 }
 ```
 
-> **Cluster 06 dependency (W0-3 canonical):** `useRightPanelStore` at `@/stores/right-panel` with `setActiveTab('design' | 'ai')` is owned by Cluster 06 per §11 cross-cuts and scope plan §6 W0-3 lock. If the store doesn't exist yet, STOP — Cluster 06 must ship the 2-tab framework first matching this canonical name + path. Do NOT shim a local `useRightPanelTabStore` import — that name was retired by W0-3 on 2026-05-19.
+> **Cluster 06 dependency (W0-3 canonical, W4 C-HIGH10 verified):** `useRightPanelStore` at `@/stores/right-panel` with `setActiveTab('design' | 'ai')` is owned by Cluster 06 per §11 cross-cuts and scope plan §6 W0-3 lock. If the store doesn't exist yet, STOP — Cluster 06 must ship the 2-tab framework first matching this canonical name + path. Do NOT shim a local `useRightPanelTabStore` import — that name was retired by W0-3 on 2026-05-19. **W4 C-HIGH10 verification (2026-05-19):** plan-wide grep confirms zero remaining `useRightPanelTabStore` references; only `right-panel-tab-{design,ai,prototype}` DOM `data-test-id` selectors remain (selectors are E2E lookups, NOT store names — safe).
 
 - [ ] **Step 3: Test interactively + via E2E (E2E covered in Task 18)**
 
