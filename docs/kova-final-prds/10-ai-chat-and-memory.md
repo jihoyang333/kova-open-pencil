@@ -783,8 +783,8 @@ Engine tools registered via `toolsToAI(CORE_TOOLS, ...)` in `createAITools(store
 
 - [ ] `search_products` schema no longer accepts `bestsellers` as a `sort` value (`v.safeParse` fails for that value).
 - [ ] Each of the 5 Shopify tools returns `{ error, code: 'no_connection' }` (NOT empty arrays / nulls) when invoked for a brand with no `shopify_connections` row.
-- [ ] `createSliceFromSelection` AI tool calls `figma.createSliceFromSelection(...)` from Cluster 07a engine API and returns `{ success: true, sliceId }` on success / `{ error: 'No selection to slice', code: 'no_selection' }` on no-selection.
-- [ ] `addMeasurement` AI tool calls `figma.currentPage.addMeasurement(...)` (07a §7.1b page-level API — NOT a NodeType factory; W0-7 propagation 2026-05-19) and returns `{ success: true, measurementId }` or `{ error: ..., code: 'canvas_missing' | 'invalid_anchors' }`.
+- [ ] `createSliceFromSelection` AI tool calls `figma.createSliceFromSelection(...)` from Cluster 07a engine API and returns `{ success: true, sliceId }` on success / `{ error: 'No selection to slice', code: 'no_selection' }` on no-selection / `{ error: 'Slice engine API not available', code: 'engine_unavailable' }` if Cluster 07a engine API is missing at registration time.
+- [ ] `addMeasurement` AI tool calls `figma.currentPage.addMeasurement(...)` (07a §7.1b page-level API — NOT a NodeType factory; W0-7 propagation 2026-05-19) and returns `{ success: true, measurementId }` / `{ error: ..., code: 'invalid_anchors' }` / `{ error: 'Measurement engine API not available', code: 'engine_unavailable' }` (W4 C-LOW10.5: `engine_unavailable` added to acceptance to match Plan 10 Tasks 10 + 11; reserved for the runtime existence-check gate from §6.3.4 — fires when Cluster 07a slips and the engine API is absent at AI-tool registration).
 - [ ] All AI tools are valibot-validated via `valibotSchema()` per CLAUDE.md hard constraint (no Zod).
 - [ ] ToolLoopAgent + `@ai-sdk/anthropic` + the 16384 max output token budget + 50 step limit are unchanged from M5.
 

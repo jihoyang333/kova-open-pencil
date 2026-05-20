@@ -2377,7 +2377,10 @@ git commit -m "feat(prd10): refactor ChatPanel into full right-panel chat surfac
 ```typescript
 import { expect, test } from '@playwright/test'
 
-test('right-panel AI tab is visible + activates ChatPanel', async ({ page }) => {
+test('right-panel AI tab is visible + AI is default-active on first canvas open', async ({ page, context }) => {
+  // W4 C-LOW10.5 (b): assert AI tab is default-active per PRD 06 §12.13 + PRD 10 §1.3 (1).
+  // Use a fresh context so localStorage is clean — "first canvas open" is the contract.
+  await context.clearCookies()
   await page.goto('http://localhost:1420')
   // Login + open canvas via existing E2E fixture
   // ...
@@ -2387,7 +2390,7 @@ test('right-panel AI tab is visible + activates ChatPanel', async ({ page }) => 
   const popup = page.locator('.fixed.bottom-4.left-4')
   await expect(popup).toHaveCount(0)
 
-  // 2. Right-panel has Design + AI tabs only
+  // 2. Right-panel has Design + AI tabs only (no Prototype)
   const designTab = page.locator('[data-test-id="right-panel-tab-design"]')
   const aiTab = page.locator('[data-test-id="right-panel-tab-ai"]')
   const prototypeTab = page.locator('[data-test-id="right-panel-tab-prototype"]')
@@ -2395,9 +2398,25 @@ test('right-panel AI tab is visible + activates ChatPanel', async ({ page }) => 
   await expect(aiTab).toBeVisible()
   await expect(prototypeTab).toHaveCount(0)
 
-  // 3. Click AI → ChatPanel content active
-  await aiTab.click()
+  // 3. W4 C-LOW10.5 (b): AI tab is default-active on first canvas open.
+  //    Empty-state chat surface should be visible without any user click.
+  await expect(aiTab).toHaveAttribute('aria-selected', 'true')
   await expect(page.locator('[data-test-id="chat-empty-state"]')).toBeVisible()
+
+  // 4. Toggle Design then back → AI tab still works
+  await designTab.click()
+  await expect(designTab).toHaveAttribute('aria-selected', 'true')
+  await aiTab.click()
+  await expect(aiTab).toHaveAttribute('aria-selected', 'true')
+  await expect(page.locator('[data-test-id="chat-empty-state"]')).toBeVisible()
+})
+
+test('localStorage[right-panel-tab:${canvasId}] persists tab choice across reloads', async ({ page }) => {
+  await page.goto('http://localhost:1420/canvas/test-canvas-id')
+  await page.locator('[data-test-id="right-panel-tab-design"]').click()
+  await page.reload()
+  await expect(page.locator('[data-test-id="right-panel-tab-design"]'))
+    .toHaveAttribute('aria-selected', 'true')
 })
 ```
 
