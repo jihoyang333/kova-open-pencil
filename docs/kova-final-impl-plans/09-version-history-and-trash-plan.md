@@ -2415,7 +2415,8 @@ describe('POST /api/snapshots/duplicate-to-canvas', () => {
 ```typescript
 // kova-open-pencil-1/api/snapshots/duplicate-to-canvas.ts
 import { createClient } from '@supabase/supabase-js'
-import { verifyAuth } from '../_shared/auth'   // existing helper from M9 / Cluster 01
+import { verifyAuth } from '../_shared/auth'                // existing helper from M9 / Cluster 01
+import { verifyIdempotency } from '../_shared/idempotency'  // Plan 11 Task 1.3
 
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!
 const SUPABASE_URL = process.env.SUPABASE_URL!
@@ -2424,13 +2425,21 @@ export default async function handler(req: Request): Promise<Response> {
   const auth = await verifyAuth(req)
   if (!auth.ok) return new Response(JSON.stringify({ error: 'unauthenticated' }), { status: 401 })
 
-  const { snapshot_id, target_brand_id } = await req.json() as { snapshot_id: string; target_brand_id?: string }
-  if (!snapshot_id) return new Response(JSON.stringify({ error: 'bad_request' }), { status: 400 })
+  const body = await req.json() as { snapshot_id: string; target_brand_id?: string }
+  if (!body.snapshot_id) return new Response(JSON.stringify({ error: 'bad_request' }), { status: 400 })
+  const { snapshot_id, target_brand_id } = body
 
-  const idempKey = req.headers.get('x-idempotency-key')
-  // Idempotency dedup via Cluster 11's idempotency_keys table — pseudo
-  // const cached = await idempotencyLookup(auth.userId, snapshot_id, idempKey)
-  // if (cached) return Response.json(cached, { status: 200 })
+  // W4 C-MED22: real idempotency dedup via Plan 11 helper. Request is keyed by user + endpoint
+  // + body hash. A replay with the same key returns the cached response; a replay with a
+  // different body for the same key returns 422 (malformed-replay).
+  let idem: Awaited<ReturnType<typeof verifyIdempotency>>
+  try {
+    idem = await verifyIdempotency(req, auth.userId, 'POST /api/snapshots/duplicate-to-canvas')
+  } catch (e) {
+    const err = e as { status?: number; body?: unknown }
+    return new Response(JSON.stringify(err.body ?? { error: 'idempotency_error' }), { status: err.status ?? 500 })
+  }
+  if (idem.cached) return Response.json(idem.body, { status: idem.status })
 
   const userClient = createClient(SUPABASE_URL, SERVICE_KEY, {
     global: { headers: { authorization: req.headers.get('authorization')! } }
@@ -2483,9 +2492,11 @@ export default async function handler(req: Request): Promise<Response> {
     p_parent_snapshot_id: snapshot_id,
   })
 
-  const body = { canvas_id: newCanvasId, redirect_to: `/canvas/${newCanvasId}` }
-  // await idempotencyStore(auth.userId, snapshot_id, idempKey, body)
-  return Response.json(body, { status: 200 })
+  const responseBody = { canvas_id: newCanvasId, redirect_to: `/canvas/${newCanvasId}` }
+  // W4 C-MED22: persist response under the idempotency key so a retry inside the 5-minute
+  // window returns the cached response and does NOT create a second canvas.
+  if (!idem.cached) await idem.persist(200, responseBody)
+  return Response.json(responseBody, { status: 200 })
 }
 ```
 
