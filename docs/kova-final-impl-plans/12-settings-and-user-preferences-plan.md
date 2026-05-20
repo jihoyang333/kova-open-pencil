@@ -2208,6 +2208,11 @@ export default async function handler(req: Request): Promise<Response> {
     headers: { 'content-type': 'application/json' },
   })
 }
+
+// W0-14b: explicit Deno.serve wrap so the runtime CI gate
+// (Plan 11 Task 11.10) detects the handler signature. Supabase Edge Functions
+// also accept `export default handler`, but the explicit form is greppable.
+Deno.serve(handler)
 ```
 
 **Why env-guard at top:** dev environments + CI runs without `RESEND_API_KEY`. The guard returns 200 (not 500) so the caller (Cluster 06 retry-hook) does not retry-storm a known-skip case. Toast is the always-on safety net regardless.

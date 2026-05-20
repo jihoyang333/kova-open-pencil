@@ -4140,6 +4140,69 @@ git commit -am "ci(cluster-11): acceptance-criteria → test mapping gate (W0-12
 
 ---
 
+### Task 11.10: Edge function runtime config CI gates (W0-14)
+
+**Files:**
+- Modify: `.github/workflows/ci.yml`
+- Modify: `kova-open-pencil-1/package.json` — `check:edge-runtime` script
+
+**Contract:** Two parallel CI gates enforce that Edge Functions declare their runtime explicitly. Vercel `api/*.ts` files (Vercel Node + Fluid Compute) must `export const config = { runtime: ... }`. Supabase `functions/*/index.ts` files (Deno) must wrap the handler in `Deno.serve(handler)` or `serve(handler)` (the Deno-runtime invocation pattern). The gate runs against **code** files (not plan markdown). When engineers author Edge Functions per Plan 01–08 specs, the runtime config must be present or CI fails.
+
+**Why two gates:** Vercel and Supabase Edge runtimes have different invocation models. A single grep can't cover both — Vercel wants `export const config`, Deno wants `Deno.serve`. Splitting the check makes the failure message actionable.
+
+**Plan-spec retrofit (deferred):** Plan 09 already includes `export const config = { runtime: 'edge' }` on its 3 Edge Function code blocks (W4 C-LOW09.9). Plan 12 send-sync-alert ships `Deno.serve(handler)` (W0-14b — added in this sweep). Plans 01/02/03/04/05/06/11 author Edge Function code blocks **without** the runtime config; engineers MUST add `export const config = { runtime: 'edge' }` immediately after the imports when implementing those plans, per this gate's contract. Retrofit of all ~140 Edge Function code blocks across plan markdown is OUT OF SCOPE for W5b — the gate is the single source of truth at code time.
+
+- [ ] **Step 1: Add the CI grep steps**
+
+```yaml
+- name: Vercel Edge runtime config (W0-14a)
+  run: |
+    fails=0
+    if [ -d kova-open-pencil-1/api ]; then
+      for f in $(find kova-open-pencil-1/api -name "*.ts" -not -path "*/_shared/*" -not -name "*.test.ts" 2>/dev/null); do
+        if ! grep -qE "export const config\s*=\s*\{[^}]*runtime\s*:" "$f"; then
+          echo "::error file=$f::Missing \`export const config = { runtime: ... }\` (W0-14a)"
+          fails=$((fails+1))
+        fi
+      done
+    fi
+    exit $fails
+
+- name: Supabase Edge function shape (W0-14b)
+  run: |
+    fails=0
+    if [ -d kova-open-pencil-1/supabase/functions ]; then
+      for f in $(find kova-open-pencil-1/supabase/functions -name "index.ts" -not -path "*/_shared/*" 2>/dev/null); do
+        if ! grep -qE "Deno\.serve\(|^serve\(" "$f"; then
+          echo "::error file=$f::Missing \`Deno.serve(handler)\` invocation (W0-14b)"
+          fails=$((fails+1))
+        fi
+      done
+    fi
+    exit $fails
+```
+
+- [ ] **Step 2: Wire into `bun run check`**
+
+```json
+"check:edge-runtime": "bash -c 'fails=0; for f in $(find api -name \"*.ts\" -not -path \"*/_shared/*\" -not -name \"*.test.ts\" 2>/dev/null); do if ! grep -qE \"export const config\\s*=\\s*\\{[^}]*runtime\\s*:\" \"$f\"; then echo \"::error file=$f::Missing runtime config\"; fails=$((fails+1)); fi; done; for f in $(find supabase/functions -name \"index.ts\" -not -path \"*/_shared/*\" 2>/dev/null); do if ! grep -qE \"Deno\\.serve\\(|^serve\\(\" \"$f\"; then echo \"::error file=$f::Missing Deno.serve\"; fails=$((fails+1)); fi; done; exit $fails'",
+"check": "oxlint --type-aware --type-check && bun run check:rls && bun run check:test-framework && bun run check:lock10 && bun run check:stub-guard && bun run check:acceptance-mapping && bun run check:edge-runtime"
+```
+
+- [ ] **Step 3: Smoke-test locally**
+
+Author a temp `api/__delete-me.ts` without runtime config. Run `bun run check:edge-runtime`. Expect exit 1 with the missing-config error. Add the config. Re-run. Expect exit 0. Repeat for `supabase/functions/__delete-me/index.ts` without `Deno.serve`.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git commit -am "ci(cluster-11): edge runtime config gates (W0-14 — Vercel + Supabase)"
+```
+
+**Engineer follow-up at plan execution:** Plan 01–08 + 11 Edge Function code blocks land without runtime config in plan markdown. When authoring code, add `export const config = { runtime: 'edge' }` (Vercel `api/*.ts`) or `Deno.serve(handler)` (Supabase `functions/*/index.ts`) immediately. CI fails otherwise. Plan 09 (Vercel Edge × 3) and Plan 12 send-sync-alert (Deno) are exemplars.
+
+---
+
 ## Self-Review
 
 **1. Spec coverage:**
