@@ -9,6 +9,7 @@ import { preloadFonts } from '@/engine/fonts'
 import { createAppRouter } from '@/router'
 import { registerProductVariantOverlay } from '@/canvas-extensions/product-variant/register'
 import { useAuthStore } from '@/stores/auth'
+import { installSentry } from '@/sentry'
 
 import App from './App.vue'
 
@@ -19,7 +20,15 @@ const head = createHead()
 const router = createAppRouter(createWebHistory())
 const app = createApp(App)
 
+// Cluster 11 — Vue global error handler routes uncaught errors to /500.
+// Sentry install is a no-op when VITE_SENTRY_DSN_BROWSER is unset (stub mode).
+app.config.errorHandler = (err, _instance, info) => {
+  console.error('[vue errorHandler]', err, info)
+  void router.replace('/500')
+}
+
 app.use(pinia).use(router).use(head)
+installSentry(app, router)
 registerProductVariantOverlay()
 
 // Initialize auth store before mounting — prevents flash of unauthenticated content.
