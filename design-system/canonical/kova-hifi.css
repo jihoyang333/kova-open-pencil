@@ -1,0 +1,611 @@
+/* ========================================================================
+   Kova Hi-Fi — canonical stylesheet (dark)
+   Single source of truth for every in-scope hi-fi page.
+
+   Token block follows design-system/design.md §1–§2 exactly.
+   Component selectors retain legacy names so HTML markup is unchanged.
+   No layering, no !important. When this file and design.md disagree,
+   design.md wins — fix this file.
+   ======================================================================== */
+
+:root,
+[data-theme="dark"] {
+  /* ---- Surface (design.md §1.1, §2) ---- */
+  --bg:        #242428;   /* canvas plate */
+  --page:      #1a1a1d;   /* panel + content pane */
+  --rail:      #1a1a1d;   /* sidebars, table heads */
+  --fill:      #26262b;   /* input idle */
+  --fill-2:    #303035;   /* segmented active, deeper chip — design.md §2 canonical; reconciled 2026-05-14 (was #2c2c30, duplicated --line) */
+  --line:      #2c2c30;   /* structural hairline */
+  --line-2:    #232327;   /* in-panel hairline */
+
+  /* ---- Ink (canonical per design.md §2 + Final.html .kc {}; reconciled 2026-05-13) ---- */
+  --ink:       #ebebee;   /* primary text */
+  --ink-2:     #a8a8ad;   /* secondary text */
+  --ink-3:     #6e6e73;   /* labels / tertiary */
+  --ink-4:     #4a4a4f;   /* disabled / icon dim */
+
+  /* ---- Accent (single, design.md §1.1) ---- */
+  --accent:      #3b82f6;
+  --accent-soft: #1d3a66;   /* selected-row tint */
+  --accent-2:    #2a4d80;
+  --accent-ink:  #a9c4ff;
+
+  /* ---- Status (deferred per design.md §1.1, §5 ban 12) ----
+     Map every status alias to ink ramp + accent so legacy
+     `.pill.ok`, `.tag-mono.warn` etc. degrade quietly. */
+  --warn:        var(--ink-2);
+  --warn-soft:   var(--fill);
+  --warn-edge:   var(--line);
+  --ok:          var(--ink-2);
+  --ok-soft:     var(--fill);
+  --review:      var(--ink-2);
+  --review-soft: var(--fill);
+
+  /* ---- Positional offsets (design.md §3.11–§3.14; canonical values
+         lifted from batch-b/Kova Canvas - Final.html .kc {}) ----
+         Pre-populated 2026-05-20 ahead of no-raw-visual-values lint
+         (Mandate 6) flipping to error. Components reference these
+         instead of literal px in chrome positioning. */
+
+  /* Toolbar (§3.11) — floating, bottom-center */
+  --toolbar-bottom:        22px;   /* Final.html .kc .toolbar */
+  --toolbar-pad:           6px;
+  --toolbar-gap:           2px;
+  --toolbar-divider-y:     6px;    /* vertical margin on .toolbar .divider */
+  --toolbar-divider-x:     4px;
+
+  /* Zoom HUD (§3.12) — floating, bottom-right */
+  --zoom-hud-bottom:       22px;   /* Final.html .kc .zoom */
+  --zoom-hud-right:        22px;
+  --zoom-hud-pad-y:        6px;
+  --zoom-hud-pad-x:        10px;
+
+  /* Frame label + selection (§3.13) — canvas */
+  --frame-label-offset:    24px;   /* label sits 24px above the frame */
+  --frame-outline:         2px;    /* selected-frame accent outline */
+  --frame-radius:          6px;    /* Final.html .kc .frame.selected (== --r-lg) */
+  --handle-size:           9px;    /* selection handle dim */
+  --handle-border:         1.5px;  /* handle border-width */
+  --handle-inset:          1px;    /* handle position offset from frame edge */
+  --size-chip-offset:      36px;   /* size chip sits 36px below frame */
+  --size-chip-pad-y:       5px;
+  --size-chip-pad-x:       12px;
+
+  /* Floating help (§3.14) — bottom-right of panel */
+  --floating-help-bottom:  14px;   /* Final.html .kc .help-fab */
+  --floating-help-right:   14px;
+  --floating-help-size:    28px;
+}
+
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 13px;
+  line-height: 1.45;
+  font-feature-settings: "tnum" 1, "ss01" 1;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+a { color: inherit; }
+.muted { color: var(--ink-3); }
+
+/* ---- Mono is BANNED on chrome (design.md §5 ban 1) ----
+   Legacy `.mono` retained as a no-op so existing markup still
+   parses, but it stays in Inter. Mono only allowed inside
+   actual user-document content (rare). */
+.mono { font-family: 'Inter', system-ui, sans-serif; font-feature-settings: "tnum" 1; }
+
+/* ============ Doc chrome (page head, blocks, screen frames) ============ */
+.page-head {
+  padding: 56px 64px 28px;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg);
+}
+.page-head .eyebrow {
+  font-size: 11.5px; color: var(--ink-3); letter-spacing: 0;
+  text-transform: none;
+}
+.page-head h1 {
+  font-size: 30px; margin: 6px 0 8px;
+  letter-spacing: -0.015em; font-weight: 600;
+}
+.page-head p {
+  margin: 0; color: var(--ink-2); max-width: 820px; font-size: 14px;
+}
+.page-head .meta {
+  margin-top: 16px; font-size: 11.5px; color: var(--ink-3);
+}
+.page-head .legend {
+  display: flex; gap: 18px; flex-wrap: wrap;
+  font-size: 11.5px; color: var(--ink-2); margin-top: 14px;
+}
+.page-head .legend .sw { display: inline-flex; align-items: center; gap: 6px; }
+.page-head .legend .sw i {
+  width: 10px; height: 10px; border-radius: 2px; display: inline-block;
+}
+
+section.block {
+  padding: 56px 64px;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg);
+}
+section.block > header { margin-bottom: 24px; max-width: 880px; }
+section.block .tag {
+  font-size: 11.5px; letter-spacing: 0; text-transform: none;
+  color: var(--ink-3); font-weight: 500;
+}
+section.block h2 {
+  font-size: 22px; margin: 4px 0 8px;
+  letter-spacing: -0.01em; font-weight: 600;
+}
+section.block .intro { color: var(--ink-2); margin: 0; max-width: 820px; }
+
+/* Screen frame + caption */
+.screen {
+  background: var(--page);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.02), 0 20px 60px -30px rgba(0,0,0,0.8);
+}
+.screen + .screen { margin-top: 40px; }
+.screen > .cap {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 12px; padding: 12px 16px;
+  border-bottom: 1px solid var(--line); background: var(--rail);
+}
+.screen > .cap .name { font-weight: 600; font-size: 12px; }
+.screen > .cap .id { font-size: 11px; color: var(--ink-3); }
+.screen .canvas { position: relative; height: 900px; }
+.screen .canvas.tall { height: 1080px; }
+
+.annot {
+  padding: 14px 16px;
+  border-top: 1px dashed var(--line);
+  background: var(--rail);
+  font-size: 12px; color: var(--ink-2);
+}
+.annot ul { margin: 0; padding-left: 18px; }
+.annot li { margin-bottom: 4px; }
+.annot strong { color: var(--ink); font-weight: 600; }
+
+/* ============ App chrome ============ */
+.app {
+  display: grid;
+  grid-template-columns: 236px 1fr;
+  height: 100%; background: var(--page);
+}
+
+/* Sidebar */
+.sidebar {
+  background: var(--rail);
+  border-right: 1px solid var(--line);
+  display: flex; flex-direction: column;
+  padding: 10px 10px 8px;
+  gap: 10px; font-size: 13px;
+  min-height: 0;
+}
+.brand-switch {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--line); border-radius: 7px;
+  background: var(--page); cursor: pointer;
+  transition: border-color 0.12s ease;
+}
+.brand-switch:hover { border-color: var(--ink-3); }
+.brand-switch .logo {
+  width: 24px; height: 24px;
+  border-radius: 5px; background: var(--ink); color: var(--page);
+  display: grid; place-items: center;
+  font-weight: 700; font-size: 11px;
+  letter-spacing: -0.02em; flex-shrink: 0;
+}
+.brand-switch .name {
+  font-weight: 600; flex: 1; letter-spacing: -0.005em;
+}
+.brand-switch .caret {
+  color: var(--ink-3); display: grid; place-items: center;
+}
+
+.side-search {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 10px;
+  border: 1px solid var(--line); border-radius: 6px;
+  background: var(--page); color: var(--ink-3);
+  font-size: 12.5px; cursor: text;
+}
+.side-search .kbd {
+  margin-left: auto;
+  font-size: 11px; color: var(--ink-3);
+  background: var(--fill);
+  padding: 1px 5px; border-radius: 3px;
+  border: 1px solid var(--line-2);
+}
+
+.nav { display: flex; flex-direction: column; gap: 1px; margin-top: 2px; }
+/* Section labels keep tracking — design.md §3.3 allows overline here */
+.nav .section {
+  font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--ink-3);
+  padding: 12px 10px 4px; font-weight: 500;
+}
+.nav .item {
+  display: flex; align-items: center; gap: 9px;
+  padding: 6px 10px; border-radius: 5px;
+  color: var(--ink-2); cursor: pointer;
+  font-size: 13px;
+  transition: background 0.1s ease, color 0.1s ease;
+}
+.nav .item:hover { background: var(--line-2); color: var(--ink); }
+/* Selection = tint only, no left-border (design.md §3.5, §5 ban 4) */
+.nav .item.active {
+  background: var(--accent-soft);
+  color: var(--ink);
+  font-weight: 500;
+}
+.nav .item .ic {
+  width: 15px; height: 15px;
+  color: currentColor; opacity: 0.75; flex-shrink: 0;
+}
+.nav .item.active .ic { color: var(--accent-ink); opacity: 1; }
+.nav .item .count {
+  margin-left: auto;
+  font-size: 11px; color: var(--ink-3);
+}
+.nav .item.active .count { color: var(--accent-ink); }
+
+.side-footer {
+  margin-top: auto;
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 8px;
+  border-top: 1px solid var(--line-2);
+  color: var(--ink-2); font-size: 12px;
+}
+.side-footer .avatar {
+  width: 26px; height: 26px; border-radius: 50%;
+  background: var(--fill-2); color: var(--ink);
+  display: grid; place-items: center;
+  font-weight: 600; font-size: 10.5px;
+  letter-spacing: 0.01em;
+}
+.side-footer .who { display: flex; flex-direction: column; line-height: 1.2; min-width: 0; }
+.side-footer .who b { color: var(--ink); font-weight: 600; font-size: 12px; }
+.side-footer .who span { color: var(--ink-3); font-size: 10.5px; }
+.side-footer .more {
+  margin-left: auto; color: var(--ink-3);
+  padding: 4px; border-radius: 4px; cursor: pointer;
+}
+.side-footer .more:hover { color: var(--ink); background: var(--line-2); }
+
+/* Main pane */
+.main { display: flex; flex-direction: column; min-width: 0; background: var(--page); }
+.topbar {
+  height: 52px;
+  border-bottom: 1px solid var(--line);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 20px; background: var(--page); flex-shrink: 0;
+}
+.topbar .breadcrumb,
+.canvas-topbar .breadcrumb {
+  display: flex; gap: 8px; align-items: center;
+  color: var(--ink-3); font-size: 13px;
+}
+.topbar .breadcrumb .sep,
+.canvas-topbar .breadcrumb .sep {
+  color: var(--ink-3); opacity: 0.6;
+  display: grid; place-items: center;
+}
+.topbar .breadcrumb b,
+.canvas-topbar .breadcrumb b {
+  color: var(--ink); font-weight: 600; letter-spacing: -0.005em;
+}
+.breadcrumb .crumb-brand {
+  display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2);
+}
+.breadcrumb .crumb-brand .logo {
+  width: 16px; height: 16px; border-radius: 3px;
+  display: grid; place-items: center;
+  color: var(--page); font-weight: 700; font-size: 9px; background: var(--ink);
+}
+.topbar .breadcrumb .back,
+.canvas-topbar .breadcrumb .back {
+  color: var(--ink-3); margin-right: 2px; cursor: pointer;
+  display: grid; place-items: center;
+}
+.topbar .breadcrumb .back:hover,
+.canvas-topbar .breadcrumb .back:hover { color: var(--ink); }
+.topbar .actions { display: flex; gap: 8px; align-items: center; }
+
+/* Content area */
+.content {
+  flex: 1;
+  padding: 48px 32px 40px;
+  overflow: auto; min-height: 0;
+  display: flex; flex-direction: column; gap: 32px;
+}
+
+/* ============ Buttons ============ */
+.btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 7px 12px;
+  border: 1px solid var(--line); border-radius: 6px;
+  background: var(--page); font-size: 12.5px;
+  font-family: inherit; font-weight: 500;
+  color: var(--ink); cursor: pointer;
+  letter-spacing: -0.003em;
+  transition: border-color 0.1s ease, background 0.1s ease;
+  white-space: nowrap;
+}
+.btn:hover { border-color: var(--ink-3); background: var(--fill); }
+.btn .ic { width: 14px; height: 14px; opacity: 0.8; }
+
+/* Primary = ink-on-page (high-contrast, neutral) */
+.btn.primary { background: var(--ink); color: #111; border-color: var(--ink); }
+.btn.primary:hover { background: #fff; border-color: #fff; }
+
+/* Accent = single blue (design.md §1.1) */
+.btn.accent { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn.accent:hover { background: #2563eb; border-color: #2563eb; }
+
+.btn.ghost { border-color: transparent; background: transparent; color: var(--ink-2); }
+.btn.ghost:hover { background: var(--line-2); color: var(--ink); }
+.btn.sm { padding: 5px 9px; font-size: 12px; gap: 5px; }
+.btn.sm .ic { width: 13px; height: 13px; }
+.btn.icon { padding: 6px; width: 30px; height: 30px; justify-content: center; }
+.btn.icon.sm { width: 26px; height: 26px; padding: 4px; }
+.btn[disabled], .btn.disabled {
+  color: var(--ink-3); cursor: not-allowed;
+  background: var(--page); border-color: var(--line-2);
+}
+.btn[disabled]:hover, .btn.disabled:hover { border-color: var(--line-2); background: var(--page); }
+
+/* ============ Pills & tags ============ */
+.pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 9px; border-radius: 999px;
+  font-size: 11.5px; background: var(--fill);
+  color: var(--ink-2); font-weight: 500;
+  letter-spacing: -0.003em; border: 1px solid transparent;
+  white-space: nowrap;
+}
+.pill .ic { width: 12px; height: 12px; }
+.pill.accent {
+  background: var(--accent-soft); color: var(--accent-ink);
+  border-color: var(--accent-2);
+}
+.pill.accent .ic { color: var(--accent); }
+
+/* Status variants degrade to neutral pills (status colors deferred) */
+.pill.ok,
+.pill.warn,
+.pill.review { background: var(--fill); color: var(--ink-2); border-color: transparent; }
+.pill.outline {
+  background: var(--page); border: 1px solid var(--line); color: var(--ink-2);
+}
+.pill.dot::before {
+  content: ""; width: 6px; height: 6px;
+  background: var(--accent); border-radius: 50%;
+  display: inline-block; flex-shrink: 0;
+}
+
+/* Mono tag — name kept for legacy markup; rendered as quiet Inter chip */
+.tag-mono {
+  font-size: 11.5px; letter-spacing: 0; text-transform: none;
+  font-weight: 500;
+  padding: 2px 6px; border-radius: 3px;
+  background: rgba(26,26,29,0.92); color: var(--ink-2);
+  border: 1px solid var(--line);
+}
+.tag-mono.ok,
+.tag-mono.draft,
+.tag-mono.warn { color: var(--ink-2); background: rgba(26,26,29,0.92); }
+/* Scheduled — the one place accent earns its keep on a status chip */
+.tag-mono.scheduled {
+  color: var(--accent-ink); background: var(--accent-soft);
+  border-color: var(--accent-2);
+}
+
+/* file-card status-tag — same neutral treatment as tag-mono */
+.file-card .status-tag {
+  background: rgba(26,26,29,0.92); color: var(--ink-2);
+  border: 1px solid var(--line);
+  letter-spacing: 0; text-transform: none;
+}
+.file-card .status-tag.scheduled {
+  background: var(--accent-soft); color: var(--accent-ink);
+  border-color: var(--accent-2);
+}
+
+/* ============ Inputs ============ */
+.input {
+  background: var(--page); border: 1px solid var(--line);
+  border-radius: 6px; padding: 7px 10px;
+  font-size: 13px; color: var(--ink);
+  font-family: inherit;
+  transition: border-color 0.1s ease, box-shadow 0.1s ease;
+  width: 100%;
+}
+.input::placeholder { color: var(--ink-3); }
+.input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: none;
+}
+
+/* ============ Field row (label over value) ============ */
+.field {
+  border: 1px solid var(--line); border-radius: 6px;
+  padding: 8px 10px; background: var(--page);
+  display: flex; flex-direction: column; gap: 3px;
+}
+.field .lbl {
+  font-size: 11px; color: var(--ink-3);
+  letter-spacing: 0; text-transform: none;
+}
+.field .val { font-size: 13px; color: var(--ink); }
+.field.muted .val { color: var(--ink-3); }
+
+/* ============ Placeholder / stripes ============ */
+.ph {
+  background: var(--fill);
+  border-radius: 4px;
+  color: var(--ink-3);
+  font-size: 11px;
+  display: grid; place-items: center;
+  letter-spacing: 0;
+}
+.ph.stripes {
+  background: repeating-linear-gradient(45deg, #1f1f22 0 6px, #26262a 6px 12px);
+}
+.ph.img {
+  background: repeating-linear-gradient(135deg, #1f1f22 0 5px, #262629 5px 10px);
+}
+
+/* ============ Build note ============ */
+.build-note {
+  background: var(--fill); border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 10px 12px; font-size: 11.5px; color: var(--ink-2);
+  display: flex; align-items: flex-start; gap: 10px;
+}
+.build-note b { color: var(--ink); display: block; margin-bottom: 2px; font-weight: 600; }
+.build-note .b {
+  font-size: 11px; letter-spacing: 0; text-transform: none;
+  color: var(--ink-3); flex-shrink: 0; padding: 2px 0;
+}
+
+/* ============ Layout helpers ============ */
+.h { display: flex; align-items: center; gap: 8px; }
+.h.gap-12 { gap: 12px; }
+.h.gap-16 { gap: 16px; }
+.h.spread { justify-content: space-between; }
+.v { display: flex; flex-direction: column; gap: 8px; }
+.v.gap-12 { gap: 12px; }
+.v.gap-16 { gap: 16px; }
+.v.gap-24 { gap: 24px; }
+.grow { flex: 1; min-width: 0; }
+
+/* ============ Section heads ============ */
+.sec-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+}
+.sec-head .l { display: flex; align-items: baseline; gap: 10px; }
+.sec-head h4 {
+  margin: 0; font-size: 14px; font-weight: 600;
+  letter-spacing: -0.008em; color: var(--ink);
+}
+.sec-head .count {
+  font-size: 11.5px; color: var(--ink-3);
+}
+
+/* ============ Composer (per-page legacy lift, design-system §3) ============ */
+.composer-input-wrap {
+  background: var(--page);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.composer-input-wrap:focus-within {
+  border-color: var(--accent);
+}
+.composer-input .typed { color: var(--ink-3); }
+.composer-input-tools .hint,
+.composer-input-tools .hint kbd {
+  font-family: inherit;
+  letter-spacing: 0;
+  color: var(--ink-3);
+}
+.composer-chip {
+  background: var(--page);
+  border: 1px solid var(--line);
+  color: var(--ink-2);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.1s ease, color 0.1s ease, border-color 0.1s ease;
+}
+.composer-chip:hover {
+  background: var(--fill);
+  border-color: var(--ink-3);
+  color: var(--ink);
+}
+
+/* ============ File cards & thumbs ============ */
+.file-card {
+  background: var(--page);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.file-card:hover { border-color: var(--ink-3); }
+.file-card .thumb { background: #131316; }
+
+.thumb-frame {
+  background: var(--page);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.thumb-frame .tb { background: var(--fill-2); }
+.thumb-frame .tb.cta { background: var(--ink-2); }
+
+.thumb-flow .mini,
+.thumb-ab .half {
+  background: var(--page);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+.thumb-flow .mini i,
+.thumb-ab .half i {
+  background: repeating-linear-gradient(135deg, #2a2a2e 0 3px, #2c2c30 3px 6px);
+}
+.thumb-flow .mini u,
+.thumb-ab .half u { background: var(--fill-2); }
+.thumb-flow .mini s,
+.thumb-ab .half s { background: var(--ink-2); }
+
+/* ============ Command-K (per-page legacy lift) ============ */
+.ck-search {
+  background: var(--fill);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--ink);
+}
+.ck-search:focus-within { border-color: var(--accent); }
+.ck-eyebrow {
+  font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--ink-3);
+  font-weight: 500;
+}
+.ck-row {
+  padding: 8px 12px;
+  border-radius: 6px;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.ck-row:hover { background: var(--line-2); color: var(--ink); }
+.ck-row.active {
+  background: var(--accent-soft);
+  color: var(--ink);
+  font-weight: 500;
+}
+.ck-foot { color: var(--ink-3); font-size: 11.5px; }
+.ck-foot .meta,
+.ck-foot .meta * { letter-spacing: 0; }
+
+/* ============ kbd ============ */
+.kbd, kbd {
+  display: inline-flex; align-items: center;
+  font-family: inherit;
+  font-feature-settings: "tnum" 1;
+  font-size: 11px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: var(--fill);
+  border: 1px solid var(--line-2);
+  color: var(--ink-3);
+}

@@ -1,0 +1,2453 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<title>Kova — Hi-fi · 12 Color Picker · Dark</title>
+<meta name="viewport" content="width=1440" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+<link rel="stylesheet" href="../../design-system/kova-hifi.css" />
+<script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
+<style>
+  /* ====================================================================
+     12 — Color picker popover. Multi-mode (Solid / Linear / Radial /
+     Image) when invoked from a Fill section; "Color" header only when
+     invoked from page-bg, stroke, or effect-color contexts. Picker
+     INTERIOR is designer territory — every chrome value resolves
+     against locked tokens. Per-file `.kc {}` chrome is LIFTED
+     byte-for-byte from `Kova Canvas - Final.html`.
+     ==================================================================== */
+
+  /* Canvas-card wrapper (matches the pattern used across batch-b — gives
+     each `.kc` a fixed-height, framed surface inside a `section.block`). */
+  .canvas-card {
+    position: relative;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--page);
+    box-shadow: 0 1px 0 rgba(255,255,255,0.02), 0 20px 60px -30px rgba(0,0,0,0.7);
+    margin: 0;
+    width: 100%;
+    height: 720px;
+  }
+  .canvas-card .cap {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 12px; padding: 12px 16px;
+    border-bottom: 1px solid var(--line); background: var(--rail);
+    position: absolute; top: 0; left: 0; right: 0; z-index: 10;
+    height: 0; padding: 0; border: 0; /* hide cap — we use section header instead */
+    visibility: hidden;
+  }
+
+  /* ====================================================================
+     Source: `Kova Canvas - Final.html` (byte-for-byte copy).
+     Token block at .kc {} maps to design.md §1.1 / §2.
+     Every chrome property below resolves to its source rule unchanged.
+     The diff command in DELIVERY_NOTES.md confirms zero drift.
+     ==================================================================== */
+
+  .kc {
+    --bg:    #1a1a1d;        /* side panels */
+    --rail:  #1a1a1d;
+    --canvas:#242428;        /* canvas (per spec) */
+    --fill:  #26262b;
+    --fill2: #303035;
+    --line:  #2c2c30;
+    --line2: #232327;
+    --ink:   #ebebee;
+    --ink2:  #a8a8ad;
+    --ink3:  #6e6e73;
+    --ink4:  #4a4a4f;
+    --select:#3b82f6;
+    --select-soft: rgba(59,130,246,0.16);
+    --accent:#3b82f6;
+    --accent-soft: rgba(59,130,246,0.14);
+    --accent-ink:#a9c4ff;
+    background: var(--bg);
+    color: var(--ink);
+    font-size: 12px;
+    display: grid;
+    grid-template-rows: 44px 1fr;
+  }
+
+  /* TOPBAR ----------------------------------------------------------- */
+  .kc .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--rail);
+    border-bottom: 1px solid var(--line);
+    padding: 0 12px;
+    height: 44px;
+  }
+  .kc .topbar .l, .kc .topbar .r {
+    display:flex; align-items:center; gap: 12px;
+  }
+  .kc .topbar .logo {
+    width: 24px; height: 24px;
+    border-radius: 6px; background: var(--ink); color: var(--bg);
+    display:grid; place-items:center;
+    font-weight: 700; font-size: 11px;
+    letter-spacing: -0.04em;
+  }
+  .kc .topbar .file {
+    display: flex; align-items: center; gap: 8px;
+    color: var(--ink2); font-size: 13px;
+  }
+  .kc .topbar .file .crumb-brand { display: inline-flex; align-items: center; gap: 6px; }
+  .kc .topbar .file .crumb-brand .b {
+    width: 14px; height: 14px; border-radius: 4px; background: #c24a1e;
+  }
+  .kc .topbar .file .sep { color: var(--ink4); }
+  .kc .topbar .file b {
+    color: var(--ink); font-weight: 600; letter-spacing: -0.005em;
+  }
+  .kc .topbar .file .caret { color: var(--ink3); display:grid; place-items:center; }
+  .kc .topbar .icon-btn {
+    width: 28px; height: 28px;
+    display:grid; place-items:center;
+    color: var(--ink2); border-radius: 5px;
+  }
+  .kc .topbar .icon-btn:hover { background: var(--line2); color: var(--ink); }
+  .kc .topbar .avatar {
+    width: 26px; height: 26px;
+    border-radius: 50%; background: #c24a1e; color: #fff;
+    display:grid; place-items:center;
+    font-weight: 600; font-size: 10.5px;
+  }
+
+  /* BODY ------------------------------------------------------------- */
+  .kc .body { display: grid; grid-template-columns: 240px 1fr 264px; min-height: 0; }
+
+  /* LEFT PANEL ------------------------------------------------------- */
+  .kc .left {
+    background: var(--rail);
+    border-right: 1px solid var(--line);
+    display: flex; flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .kc .left .file-row {
+    padding: 14px;
+    border-bottom: 1px solid var(--line2);
+    display:flex; align-items:center; gap: 10px;
+  }
+  .kc .left .file-row .file-icon {
+    width: 30px; height: 30px;
+    border-radius: 7px; background: var(--fill);
+    display: grid; place-items: center;
+    color: var(--ink2);
+  }
+  .kc .left .file-row .name { font-weight: 600; font-size: 13px; color: var(--ink); }
+  .kc .left .file-row .meta { font-size: 11.5px; color: var(--ink3); margin-top: 2px; }
+  .kc .left .sec {
+    padding: 14px 14px 6px;
+    display: flex; align-items:center; justify-content: space-between;
+  }
+  .kc .left .sec h5 {
+    margin: 0; font-size: 11px; font-weight: 500;
+    color: var(--ink3); letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .kc .left .sec .add {
+    width: 20px; height: 20px;
+    display:grid; place-items:center; color: var(--ink3);
+    border-radius: 5px;
+  }
+  .kc .left .pages { padding: 0 8px 6px; }
+  .kc .left .page-row {
+    display:flex; align-items:center; gap: 8px;
+    padding: 7px 10px;
+    border-radius: 7px;
+    color: var(--ink2); font-size: 12.5px;
+  }
+  .kc .left .page-row.active { background: var(--fill); color: var(--ink); }
+  .kc .left .layers { flex: 1; overflow: auto; padding: 0 6px 16px; }
+  .kc .left .layer {
+    display: flex; align-items: center; gap: 7px;
+    padding: 5px 8px;
+    height: 28px;
+    font-size: 12.5px;
+    color: var(--ink2);
+    border-radius: 6px;
+    line-height: 1.3;
+    white-space: nowrap;
+  }
+  .kc .left .layer:hover { background: var(--line2); color: var(--ink); }
+  .kc .left .layer.selected {
+    background: var(--select-soft);
+    color: var(--ink);
+  }
+  .kc .left .layer .caret { width: 10px; color: var(--ink3); display:grid; place-items:center; }
+  .kc .left .layer .ic { color: var(--ink3); display:grid; place-items:center; flex-shrink:0; }
+  .kc .left .layer.selected .ic { color: var(--ink); }
+  .kc .left .layer .name { flex: 1; overflow:hidden; text-overflow:ellipsis; }
+  .kc .left .layer .mask, .kc .left .layer .vis { color: var(--ink3); display:grid; place-items:center; flex-shrink:0; }
+  .kc .left .layer .vis { opacity: 0; }
+  .kc .left .layer:hover .vis, .kc .left .layer.selected .vis { opacity: 1; }
+  .kc .left .layer.dim { color: var(--ink4); }
+  .kc .left .layer.dim .ic { color: var(--ink4); }
+  .kc .left .indent-1 { padding-left: 24px; }
+  .kc .left .indent-2 { padding-left: 40px; }
+
+  /* CENTER (CANVAS) -------------------------------------------------- */
+  .kc .center {
+    background: var(--canvas);
+    position: relative;
+    overflow: hidden;
+  }
+  .kc .center .canvas-grid {
+    position: absolute; inset: 0;
+    background-image:
+      radial-gradient(circle, rgba(255,255,255,0.025) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+  .kc .frames-row {
+    position: absolute; top: 78px; left: 50%;
+    transform: translateX(-50%) scale(0.62);
+    transform-origin: top center;
+    display: flex; gap: 72px;
+  }
+  .kc .frame {
+    width: 600px; height: 900px;
+    background: #fff; color: #111;
+    position: relative; flex-shrink: 0;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .kc .frame-label {
+    position: absolute; top: -24px; left: 0;
+    color: var(--ink2); font-size: 14.5px;
+    white-space: nowrap; letter-spacing: -0.003em;
+  }
+  .kc .frame.selected .frame-label { color: var(--select); font-weight: 500; }
+  .kc .frame.selected {
+    outline: 2px solid var(--select);
+    outline-offset: 0;
+    border-radius: 6px;
+  }
+  .kc .handle {
+    position: absolute; width: 9px; height: 9px;
+    background: #fff;
+    border: 1.5px solid var(--select);
+    border-radius: 2px;
+  }
+  .kc .handle.tl { top:-1px; left:-1px; }
+  .kc .handle.tm { top:-1px; left:50%; transform:translateX(-50%); }
+  .kc .handle.tr { top:-1px; right:-1px; }
+  .kc .handle.lm { top:50%; left:-1px; transform:translateY(-50%); }
+  .kc .handle.rm { top:50%; right:-1px; transform:translateY(-50%); }
+  .kc .handle.bl { bottom:-1px; left:-1px; }
+  .kc .handle.bm { bottom:-1px; left:50%; transform:translateX(-50%); }
+  .kc .handle.br { bottom:-1px; right:-1px; }
+  .kc .size-chip {
+    position: absolute; bottom: -36px; left: 50%; transform: translateX(-50%);
+    background: var(--select); color: #fff;
+    font-size: 15px; padding: 5px 12px; border-radius: 6px;
+    font-weight: 500; letter-spacing: 0.01em;
+  }
+
+  /* TOOLBAR (V1 Kova-Loud chrome, V3 #3b82f6 selection) ------------- */
+  .kc .toolbar {
+    position: absolute;
+    bottom: 22px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1a1a1d;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 6px;
+    display: flex;
+    gap: 2px;
+    box-shadow: 0 8px 24px -6px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.04) inset;
+  }
+  .kc .toolbar .tool {
+    width: 36px; height: 36px;
+    display: grid; place-items:center;
+    color: var(--ink2);
+    border-radius: 6px;
+    cursor: pointer;
+    position: relative;
+  }
+  .kc .toolbar .tool:hover { background: var(--line2); color: var(--ink); }
+  .kc .toolbar .tool.active {
+    background: var(--accent);  /* #3b82f6 — never lilac */
+    color: #fff;
+  }
+  .kc .toolbar .divider {
+    width: 1px; background: var(--line2); margin: 6px 4px;
+  }
+  .kc .toolbar .tool.ai { color: var(--accent-ink); }
+  .kc .toolbar .tool.ai:hover { background: var(--accent-soft); }
+  .kc .toolbar .caret-mini {
+    position: absolute; right: 2px; bottom: 2px;
+    color: var(--ink3); display:grid; place-items:center;
+  }
+
+  /* Zoom HUD --------------------------------------------------------- */
+  .kc .zoom {
+    position: absolute;
+    bottom: 22px;
+    right: 22px;
+    background: #1a1a1d;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 6px 10px;
+    display: flex; align-items:center; gap: 6px;
+    color: var(--ink2);
+    font-size: 12px;
+    letter-spacing: 0.01em;
+  }
+  .kc .zoom .caret { display:grid; place-items:center; color: var(--ink3); }
+
+  /* RIGHT PANEL (vertically descending properties) ------------------ */
+  .kc .right {
+    background: var(--rail);
+    border-left: 1px solid var(--line);
+    display: flex; flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* Tabs row — Design only + zoom on the right */
+  .kc .right .tabs {
+    display: flex; border-bottom: 1px solid var(--line2);
+    padding: 0 14px; height: 44px; align-items: stretch;
+    gap: 4px;
+    justify-content: space-between;
+  }
+  .kc .right .tabs .tabs-l { display: flex; gap: 4px; }
+  .kc .right .tabs .tab {
+    display:flex; align-items:center; padding: 0 4px;
+    font-size: 13px; color: var(--ink3);
+  }
+  .kc .right .tabs .tab.active {
+    color: var(--ink);
+    background: var(--fill);
+    padding: 4px 10px;
+    border-radius: 5px;
+    margin: 8px 0;
+    font-weight: 500;
+  }
+  .kc .right .tabs .zoom-r {
+    display:flex; align-items:center; gap: 4px;
+    color: var(--ink2); font-size: 12px;
+  }
+
+  /* Frame header — title + quick actions */
+  .kc .right .frame-head {
+    padding: 14px 14px 14px;
+    border-bottom: 1px solid var(--line2);
+    display:flex; align-items:center; justify-content: space-between;
+  }
+  .kc .right .frame-head .title {
+    display:flex; align-items:center; gap: 6px;
+    font-size: 15px; font-weight: 600; color: var(--ink);
+    letter-spacing: -0.005em;
+  }
+  .kc .right .frame-head .title .caret { color: var(--ink3); display:grid; place-items:center; }
+  .kc .right .frame-head .actions { display:flex; gap: 2px; color: var(--ink2); }
+  .kc .right .frame-head .actions .a {
+    width: 26px; height: 26px;
+    display: grid; place-items: center; border-radius: 5px;
+  }
+  .kc .right .frame-head .actions .a:hover { background: var(--fill); color: var(--ink); }
+
+  /* Body scroll */
+  .kc .right .pbody { flex: 1; overflow: auto; }
+
+  /* Each property GROUP is a vertically-stacked section */
+  .kc .right .group {
+    padding: 14px 14px 16px;
+    border-bottom: 1px solid var(--line2);
+  }
+  .kc .right .group .ghead {
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom: 12px;
+  }
+  .kc .right .group .ghead h6 {
+    margin: 0; font-size: 13px; font-weight: 600;
+    color: var(--ink); letter-spacing: -0.005em;
+  }
+  .kc .right .group .ghead .actions { display:flex; gap: 2px; color: var(--ink2); }
+  .kc .right .group .ghead .actions .a {
+    width: 24px; height: 24px;
+    display: grid; place-items: center; border-radius: 5px;
+  }
+  .kc .right .group .ghead .actions .a:hover { background: var(--fill); color: var(--ink); }
+
+  /* Sub-section (Alignment, Position, Rotation, Flow, Dimensions...) */
+  .kc .right .sub { margin-bottom: 12px; }
+  .kc .right .sub:last-child { margin-bottom: 0; }
+  .kc .right .sub .lbl-row {
+    color: var(--ink2);
+    font-size: 12px;
+    margin-bottom: 6px;
+    letter-spacing: -0.003em;
+  }
+
+  /* Inputs — Inter everywhere (no monospace) */
+  .kc .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .kc .row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+  .kc .row-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .kc .ipt {
+    background: var(--fill);
+    border: 1px solid transparent;
+    border-radius: 5px;
+    padding: 0 9px;
+    display: flex; align-items: center; gap: 6px;
+    height: 30px; font-size: 12.5px;
+  }
+  .kc .ipt:hover { border-color: var(--line); }
+  .kc .ipt .lbl { color: var(--ink3); font-size: 12px; font-weight: 500; }
+  .kc .ipt .val { color: var(--ink); font-size: 12.5px; flex: 1; }
+  .kc .ipt .unit { color: var(--ink3); font-size: 12px; }
+
+  /* Segmented controls */
+  .kc .seg {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    background: var(--fill);
+    border-radius: 5px;
+    padding: 2px;
+    gap: 1px;
+  }
+  .kc .seg .s {
+    height: 26px; display:grid; place-items:center;
+    color: var(--ink3); border-radius: 4px;
+  }
+  .kc .seg .s.active { background: var(--fill2); color: var(--ink); }
+  .kc .seg .s:hover { color: var(--ink2); }
+  .kc .seg .s.active:hover { color: var(--ink); }
+  .kc .seg .gap { width: 6px; }
+
+  /* Two segments side-by-side */
+  .kc .seg-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+
+  /* Swatch box */
+  .kc .swatch {
+    width: 18px; height: 18px; border-radius: 3px;
+    background: #fff; border: 1px solid var(--line); flex-shrink: 0;
+  }
+
+  /* Empty/collapsed groups (Stroke / Effects / Layout guide) */
+  .kc .empty-row {
+    color: var(--ink3); font-size: 12.5px;
+  }
+
+  /* Checkbox row */
+  .kc .checkbox-row {
+    display:flex; align-items:center; gap: 8px;
+    font-size: 12.5px; color: var(--ink2);
+  }
+  .kc .checkbox-row .cb {
+    width: 14px; height: 14px;
+    border: 1px solid var(--line);
+    border-radius: 3px; background: var(--bg);
+    display:grid; place-items:center;
+  }
+  .kc .checkbox-row.checked .cb {
+    background: var(--select); border-color: var(--select); color: #fff;
+  }
+
+  /* Fill row layout: swatch | hex | opacity | eye | minus */
+  .kc .fill-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto auto auto;
+    gap: 4px;
+    align-items: center;
+    background: var(--fill);
+    border-radius: 5px;
+    padding: 0 6px;
+    height: 30px;
+  }
+  .kc .fill-row .hex { color: var(--ink); font-size: 12.5px; padding-left: 4px; }
+  .kc .fill-row .pct { color: var(--ink); font-size: 12.5px; padding: 0 6px; border-left: 1px solid var(--line2); }
+  .kc .fill-row .ico { width: 20px; height: 20px; display:grid; place-items:center; color: var(--ink3); border-radius: 4px; }
+  .kc .fill-row .ico:hover { background: var(--fill2); color: var(--ink); }
+
+  /* Floating help button */
+  .kc .help-fab {
+    position: absolute; bottom: 14px; right: 14px;
+    width: 28px; height: 28px;
+    border-radius: 50%; background: var(--fill);
+    border: 1px solid var(--line);
+    display:grid; place-items:center;
+    color: var(--ink2); font-size: 13px;
+  }
+
+  /* ====================================================================
+     END OF LIFTED REGION
+     ==================================================================== */
+
+  /* ====================================================================
+     COLOR PICKER INTERIOR — designer territory.
+     Every chrome value resolves through the lifted .kc tokens above
+     (var(--bg), var(--line), var(--ink*), var(--accent), etc.).
+     The only hex/rgba values that appear inline are CONTENT, not chrome:
+       - hue-slider gradient stops (red→yellow→green→cyan→blue→magenta→red)
+       - sat/val canvas overlays (white→transparent + transparent→black)
+       - alpha-slider checkerboard tile colors
+       - swatch tile background-color (sample brand & document hexes)
+       - hex input current-value text
+       - eyedropper magnifier inner pixels (B9 visual reference, locked there)
+     All such hexes are documented in DELIVERY_NOTES.md §3.
+     ==================================================================== */
+
+  /* Anchor highlight — the fill row that the popover anchors to */
+  .kc .fill-row.anchored {
+    box-shadow: 0 0 0 1px var(--accent);
+    background: var(--fill);
+  }
+
+  /* Popover shell — design.md §1.6 floating elevation, §1.4 --r-md (5px) */
+  .cp-popover {
+    position: absolute;
+    width: 264px;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    box-shadow: 0 8px 24px -6px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.04) inset;
+    padding: 12px;
+    display: flex; flex-direction: column; gap: 12px;
+    z-index: 5;
+    color: var(--ink);
+  }
+
+  /* Header */
+  .cp-popover .cp-header {
+    display: flex; align-items: center; justify-content: space-between;
+    height: 22px;
+  }
+  .cp-popover .cp-header .cp-title {
+    color: var(--ink); font-weight: 600;
+    font-size: 12.5px; letter-spacing: -0.003em;
+  }
+  .cp-popover .cp-header .cp-close {
+    width: 20px; height: 20px; display: grid; place-items: center;
+    color: var(--ink3); border-radius: 4px; cursor: pointer;
+  }
+  .cp-popover .cp-header .cp-close:hover { background: var(--fill); color: var(--ink); }
+
+  /* Mode tabs (4-tab variant — Solid / Linear / Radial / Image)
+     Pill-style active state per design.md §3.5: idle ink-3, active = pill
+     background var(--fill2) color var(--ink). NOT solid --accent. */
+  .cp-tabs {
+    display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
+    gap: 1px;
+    background: var(--fill);
+    border-radius: 5px;
+    padding: 2px;
+  }
+  .cp-tabs .cp-tab {
+    height: 26px;
+    display: grid; place-items: center;
+    font-size: 11.5px; color: var(--ink3);
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .cp-tabs .cp-tab:hover { color: var(--ink2); }
+  .cp-tabs .cp-tab.active {
+    background: var(--fill2); color: var(--ink); font-weight: 500;
+  }
+
+  /* Saturation/value canvas — content gradient (documented exception §3.3) */
+  .cp-canvas {
+    width: 100%; height: 160px;
+    border-radius: 4px;
+    position: relative;
+    overflow: hidden;
+    cursor: crosshair;
+  }
+  .cp-canvas .cp-cursor {
+    position: absolute;
+    width: 14px; height: 14px;
+    border: 1.5px solid #ffffff;
+    border-radius: 50%;
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.4);
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+
+  /* Hue slider — content gradient (red→yellow→green→cyan→blue→magenta→red) */
+  .cp-hue {
+    width: 100%; height: 12px;
+    border-radius: 6px;
+    background: linear-gradient(to right,
+      #ff0000 0%, #ffff00 17%, #00ff00 33%, #00ffff 50%, #0000ff 67%, #ff00ff 83%, #ff0000 100%);
+    position: relative;
+  }
+  .cp-hue .cp-knob,
+  .cp-alpha .cp-knob,
+  .cp-tile-slider .cp-tile-knob {
+    position: absolute;
+    top: 50%; transform: translate(-50%, -50%);
+    width: 4px; height: 18px;
+    background: #ffffff;
+    border-radius: 2px;
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.5), 0 1px 2px rgba(0,0,0,0.4);
+  }
+  .cp-tile-slider .cp-tile-knob {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+  }
+
+  /* Alpha slider — checkerboard + transparent→opaque (current color) */
+  .cp-alpha {
+    width: 100%; height: 12px;
+    border-radius: 6px;
+    position: relative;
+    background-image:
+      linear-gradient(to right, rgba(59,130,246,0), rgba(59,130,246,1)),
+      conic-gradient(from 90deg at 50% 50%, #3a3a3e 0% 25%, #1f1f22 25% 50%, #3a3a3e 50% 75%, #1f1f22 75%);
+    background-size: 100% 100%, 8px 8px;
+  }
+
+  /* Inputs row */
+  .cp-inputs {
+    display: grid;
+    grid-template-columns: 1fr 64px 30px;
+    gap: 6px;
+  }
+  .cp-input {
+    background: var(--fill);
+    border: 1px solid transparent;
+    border-radius: 5px;
+    height: 30px;
+    padding: 0 9px;
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px;
+    color: var(--ink);
+  }
+  .cp-input:hover { border-color: var(--line); }
+  .cp-input:focus-within { border-color: var(--accent); }
+  .cp-input .cp-pre { color: var(--ink3); font-size: 11px; font-weight: 500; }
+  .cp-input .cp-val { color: var(--ink); font-feature-settings: "tnum" 1; flex: 1; }
+  .cp-input .cp-suf { color: var(--ink3); font-size: 11px; }
+
+  /* Mode toggle (HEX / RGB / HSL — segmented-style cycling button) */
+  .cp-mode-toggle {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--fill);
+    border-radius: 5px;
+    height: 30px;
+    padding: 0 8px;
+    color: var(--ink);
+    font-size: 11.5px; font-weight: 500;
+    cursor: pointer;
+  }
+  .cp-mode-toggle:hover { background: var(--fill2); }
+  .cp-mode-toggle .cp-caret {
+    color: var(--ink3); display: grid; place-items: center;
+  }
+
+  /* Eyedropper trigger button */
+  .cp-eye {
+    background: var(--fill);
+    border: 1px solid transparent;
+    border-radius: 5px;
+    width: 30px; height: 30px;
+    display: grid; place-items: center;
+    color: var(--ink2);
+    cursor: pointer;
+  }
+  .cp-eye:hover { border-color: var(--line); color: var(--ink); }
+  .cp-eye.active {
+    background: var(--accent-soft);
+    color: var(--accent-ink);
+    border-color: var(--accent);
+  }
+
+  /* RGB / HSL inputs — 4-up grid (3 channels + alpha) */
+  .cp-rgb-inputs {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 4px;
+  }
+  .cp-rgb-inputs .cp-num {
+    background: var(--fill);
+    border-radius: 5px;
+    height: 38px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 1px;
+    padding: 2px 0;
+  }
+  .cp-rgb-inputs .cp-num .cp-num-lbl {
+    color: var(--ink3); font-size: 9.5px; font-weight: 500;
+    letter-spacing: 0.04em; text-transform: uppercase;
+  }
+  .cp-rgb-inputs .cp-num .cp-num-val {
+    color: var(--ink); font-size: 12px;
+    font-feature-settings: "tnum" 1;
+    line-height: 1;
+  }
+
+  /* Swatch palette section */
+  .cp-section {
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .cp-section .cp-row-lbl {
+    font-size: 10px; color: var(--ink3);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+  .cp-swatches {
+    display: flex; flex-wrap: wrap; gap: 4px;
+    align-items: center;
+  }
+  .cp-swatch {
+    width: 22px; height: 22px;
+    border-radius: 3px;
+    border: 1px solid var(--line);
+    cursor: pointer;
+    position: relative;
+    transition: transform 0.1s ease;
+    flex-shrink: 0;
+  }
+  .cp-swatch:hover { border-color: var(--ink3); }
+  .cp-swatch.selected {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+  .cp-swatch.add {
+    background: transparent;
+    border-style: dashed;
+    color: var(--ink3);
+    display: grid; place-items: center;
+  }
+  .cp-swatch.add:hover { color: var(--ink); border-color: var(--ink3); }
+  .cp-swatch.image {
+    background: linear-gradient(135deg, #2c2c30 0% 50%, #1f1f22 50% 100%);
+    display: grid; place-items: center;
+    color: var(--ink2);
+  }
+
+  /* Tooltip on swatch hover */
+  .cp-tip {
+    position: absolute;
+    bottom: -28px; left: 50%; transform: translateX(-50%);
+    background: var(--fill2);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 11px; color: var(--ink);
+    white-space: nowrap;
+    z-index: 12;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  }
+
+  /* Linear gradient mode — gradient strip preview */
+  .cp-grad-strip {
+    width: 100%; height: 32px;
+    border-radius: 4px;
+    border: 1px solid var(--line);
+    position: relative;
+    overflow: hidden;
+  }
+  .cp-grad-strip::before {
+    content: "";
+    position: absolute; inset: 0;
+    background-image:
+      conic-gradient(from 90deg at 50% 50%, #3a3a3e 0% 25%, #1f1f22 25% 50%, #3a3a3e 50% 75%, #1f1f22 75%);
+    background-size: 8px 8px;
+  }
+  .cp-grad-strip .cp-grad-fill {
+    position: absolute; inset: 0;
+    background: linear-gradient(to right, var(--cp-stop-a, #000000), var(--cp-stop-b, #ffffff));
+  }
+
+  /* Stop list */
+  .cp-stops {
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .cp-stop {
+    display: grid;
+    grid-template-columns: 22px 1fr 56px 22px;
+    gap: 6px;
+    align-items: center;
+    background: var(--fill);
+    border-radius: 5px;
+    padding: 0 6px;
+    height: 30px;
+    cursor: pointer;
+  }
+  .cp-stop.selected {
+    background: var(--fill2);
+    box-shadow: 0 0 0 1px var(--accent);
+  }
+  .cp-stop .cp-stop-sw {
+    width: 18px; height: 18px;
+    border-radius: 3px;
+    border: 1px solid var(--line);
+  }
+  .cp-stop .cp-stop-hex {
+    color: var(--ink); font-size: 12px;
+    font-feature-settings: "tnum" 1;
+  }
+  .cp-stop .cp-stop-pos {
+    color: var(--ink); font-size: 12px;
+    text-align: right; padding-right: 4px;
+    font-feature-settings: "tnum" 1;
+  }
+  .cp-stop .cp-stop-rm {
+    width: 20px; height: 20px;
+    display: grid; place-items: center;
+    color: var(--ink3); border-radius: 4px;
+  }
+  .cp-stop .cp-stop-rm:hover { background: var(--fill2); color: var(--ink); }
+
+  /* Add stop button */
+  .cp-add-stop {
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    height: 28px;
+    background: var(--fill);
+    border-radius: 5px;
+    color: var(--ink2);
+    font-size: 11.5px; font-weight: 500;
+    cursor: pointer;
+  }
+  .cp-add-stop:hover { background: var(--fill2); color: var(--ink); }
+
+  /* Angle / direction */
+  .cp-angle-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  /* Radial gradient preview */
+  .cp-radial-preview {
+    width: 100%; height: 120px;
+    border-radius: 4px;
+    border: 1px solid var(--line);
+    position: relative;
+    overflow: hidden;
+    background:
+      radial-gradient(circle at 50% 50%, var(--cp-stop-a, #ffffff) 0%, var(--cp-stop-b, #000000) 100%);
+  }
+  .cp-radial-preview .cp-center-handle {
+    position: absolute;
+    width: 12px; height: 12px;
+    border: 1.5px solid #ffffff;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.4);
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.4);
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+
+  /* Image source segmented (Brand Kit / Uploads / Shopify products) */
+  .cp-image-source {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1px;
+    background: var(--fill);
+    border-radius: 5px;
+    padding: 2px;
+  }
+  .cp-image-source .cp-src {
+    height: 26px;
+    display: grid; place-items: center;
+    font-size: 11px; color: var(--ink3);
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .cp-image-source .cp-src:hover { color: var(--ink2); }
+  .cp-image-source .cp-src.active {
+    background: var(--fill2); color: var(--ink); font-weight: 500;
+  }
+
+  /* Image preview */
+  .cp-image-preview {
+    width: 100%; height: 92px;
+    border-radius: 4px;
+    border: 1px solid var(--line);
+    position: relative;
+    overflow: hidden;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+  .cp-image-preview.placeholder {
+    background:
+      repeating-linear-gradient(135deg, #2a2a2e 0 6px, #232327 6px 12px);
+  }
+  .cp-image-preview .cp-crop-handle {
+    position: absolute;
+    width: 8px; height: 8px;
+    background: #ffffff;
+    border: 1.5px solid var(--accent);
+    border-radius: 50%;
+  }
+
+  /* Scale-mode dropdown */
+  .cp-scale-mode {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--fill);
+    border-radius: 5px;
+    height: 30px;
+    padding: 0 9px;
+    color: var(--ink); font-size: 12px;
+    cursor: pointer;
+  }
+  .cp-scale-mode:hover { background: var(--fill2); }
+  .cp-scale-mode .cp-caret {
+    color: var(--ink3); display: grid; place-items: center;
+  }
+
+  /* Tile percentage slider (Tile mode) */
+  .cp-tile-slider {
+    display: grid;
+    grid-template-columns: 1fr 56px;
+    gap: 8px;
+    align-items: center;
+  }
+  .cp-tile-slider .cp-track {
+    height: 12px;
+    border-radius: 6px;
+    background: var(--fill);
+    position: relative;
+  }
+  .cp-tile-slider .cp-tile-fill {
+    position: absolute; left: 0; top: 0; bottom: 0;
+    background: var(--accent);
+    border-radius: 6px;
+  }
+  .cp-tile-slider .cp-pct-readout {
+    font-size: 12px; color: var(--ink);
+    text-align: right; font-feature-settings: "tnum" 1;
+  }
+
+  /* Effect-color anchor — drop-shadow editor host popover */
+  .cp-effect-host {
+    position: absolute;
+    width: 240px;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    box-shadow: 0 8px 24px -6px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.04) inset;
+    padding: 10px;
+    display: flex; flex-direction: column; gap: 8px;
+    color: var(--ink); font-size: 11.5px;
+  }
+  .cp-effect-host .cp-effect-title {
+    color: var(--ink); font-size: 12px; font-weight: 600;
+    letter-spacing: -0.003em;
+  }
+  .cp-effect-host .cp-effect-row {
+    display: grid; grid-template-columns: 56px 1fr;
+    align-items: center; gap: 8px;
+    color: var(--ink2);
+  }
+  .cp-effect-host .cp-effect-row .cp-effect-lbl {
+    color: var(--ink3); font-size: 11px;
+  }
+  .cp-effect-host .cp-effect-row .cp-effect-val {
+    background: var(--fill); border-radius: 4px;
+    height: 26px; padding: 0 8px;
+    display: flex; align-items: center;
+    color: var(--ink); font-size: 11.5px;
+    font-feature-settings: "tnum" 1;
+  }
+  .cp-effect-host .cp-effect-color-row {
+    display: grid; grid-template-columns: 56px 1fr;
+    align-items: center; gap: 8px;
+  }
+  .cp-effect-host .cp-effect-color-fill {
+    background: var(--fill); border-radius: 4px;
+    height: 26px;
+    display: grid; grid-template-columns: 18px 1fr auto;
+    align-items: center; gap: 6px;
+    padding: 0 6px;
+    box-shadow: 0 0 0 1px var(--accent);
+  }
+  .cp-effect-host .cp-effect-color-fill .cp-sw {
+    width: 14px; height: 14px;
+    border-radius: 3px;
+    border: 1px solid var(--line);
+  }
+  .cp-effect-host .cp-effect-color-fill .cp-fx-hex {
+    color: var(--ink); font-size: 11.5px;
+    font-feature-settings: "tnum" 1;
+  }
+  .cp-effect-host .cp-effect-color-fill .cp-fx-pct {
+    color: var(--ink2); font-size: 11px;
+  }
+
+  /* Eyedropper canvas overlay (B9.4 reference, simplified — full-fidelity version locked in 09 Canvas Overlays) */
+  .cp-ed-magnifier {
+    position: absolute;
+    width: 96px; height: 96px;
+    border-radius: 50%;
+    border: 2px solid #ffffff;
+    box-shadow: 0 0 0 1px #1e1e1e, 0 8px 24px rgba(0,0,0,0.6);
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 6;
+  }
+  .cp-ed-magnifier .cp-ed-pixels {
+    position: absolute; inset: 0;
+    background:
+      linear-gradient(to right, rgba(255,255,255,0.10) 1px, transparent 1px) 0 0 / 16px 16px,
+      linear-gradient(to bottom, rgba(255,255,255,0.10) 1px, transparent 1px) 0 0 / 16px 16px,
+      linear-gradient(135deg, #c24a1e 0% 50%, #1a1a18 50% 100%);
+  }
+  .cp-ed-magnifier .cp-ed-reticle {
+    position: absolute;
+    left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    width: 16px; height: 16px;
+    border: 1.5px solid #ffffff;
+    box-shadow: 0 0 0 1px #1e1e1e;
+  }
+  .cp-ed-hex {
+    position: absolute;
+    background: #2c2c2c;
+    border: 1px solid var(--line);
+    color: var(--ink);
+    font-size: 11px;
+    font-feature-settings: "tnum" 1;
+    padding: 4px 8px;
+    border-radius: 4px;
+    display: inline-flex; align-items: center; gap: 6px;
+    z-index: 10;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  }
+  .cp-ed-hex .cp-ed-hex-sw {
+    width: 12px; height: 12px;
+    border-radius: 2px;
+  }
+
+  /* Annotation note used to cross-reference B9 / cross-cuts */
+  .annot-note {
+    background: var(--fill);
+    border-left: 2px solid var(--ink3);
+    padding: 8px 12px;
+    font-size: 11.5px;
+    color: var(--ink2);
+    margin-top: 12px;
+    border-radius: 0 4px 4px 0;
+  }
+  .annot-note b { color: var(--ink); font-weight: 600; }
+
+  /* SECTION head + footer caption — minor doc-chrome niceties */
+  section.block .canvas-card { margin-top: 12px; }
+  section.block .canvas-caption {
+    margin-top: 14px;
+    color: var(--ink-2);
+    font-size: 12px;
+    line-height: 1.5;
+    max-width: 880px;
+  }
+  section.block .canvas-caption .id {
+    display: inline-block;
+    background: var(--fill);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 1px 6px;
+    margin-right: 8px;
+    font-size: 10.5px;
+    color: var(--ink-3);
+    font-weight: 500;
+  }
+
+  /* On the canvas, mute the muted-frame rendering used as backdrop */
+  .kc.muted .center .frame { opacity: 0.5; filter: saturate(0.6); }
+  .kc.muted .left .layer.selected { background: transparent; color: var(--ink2); }
+  .kc.muted .left .layer.selected .ic { color: var(--ink3); }
+</style>
+</head>
+<body data-screen-label="12 Color Picker">
+
+<header class="page-head">
+  <div class="eyebrow">HI-FI · BATCH B · CHUNK B5</div>
+  <h1>12 · Color picker popover</h1>
+  <p>Reusable color picker invoked from page background, fill rows, gradient stops, stroke color, and effect color. Multi-mode (Solid / Linear gradient / Radial gradient / Image) when the host context is a Fill section; "Color" header only for the four single-mode contexts. Inter throughout, single accent (<span style="color:var(--ink); font-weight:500;">#3b82f6</span>), 1px hairlines, locked tokens. Picker INTERIOR is designer territory; canvas chrome is lifted byte-for-byte from <code style="color:var(--ink);">Kova Canvas - Final.html</code>.</p>
+  <div class="meta">14 scenes · 1440 design width · dark · inherits kova-hifi.css</div>
+</header>
+
+<!-- ========================================================================
+     SOLID MODE — 5 scenes (12.1–12.5)
+     ======================================================================== -->
+
+<!-- ============== 12.1 Solid mode default ============== -->
+<section class="block first">
+  <header>
+    <div class="tag">B14 · color picker · solid mode</div>
+    <h2>12.1 — Solid mode (default)</h2>
+    <p class="intro">Picker invoked from a Fill row. Four mode tabs (Solid / Linear / Radial / Image) at top, saturation/value canvas with current hue, hue slider, alpha slider, hex input + mode toggle + eyedropper trigger, and three swatch rows (Recent / Brand / On this page).</p>
+  </header>
+
+  <div class="canvas-card kc muted">
+    <!-- TOPBAR -->
+    <div class="topbar">
+      <div class="l">
+        <div class="logo">K</div>
+        <div class="file">
+          <span class="crumb-brand"><span class="b"></span>Wildgrove</span>
+          <span class="sep">/</span>
+          <b>Spring Drop · 04</b>
+          <span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span>
+        </div>
+      </div>
+      <div class="r">
+        <div class="icon-btn" title="Notifications"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/></svg></div>
+        <div class="icon-btn" title="Present"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
+        <div class="icon-btn" title="Comments"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+        <div class="avatar">JM</div>
+      </div>
+    </div>
+
+    <div class="body">
+      <!-- LEFT (muted) -->
+      <div class="left">
+        <div class="file-row">
+          <div class="file-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+          <div>
+            <div class="name">Spring Drop · 04</div>
+            <div class="meta">3 emails · edited 2m ago</div>
+          </div>
+        </div>
+        <div class="sec"><h5>Layers</h5></div>
+        <div class="layers">
+          <div class="layer selected">
+            <span class="caret"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></span>
+            <span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg></span>
+            <span class="name">Teaser #2 (A/B)</span>
+            <span class="vis"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span>
+          </div>
+          <div class="layer indent-1">
+            <span class="ic"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg></span>
+            <span class="name">Hero image</span>
+            <span class="vis"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span>
+          </div>
+          <div class="layer indent-1">
+            <span class="ic"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/></svg></span>
+            <span class="name">CTA · Shop the drop</span>
+            <span class="vis"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span>
+          </div>
+          <div class="layer indent-1 dim">
+            <span class="ic"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/></svg></span>
+            <span class="name">Footer · unsubscribe</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- CENTER (canvas with muted frame) -->
+      <div class="center">
+        <div class="canvas-grid"></div>
+        <div class="frames-row">
+          <div class="frame selected" style="opacity:0.55;">
+            <div class="frame-label">Teaser #2 (A/B)</div>
+            <div style="width:100%; height:320px; background:repeating-linear-gradient(135deg, #d4d2cc 0 8px, #dcd9d2 8px 16px);"></div>
+            <div style="padding:36px 48px;"><div style="font-size:38px; font-weight:600; letter-spacing:-0.02em; color:#1a1a18;">Cup forward.<br/>Spring forward.</div></div>
+            <div class="handle tl"></div><div class="handle tm"></div><div class="handle tr"></div>
+            <div class="handle lm"></div><div class="handle rm"></div>
+            <div class="handle bl"></div><div class="handle bm"></div><div class="handle br"></div>
+          </div>
+        </div>
+        <!-- TOOLBAR (V1 Kova-Loud chrome, #3b82f6 active) -->
+        <div class="toolbar">
+          <div class="tool active" title="Move">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 2l7 18 2-7 7-2z"/></svg>
+          </div>
+          <div class="tool" title="Frame">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg>
+          </div>
+          <div class="tool" title="Rectangle">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+          </div>
+          <div class="tool" title="Ellipse">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/></svg>
+          </div>
+          <div class="tool" title="Pen">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.5 7.5"/></svg>
+          </div>
+          <div class="tool" title="Text">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h14v3M9 4v16M7 20h10"/></svg>
+          </div>
+          <div class="tool" title="Comment">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          </div>
+          <div class="divider"></div>
+          <div class="tool ai" title="Ask Kova">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/><path d="M19 14l.7 2.1L22 17l-2.3.9L19 20l-.7-2.1L16 17l2.3-.9L19 14z"/></svg>
+          </div>
+          <div class="tool" title="Components">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          </div>
+        </div>
+        <div class="zoom">100%<span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div>
+      </div>
+
+      <!-- RIGHT (Fill section visible, anchored row highlighted) -->
+      <div class="right">
+        <div class="tabs">
+          <div class="tabs-l"><div class="tab active">Design</div></div>
+          <div class="zoom-r">292%<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+        </div>
+        <div class="frame-head">
+          <div class="title">Frame<span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div>
+          <div class="actions">
+            <span class="a" title="Code"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></span>
+            <span class="a" title="Component"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="12 2 22 12 12 22 2 12 12 2"/><polygon points="12 7 17 12 12 17 7 12 12 7"/></svg></span>
+            <span class="a" title="Theme"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+          </div>
+        </div>
+        <div class="pbody">
+          <div class="group">
+            <div class="ghead"><h6>Fill</h6><div class="actions"><span class="a" title="Add fill"><i data-lucide="plus" style="width:14px;height:14px;"></i></span></div></div>
+            <div class="fill-row anchored">
+              <span class="swatch" style="background:#3b82f6"></span>
+              <span class="hex">3B82F6</span>
+              <span class="pct">100%</span>
+              <span class="ico" title="Toggle"><i data-lucide="eye" style="width:12px;height:12px;"></i></span>
+              <span class="ico" title="Remove"><i data-lucide="minus" style="width:12px;height:12px;"></i></span>
+            </div>
+          </div>
+          <div class="group"><div class="ghead"><h6>Stroke</h6><div class="actions"><span class="a"><i data-lucide="plus" style="width:14px;height:14px;"></i></span></div></div></div>
+          <div class="group"><div class="ghead"><h6>Effects</h6><div class="actions"><span class="a"><i data-lucide="plus" style="width:14px;height:14px;"></i></span></div></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- POPOVER — 4-tab variant, Solid active, anchored to fill row -->
+    <div class="cp-popover" style="top: 168px; right: 282px;">
+      <div class="cp-header">
+        <div class="cp-title">Color</div>
+        <div class="cp-close" title="Close"><i data-lucide="x" style="width:12px;height:12px;"></i></div>
+      </div>
+      <div class="cp-tabs">
+        <div class="cp-tab active">Solid</div>
+        <div class="cp-tab">Linear</div>
+        <div class="cp-tab">Radial</div>
+        <div class="cp-tab">Image</div>
+      </div>
+      <div class="cp-canvas" style="background:
+        linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 100%),
+        linear-gradient(to right, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 100%),
+        hsl(217, 91%, 50%);">
+        <div class="cp-cursor" style="left: 76%; top: 28%;"></div>
+      </div>
+      <div class="cp-hue"><div class="cp-knob" style="left: 60%;"></div></div>
+      <div class="cp-alpha"><div class="cp-knob" style="left: 100%;"></div></div>
+      <div class="cp-inputs">
+        <div class="cp-input"><span class="cp-pre">#</span><span class="cp-val">3B82F6</span></div>
+        <div class="cp-mode-toggle">HEX<span class="cp-caret"><i data-lucide="chevron-down" style="width:10px;height:10px;"></i></span></div>
+        <div class="cp-eye" title="Pick color from canvas"><i data-lucide="pipette" style="width:14px;height:14px;"></i></div>
+      </div>
+      <div class="cp-section">
+        <div class="cp-row-lbl">Recent</div>
+        <div class="cp-swatches">
+          <div class="cp-swatch selected" style="background:#3b82f6"></div>
+          <div class="cp-swatch" style="background:#c24a1e"></div>
+          <div class="cp-swatch" style="background:#1a1a18"></div>
+          <div class="cp-swatch" style="background:#ededea"></div>
+        </div>
+      </div>
+      <div class="cp-section">
+        <div class="cp-row-lbl">Wildgrove brand</div>
+        <div class="cp-swatches">
+          <div class="cp-swatch" style="background:#c24a1e"></div>
+          <div class="cp-swatch" style="background:#1a1a18"></div>
+          <div class="cp-swatch" style="background:#f4ede2"></div>
+          <div class="cp-swatch" style="background:#7d8c5c"></div>
+          <div class="cp-swatch add" title="Add current color"><i data-lucide="plus" style="width:11px;height:11px;"></i></div>
+        </div>
+      </div>
+      <div class="cp-section">
+        <div class="cp-row-lbl">On this page</div>
+        <div class="cp-swatches">
+          <div class="cp-swatch" style="background:#ffffff"></div>
+          <div class="cp-swatch" style="background:#1a1a18"></div>
+          <div class="cp-swatch" style="background:#3b82f6"></div>
+          <div class="cp-swatch image" title="Image fill"><i data-lucide="image" style="width:11px;height:11px;"></i></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="canvas-caption"><span class="id">12.1</span> Picker anchored to a solid-fill row in the right panel inspector. The Solid tab is active in pill style (background <code style="font-family:inherit; color:var(--ink);">var(--fill2)</code>, color <code style="font-family:inherit; color:var(--ink);">var(--ink)</code>) — never solid <code style="font-family:inherit; color:var(--ink);">--accent</code>. Hex input shows the current value in Inter (per design.md §5 ban 1 — Inter only on chrome). Selected swatch ring is 2px <code style="font-family:inherit; color:var(--ink);">--accent</code>, the design.md §1.5 analog of the canvas-frame selection ring (documented exception in DELIVERY_NOTES.md §3.3).</div>
+</section>
+
+<!-- ============== 12.2 Solid mode — RGB ============== -->
+<section class="block">
+  <header>
+    <div class="tag">B14 · color picker · RGB</div>
+    <h2>12.2 — RGB toggle active</h2>
+    <p class="intro">Mode toggle cycled to RGB. Hex input is replaced by a 4-up grid of small numeric channels (R / G / B / A). Same accent color, same swatch palette state — only the input row swaps.</p>
+  </header>
+
+  <div class="canvas-card kc muted">
+    <div class="topbar">
+      <div class="l">
+        <div class="logo">K</div>
+        <div class="file">
+          <span class="crumb-brand"><span class="b"></span>Wildgrove</span>
+          <span class="sep">/</span>
+          <b>Spring Drop · 04</b>
+          <span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span>
+        </div>
+      </div>
+      <div class="r">
+        <div class="icon-btn" title="Notifications"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/></svg></div>
+        <div class="icon-btn" title="Present"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
+        <div class="icon-btn" title="Comments"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+        <div class="avatar">JM</div>
+      </div>
+    </div>
+    <div class="body">
+      <div class="left">
+        <div class="file-row"><div class="file-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div><div class="name">Spring Drop · 04</div><div class="meta">3 emails</div></div></div>
+        <div class="sec"><h5>Layers</h5></div>
+        <div class="layers">
+          <div class="layer selected"><span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg></span><span class="name">Teaser #2 (A/B)</span>
+            <span class="vis"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span>
+          </div>
+          <div class="layer indent-1"><span class="ic"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/></svg></span><span class="name">CTA · Shop the drop</span><span class="vis"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span></div>
+        </div>
+      </div>
+      <div class="center">
+        <div class="canvas-grid"></div>
+        <div class="frames-row"><div class="frame selected" style="opacity:0.55;"><div class="frame-label">Teaser #2</div><div style="height:320px; background:repeating-linear-gradient(135deg, #d4d2cc 0 8px, #dcd9d2 8px 16px);"></div><div class="handle tl"></div><div class="handle tr"></div><div class="handle bl"></div><div class="handle br"></div></div></div>
+        <!-- TOOLBAR (V1 Kova-Loud chrome, #3b82f6 active) -->
+        <div class="toolbar">
+          <div class="tool active" title="Move">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 2l7 18 2-7 7-2z"/></svg>
+          </div>
+          <div class="tool" title="Frame">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg>
+          </div>
+          <div class="tool" title="Rectangle">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+          </div>
+          <div class="tool" title="Ellipse">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/></svg>
+          </div>
+          <div class="tool" title="Pen">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.5 7.5"/></svg>
+          </div>
+          <div class="tool" title="Text">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h14v3M9 4v16M7 20h10"/></svg>
+          </div>
+          <div class="tool" title="Comment">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          </div>
+          <div class="divider"></div>
+          <div class="tool ai" title="Ask Kova">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/><path d="M19 14l.7 2.1L22 17l-2.3.9L19 20l-.7-2.1L16 17l2.3-.9L19 14z"/></svg>
+          </div>
+          <div class="tool" title="Components">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          </div>
+        </div>
+        <div class="zoom">100%<span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div>
+      </div>
+      <div class="right">
+        <div class="tabs"><div class="tabs-l"><div class="tab active">Design</div></div><div class="zoom-r">292%<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div></div>
+        <div class="frame-head"><div class="title">Frame<span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div></div>
+        <div class="pbody">
+          <div class="group">
+            <div class="ghead"><h6>Fill</h6><div class="actions"><span class="a"><i data-lucide="plus" style="width:14px;height:14px;"></i></span></div></div>
+            <div class="fill-row anchored">
+              <span class="swatch" style="background:#3b82f6"></span>
+              <span class="hex">3B82F6</span><span class="pct">100%</span>
+              <span class="ico"><i data-lucide="eye" style="width:12px;height:12px;"></i></span>
+              <span class="ico"><i data-lucide="minus" style="width:12px;height:12px;"></i></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cp-popover" style="top: 152px; right: 282px;">
+      <div class="cp-header"><div class="cp-title">Color</div><div class="cp-close"><i data-lucide="x" style="width:12px;height:12px;"></i></div></div>
+      <div class="cp-tabs">
+        <div class="cp-tab active">Solid</div><div class="cp-tab">Linear</div><div class="cp-tab">Radial</div><div class="cp-tab">Image</div>
+      </div>
+      <div class="cp-canvas" style="background:
+        linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 100%),
+        linear-gradient(to right, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 100%),
+        hsl(217, 91%, 50%);">
+        <div class="cp-cursor" style="left: 76%; top: 28%;"></div>
+      </div>
+      <div class="cp-hue"><div class="cp-knob" style="left: 60%;"></div></div>
+      <div class="cp-alpha"><div class="cp-knob" style="left: 100%;"></div></div>
+      <div class="cp-rgb-inputs">
+        <div class="cp-num"><div class="cp-num-lbl">R</div><div class="cp-num-val">59</div></div>
+        <div class="cp-num"><div class="cp-num-lbl">G</div><div class="cp-num-val">130</div></div>
+        <div class="cp-num"><div class="cp-num-lbl">B</div><div class="cp-num-val">246</div></div>
+        <div class="cp-num"><div class="cp-num-lbl">A</div><div class="cp-num-val">100</div></div>
+      </div>
+      <div class="cp-inputs" style="grid-template-columns: 1fr 64px 30px;">
+        <div class="cp-input" style="visibility:hidden;"></div>
+        <div class="cp-mode-toggle">RGB<span class="cp-caret"><i data-lucide="chevron-down" style="width:10px;height:10px;"></i></span></div>
+        <div class="cp-eye" title="Pick color from canvas"><i data-lucide="pipette" style="width:14px;height:14px;"></i></div>
+      </div>
+      <div class="cp-section"><div class="cp-row-lbl">Recent</div><div class="cp-swatches">
+        <div class="cp-swatch selected" style="background:#3b82f6"></div>
+        <div class="cp-swatch" style="background:#c24a1e"></div>
+        <div class="cp-swatch" style="background:#1a1a18"></div>
+        <div class="cp-swatch" style="background:#ededea"></div>
+      </div></div>
+      <div class="cp-section"><div class="cp-row-lbl">Wildgrove brand</div><div class="cp-swatches">
+        <div class="cp-swatch" style="background:#c24a1e"></div>
+        <div class="cp-swatch" style="background:#1a1a18"></div>
+        <div class="cp-swatch" style="background:#f4ede2"></div>
+        <div class="cp-swatch" style="background:#7d8c5c"></div>
+        <div class="cp-swatch add"><i data-lucide="plus" style="width:11px;height:11px;"></i></div>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="canvas-caption"><span class="id">12.2</span> RGB mode shows four numeric channels stacked above the toggle. Each channel cell is 38px tall (2px above the default 30px input height to fit the small uppercase label and the value). The toggle now reads "RGB" — the same component, cycled. Hex input field is hidden in this state (the 4-up grid replaces it).</div>
+</section>
+
+<!-- ============== 12.3 Solid mode — HSL ============== -->
+<section class="block">
+  <header>
+    <div class="tag">B14 · color picker · HSL</div>
+    <h2>12.3 — HSL toggle active</h2>
+    <p class="intro">Mode toggle cycled once more to HSL. Same 4-up grid layout, channel labels swap to H / S / L / A, values reflect the same color.</p>
+  </header>
+
+  <div class="canvas-card kc muted">
+    <div class="topbar">
+      <div class="l"><div class="logo">K</div><div class="file"><span class="crumb-brand"><span class="b"></span>Wildgrove</span><span class="sep">/</span><b>Spring Drop · 04</b><span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div></div>
+      <div class="r"><div class="icon-btn" title="Notifications"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/></svg></div><div class="icon-btn" title="Present"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="5 3 19 12 5 21 5 3"/></svg></div><div class="icon-btn" title="Comments"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div class="avatar">JM</div></div>
+    </div>
+    <div class="body">
+      <div class="left">
+        <div class="file-row"><div class="file-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div><div class="name">Spring Drop · 04</div><div class="meta">3 emails</div></div></div>
+        <div class="sec"><h5>Layers</h5></div>
+        <div class="layers">
+          <div class="layer selected"><span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg></span><span class="name">Teaser #2 (A/B)</span>
+            <span class="vis"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span>
+          </div>
+        </div>
+      </div>
+      <div class="center"><div class="canvas-grid"></div><div class="frames-row"><div class="frame selected" style="opacity:0.55;"><div class="frame-label">Teaser #2</div><div style="height:320px; background:repeating-linear-gradient(135deg, #d4d2cc 0 8px, #dcd9d2 8px 16px);"></div></div></div><div class="toolbar"><div class="tool active" title="Move"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 2l7 18 2-7 7-2z"/></svg></div><div class="tool" title="Frame"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg></div><div class="tool" title="Rectangle"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="2"/></svg></div><div class="tool" title="Ellipse"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/></svg></div><div class="tool" title="Pen"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.5 7.5"/></svg></div><div class="tool" title="Text"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h14v3M9 4v16M7 20h10"/></svg></div><div class="tool" title="Comment"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div class="divider"></div><div class="tool ai" title="Ask Kova"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/><path d="M19 14l.7 2.1L22 17l-2.3.9L19 20l-.7-2.1L16 17l2.3-.9L19 14z"/></svg></div><div class="tool" title="Components"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div></div><div class="zoom">100%<span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div></div>
+      <div class="right">
+        <div class="tabs"><div class="tabs-l"><div class="tab active">Design</div></div><div class="zoom-r">292%<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div></div>
+        <div class="frame-head"><div class="title">Frame<span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div></div>
+        <div class="pbody">
+          <div class="group">
+            <div class="ghead"><h6>Fill</h6><div class="actions"><span class="a"><i data-lucide="plus" style="width:14px;height:14px;"></i></span></div></div>
+            <div class="fill-row anchored">
+              <span class="swatch" style="background:#3b82f6"></span>
+              <span class="hex">3B82F6</span><span class="pct">100%</span>
+              <span class="ico"><i data-lucide="eye" style="width:12px;height:12px;"></i></span>
+              <span class="ico"><i data-lucide="minus" style="width:12px;height:12px;"></i></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cp-popover" style="top: 152px; right: 282px;">
+      <div class="cp-header"><div class="cp-title">Color</div><div class="cp-close"><i data-lucide="x" style="width:12px;height:12px;"></i></div></div>
+      <div class="cp-tabs">
+        <div class="cp-tab active">Solid</div><div class="cp-tab">Linear</div><div class="cp-tab">Radial</div><div class="cp-tab">Image</div>
+      </div>
+      <div class="cp-canvas" style="background:
+        linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 100%),
+        linear-gradient(to right, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 100%),
+        hsl(217, 91%, 50%);">
+        <div class="cp-cursor" style="left: 76%; top: 28%;"></div>
+      </div>
+      <div class="cp-hue"><div class="cp-knob" style="left: 60%;"></div></div>
+      <div class="cp-alpha"><div class="cp-knob" style="left: 100%;"></div></div>
+      <div class="cp-rgb-inputs">
+        <div class="cp-num"><div class="cp-num-lbl">H</div><div class="cp-num-val">217</div></div>
+        <div class="cp-num"><div class="cp-num-lbl">S</div><div class="cp-num-val">91</div></div>
+        <div class="cp-num"><div class="cp-num-lbl">L</div><div class="cp-num-val">60</div></div>
+        <div class="cp-num"><div class="cp-num-lbl">A</div><div class="cp-num-val">100</div></div>
+      </div>
+      <div class="cp-inputs" style="grid-template-columns: 1fr 64px 30px;">
+        <div class="cp-input" style="visibility:hidden;"></div>
+        <div class="cp-mode-toggle">HSL<span class="cp-caret"><i data-lucide="chevron-down" style="width:10px;height:10px;"></i></span></div>
+        <div class="cp-eye"><i data-lucide="pipette" style="width:14px;height:14px;"></i></div>
+      </div>
+      <div class="cp-section"><div class="cp-row-lbl">Recent</div><div class="cp-swatches">
+        <div class="cp-swatch selected" style="background:#3b82f6"></div>
+        <div class="cp-swatch" style="background:#c24a1e"></div>
+        <div class="cp-swatch" style="background:#1a1a18"></div>
+      </div></div>
+      <div class="cp-section"><div class="cp-row-lbl">Wildgrove brand</div><div class="cp-swatches">
+        <div class="cp-swatch" style="background:#c24a1e"></div>
+        <div class="cp-swatch" style="background:#1a1a18"></div>
+        <div class="cp-swatch" style="background:#f4ede2"></div>
+        <div class="cp-swatch" style="background:#7d8c5c"></div>
+        <div class="cp-swatch add"><i data-lucide="plus" style="width:11px;height:11px;"></i></div>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="canvas-caption"><span class="id">12.3</span> HSL is the same shape as RGB — only the four channel labels and values change. The cycling-button pattern is the designer's choice (documented in DELIVERY_NOTES.md §4): one toggle cycles HEX → RGB → HSL → HEX, mirroring Figma's interaction. Persistent segmented control was rejected to save vertical space inside a 264px popover.</div>
+</section>
+
+<!-- ============== 12.4 Solid mode — swatch hover ============== -->
+<section class="block">
+  <header>
+    <div class="tag">B14 · color picker · swatch interaction</div>
+    <h2>12.4 — Brand swatch hovered (tooltip)</h2>
+    <p class="intro">Hovered brand swatch surfaces a small tooltip with the swatch name and hex. No icon-only buttons without titles per design.md §5 ban 11.</p>
+  </header>
+
+  <div class="canvas-card kc muted">
+    <div class="topbar">
+      <div class="l"><div class="logo">K</div><div class="file"><span class="crumb-brand"><span class="b"></span>Wildgrove</span><span class="sep">/</span><b>Spring Drop · 04</b><span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div></div>
+      <div class="r"><div class="icon-btn" title="Notifications"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/></svg></div><div class="icon-btn" title="Present"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="5 3 19 12 5 21 5 3"/></svg></div><div class="icon-btn" title="Comments"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div class="avatar">JM</div></div>
+    </div>
+    <div class="body">
+      <div class="left">
+        <div class="file-row"><div class="file-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div><div class="name">Spring Drop · 04</div><div class="meta">3 emails</div></div></div>
+        <div class="sec"><h5>Layers</h5></div>
+        <div class="layers"><div class="layer selected"><span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg></span><span class="name">Teaser #2 (A/B)</span><span class="vis"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span></div></div>
+      </div>
+      <div class="center"><div class="canvas-grid"></div><div class="frames-row"><div class="frame selected" style="opacity:0.55;"><div class="frame-label">Teaser #2</div><div style="height:320px; background:repeating-linear-gradient(135deg, #d4d2cc 0 8px, #dcd9d2 8px 16px);"></div></div></div><div class="toolbar"><div class="tool active" title="Move"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 2l7 18 2-7 7-2z"/></svg></div><div class="tool" title="Frame"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg></div><div class="tool" title="Rectangle"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="2"/></svg></div><div class="tool" title="Ellipse"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/></svg></div><div class="tool" title="Pen"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.5 7.5"/></svg></div><div class="tool" title="Text"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h14v3M9 4v16M7 20h10"/></svg></div><div class="tool" title="Comment"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div class="divider"></div><div class="tool ai" title="Ask Kova"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/><path d="M19 14l.7 2.1L22 17l-2.3.9L19 20l-.7-2.1L16 17l2.3-.9L19 14z"/></svg></div><div class="tool" title="Components"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div></div><div class="zoom">100%<span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div></div>
+      <div class="right">
+        <div class="tabs"><div class="tabs-l"><div class="tab active">Design</div></div><div class="zoom-r">292%<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div></div>
+        <div class="frame-head"><div class="title">Frame<span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div></div>
+        <div class="pbody">
+          <div class="group">
+            <div class="ghead"><h6>Fill</h6><div class="actions"><span class="a"><i data-lucide="plus" style="width:14px;height:14px;"></i></span></div></div>
+            <div class="fill-row anchored">
+              <span class="swatch" style="background:#c24a1e"></span>
+              <span class="hex">C24A1E</span><span class="pct">100%</span>
+              <span class="ico"><i data-lucide="eye" style="width:12px;height:12px;"></i></span>
+              <span class="ico"><i data-lucide="minus" style="width:12px;height:12px;"></i></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cp-popover" style="top: 168px; right: 282px;">
+      <div class="cp-header"><div class="cp-title">Color</div><div class="cp-close"><i data-lucide="x" style="width:12px;height:12px;"></i></div></div>
+      <div class="cp-tabs">
+        <div class="cp-tab active">Solid</div><div class="cp-tab">Linear</div><div class="cp-tab">Radial</div><div class="cp-tab">Image</div>
+      </div>
+      <div class="cp-canvas" style="background:
+        linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 100%),
+        linear-gradient(to right, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 100%),
+        hsl(15, 75%, 44%);">
+        <div class="cp-cursor" style="left: 80%; top: 50%;"></div>
+      </div>
+      <div class="cp-hue"><div class="cp-knob" style="left: 4%;"></div></div>
+      <div class="cp-alpha" style="background-image: linear-gradient(to right, rgba(194,74,30,0), rgba(194,74,30,1)), conic-gradient(from 90deg at 50% 50%, #3a3a3e 0% 25%, #1f1f22 25% 50%, #3a3a3e 50% 75%, #1f1f22 75%); background-size: 100% 100%, 8px 8px;"><div class="cp-knob" style="left: 100%;"></div></div>
+      <div class="cp-inputs">
+        <div class="cp-input"><span class="cp-pre">#</span><span class="cp-val">C24A1E</span></div>
+        <div class="cp-mode-toggle">HEX<span class="cp-caret"><i data-lucide="chevron-down" style="width:10px;height:10px;"></i></span></div>
+        <div class="cp-eye"><i data-lucide="pipette" style="width:14px;height:14px;"></i></div>
+      </div>
+      <div class="cp-section"><div class="cp-row-lbl">Recent</div><div class="cp-swatches">
+        <div class="cp-swatch" style="background:#3b82f6"></div>
+        <div class="cp-swatch selected" style="background:#c24a1e"></div>
+        <div class="cp-swatch" style="background:#1a1a18"></div>
+        <div class="cp-swatch" style="background:#ededea"></div>
+      </div></div>
+      <div class="cp-section">
+        <div class="cp-row-lbl">Wildgrove brand</div>
+        <div class="cp-swatches">
+          <div class="cp-swatch" style="background:#c24a1e; border-color: var(--ink3);">
+            <div class="cp-tip">Wildgrove orange · #C24A1E</div>
+          </div>
+          <div class="cp-swatch" style="background:#1a1a18"></div>
+          <div class="cp-swatch" style="background:#f4ede2"></div>
+          <div class="cp-swatch" style="background:#7d8c5c"></div>
+          <div class="cp-swatch add"><i data-lucide="plus" style="width:11px;height:11px;"></i></div>
+        </div>
+      </div>
+      <div class="cp-section"><div class="cp-row-lbl">On this page</div><div class="cp-swatches">
+        <div class="cp-swatch" style="background:#ffffff"></div>
+        <div class="cp-swatch" style="background:#1a1a18"></div>
+        <div class="cp-swatch" style="background:#c24a1e"></div>
+        <div class="cp-swatch image"><i data-lucide="image" style="width:11px;height:11px;"></i></div>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="canvas-caption"><span class="id">12.4</span> Hovered swatch lifts its border to <code style="font-family:inherit;color:var(--ink);">--ink3</code> and surfaces a small tooltip 28px below it. Tooltip uses <code style="font-family:inherit;color:var(--ink);">--fill2</code> background and <code style="font-family:inherit;color:var(--ink);">--line</code> border — a quiet floating chip, not a big card. Naming convention: brand-color name + hex (e.g. "Wildgrove orange · #C24A1E"). The current selected fill is the brand orange, so its swatch in Recent shows the 2px accent ring.</div>
+</section>
+
+<!-- ============== 12.5 Solid mode — eyedropper active ============== -->
+<section class="block">
+  <header>
+    <div class="tag">B14 · color picker · eyedropper</div>
+    <h2>12.5 — Eyedropper trigger active</h2>
+    <p class="intro">Eyedropper trigger pressed inside the popover. Cursor on canvas becomes a 6× magnified pixel-preview circle (per founder 2026-04-25 + Q20). Sampled hex floats next to the cursor. The full canvas-overlay treatment is locked in <code style="color:var(--ink);">09 Canvas Overlays · B8.7 Eyedropper</code> — this scene shows only the popover-side trigger active state and the on-canvas response.</p>
+  </header>
+
+  <div class="canvas-card kc muted">
+    <div class="topbar">
+      <div class="l"><div class="logo">K</div><div class="file"><span class="crumb-brand"><span class="b"></span>Wildgrove</span><span class="sep">/</span><b>Spring Drop · 04</b><span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div></div>
+      <div class="r"><div class="icon-btn" title="Notifications"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/></svg></div><div class="icon-btn" title="Present"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="5 3 19 12 5 21 5 3"/></svg></div><div class="icon-btn" title="Comments"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div class="avatar">JM</div></div>
+    </div>
+    <div class="body">
+      <div class="left">
+        <div class="file-row"><div class="file-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div><div class="name">Spring Drop · 04</div><div class="meta">3 emails</div></div></div>
+        <div class="sec"><h5>Layers</h5></div>
+        <div class="layers"><div class="layer selected"><span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg></span><span class="name">Teaser #2 (A/B)</span><span class="vis"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span></div></div>
+      </div>
+      <div class="center">
+        <div class="canvas-grid"></div>
+        <div class="frames-row">
+          <div class="frame" style="opacity:0.85;">
+            <div class="frame-label">Teaser #2</div>
+            <div style="width:100%; height:320px; background:linear-gradient(135deg, #c24a1e 0% 50%, #1a1a18 50% 100%);"></div>
+          </div>
+        </div>
+        <!-- Eyedropper magnifier on canvas (positioned over the orange/dark hero) -->
+        <div class="cp-ed-magnifier" style="top: 280px; left: 360px;">
+          <div class="cp-ed-pixels"></div>
+          <div class="cp-ed-reticle"></div>
+        </div>
+        <div class="cp-ed-hex" style="top: 388px; left: 412px;">
+          <span class="cp-ed-hex-sw" style="background:#c24a1e;"></span>
+          <span>#C24A1E</span>
+        </div>
+        <!-- TOOLBAR (V1 Kova-Loud chrome, #3b82f6 active) -->
+        <div class="toolbar">
+          <div class="tool active" title="Move">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 2l7 18 2-7 7-2z"/></svg>
+          </div>
+          <div class="tool" title="Frame">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg>
+          </div>
+          <div class="tool" title="Rectangle">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+          </div>
+          <div class="tool" title="Ellipse">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/></svg>
+          </div>
+          <div class="tool" title="Pen">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.5 7.5"/></svg>
+          </div>
+          <div class="tool" title="Text">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h14v3M9 4v16M7 20h10"/></svg>
+          </div>
+          <div class="tool" title="Comment">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          </div>
+          <div class="divider"></div>
+          <div class="tool ai" title="Ask Kova">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/><path d="M19 14l.7 2.1L22 17l-2.3.9L19 20l-.7-2.1L16 17l2.3-.9L19 14z"/></svg>
+          </div>
+          <div class="tool" title="Components">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          </div>
+        </div>
+        <div class="zoom">100%<span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div>
+      </div>
+      <div class="right">
+        <div class="tabs"><div class="tabs-l"><div class="tab active">Design</div></div><div class="zoom-r">292%<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div></div>
+        <div class="frame-head"><div class="title">Frame<span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div></div>
+        <div class="pbody">
+          <div class="group">
+            <div class="ghead"><h6>Fill</h6><div class="actions"><span class="a"><i data-lucide="plus" style="width:14px;height:14px;"></i></span></div></div>
+            <div class="fill-row anchored">
+              <span class="swatch" style="background:#3b82f6"></span>
+              <span class="hex">3B82F6</span><span class="pct">100%</span>
+              <span class="ico"><i data-lucide="eye" style="width:12px;height:12px;"></i></span>
+              <span class="ico"><i data-lucide="minus" style="width:12px;height:12px;"></i></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cp-popover" style="top: 168px; right: 282px;">
+      <div class="cp-header"><div class="cp-title">Color</div><div class="cp-close"><i data-lucide="x" style="width:12px;height:12px;"></i></div></div>
+      <div class="cp-tabs">
+        <div class="cp-tab active">Solid</div><div class="cp-tab">Linear</div><div class="cp-tab">Radial</div><div class="cp-tab">Image</div>
+      </div>
+      <div class="cp-canvas" style="background:
+        linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 100%),
+        linear-gradient(to right, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 100%),
+        hsl(217, 91%, 50%);">
+        <div class="cp-cursor" style="left: 76%; top: 28%;"></div>
+      </div>
+      <div class="cp-hue"><div class="cp-knob" style="left: 60%;"></div></div>
+      <div class="cp-alpha"><div class="cp-knob" style="left: 100%;"></div></div>
+      <div class="cp-inputs">
+        <div class="cp-input"><span class="cp-pre">#</span><span class="cp-val">3B82F6</span></div>
+        <div class="cp-mode-toggle">HEX<span class="cp-caret"><i data-lucide="chevron-down" style="width:10px;height:10px;"></i></span></div>
+        <div class="cp-eye active" title="Eyedropper active — click on canvas to sample"><i data-lucide="pipette" style="width:14px;height:14px;"></i></div>
+      </div>
+      <div class="cp-section"><div class="cp-row-lbl">Recent</div><div class="cp-swatches">
+        <div class="cp-swatch selected" style="background:#3b82f6"></div>
+        <div class="cp-swatch" style="background:#c24a1e"></div>
+        <div class="cp-swatch" style="background:#1a1a18"></div>
+        <div class="cp-swatch" style="background:#ededea"></div>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="canvas-caption"><span class="id">12.5</span> Eyedropper trigger pressed → button shows the active state (background <code style="font-family:inherit;color:var(--ink);">--accent-soft</code>, ink <code style="font-family:inherit;color:var(--ink);">--accent-ink</code>, 1px accent border). Cursor on canvas becomes a 96px magnifier with a 16px reticle on the sampled pixel; hex chip floats below-right tracking the cursor. <b>Cross-cut:</b> the canvas overlay visual itself (magnifier + reticle + hex chip) is the locked B8.7 component in <code style="font-family:inherit;color:var(--ink);">09 Canvas Overlays</code> — only the popover-side trigger active state is new in this chunk. Click on canvas = picks color and writes it into the picker hex input; Esc = cancels.</div>
+</section>
+
+<!-- ========================================================================
+     GRADIENT MODES — 3 scenes (12.6–12.8)
+     ======================================================================== -->
+
+<!-- ============== 12.6 Linear gradient — 2 stops ============== -->
+<section class="block">
+  <header>
+    <div class="tag">B14 · color picker · linear gradient</div>
+    <h2>12.6 — Linear gradient (2 stops)</h2>
+    <p class="intro">Linear tab active. Gradient strip preview + stop list (2 default stops at 0% / 100%) + angle control. The selected stop's color edits via the same Solid-mode UI (sat/val canvas, hue slider, hex input).</p>
+  </header>
+
+  <div class="canvas-card kc muted">
+    <div class="topbar">
+      <div class="l"><div class="logo">K</div><div class="file"><span class="crumb-brand"><span class="b"></span>Wildgrove</span><span class="sep">/</span><b>Spring Drop · 04</b><span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div></div>
+      <div class="r"><div class="icon-btn" title="Notifications"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/></svg></div><div class="icon-btn" title="Present"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="5 3 19 12 5 21 5 3"/></svg></div><div class="icon-btn" title="Comments"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div class="avatar">JM</div></div>
+    </div>
+    <div class="body">
+      <div class="left">
+        <div class="file-row"><div class="file-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div><div class="name">Spring Drop · 04</div><div class="meta">3 emails</div></div></div>
+        <div class="sec"><h5>Layers</h5></div>
+        <div class="layers"><div class="layer selected"><span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg></span><span class="name">Hero · gradient</span><span class="vis"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span></div></div>
+      </div>
+      <div class="center"><div class="canvas-grid"></div><div class="frames-row"><div class="frame selected" style="opacity:0.55;"><div class="frame-label">Hero</div><div style="height:320px; background:linear-gradient(90deg, #000 0%, #fff 100%);"></div></div></div><div class="toolbar"><div class="tool active" title="Move"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 2l7 18 2-7 7-2z"/></svg></div><div class="tool" title="Frame"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg></div><div class="tool" title="Rectangle"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="2"/></svg></div><div class="tool" title="Ellipse"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/></svg></div><div class="tool" title="Pen"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.5 7.5"/></svg></div><div class="tool" title="Text"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h14v3M9 4v16M7 20h10"/></svg></div><div class="tool" title="Comment"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div class="divider"></div><div class="tool ai" title="Ask Kova"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/><path d="M19 14l.7 2.1L22 17l-2.3.9L19 20l-.7-2.1L16 17l2.3-.9L19 14z"/></svg></div><div class="tool" title="Components"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div></div><div class="zoom">100%<span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div></div>
+      <div class="right">
+        <div class="tabs"><div class="tabs-l"><div class="tab active">Design</div></div><div class="zoom-r">292%<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div></div>
+        <div class="frame-head"><div class="title">Frame<span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div></div>
+        <div class="pbody">
+          <div class="group">
+            <div class="ghead"><h6>Fill</h6><div class="actions"><span class="a"><i data-lucide="plus" style="width:14px;height:14px;"></i></span></div></div>
+            <div class="fill-row anchored">
+              <span class="swatch" style="background:linear-gradient(90deg, #000 0%, #fff 100%);"></span>
+              <span class="hex">Linear</span><span class="pct">100%</span>
+              <span class="ico"><i data-lucide="eye" style="width:12px;height:12px;"></i></span>
+              <span class="ico"><i data-lucide="minus" style="width:12px;height:12px;"></i></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cp-popover" style="top: 124px; right: 282px;">
+      <div class="cp-header"><div class="cp-title">Color</div><div class="cp-close"><i data-lucide="x" style="width:12px;height:12px;"></i></div></div>
+      <div class="cp-tabs">
+        <div class="cp-tab">Solid</div><div class="cp-tab active">Linear</div><div class="cp-tab">Radial</div><div class="cp-tab">Image</div>
+      </div>
+      <div class="cp-grad-strip"><div class="cp-grad-fill" style="background: linear-gradient(to right, #000000, #ffffff);"></div></div>
+      <div class="cp-section">
+        <div class="cp-row-lbl">Stops</div>
+        <div class="cp-stops">
+          <div class="cp-stop selected">
+            <div class="cp-stop-sw" style="background:#000000;"></div>
+            <div class="cp-stop-hex">#000000</div>
+            <div class="cp-stop-pos">0%</div>
+            <div class="cp-stop-rm" style="visibility:hidden;"><i data-lucide="x" style="width:12px;height:12px;"></i></div>
+          </div>
+          <div class="cp-stop">
+            <div class="cp-stop-sw" style="background:#ffffff;"></div>
+            <div class="cp-stop-hex">#FFFFFF</div>
+            <div class="cp-stop-pos">100%</div>
+            <div class="cp-stop-rm" style="visibility:hidden;"><i data-lucide="x" style="width:12px;height:12px;"></i></div>
+          </div>
+        </div>
+        <div class="cp-add-stop"><i data-lucide="plus" style="width:11px;height:11px;"></i>Add stop</div>
+      </div>
+      <div class="cp-angle-row">
+        <div class="cp-input"><span class="cp-pre">∠</span><span class="cp-val">90</span><span class="cp-suf">°</span></div>
+        <div class="cp-input"><span class="cp-pre">↻</span><span class="cp-val">Linear</span><span class="cp-caret" style="margin-left:auto;"><i data-lucide="chevron-down" style="width:10px;height:10px;color:var(--ink3);"></i></span></div>
+      </div>
+      <div class="cp-canvas" style="height: 100px; background:
+        linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 100%),
+        linear-gradient(to right, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 100%),
+        hsl(0, 0%, 0%);">
+        <div class="cp-cursor" style="left: 0%; top: 100%;"></div>
+      </div>
+      <div class="cp-hue"><div class="cp-knob" style="left: 0%;"></div></div>
+      <div class="cp-inputs">
+        <div class="cp-input"><span class="cp-pre">#</span><span class="cp-val">000000</span></div>
+        <div class="cp-mode-toggle">HEX<span class="cp-caret"><i data-lucide="chevron-down" style="width:10px;height:10px;"></i></span></div>
+        <div class="cp-eye"><i data-lucide="pipette" style="width:14px;height:14px;"></i></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="canvas-caption"><span class="id">12.6</span> Two-stop linear gradient. Strip preview at top with checkerboard underlay (alpha visibility). Stop list shows both stops; selected stop highlighted with 1px accent ring. Angle control = numeric input + direction-type dropdown. Sat/val canvas + hue slider edit the SELECTED stop's color — same controls as Solid mode, scoped to the active stop.</div>
+</section>
+
+<!-- ============== 12.7 Linear gradient — 4 stops ============== -->
+<section class="block">
+  <header>
+    <div class="tag">B14 · color picker · linear gradient · multi-stop</div>
+    <h2>12.7 — Linear gradient (4 stops, mid-stop selected)</h2>
+    <p class="intro">Four-stop gradient. Mid-stop selected; its color shows in the editor below. Two intermediate stops have the × remove button visible (only when > 2 stops, since linear gradient needs at least 2).</p>
+  </header>
+
+  <div class="canvas-card kc muted">
+    <div class="topbar">
+      <div class="l"><div class="logo">K</div><div class="file"><span class="crumb-brand"><span class="b"></span>Wildgrove</span><span class="sep">/</span><b>Spring Drop · 04</b><span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div></div>
+      <div class="r"><div class="icon-btn" title="Notifications"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/></svg></div><div class="icon-btn" title="Present"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="5 3 19 12 5 21 5 3"/></svg></div><div class="icon-btn" title="Comments"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div class="avatar">JM</div></div>
+    </div>
+    <div class="body">
+      <div class="left">
+        <div class="file-row"><div class="file-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div><div class="name">Spring Drop · 04</div><div class="meta">3 emails</div></div></div>
+        <div class="sec"><h5>Layers</h5></div>
+        <div class="layers"><div class="layer selected"><span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg></span><span class="name">Sunset hero</span><span class="vis"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span></div></div>
+      </div>
+      <div class="center"><div class="canvas-grid"></div><div class="frames-row"><div class="frame selected" style="opacity:0.55;"><div class="frame-label">Sunset</div><div style="height:320px; background:linear-gradient(90deg, #ff6b35 0%, #f7c59f 33%, #c24a1e 66%, #1a1a18 100%);"></div></div></div><div class="toolbar"><div class="tool active" title="Move"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 2l7 18 2-7 7-2z"/></svg></div><div class="tool" title="Frame"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg></div><div class="tool" title="Rectangle"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="2"/></svg></div><div class="tool" title="Ellipse"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/></svg></div><div class="tool" title="Pen"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.5 7.5"/></svg></div><div class="tool" title="Text"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h14v3M9 4v16M7 20h10"/></svg></div><div class="tool" title="Comment"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div class="divider"></div><div class="tool ai" title="Ask Kova"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/><path d="M19 14l.7 2.1L22 17l-2.3.9L19 20l-.7-2.1L16 17l2.3-.9L19 14z"/></svg></div><div class="tool" title="Components"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div></div><div class="zoom">100%<span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div></div>
+      <div class="right">
+        <div class="tabs"><div class="tabs-l"><div class="tab active">Design</div></div><div class="zoom-r">292%<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div></div>
+        <div class="frame-head"><div class="title">Frame<span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div></div>
+        <div class="pbody">
+          <div class="group">
+            <div class="ghead"><h6>Fill</h6><div class="actions"><span class="a"><i data-lucide="plus" style="width:14px;height:14px;"></i></span></div></div>
+            <div class="fill-row anchored">
+              <span class="swatch" style="background:linear-gradient(90deg, #ff6b35 0%, #f7c59f 33%, #c24a1e 66%, #1a1a18 100%);"></span>
+              <span class="hex">Linear</span><span class="pct">100%</span>
+              <span class="ico"><i data-lucide="eye" style="width:12px;height:12px;"></i></span>
+              <span class="ico"><i data-lucide="minus" style="width:12px;height:12px;"></i></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cp-popover" style="top: 92px; right: 282px;">
+      <div class="cp-header"><div class="cp-title">Color</div><div class="cp-close"><i data-lucide="x" style="width:12px;height:12px;"></i></div></div>
+      <div class="cp-tabs">
+        <div class="cp-tab">Solid</div><div class="cp-tab active">Linear</div><div class="cp-tab">Radial</div><div class="cp-tab">Image</div>
+      </div>
+      <div class="cp-grad-strip"><div class="cp-grad-fill" style="background: linear-gradient(to right, #ff6b35 0%, #f7c59f 33%, #c24a1e 66%, #1a1a18 100%);"></div></div>
+      <div class="cp-section">
+        <div class="cp-row-lbl">Stops</div>
+        <div class="cp-stops">
+          <div class="cp-stop">
+            <div class="cp-stop-sw" style="background:#ff6b35;"></div>
+            <div class="cp-stop-hex">#FF6B35</div>
+            <div class="cp-stop-pos">0%</div>
+            <div class="cp-stop-rm" style="visibility:hidden;"><i data-lucide="x" style="width:12px;height:12px;"></i></div>
+          </div>
+          <div class="cp-stop selected">
+            <div class="cp-stop-sw" style="background:#f7c59f;"></div>
+            <div class="cp-stop-hex">#F7C59F</div>
+            <div class="cp-stop-pos">33%</div>
+            <div class="cp-stop-rm"><i data-lucide="x" style="width:12px;height:12px;"></i></div>
+          </div>
+          <div class="cp-stop">
+            <div class="cp-stop-sw" style="background:#c24a1e;"></div>
+            <div class="cp-stop-hex">#C24A1E</div>
+            <div class="cp-stop-pos">66%</div>
+            <div class="cp-stop-rm"><i data-lucide="x" style="width:12px;height:12px;"></i></div>
+          </div>
+          <div class="cp-stop">
+            <div class="cp-stop-sw" style="background:#1a1a18;"></div>
+            <div class="cp-stop-hex">#1A1A18</div>
+            <div class="cp-stop-pos">100%</div>
+            <div class="cp-stop-rm" style="visibility:hidden;"><i data-lucide="x" style="width:12px;height:12px;"></i></div>
+          </div>
+        </div>
+        <div class="cp-add-stop"><i data-lucide="plus" style="width:11px;height:11px;"></i>Add stop</div>
+      </div>
+      <div class="cp-angle-row">
+        <div class="cp-input"><span class="cp-pre">∠</span><span class="cp-val">90</span><span class="cp-suf">°</span></div>
+        <div class="cp-input"><span class="cp-pre">↻</span><span class="cp-val">Linear</span><span class="cp-caret" style="margin-left:auto;"><i data-lucide="chevron-down" style="width:10px;height:10px;color:var(--ink3);"></i></span></div>
+      </div>
+      <div class="cp-canvas" style="height: 100px; background:
+        linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 100%),
+        linear-gradient(to right, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 100%),
+        hsl(31, 84%, 79%);">
+        <div class="cp-cursor" style="left: 38%; top: 30%;"></div>
+      </div>
+      <div class="cp-hue"><div class="cp-knob" style="left: 9%;"></div></div>
+      <div class="cp-inputs">
+        <div class="cp-input"><span class="cp-pre">#</span><span class="cp-val">F7C59F</span></div>
+        <div class="cp-mode-toggle">HEX<span class="cp-caret"><i data-lucide="chevron-down" style="width:10px;height:10px;"></i></span></div>
+        <div class="cp-eye"><i data-lucide="pipette" style="width:14px;height:14px;"></i></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="canvas-caption"><span class="id">12.7</span> Four-stop gradient. Mid-stop (33%, peach #F7C59F) is selected — its row carries a 1px accent ring + <code style="font-family:inherit;color:var(--ink);">--fill2</code> background. Editor below shows the picker for that stop. Outer stops (0% and 100%) hide the × remove button — at least 2 stops always required. Inner stops (33%, 66%) show × for removal.</div>
+</section>
+
+<!-- ============== 12.8 Radial gradient ============== -->
+<section class="block">
+  <header>
+    <div class="tag">B14 · color picker · radial gradient</div>
+    <h2>12.8 — Radial gradient (2 stops, center handle)</h2>
+    <p class="intro">Radial mode replaces the linear gradient strip with a circular preview and the angle control with a center-position handle.</p>
+  </header>
+
+  <div class="canvas-card kc muted">
+    <div class="topbar">
+      <div class="l"><div class="logo">K</div><div class="file"><span class="crumb-brand"><span class="b"></span>Wildgrove</span><span class="sep">/</span><b>Spring Drop · 04</b><span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div></div>
+      <div class="r"><div class="icon-btn" title="Notifications"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/></svg></div><div class="icon-btn" title="Present"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="5 3 19 12 5 21 5 3"/></svg></div><div class="icon-btn" title="Comments"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div class="avatar">JM</div></div>
+    </div>
+    <div class="body">
+      <div class="left">
+        <div class="file-row"><div class="file-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div><div class="name">Spring Drop · 04</div><div class="meta">3 emails</div></div></div>
+        <div class="sec"><h5>Layers</h5></div>
+        <div class="layers"><div class="layer selected"><span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg></span><span class="name">Spotlight</span><span class="vis"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span></div></div>
+      </div>
+      <div class="center"><div class="canvas-grid"></div><div class="frames-row"><div class="frame selected" style="opacity:0.55;"><div class="frame-label">Spotlight</div><div style="height:320px; background:radial-gradient(circle at 50% 50%, #ffffff, #1a1a18);"></div></div></div><div class="toolbar"><div class="tool active" title="Move"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 2l7 18 2-7 7-2z"/></svg></div><div class="tool" title="Frame"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg></div><div class="tool" title="Rectangle"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="2"/></svg></div><div class="tool" title="Ellipse"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/></svg></div><div class="tool" title="Pen"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.5 7.5"/></svg></div><div class="tool" title="Text"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h14v3M9 4v16M7 20h10"/></svg></div><div class="tool" title="Comment"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div class="divider"></div><div class="tool ai" title="Ask Kova"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/><path d="M19 14l.7 2.1L22 17l-2.3.9L19 20l-.7-2.1L16 17l2.3-.9L19 14z"/></svg></div><div class="tool" title="Components"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div></div><div class="zoom">100%<span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div></div>
+      <div class="right">
+        <div class="tabs"><div class="tabs-l"><div class="tab active">Design</div></div><div class="zoom-r">292%<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div></div>
+        <div class="frame-head"><div class="title">Frame<span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div></div>
+        <div class="pbody">
+          <div class="group">
+            <div class="ghead"><h6>Fill</h6><div class="actions"><span class="a"><i data-lucide="plus" style="width:14px;height:14px;"></i></span></div></div>
+            <div class="fill-row anchored">
+              <span class="swatch" style="background:radial-gradient(circle at 50% 50%, #ffffff, #1a1a18);"></span>
+              <span class="hex">Radial</span><span class="pct">100%</span>
+              <span class="ico"><i data-lucide="eye" style="width:12px;height:12px;"></i></span>
+              <span class="ico"><i data-lucide="minus" style="width:12px;height:12px;"></i></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cp-popover" style="top: 124px; right: 282px;">
+      <div class="cp-header"><div class="cp-title">Color</div><div class="cp-close"><i data-lucide="x" style="width:12px;height:12px;"></i></div></div>
+      <div class="cp-tabs">
+        <div class="cp-tab">Solid</div><div class="cp-tab">Linear</div><div class="cp-tab active">Radial</div><div class="cp-tab">Image</div>
+      </div>
+      <div class="cp-radial-preview" style="background: radial-gradient(circle at 60% 40%, #ffffff 0%, #1a1a18 100%);">
+        <div class="cp-center-handle" style="left: 60%; top: 40%;"></div>
+      </div>
+      <div class="cp-section">
+        <div class="cp-row-lbl">Stops</div>
+        <div class="cp-stops">
+          <div class="cp-stop selected">
+            <div class="cp-stop-sw" style="background:#ffffff;"></div>
+            <div class="cp-stop-hex">#FFFFFF</div>
+            <div class="cp-stop-pos">0%</div>
+            <div class="cp-stop-rm" style="visibility:hidden;"><i data-lucide="x" style="width:12px;height:12px;"></i></div>
+          </div>
+          <div class="cp-stop">
+            <div class="cp-stop-sw" style="background:#1a1a18;"></div>
+            <div class="cp-stop-hex">#1A1A18</div>
+            <div class="cp-stop-pos">100%</div>
+            <div class="cp-stop-rm" style="visibility:hidden;"><i data-lucide="x" style="width:12px;height:12px;"></i></div>
+          </div>
+        </div>
+        <div class="cp-add-stop"><i data-lucide="plus" style="width:11px;height:11px;"></i>Add stop</div>
+      </div>
+      <div class="cp-canvas" style="height: 100px; background:
+        linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 100%),
+        linear-gradient(to right, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 100%),
+        hsl(0, 0%, 100%);">
+        <div class="cp-cursor" style="left: 0%; top: 0%;"></div>
+      </div>
+      <div class="cp-hue"><div class="cp-knob" style="left: 0%;"></div></div>
+      <div class="cp-inputs">
+        <div class="cp-input"><span class="cp-pre">#</span><span class="cp-val">FFFFFF</span></div>
+        <div class="cp-mode-toggle">HEX<span class="cp-caret"><i data-lucide="chevron-down" style="width:10px;height:10px;"></i></span></div>
+        <div class="cp-eye"><i data-lucide="pipette" style="width:14px;height:14px;"></i></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="canvas-caption"><span class="id">12.8</span> Radial preview = 120px-tall circular box with the gradient applied. Center handle (12px white circle, 1.5px white border, dark fill) sits at the gradient origin and drags to reposition. Stop list works identically to linear — first/last stops hide ×; intermediate stops can be removed.</div>
+</section>
+
+<!-- ========================================================================
+     IMAGE MODE — 3 scenes (12.9–12.11)
+     ======================================================================== -->
+
+<!-- ============== 12.9 Image — Brand Kit / Fill ============== -->
+<section class="block">
+  <header>
+    <div class="tag">B14 · color picker · image fill</div>
+    <h2>12.9 — Image (Brand Kit, Fill scale-mode)</h2>
+    <p class="intro">Image source picker (Brand Kit / Uploads / Shopify products) + selected image preview + scale-mode dropdown. <b>Cross-cut:</b> this overlaps with B7.6 Image fill picker — same component, just rendered inside the popover here. Confirm with CHUNK_B4 that no second component is built.</p>
+  </header>
+
+  <div class="canvas-card kc muted">
+    <div class="topbar">
+      <div class="l"><div class="logo">K</div><div class="file"><span class="crumb-brand"><span class="b"></span>Wildgrove</span><span class="sep">/</span><b>Spring Drop · 04</b><span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div></div>
+      <div class="r"><div class="icon-btn" title="Notifications"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/></svg></div><div class="icon-btn" title="Present"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="5 3 19 12 5 21 5 3"/></svg></div><div class="icon-btn" title="Comments"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div class="avatar">JM</div></div>
+    </div>
+    <div class="body">
+      <div class="left">
+        <div class="file-row"><div class="file-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div><div class="name">Spring Drop · 04</div><div class="meta">3 emails</div></div></div>
+        <div class="sec"><h5>Layers</h5></div>
+        <div class="layers"><div class="layer selected"><span class="ic"><i data-lucide="image" style="width:13px;height:13px;"></i></span><span class="name">Hero · packshot</span><span class="vis"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span></div></div>
+      </div>
+      <div class="center"><div class="canvas-grid"></div><div class="frames-row"><div class="frame selected" style="opacity:0.55;"><div class="frame-label">Hero</div><div style="height:320px; background:repeating-linear-gradient(135deg, #6e6a60 0 8px, #8a8580 8px 16px);"></div></div></div><div class="toolbar"><div class="tool active" title="Move"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 2l7 18 2-7 7-2z"/></svg></div><div class="tool" title="Frame"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg></div><div class="tool" title="Rectangle"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="2"/></svg></div><div class="tool" title="Ellipse"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/></svg></div><div class="tool" title="Pen"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.5 7.5"/></svg></div><div class="tool" title="Text"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h14v3M9 4v16M7 20h10"/></svg></div><div class="tool" title="Comment"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div class="divider"></div><div class="tool ai" title="Ask Kova"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/><path d="M19 14l.7 2.1L22 17l-2.3.9L19 20l-.7-2.1L16 17l2.3-.9L19 14z"/></svg></div><div class="tool" title="Components"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div></div><div class="zoom">100%<span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div></div>
+      <div class="right">
+        <div class="tabs"><div class="tabs-l"><div class="tab active">Design</div></div><div class="zoom-r">292%<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div></div>
+        <div class="frame-head"><div class="title">Frame<span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div></div>
+        <div class="pbody">
+          <div class="group">
+            <div class="ghead"><h6>Fill</h6><div class="actions"><span class="a"><i data-lucide="plus" style="width:14px;height:14px;"></i></span></div></div>
+            <div class="fill-row anchored">
+              <span class="swatch" style="background:repeating-linear-gradient(135deg, #6e6a60 0 4px, #8a8580 4px 8px);"></span>
+              <span class="hex">Image</span><span class="pct">100%</span>
+              <span class="ico"><i data-lucide="eye" style="width:12px;height:12px;"></i></span>
+              <span class="ico"><i data-lucide="minus" style="width:12px;height:12px;"></i></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cp-popover" style="top: 168px; right: 282px;">
+      <div class="cp-header"><div class="cp-title">Color</div><div class="cp-close"><i data-lucide="x" style="width:12px;height:12px;"></i></div></div>
+      <div class="cp-tabs">
+        <div class="cp-tab">Solid</div><div class="cp-tab">Linear</div><div class="cp-tab">Radial</div><div class="cp-tab active">Image</div>
+      </div>
+      <div class="cp-image-source">
+        <div class="cp-src active">Brand Kit</div>
+        <div class="cp-src">Uploads</div>
+        <div class="cp-src">Shopify</div>
+      </div>
+      <div class="cp-image-preview placeholder">
+        <div style="position:absolute; inset:0; display:grid; place-items:center; color:var(--ink2); font-size:11px;">
+          packshot · sumatra-blend.jpg
+        </div>
+      </div>
+      <div class="cp-section">
+        <div class="cp-row-lbl">Scale mode</div>
+        <div class="cp-scale-mode">Fill<span class="cp-caret"><i data-lucide="chevron-down" style="width:11px;height:11px;"></i></span></div>
+      </div>
+      <div class="cp-section">
+        <div class="cp-row-lbl">Brand library</div>
+        <div class="cp-swatches">
+          <div class="cp-swatch selected" style="background:repeating-linear-gradient(135deg, #6e6a60 0 4px, #8a8580 4px 8px);"></div>
+          <div class="cp-swatch" style="background:repeating-linear-gradient(45deg, #c24a1e 0 4px, #1a1a18 4px 8px);"></div>
+          <div class="cp-swatch" style="background:repeating-linear-gradient(135deg, #f4ede2 0 4px, #d4d2cc 4px 8px);"></div>
+          <div class="cp-swatch" style="background:repeating-linear-gradient(45deg, #7d8c5c 0 4px, #5a6a40 4px 8px);"></div>
+          <div class="cp-swatch add"><i data-lucide="upload" style="width:11px;height:11px;"></i></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="canvas-caption"><span class="id">12.9</span> Image fill mode. Source picker is a 3-cell segmented control (Brand Kit / Uploads / Shopify) using the design.md §3.8 segmented pattern at compact size. Selected image renders 92px tall. Scale-mode dropdown defaults to Fill. Brand library row replaces "Recent" — shows brand-image swatches. Cross-checks against B7.6 Image fill picker (CHUNK_B4) — they are the same component.</div>
+</section>
+
+<!-- ============== 12.10 Image — Crop scale-mode ============== -->
+<section class="block">
+  <header>
+    <div class="tag">B14 · color picker · image · crop</div>
+    <h2>12.10 — Image (Crop scale-mode, drag handles)</h2>
+    <p class="intro">Crop selected → scale-mode dropdown shows "Crop" and the preview adds 4 corner drag-handles for image positioning.</p>
+  </header>
+
+  <div class="canvas-card kc muted">
+    <div class="topbar">
+      <div class="l"><div class="logo">K</div><div class="file"><span class="crumb-brand"><span class="b"></span>Wildgrove</span><span class="sep">/</span><b>Spring Drop · 04</b><span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div></div>
+      <div class="r"><div class="icon-btn" title="Notifications"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/></svg></div><div class="icon-btn" title="Present"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="5 3 19 12 5 21 5 3"/></svg></div><div class="icon-btn" title="Comments"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div class="avatar">JM</div></div>
+    </div>
+    <div class="body">
+      <div class="left">
+        <div class="file-row"><div class="file-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div><div class="name">Spring Drop · 04</div><div class="meta">3 emails</div></div></div>
+        <div class="sec"><h5>Layers</h5></div>
+        <div class="layers"><div class="layer selected"><span class="ic"><i data-lucide="image" style="width:13px;height:13px;"></i></span><span class="name">Hero · packshot</span><span class="vis"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span></div></div>
+      </div>
+      <div class="center"><div class="canvas-grid"></div><div class="frames-row"><div class="frame selected" style="opacity:0.55;"><div class="frame-label">Hero</div><div style="height:320px; background:repeating-linear-gradient(135deg, #6e6a60 0 8px, #8a8580 8px 16px);"></div></div></div><div class="toolbar"><div class="tool active" title="Move"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 2l7 18 2-7 7-2z"/></svg></div><div class="tool" title="Frame"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg></div><div class="tool" title="Rectangle"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="2"/></svg></div><div class="tool" title="Ellipse"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/></svg></div><div class="tool" title="Pen"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.5 7.5"/></svg></div><div class="tool" title="Text"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h14v3M9 4v16M7 20h10"/></svg></div><div class="tool" title="Comment"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div class="divider"></div><div class="tool ai" title="Ask Kova"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/><path d="M19 14l.7 2.1L22 17l-2.3.9L19 20l-.7-2.1L16 17l2.3-.9L19 14z"/></svg></div><div class="tool" title="Components"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div></div><div class="zoom">100%<span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div></div>
+      <div class="right">
+        <div class="tabs"><div class="tabs-l"><div class="tab active">Design</div></div><div class="zoom-r">292%<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div></div>
+        <div class="frame-head"><div class="title">Frame<span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div></div>
+        <div class="pbody">
+          <div class="group">
+            <div class="ghead"><h6>Fill</h6><div class="actions"><span class="a"><i data-lucide="plus" style="width:14px;height:14px;"></i></span></div></div>
+            <div class="fill-row anchored">
+              <span class="swatch" style="background:repeating-linear-gradient(135deg, #6e6a60 0 4px, #8a8580 4px 8px);"></span>
+              <span class="hex">Image</span><span class="pct">100%</span>
+              <span class="ico"><i data-lucide="eye" style="width:12px;height:12px;"></i></span>
+              <span class="ico"><i data-lucide="minus" style="width:12px;height:12px;"></i></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cp-popover" style="top: 168px; right: 282px;">
+      <div class="cp-header"><div class="cp-title">Color</div><div class="cp-close"><i data-lucide="x" style="width:12px;height:12px;"></i></div></div>
+      <div class="cp-tabs">
+        <div class="cp-tab">Solid</div><div class="cp-tab">Linear</div><div class="cp-tab">Radial</div><div class="cp-tab active">Image</div>
+      </div>
+      <div class="cp-image-source">
+        <div class="cp-src active">Brand Kit</div>
+        <div class="cp-src">Uploads</div>
+        <div class="cp-src">Shopify</div>
+      </div>
+      <div class="cp-image-preview placeholder">
+        <div style="position:absolute; inset:0; display:grid; place-items:center; color:var(--ink2); font-size:11px;">
+          packshot · sumatra-blend.jpg
+        </div>
+        <div class="cp-crop-handle" style="top:6px; left:6px;"></div>
+        <div class="cp-crop-handle" style="top:6px; right:6px;"></div>
+        <div class="cp-crop-handle" style="bottom:6px; left:6px;"></div>
+        <div class="cp-crop-handle" style="bottom:6px; right:6px;"></div>
+      </div>
+      <div class="cp-section">
+        <div class="cp-row-lbl">Scale mode</div>
+        <div class="cp-scale-mode">Crop<span class="cp-caret"><i data-lucide="chevron-down" style="width:11px;height:11px;"></i></span></div>
+      </div>
+      <div class="cp-section">
+        <div class="cp-row-lbl">Brand library</div>
+        <div class="cp-swatches">
+          <div class="cp-swatch selected" style="background:repeating-linear-gradient(135deg, #6e6a60 0 4px, #8a8580 4px 8px);"></div>
+          <div class="cp-swatch" style="background:repeating-linear-gradient(45deg, #c24a1e 0 4px, #1a1a18 4px 8px);"></div>
+          <div class="cp-swatch" style="background:repeating-linear-gradient(135deg, #f4ede2 0 4px, #d4d2cc 4px 8px);"></div>
+          <div class="cp-swatch" style="background:repeating-linear-gradient(45deg, #7d8c5c 0 4px, #5a6a40 4px 8px);"></div>
+          <div class="cp-swatch add"><i data-lucide="upload" style="width:11px;height:11px;"></i></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="canvas-caption"><span class="id">12.10</span> Crop mode adds 4 white corner handles (1.5px <code style="font-family:inherit;color:var(--ink);">--accent</code> border, 8px diameter) to the preview. Drag a handle = adjust the image's position inside the frame. Scale-mode dropdown text now reads "Crop". Same brand-library row below.</div>
+</section>
+
+<!-- ============== 12.11 Image — Tile mode with slider ============== -->
+<section class="block">
+  <header>
+    <div class="tag">B14 · color picker · image · tile</div>
+    <h2>12.11 — Image (Tile scale-mode, 50%)</h2>
+    <p class="intro">Tile selected → scale-mode shows "Tile" and a percentage slider (10–200%) appears below for tile size. The preview shows the tiled rendering.</p>
+  </header>
+
+  <div class="canvas-card kc muted">
+    <div class="topbar">
+      <div class="l"><div class="logo">K</div><div class="file"><span class="crumb-brand"><span class="b"></span>Wildgrove</span><span class="sep">/</span><b>Spring Drop · 04</b><span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div></div>
+      <div class="r"><div class="icon-btn" title="Notifications"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/></svg></div><div class="icon-btn" title="Present"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="5 3 19 12 5 21 5 3"/></svg></div><div class="icon-btn" title="Comments"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div class="avatar">JM</div></div>
+    </div>
+    <div class="body">
+      <div class="left">
+        <div class="file-row"><div class="file-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div><div class="name">Spring Drop · 04</div><div class="meta">3 emails</div></div></div>
+        <div class="sec"><h5>Layers</h5></div>
+        <div class="layers"><div class="layer selected"><span class="ic"><i data-lucide="image" style="width:13px;height:13px;"></i></span><span class="name">Footer pattern</span><span class="vis"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span></div></div>
+      </div>
+      <div class="center"><div class="canvas-grid"></div><div class="frames-row"><div class="frame selected" style="opacity:0.55;"><div class="frame-label">Footer</div><div style="height:320px; background:repeating-linear-gradient(45deg, #c24a1e 0 12px, #1a1a18 12px 24px);"></div></div></div><div class="toolbar"><div class="tool active" title="Move"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 2l7 18 2-7 7-2z"/></svg></div><div class="tool" title="Frame"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg></div><div class="tool" title="Rectangle"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="2"/></svg></div><div class="tool" title="Ellipse"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/></svg></div><div class="tool" title="Pen"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.5 7.5"/></svg></div><div class="tool" title="Text"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h14v3M9 4v16M7 20h10"/></svg></div><div class="tool" title="Comment"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div class="divider"></div><div class="tool ai" title="Ask Kova"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/><path d="M19 14l.7 2.1L22 17l-2.3.9L19 20l-.7-2.1L16 17l2.3-.9L19 14z"/></svg></div><div class="tool" title="Components"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div></div><div class="zoom">100%<span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div></div>
+      <div class="right">
+        <div class="tabs"><div class="tabs-l"><div class="tab active">Design</div></div><div class="zoom-r">292%<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div></div>
+        <div class="frame-head"><div class="title">Frame<span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div></div>
+        <div class="pbody">
+          <div class="group">
+            <div class="ghead"><h6>Fill</h6><div class="actions"><span class="a"><i data-lucide="plus" style="width:14px;height:14px;"></i></span></div></div>
+            <div class="fill-row anchored">
+              <span class="swatch" style="background:repeating-linear-gradient(45deg, #c24a1e 0 4px, #1a1a18 4px 8px);"></span>
+              <span class="hex">Image</span><span class="pct">100%</span>
+              <span class="ico"><i data-lucide="eye" style="width:12px;height:12px;"></i></span>
+              <span class="ico"><i data-lucide="minus" style="width:12px;height:12px;"></i></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cp-popover" style="top: 144px; right: 282px;">
+      <div class="cp-header"><div class="cp-title">Color</div><div class="cp-close"><i data-lucide="x" style="width:12px;height:12px;"></i></div></div>
+      <div class="cp-tabs">
+        <div class="cp-tab">Solid</div><div class="cp-tab">Linear</div><div class="cp-tab">Radial</div><div class="cp-tab active">Image</div>
+      </div>
+      <div class="cp-image-source">
+        <div class="cp-src">Brand Kit</div>
+        <div class="cp-src active">Uploads</div>
+        <div class="cp-src">Shopify</div>
+      </div>
+      <div class="cp-image-preview" style="background-image: repeating-linear-gradient(45deg, #c24a1e 0 16px, #1a1a18 16px 32px);"></div>
+      <div class="cp-section">
+        <div class="cp-row-lbl">Scale mode</div>
+        <div class="cp-scale-mode">Tile<span class="cp-caret"><i data-lucide="chevron-down" style="width:11px;height:11px;"></i></span></div>
+      </div>
+      <div class="cp-section">
+        <div class="cp-row-lbl">Tile size</div>
+        <div class="cp-tile-slider">
+          <div class="cp-track">
+            <div class="cp-tile-fill" style="width: 21%;"></div>
+            <div class="cp-tile-knob" style="left: 21%;"></div>
+          </div>
+          <div class="cp-pct-readout">50%</div>
+        </div>
+      </div>
+      <div class="cp-section">
+        <div class="cp-row-lbl">Recent uploads</div>
+        <div class="cp-swatches">
+          <div class="cp-swatch selected" style="background:repeating-linear-gradient(45deg, #c24a1e 0 4px, #1a1a18 4px 8px);"></div>
+          <div class="cp-swatch" style="background:repeating-linear-gradient(135deg, #f4ede2 0 4px, #d4d2cc 4px 8px);"></div>
+          <div class="cp-swatch" style="background:repeating-linear-gradient(0deg, #7d8c5c 0 4px, #5a6a40 4px 8px);"></div>
+          <div class="cp-swatch add"><i data-lucide="upload" style="width:11px;height:11px;"></i></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="canvas-caption"><span class="id">12.11</span> Tile mode swaps the brand library row for a "Tile size" slider. Slider is custom-built for the picker (track + knob + readout) — height 12px to match hue/alpha sliders for visual consistency. Knob is 14px white circle. The preview shows the tiled image at the chosen scale (50% in this scene = 21% along the 10–200% range).</div>
+</section>
+
+<!-- ========================================================================
+     ANCHORING CONTEXTS — 3 scenes (12.12–12.14)
+     ======================================================================== -->
+
+<!-- ============== 12.12 Page background color ============== -->
+<section class="block">
+  <header>
+    <div class="tag">B14 · color picker · page bg</div>
+    <h2>12.12 — Picker invoked from page background (B6.2)</h2>
+    <p class="intro">Single-mode variant: "Color" header only, no mode tabs (page background does not support gradients or images), and no image swatch in the swatch rows.</p>
+  </header>
+
+  <div class="canvas-card kc muted">
+    <div class="topbar">
+      <div class="l"><div class="logo">K</div><div class="file"><span class="crumb-brand"><span class="b"></span>Wildgrove</span><span class="sep">/</span><b>Spring Drop · 04</b><span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div></div>
+      <div class="r"><div class="icon-btn" title="Notifications"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/></svg></div><div class="icon-btn" title="Present"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="5 3 19 12 5 21 5 3"/></svg></div><div class="icon-btn" title="Comments"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div class="avatar">JM</div></div>
+    </div>
+    <div class="body">
+      <div class="left">
+        <div class="file-row"><div class="file-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div><div class="name">Spring Drop · 04</div><div class="meta">3 emails</div></div></div>
+        <div class="sec"><h5>Pages</h5></div>
+        <div class="pages"><div class="page-row active"><span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg></span><span>Spring Drop · 04</span></div></div>
+        <div class="sec"><h5>Layers</h5></div>
+        <div class="layers"><div class="layer"><span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg></span><span class="name">Teaser #1</span><span class="vis"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span></div></div>
+      </div>
+      <div class="center" style="background:#f4ede2;"><div class="canvas-grid" style="background-image: radial-gradient(circle, rgba(0,0,0,0.04) 1px, transparent 1px);"></div><div class="toolbar"><div class="tool active" title="Move"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 2l7 18 2-7 7-2z"/></svg></div><div class="tool" title="Frame"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg></div><div class="tool" title="Rectangle"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="2"/></svg></div><div class="tool" title="Ellipse"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/></svg></div><div class="tool" title="Pen"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.5 7.5"/></svg></div><div class="tool" title="Text"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h14v3M9 4v16M7 20h10"/></svg></div><div class="tool" title="Comment"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div class="divider"></div><div class="tool ai" title="Ask Kova"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/><path d="M19 14l.7 2.1L22 17l-2.3.9L19 20l-.7-2.1L16 17l2.3-.9L19 14z"/></svg></div><div class="tool" title="Components"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div></div><div class="zoom">100%<span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div></div>
+      <div class="right">
+        <div class="tabs"><div class="tabs-l"><div class="tab active">Design</div></div><div class="zoom-r">100%<i data-lucide="chevron-down" style="width:11px;height:11px;"></i></div></div>
+        <div class="frame-head"><div class="title">Page<span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div></div>
+        <div class="pbody">
+          <div class="group">
+            <div class="ghead"><h6>Background</h6><div class="actions"><span class="a"><i data-lucide="plus" style="width:14px;height:14px;"></i></span></div></div>
+            <div class="fill-row anchored">
+              <span class="swatch" style="background:#f4ede2"></span>
+              <span class="hex">F4EDE2</span><span class="pct">100%</span>
+              <span class="ico"><i data-lucide="eye" style="width:12px;height:12px;"></i></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cp-popover" style="top: 168px; right: 282px;">
+      <div class="cp-header"><div class="cp-title">Color</div><div class="cp-close"><i data-lucide="x" style="width:12px;height:12px;"></i></div></div>
+      <!-- NO mode tabs in page-bg context -->
+      <div class="cp-canvas" style="background:
+        linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 100%),
+        linear-gradient(to right, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 100%),
+        hsl(35, 60%, 90%);">
+        <div class="cp-cursor" style="left: 18%; top: 12%;"></div>
+      </div>
+      <div class="cp-hue"><div class="cp-knob" style="left: 10%;"></div></div>
+      <div class="cp-alpha" style="background-image: linear-gradient(to right, rgba(244,237,226,0), rgba(244,237,226,1)), conic-gradient(from 90deg at 50% 50%, #3a3a3e 0% 25%, #1f1f22 25% 50%, #3a3a3e 50% 75%, #1f1f22 75%); background-size: 100% 100%, 8px 8px;"><div class="cp-knob" style="left: 100%;"></div></div>
+      <div class="cp-inputs">
+        <div class="cp-input"><span class="cp-pre">#</span><span class="cp-val">F4EDE2</span></div>
+        <div class="cp-mode-toggle">HEX<span class="cp-caret"><i data-lucide="chevron-down" style="width:10px;height:10px;"></i></span></div>
+        <div class="cp-eye"><i data-lucide="pipette" style="width:14px;height:14px;"></i></div>
+      </div>
+      <div class="cp-section"><div class="cp-row-lbl">Recent</div><div class="cp-swatches">
+        <div class="cp-swatch selected" style="background:#f4ede2"></div>
+        <div class="cp-swatch" style="background:#ffffff"></div>
+        <div class="cp-swatch" style="background:#1a1a18"></div>
+        <div class="cp-swatch" style="background:#ededea"></div>
+      </div></div>
+      <div class="cp-section">
+        <div class="cp-row-lbl">Wildgrove brand</div>
+        <div class="cp-swatches">
+          <div class="cp-swatch" style="background:#c24a1e"></div>
+          <div class="cp-swatch" style="background:#1a1a18"></div>
+          <div class="cp-swatch" style="background:#f4ede2"></div>
+          <div class="cp-swatch" style="background:#7d8c5c"></div>
+          <!-- NO add swatch button in page-bg context (page-bg doesn't append to brand kit) -->
+        </div>
+      </div>
+      <!-- NO image swatch row in page-bg context -->
+    </div>
+  </div>
+
+  <div class="canvas-caption"><span class="id">12.12</span> Single-mode variant. The 4 mode tabs are gone — page background only supports solid color (gradient or image fills are scoped to fill rows, not to the page itself per the spec). Image swatch and `+ Add to brand kit` button are also hidden. Picker structure still uses the same hex / RGB / HSL toggle, eyedropper, sat/val canvas, hue + alpha sliders, and brand swatches.</div>
+</section>
+
+<!-- ============== 12.13 Stroke color ============== -->
+<section class="block">
+  <header>
+    <div class="tag">B14 · color picker · stroke</div>
+    <h2>12.13 — Picker invoked from stroke color (B7.7)</h2>
+    <p class="intro">Stroke supports solid color only — no gradient, no image fill. Same single-mode variant as page bg, anchored to a stroke row in the right panel.</p>
+  </header>
+
+  <div class="canvas-card kc muted">
+    <div class="topbar">
+      <div class="l"><div class="logo">K</div><div class="file"><span class="crumb-brand"><span class="b"></span>Wildgrove</span><span class="sep">/</span><b>Spring Drop · 04</b><span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div></div>
+      <div class="r"><div class="icon-btn" title="Notifications"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/></svg></div><div class="icon-btn" title="Present"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="5 3 19 12 5 21 5 3"/></svg></div><div class="icon-btn" title="Comments"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div class="avatar">JM</div></div>
+    </div>
+    <div class="body">
+      <div class="left">
+        <div class="file-row"><div class="file-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div><div class="name">Spring Drop · 04</div><div class="meta">3 emails</div></div></div>
+        <div class="sec"><h5>Layers</h5></div>
+        <div class="layers"><div class="layer selected"><span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg></span><span class="name">CTA · Shop the drop</span><span class="vis"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span></div></div>
+      </div>
+      <div class="center"><div class="canvas-grid"></div><div class="frames-row"><div class="frame selected" style="opacity:0.55;"><div class="frame-label">CTA</div><div style="height:320px; background:#fff; display:grid; place-items:center;"><div style="width:200px; height:60px; background:#1a1a18; border:2px solid #c24a1e; border-radius:6px;"></div></div></div></div><div class="toolbar"><div class="tool active" title="Move"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 2l7 18 2-7 7-2z"/></svg></div><div class="tool" title="Frame"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg></div><div class="tool" title="Rectangle"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="2"/></svg></div><div class="tool" title="Ellipse"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/></svg></div><div class="tool" title="Pen"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.5 7.5"/></svg></div><div class="tool" title="Text"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h14v3M9 4v16M7 20h10"/></svg></div><div class="tool" title="Comment"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div class="divider"></div><div class="tool ai" title="Ask Kova"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/><path d="M19 14l.7 2.1L22 17l-2.3.9L19 20l-.7-2.1L16 17l2.3-.9L19 14z"/></svg></div><div class="tool" title="Components"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div></div><div class="zoom">100%<span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div></div>
+      <div class="right">
+        <div class="tabs"><div class="tabs-l"><div class="tab active">Design</div></div><div class="zoom-r">292%<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div></div>
+        <div class="frame-head"><div class="title">Button<span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div></div>
+        <div class="pbody">
+          <div class="group">
+            <div class="ghead"><h6>Fill</h6><div class="actions"><span class="a"><i data-lucide="plus" style="width:14px;height:14px;"></i></span></div></div>
+            <div class="fill-row">
+              <span class="swatch" style="background:#1a1a18"></span>
+              <span class="hex">1A1A18</span><span class="pct">100%</span>
+              <span class="ico"><i data-lucide="eye" style="width:12px;height:12px;"></i></span>
+              <span class="ico"><i data-lucide="minus" style="width:12px;height:12px;"></i></span>
+            </div>
+          </div>
+          <div class="group">
+            <div class="ghead"><h6>Stroke</h6><div class="actions"><span class="a"><i data-lucide="plus" style="width:14px;height:14px;"></i></span></div></div>
+            <div class="fill-row anchored">
+              <span class="swatch" style="background:#c24a1e"></span>
+              <span class="hex">C24A1E</span><span class="pct">100%</span>
+              <span class="ico"><i data-lucide="eye" style="width:12px;height:12px;"></i></span>
+              <span class="ico"><i data-lucide="minus" style="width:12px;height:12px;"></i></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cp-popover" style="top: 220px; right: 282px;">
+      <div class="cp-header"><div class="cp-title">Color</div><div class="cp-close"><i data-lucide="x" style="width:12px;height:12px;"></i></div></div>
+      <div class="cp-canvas" style="background:
+        linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 100%),
+        linear-gradient(to right, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 100%),
+        hsl(15, 75%, 44%);">
+        <div class="cp-cursor" style="left: 80%; top: 50%;"></div>
+      </div>
+      <div class="cp-hue"><div class="cp-knob" style="left: 4%;"></div></div>
+      <div class="cp-alpha" style="background-image: linear-gradient(to right, rgba(194,74,30,0), rgba(194,74,30,1)), conic-gradient(from 90deg at 50% 50%, #3a3a3e 0% 25%, #1f1f22 25% 50%, #3a3a3e 50% 75%, #1f1f22 75%); background-size: 100% 100%, 8px 8px;"><div class="cp-knob" style="left: 100%;"></div></div>
+      <div class="cp-inputs">
+        <div class="cp-input"><span class="cp-pre">#</span><span class="cp-val">C24A1E</span></div>
+        <div class="cp-mode-toggle">HEX<span class="cp-caret"><i data-lucide="chevron-down" style="width:10px;height:10px;"></i></span></div>
+        <div class="cp-eye"><i data-lucide="pipette" style="width:14px;height:14px;"></i></div>
+      </div>
+      <div class="cp-section"><div class="cp-row-lbl">Recent</div><div class="cp-swatches">
+        <div class="cp-swatch selected" style="background:#c24a1e"></div>
+        <div class="cp-swatch" style="background:#3b82f6"></div>
+        <div class="cp-swatch" style="background:#1a1a18"></div>
+        <div class="cp-swatch" style="background:#ededea"></div>
+      </div></div>
+      <div class="cp-section">
+        <div class="cp-row-lbl">Wildgrove brand</div>
+        <div class="cp-swatches">
+          <div class="cp-swatch" style="background:#c24a1e"></div>
+          <div class="cp-swatch" style="background:#1a1a18"></div>
+          <div class="cp-swatch" style="background:#f4ede2"></div>
+          <div class="cp-swatch" style="background:#7d8c5c"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="canvas-caption"><span class="id">12.13</span> Stroke context. Same single-mode picker shape — anchored to the Stroke row, not the Fill row. Fill row above is still visible (and unaffected). The picker invocation context is determined by which row was clicked: clicking the swatch on the Fill row would open the 4-tab variant; clicking the swatch on the Stroke row opens this single-mode variant.</div>
+</section>
+
+<!-- ============== 12.14 Effect color (drop-shadow) ============== -->
+<section class="block">
+  <header>
+    <div class="tag">B14 · color picker · effect color</div>
+    <h2>12.14 — Picker invoked from drop-shadow color (B7.8)</h2>
+    <p class="intro">Effect color picker chains off a drop-shadow editor popover (the host effect surface). Anchored to the color row inside that drop-shadow editor; reference: <code style="color:var(--ink);">right-panel-rectangle-selected-3-drop-shadow.png</code>.</p>
+  </header>
+
+  <div class="canvas-card kc muted">
+    <div class="topbar">
+      <div class="l"><div class="logo">K</div><div class="file"><span class="crumb-brand"><span class="b"></span>Wildgrove</span><span class="sep">/</span><b>Spring Drop · 04</b><span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div></div>
+      <div class="r"><div class="icon-btn" title="Notifications"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/></svg></div><div class="icon-btn" title="Present"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="5 3 19 12 5 21 5 3"/></svg></div><div class="icon-btn" title="Comments"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div class="avatar">JM</div></div>
+    </div>
+    <div class="body">
+      <div class="left">
+        <div class="file-row"><div class="file-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div><div class="name">Spring Drop · 04</div><div class="meta">3 emails</div></div></div>
+        <div class="sec"><h5>Layers</h5></div>
+        <div class="layers"><div class="layer selected"><span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg></span><span class="name">Card · pricing</span><span class="vis"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span></div></div>
+      </div>
+      <div class="center"><div class="canvas-grid"></div><div class="frames-row"><div class="frame selected" style="opacity:0.55;"><div class="frame-label">Card</div><div style="height:320px; background:#fff; display:grid; place-items:center;"><div style="width:280px; height:200px; background:#fff; border-radius:8px; box-shadow: 0 12px 32px rgba(0,0,0,0.18);"></div></div></div></div><div class="toolbar"><div class="tool active" title="Move"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 2l7 18 2-7 7-2z"/></svg></div><div class="tool" title="Frame"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg></div><div class="tool" title="Rectangle"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="2"/></svg></div><div class="tool" title="Ellipse"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/></svg></div><div class="tool" title="Pen"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.5 7.5"/></svg></div><div class="tool" title="Text"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h14v3M9 4v16M7 20h10"/></svg></div><div class="tool" title="Comment"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div class="divider"></div><div class="tool ai" title="Ask Kova"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/><path d="M19 14l.7 2.1L22 17l-2.3.9L19 20l-.7-2.1L16 17l2.3-.9L19 14z"/></svg></div><div class="tool" title="Components"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div></div><div class="zoom">100%<span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div></div>
+      <div class="right">
+        <div class="tabs"><div class="tabs-l"><div class="tab active">Design</div></div><div class="zoom-r">292%<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div></div>
+        <div class="frame-head"><div class="title">Card<span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div></div>
+        <div class="pbody">
+          <div class="group">
+            <div class="ghead"><h6>Effects</h6><div class="actions"><span class="a"><i data-lucide="plus" style="width:14px;height:14px;"></i></span></div></div>
+            <div class="fill-row">
+              <span class="swatch" style="background:rgba(0,0,0,0.18); position:relative;"><i data-lucide="square" style="width:8px;height:8px; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:#fff;"></i></span>
+              <span class="hex">Drop shadow</span><span class="pct">18%</span>
+              <span class="ico"><i data-lucide="eye" style="width:12px;height:12px;"></i></span>
+              <span class="ico"><i data-lucide="minus" style="width:12px;height:12px;"></i></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Drop-shadow editor (host effect popover) -->
+    <div class="cp-effect-host" style="top: 200px; right: 282px;">
+      <div class="cp-effect-title">Drop shadow</div>
+      <div class="cp-effect-row">
+        <div class="cp-effect-lbl">X</div>
+        <div class="cp-effect-val">0</div>
+      </div>
+      <div class="cp-effect-row">
+        <div class="cp-effect-lbl">Y</div>
+        <div class="cp-effect-val">12</div>
+      </div>
+      <div class="cp-effect-row">
+        <div class="cp-effect-lbl">Blur</div>
+        <div class="cp-effect-val">32</div>
+      </div>
+      <div class="cp-effect-row">
+        <div class="cp-effect-lbl">Spread</div>
+        <div class="cp-effect-val">0</div>
+      </div>
+      <div class="cp-effect-color-row">
+        <div class="cp-effect-lbl">Color</div>
+        <div class="cp-effect-color-fill">
+          <span class="cp-sw" style="background:#000000;"></span>
+          <span class="cp-fx-hex">#000000</span>
+          <span class="cp-fx-pct">18%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Color picker chained off the effect editor -->
+    <div class="cp-popover" style="top: 240px; right: 538px;">
+      <div class="cp-header"><div class="cp-title">Color</div><div class="cp-close"><i data-lucide="x" style="width:12px;height:12px;"></i></div></div>
+      <div class="cp-canvas" style="background:
+        linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 100%),
+        linear-gradient(to right, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 100%),
+        hsl(0, 0%, 0%);">
+        <div class="cp-cursor" style="left: 0%; top: 100%;"></div>
+      </div>
+      <div class="cp-hue"><div class="cp-knob" style="left: 0%;"></div></div>
+      <div class="cp-alpha" style="background-image: linear-gradient(to right, rgba(0,0,0,0), rgba(0,0,0,1)), conic-gradient(from 90deg at 50% 50%, #3a3a3e 0% 25%, #1f1f22 25% 50%, #3a3a3e 50% 75%, #1f1f22 75%); background-size: 100% 100%, 8px 8px;"><div class="cp-knob" style="left: 18%;"></div></div>
+      <div class="cp-inputs">
+        <div class="cp-input"><span class="cp-pre">#</span><span class="cp-val">000000</span></div>
+        <div class="cp-mode-toggle">HEX<span class="cp-caret"><i data-lucide="chevron-down" style="width:10px;height:10px;"></i></span></div>
+        <div class="cp-eye"><i data-lucide="pipette" style="width:14px;height:14px;"></i></div>
+      </div>
+      <div class="cp-section"><div class="cp-row-lbl">Recent</div><div class="cp-swatches">
+        <div class="cp-swatch selected" style="background:#000000"></div>
+        <div class="cp-swatch" style="background:#1a1a18"></div>
+        <div class="cp-swatch" style="background:#3b82f6"></div>
+        <div class="cp-swatch" style="background:#c24a1e"></div>
+      </div></div>
+      <div class="cp-section">
+        <div class="cp-row-lbl">Wildgrove brand</div>
+        <div class="cp-swatches">
+          <div class="cp-swatch" style="background:#c24a1e"></div>
+          <div class="cp-swatch" style="background:#1a1a18"></div>
+          <div class="cp-swatch" style="background:#f4ede2"></div>
+          <div class="cp-swatch" style="background:#7d8c5c"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="canvas-caption"><span class="id">12.14</span> Two floating popovers chained: the drop-shadow editor (host) anchors to the Effects fill row in the right panel; clicking its color cell opens the color picker, which floats further LEFT to clear both the right panel and the effect host. The color cell inside the host shows a 1px accent ring to indicate it is the picker's anchor. Both popovers use design.md §1.6 floating elevation. Alpha slider knob sits at 18% (the shadow's 18% opacity) — the only place where alpha is visibly less than 100% across the 14 scenes.</div>
+</section>
+
+<script>lucide.createIcons();</script>
+</body>
+</html>

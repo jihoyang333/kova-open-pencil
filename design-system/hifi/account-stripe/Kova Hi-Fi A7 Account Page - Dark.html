@@ -1,0 +1,2254 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<title>Kova — Hi-fi · Account · Dark</title>
+<meta name="viewport" content="width=1440" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+<link rel="stylesheet" href="../../design-system/kova-hifi.css" />
+<script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
+<style>
+/* ============================================================
+   ACCOUNT PAGE — full-page /account route per Q12
+   Layout = app sidebar (236px) + account left-rail (220px) + main
+   Inherits kova-hifi.css tokens. Section vocabulary mirrors 06.
+   ============================================================ */
+
+  body { background: var(--bg); }
+  .acc-frame { height: 100%; display: grid; grid-template-columns: 220px 1fr; background: var(--page); }
+
+  /* ---------- Account left-rail ---------- */
+  .acc-rail {
+    background: var(--rail);
+    border-right: 1px solid var(--line);
+    padding: 28px 12px 16px;
+    display: flex; flex-direction: column; gap: 4px;
+    min-height: 0; overflow: auto;
+  }
+  .acc-rail .title {
+    font-size: 17px; font-weight: 600; letter-spacing: -0.012em;
+    padding: 0 10px 14px; color: var(--ink);
+  }
+  .acc-rail .it {
+    display: flex; align-items: center; gap: 9px;
+    padding: 7px 10px; border-radius: 5px;
+    color: var(--ink-2); cursor: pointer; font-size: 13px;
+    transition: background .1s ease, color .1s ease;
+  }
+  .acc-rail .it:hover { background: var(--line-2); color: var(--ink); }
+  .acc-rail .it.active { background: var(--fill); color: var(--ink); font-weight: 500; }
+  .acc-rail .it .ic { width: 14px; height: 14px; opacity: .8; }
+  .acc-rail .it.active .ic { opacity: 1; }
+  .acc-rail .it.danger { color: var(--warn); }
+  .acc-rail .it.danger:hover { background: rgba(232,122,74,0.08); }
+  .acc-rail .sep {
+    height: 1px; background: var(--line-2);
+    margin: 10px 8px;
+  }
+
+  /* ---------- Main column ---------- */
+  .acc-main { overflow: auto; display: flex; flex-direction: column; }
+  .acc-hero {
+    padding: 40px 56px 24px;
+    border-bottom: 1px solid var(--line-2);
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 24px;
+  }
+  .acc-hero h1 {
+    margin: 0 0 6px; font-size: 24px; font-weight: 600; letter-spacing: -0.012em;
+  }
+  .acc-hero p {
+    margin: 0; color: var(--ink-2); font-size: 13.5px; max-width: 600px;
+  }
+  /* Brand-picker dropdown anchor (A2b) */
+  .brandpick {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 10px 6px 7px;
+    border: 1px solid var(--line); border-radius: 7px;
+    background: var(--page); cursor: pointer;
+    font-size: 12.5px; color: var(--ink);
+    transition: border-color .1s ease;
+  }
+  .brandpick:hover { border-color: var(--ink-3); }
+  .brandpick .logo {
+    width: 20px; height: 20px; border-radius: 4px;
+    background: #ededea; color: #0d0d0c;
+    display: grid; place-items: center;
+    font-weight: 700; font-size: 10px; letter-spacing: -0.02em;
+  }
+  .brandpick .nm { font-weight: 600; letter-spacing: -0.005em; }
+  .brandpick .caret { color: var(--ink-3); margin-left: 2px; }
+
+  .acc-content {
+    padding: 32px 56px 80px;
+    display: flex; flex-direction: column; gap: 36px;
+    max-width: 940px;
+  }
+
+  /* ---------- Section vocabulary (matches 06) ---------- */
+  .s-section { display: flex; flex-direction: column; gap: 12px; }
+  /* specificity bump — beats `section.block h2` from kova-hifi.css */
+  .acc-main .s-section h2,
+  section.block .s-section h2 {
+    margin: 0 0 2px; font-size: 16px;
+    letter-spacing: -0.005em;
+    color: var(--ink); font-weight: 600;
+    font-family: 'Inter', system-ui, sans-serif;
+    text-transform: none;
+  }
+  .s-section .desc {
+    color: var(--ink-3); font-size: 12.5px; margin: 0; max-width: 640px;
+  }
+
+  .row {
+    display: grid;
+    grid-template-columns: 200px 1fr auto;
+    align-items: center;
+    gap: 20px;
+    padding: 14px 18px;
+    background: var(--page);
+    border: 1px solid var(--line);
+  }
+  .row-stack { display: flex; flex-direction: column; gap: 0; }
+  .row-stack .row { border-radius: 0; border-top-width: 0; }
+  .row-stack .row:first-child {
+    border-top-width: 1px;
+    border-top-left-radius: 7px; border-top-right-radius: 7px;
+  }
+  .row-stack .row:last-child {
+    border-bottom-left-radius: 7px; border-bottom-right-radius: 7px;
+  }
+  .row .lbl { font-size: 13px; font-weight: 500; color: var(--ink); letter-spacing: -0.005em; }
+  .row .lbl .sub { display: block; color: var(--ink-3); font-size: 11.5px; font-weight: 400; margin-top: 2px; line-height: 1.4; }
+  .row .ctrl-input {
+    width: 100%; border: 1px solid var(--line); border-radius: 5px;
+    padding: 6px 10px; font: inherit; font-size: 13px;
+    background: var(--page); color: var(--ink);
+  }
+  .row .ctrl-input:focus { outline: none; border-color: var(--ink-2); box-shadow: 0 0 0 3px rgba(237,237,234,0.05); }
+  .row .ctrl-input[readonly] { color: var(--ink-3); background: var(--bg); }
+
+  /* Toggle (carried from 06) */
+  .toggle {
+    width: 34px; height: 20px;
+    border-radius: 999px; background: var(--line); position: relative;
+    flex-shrink: 0; cursor: pointer; transition: background .15s;
+  }
+  .toggle::after {
+    content: ""; position: absolute;
+    width: 16px; height: 16px; border-radius: 50%;
+    background: #ededea; top: 2px; left: 2px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.4); transition: left .15s;
+  }
+  .toggle.on { background: #ededea; }
+  .toggle.on::after { left: 16px; background: #0d0d0c; }
+
+  /* Segmented (carried from 06) */
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--page); }
+  .seg .o { padding: 6px 12px; font-size: 12px; color: var(--ink-3); cursor: pointer; border-right: 1px solid var(--line-2); background: var(--page); }
+  .seg .o:last-child { border-right: 0; }
+  .seg .o.on { background: var(--fill); color: var(--ink); }
+
+  /* ---------- Brand-Kit two-column ---------- */
+  .bk-wrap { display: grid; grid-template-columns: 188px 1fr; gap: 24px; }
+  .bk-subnav {
+    display: flex; flex-direction: column; gap: 1px;
+    position: sticky; top: 16px; align-self: start;
+  }
+  .bk-subnav .it {
+    display: flex; align-items: center; gap: 9px;
+    padding: 6px 10px; border-radius: 5px;
+    color: var(--ink-2); cursor: pointer; font-size: 12.5px;
+  }
+  .bk-subnav .it:hover { background: var(--line-2); color: var(--ink); }
+  .bk-subnav .it.active { background: var(--fill); color: var(--ink); font-weight: 500; }
+  .bk-subnav .it .ic { width: 13px; height: 13px; opacity: .8; }
+  .bk-subnav .head { font-size: 10px; color: var(--ink-3);
+    padding: 0 10px 6px; font-weight: 500;
+  }
+  .bk-pane { min-width: 0; display: flex; flex-direction: column; gap: 18px; }
+
+  /* Color swatch list */
+  .sw-list { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+  .sw-item {
+    border: 1px solid var(--line); border-radius: 6px; overflow: hidden;
+    background: var(--page); display: flex; flex-direction: column;
+    cursor: pointer; transition: border-color .1s ease;
+  }
+  .sw-item:hover { border-color: var(--ink-3); }
+  .sw-item .fill { height: 56px; border-bottom: 1px solid var(--line-2); }
+  .sw-item .body { padding: 6px 8px 8px; }
+  .sw-item .nm { font-size: 11.5px; font-weight: 500; }
+  .sw-item .hex { font-size: 10px; color: var(--ink-3); }
+  .sw-add {
+    border: 1px dashed var(--line); border-radius: 6px;
+    display: grid; place-items: center; color: var(--ink-3);
+    cursor: pointer; min-height: 88px; transition: border-color .1s ease, color .1s ease;
+    font-size: 11.5px;
+  }
+  .sw-add:hover { border-color: var(--ink-3); color: var(--ink); }
+
+  /* Font row */
+  .font-row {
+    display: grid; grid-template-columns: 1fr auto auto;
+    gap: 16px; align-items: center;
+    padding: 14px 16px;
+    background: var(--page); border: 1px solid var(--line);
+    border-radius: 7px;
+  }
+  .font-row + .font-row { margin-top: 8px; }
+  .font-row .preview {
+    font-size: 22px; line-height: 1.1; letter-spacing: -0.01em;
+  }
+  .font-row .meta { font-size: 11.5px; color: var(--ink-3); display: flex; gap: 10px; align-items: center; }
+  .font-row .meta .mono { font-size: 10.5px; }
+
+  /* Identity narrative cards */
+  .nar-card {
+    border: 1px solid var(--line); border-radius: 8px;
+    background: var(--page); padding: 16px 18px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .nar-card + .nar-card { margin-top: 10px; }
+  .nar-card .hd {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  }
+  .nar-card .hd .tt { font-size: 14px; font-weight: 600; letter-spacing: -0.005em; }
+  .nar-card .body {
+    font-size: 13px; color: var(--ink-2); line-height: 1.55;
+    background: var(--bg); border: 1px solid var(--line-2);
+    border-radius: 6px; padding: 12px 14px; max-height: 88px; overflow: hidden;
+    position: relative;
+  }
+  .nar-card .body.empty { color: var(--ink-3); font-style: italic; padding: 20px 14px; max-height: none; }
+  .nar-card .ft {
+    display: flex; justify-content: space-between; align-items: center; font-size: 10.5px; color: var(--ink-3);
+  }
+
+  /* Snippet / saved-block list rows */
+  .list-stack {
+    border: 1px solid var(--line); border-radius: 7px;
+    overflow: hidden; background: var(--page);
+  }
+  .list-row {
+    display: grid; grid-template-columns: 24px 200px 1fr auto;
+    gap: 14px; align-items: start;
+    padding: 12px 16px;
+    border-top: 1px solid var(--line-2);
+  }
+  .list-row:first-child { border-top: 0; }
+  .list-row .grip {
+    color: var(--ink-3); padding-top: 2px; cursor: grab;
+  }
+  .list-row .lbl-col {
+    font-weight: 500; font-size: 13px; color: var(--ink);
+    letter-spacing: -0.005em; padding-top: 1px;
+  }
+  .list-row .lbl-col .tag-mono {
+    margin-top: 4px; display: inline-block;
+  }
+  .list-row .content-col {
+    font-size: 12.5px; color: var(--ink-2); line-height: 1.5;
+    min-width: 0;
+  }
+  .list-row .actions-col {
+    display: flex; gap: 4px;
+    color: var(--ink-3);
+  }
+  .list-row .actions-col .ac {
+    width: 26px; height: 26px; border-radius: 4px;
+    display: grid; place-items: center; cursor: pointer;
+  }
+  .list-row .actions-col .ac:hover { background: var(--fill); color: var(--ink); }
+  .list-add {
+    padding: 10px 16px;
+    border-top: 1px solid var(--line-2);
+    background: var(--rail);
+    color: var(--ink-2);
+    cursor: pointer; font-size: 12.5px;
+    display: flex; align-items: center; gap: 7px;
+    transition: color .1s ease, background .1s ease;
+  }
+  .list-add:hover { color: var(--ink); background: var(--line-2); }
+  .list-add .ic { width: 13px; height: 13px; }
+
+  /* Writing-rules toggles */
+  .wr-stack { display: flex; flex-direction: column; gap: 0; }
+  .wr-stack .row {
+    grid-template-columns: 1fr auto;
+    padding: 11px 16px;
+  }
+
+  /* Memories rows */
+  .mem-row {
+    display: grid; grid-template-columns: 90px 1fr auto;
+    gap: 14px; align-items: center;
+    padding: 11px 16px;
+    border-top: 1px solid var(--line-2);
+    font-size: 12.5px;
+  }
+  .mem-row:first-child { border-top: 0; }
+  .mem-row .type { font-size: 10px; color: var(--ink-3); }
+  .mem-row .body { color: var(--ink); line-height: 1.45; }
+  .mem-row .body .src { color: var(--ink-3); font-size: 11px; margin-top: 2px; }
+  .mem-row .ac { color: var(--ink-3); padding: 4px; border-radius: 4px; cursor: pointer; }
+  .mem-row .ac:hover { background: var(--fill); color: var(--ink); }
+
+  /* Knowledge base 60/40 */
+  .kb-grid { display: grid; grid-template-columns: 40% 1fr; gap: 12px; height: 460px; }
+  .kb-sources, .kb-viewer {
+    border: 1px solid var(--line); border-radius: 7px;
+    background: var(--page); display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  .kb-sources .hd, .kb-viewer .hd {
+    padding: 10px 14px; border-bottom: 1px solid var(--line-2);
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--rail);
+    font-size: 12px; color: var(--ink);
+  }
+  .kb-sources .hd b { font-weight: 600; }
+  .kb-sources .hd .count { font-size: 10.5px; color: var(--ink-3); }
+  .kb-list { overflow: auto; flex: 1; }
+  .kb-src-row {
+    display: grid; grid-template-columns: 16px 1fr auto;
+    gap: 10px; align-items: center;
+    padding: 10px 14px;
+    border-top: 1px solid var(--line-2);
+    cursor: pointer; font-size: 12.5px;
+  }
+  .kb-src-row:first-child { border-top: 0; }
+  .kb-src-row:hover { background: var(--rail); }
+  .kb-src-row.active { background: var(--fill); }
+  .kb-src-row .ic { width: 14px; height: 14px; color: var(--ink-3); }
+  .kb-src-row .ttl { font-weight: 500; color: var(--ink); }
+  .kb-src-row .meta { font-size: 10px; color: var(--ink-3); margin-top: 2px; }
+  .kb-src-row .sz { font-size: 10px; color: var(--ink-3); }
+  .kb-viewer .body {
+    flex: 1; overflow: auto; padding: 18px 22px;
+    color: var(--ink-2); font-size: 13px; line-height: 1.6;
+  }
+  .kb-viewer .body h4 { color: var(--ink); margin: 0 0 8px; font-size: 14px; }
+  .kb-viewer .body p { margin: 0 0 10px; }
+  .kb-viewer .body .ph {
+    background: repeating-linear-gradient(135deg, #1f1f1d 0 5px, #262622 5px 10px);
+    height: 12px; border-radius: 2px; margin: 6px 0;
+  }
+  .kb-srcs-tabs {
+    display: flex; gap: 4px; padding: 8px 14px;
+    border-top: 1px solid var(--line-2);
+    background: var(--rail);
+    font-size: 11px;
+  }
+  .kb-srcs-tabs .t {
+    padding: 4px 9px; border-radius: 4px;
+    color: var(--ink-3); cursor: pointer;
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+  .kb-srcs-tabs .t.on { background: var(--fill); color: var(--ink); }
+  .kb-srcs-tabs .t .num { font-size: 10px; color: var(--ink-3); }
+  .kb-srcs-tabs .t.on .num { color: var(--ink-2); }
+
+  /* Plan card */
+  .plan-card {
+    border: 1px solid var(--line); border-radius: 8px;
+    background: var(--page); padding: 22px;
+    display: grid; grid-template-columns: 1fr auto; gap: 24px; align-items: start;
+  }
+  .plan-card .l h3 { margin: 0 0 4px; font-size: 18px; font-weight: 600; letter-spacing: -0.01em; }
+  .plan-card .l .price { color: var(--ink-3); font-size: 13px; margin-bottom: 14px; }
+  .plan-card .l .price b { color: var(--ink); font-weight: 600; font-size: 22px; letter-spacing: -0.01em; }
+  .plan-card .feats { display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; color: var(--ink-2); }
+  .plan-card .feats .f { display: flex; align-items: center; gap: 8px; }
+  .plan-card .feats .f .ic { width: 13px; height: 13px; color: var(--ok); }
+  .plan-card .r { display: flex; flex-direction: column; gap: 8px; align-items: stretch; min-width: 180px; }
+  .plan-card .r .pill { align-self: flex-end; }
+
+  /* Usage bar */
+  .usage {
+    background: var(--page); border: 1px solid var(--line); border-radius: 7px;
+    padding: 14px 18px; display: flex; flex-direction: column; gap: 12px;
+  }
+  .usage .meta { display: flex; justify-content: space-between; font-size: 12.5px; }
+  .usage .meta .l { color: var(--ink); font-weight: 500; }
+  .usage .meta .r { color: var(--ink-3); font-size: 11.5px; }
+  .usage .bar { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+  .usage .bar > i { display: block; height: 100%; background: var(--ink); border-radius: 3px; }
+
+  /* Invoice mini-table */
+  .inv-table { border: 1px solid var(--line); border-radius: 7px; overflow: hidden; background: var(--page); }
+  .inv-table .th, .inv-table .tr {
+    display: grid; grid-template-columns: 110px 1fr 100px 100px 28px;
+    gap: 14px; padding: 10px 16px; align-items: center;
+  }
+  .inv-table .th {
+    background: var(--rail); border-bottom: 1px solid var(--line); font-size: 10px; color: var(--ink-3);
+    letter-spacing: 0.1em; }
+  .inv-table .tr { border-top: 1px solid var(--line-2); font-size: 12.5px; }
+  .inv-table .tr:first-of-type { border-top: 0; }
+  .inv-table .tr .dt { font-size: 11.5px; color: var(--ink-3); }
+  .inv-table .tr .amt { font-size: 12px; color: var(--ink); }
+  .inv-table .tr .dl { color: var(--ink-3); cursor: pointer; padding: 4px; border-radius: 4px; display: grid; place-items: center; }
+  .inv-table .tr .dl:hover { background: var(--fill); color: var(--ink); }
+
+  /* Integration card (carried) */
+  .int-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .int-card {
+    border: 1px solid var(--line); border-radius: 8px;
+    padding: 16px; background: var(--page);
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .int-card .head { display: flex; align-items: center; gap: 10px; }
+  .int-card .logo {
+    width: 34px; height: 34px; border-radius: 6px;
+    display: grid; place-items: center; flex-shrink: 0;
+    font-weight: 700; font-size: 14px; color: #fff;
+  }
+  .int-card .nm { font-size: 14px; font-weight: 600; letter-spacing: -0.005em; }
+  .int-card .sub { font-size: 11.5px; color: var(--ink-3); }
+  .int-card .status { font-size: 11.5px; color: var(--ink-2); display: flex; align-items: center; gap: 6px; }
+  .int-card .status .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); }
+  .int-card .status.warn .dot { background: var(--warn); }
+  .int-card .foot { display: flex; justify-content: space-between; align-items: center; margin-top: auto; padding-top: 10px; border-top: 1px solid var(--line-2); }
+  .int-card .foot .last { font-size: 10.5px; color: var(--ink-3); }
+  .int-card.coming { border-style: dashed; }
+  .int-card.coming .logo { background: var(--fill-2); color: var(--ink-3); }
+
+  /* Danger zone (carried) */
+  .danger {
+    border: 1px solid var(--warn-edge); background: var(--warn-soft);
+    border-radius: 7px; padding: 14px 18px;
+    display: grid; grid-template-columns: 1fr auto; gap: 18px; align-items: center;
+  }
+  .danger .l b { color: var(--warn); font-weight: 600; display: block; margin-bottom: 2px; font-size: 13px; }
+  .danger .l span { color: #d49a78; font-size: 12px; }
+  .danger .r .btn { border-color: var(--warn-edge); color: var(--warn); background: transparent; }
+  .danger .r .btn:hover { border-color: var(--warn); background: rgba(232,122,74,0.08); color: var(--warn); }
+
+  /* Avatar (carried, dark-tuned) */
+  .ava-lg {
+    width: 48px; height: 48px; border-radius: 50%;
+    background: var(--warn); color: #fff;
+    display: grid; place-items: center;
+    font-weight: 600; font-size: 16px; letter-spacing: 0.01em;
+  }
+
+  /* Save bar (carried) */
+  .save-bar {
+    position: sticky; bottom: 0;
+    background: rgba(20,20,18,0.92);
+    backdrop-filter: blur(8px);
+    border-top: 1px solid var(--line);
+    padding: 12px 56px;
+    display: flex; justify-content: space-between; align-items: center;
+    z-index: 2; margin-top: auto;
+  }
+  .save-bar .l { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-2); }
+  .save-bar .l .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--review); }
+  .save-bar .r { display: flex; gap: 8px; }
+
+  /* Empty state inside Brand-Kit panes */
+  .empty-pane {
+    border: 1px dashed var(--line); border-radius: 8px;
+    padding: 32px 22px; text-align: center;
+    background: var(--rail);
+    display: flex; flex-direction: column; gap: 6px; align-items: center;
+  }
+  .empty-pane .ic-wrap {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: var(--page); border: 1px solid var(--line);
+    display: grid; place-items: center; color: var(--ink-3); margin-bottom: 4px;
+  }
+  .empty-pane h5 { margin: 0; font-size: 13px; color: var(--ink); font-weight: 600; }
+  .empty-pane p { margin: 0; font-size: 12px; color: var(--ink-3); max-width: 340px; }
+
+  /* ---------- A2b inline brand-picker dropdown (open state) ----------
+     Identical content + interaction to A2a sidebar dropdown
+     (defined in `Kova Hi-Fi A6+A2a Popovers + A8 Dialogs - Dark.html`).
+     Anchor differs: this one hangs off the .brandpick pill in the
+     section hero. On select: swaps section data, does NOT navigate. */
+  .brandpick.open { border-color: var(--ink); background: var(--page); }
+  .a2b-popover {
+    position: absolute; z-index: 10;
+    background: var(--page); border: 1px solid var(--line);
+    border-radius: 8px; padding: 6px;
+    box-shadow: 0 16px 60px -20px rgba(0,0,0,0.7);
+    display: flex; flex-direction: column; gap: 4px;
+    min-width: 240px;
+  }
+  .a2b-popover .pop-search {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 8px; margin: 2px 2px 4px;
+    border: 1px solid var(--line); border-radius: 6px;
+    background: var(--rail);
+    font-size: 12.5px; color: var(--ink-3);
+  }
+  .a2b-popover .pop-search input {
+    border: 0; outline: 0; background: transparent;
+    color: var(--ink); flex: 1; font: inherit; font-size: 12.5px;
+  }
+  .a2b-popover .pop-row {
+    display: flex; align-items: center; gap: 9px;
+    padding: 6px 8px; border-radius: 5px;
+    cursor: pointer; color: var(--ink); font-size: 12.5px;
+  }
+  .a2b-popover .pop-row:hover { background: var(--line-2); }
+  .a2b-popover .pop-row.active { background: var(--fill); }
+  .a2b-popover .pop-row .logo {
+    width: 22px; height: 22px; border-radius: 5px;
+    display: grid; place-items: center;
+    font-weight: 700; font-size: 10px; letter-spacing: -0.02em;
+    color: #0d0d0c; background: #ededea; flex-shrink: 0;
+  }
+  .a2b-popover .pop-row .nm { flex: 1; font-weight: 500; letter-spacing: -0.003em; }
+  .a2b-popover .pop-row .ck { color: var(--ink); }
+  .a2b-popover .pop-row.muted { color: var(--ink-3); }
+  .a2b-popover .pop-row.muted .logo { background: var(--fill-2); color: var(--ink-3); }
+  .a2b-popover .pop-row .meta {
+    color: var(--ink-3); font-size: 10.5px; }
+  .a2b-popover .pop-sep { height: 1px; background: var(--line-2); margin: 4px 4px; }
+  .a2b-popover .pop-foot {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 8px; border-radius: 5px;
+    cursor: pointer; color: var(--ink-2); font-size: 12.5px;
+  }
+  .a2b-popover .pop-foot:hover { background: var(--line-2); color: var(--ink); }
+  .a2b-popover .pop-foot .ic { width: 13px; height: 13px; }
+
+  .a2b-anchor-pin {
+    position: absolute; z-index: 4; pointer-events: none;
+  }
+  .a2b-anchor-pin .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    border: 2px solid var(--accent); background: var(--page);
+  }
+  .a2b-anchor-pin .lbl {
+    position: absolute; left: 14px; top: -2px;
+    background: var(--page); color: var(--ink-2);
+    border: 1px solid var(--line); border-radius: 4px;
+    padding: 2px 6px; font-size: 10.5px; letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+
+  /* Dim layer for content behind the open popover */
+  .a2b-dim { opacity: .35; pointer-events: none; }
+
+</style>
+</head>
+<body data-screen-label="A7 Account">
+
+<header class="page-head">
+  <div class="eyebrow">HI-FI · BATCH A · DARK · A7</div>
+  <h1>Account page · /account</h1>
+  <p>Full-page route replacing the old Settings tab strip (per Q12). Left rail = sections list. Profile is user-level; Brand Kit and Integrations are per-brand and carry a brand-picker dropdown (A2b) at the top of the section. Brand Kit has absorbed the wireframe v6 §10 Personalization hub — Identity / Memories / Knowledge base now live as sub-tabs alongside Visuals / Tone snippets / Saved blocks / Writing rules.</p>
+  <div class="meta">5 sections · 7 Brand-Kit sub-tabs · sample brand = "Nike" · same kova-hifi.css tokens · density carried from 06.a</div>
+  <div class="legend">
+    <span class="sw"><i style="background:#ededea"></i>primary action</span>
+    <span class="sw"><i style="background:#5a7dff"></i>AI / generative</span>
+    <span class="sw"><i style="background:#5ec27d"></i>connected / ok</span>
+    <span class="sw"><i style="background:#e87a4a"></i>danger / expired</span>
+  </div>
+</header>
+
+<!-- ============================================================
+     A7.1 — Profile section
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">A7 · §1 · Profile (user-level)</div>
+    <h2>Profile</h2>
+    <p class="intro">Per Q12 + Q5. Identity, password, avatar, and accessibility prefs (text size / reduce motion / high contrast) live here. Same controls also surface in the A8.3 Accessibility modal — design once, expose twice.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Account · Profile</div><div class="id">A7.1 · hi-fi</div></div>
+    <div class="canvas tall" data-screen-label="A7.1 Profile">
+      <div class="app">
+        <!-- App sidebar (carries from 03/06 — note: Settings nav-item is REMOVED per A7 superseding it; user reaches /account via avatar dropdown) -->
+        <div class="sidebar">
+          <div class="brand-switch">
+            <div class="logo">N</div><div class="name">Nike</div>
+            <div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div>
+          </div>
+          <div class="side-search">
+            <i data-lucide="search" style="width:13px;height:13px;"></i><span>Search</span>
+            <span class="kbd">⌘K</span>
+          </div>
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item"><i data-lucide="clock-4" class="ic"></i>Recents</div>
+            <div class="item"><i data-lucide="calendar-days" class="ic"></i>Calendar<span class="pill" style="margin-left:auto;font-size:9px;padding:1px 5px;">SOON</span></div>
+            <div class="section">Library</div>
+            <div class="item"><i data-lucide="bookmark" class="ic"></i>Swipes<span class="pill" style="margin-left:auto;font-size:9px;padding:1px 5px;">SOON</span></div>
+            <div class="item"><i data-lucide="layout-template" class="ic"></i>Templates<span class="pill" style="margin-left:auto;font-size:9px;padding:1px 5px;">SOON</span></div>
+            <div class="item"><i data-lucide="package" class="ic"></i>Products<span class="count">318</span></div>
+            <div class="section">Brand</div>
+            <div class="item"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+            <div class="item"><i data-lucide="book-open" class="ic"></i>Knowledge base</div>
+          </div>
+          <div class="side-footer">
+            <div class="avatar">JY</div>
+            <div class="who"><b>Jiho Yang</b><span>Pro plan</span></div>
+            <div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+          </div>
+        </div>
+
+        <div class="main">
+          <div class="topbar">
+            <div class="breadcrumb">
+              <span class="back" title="Back"><i data-lucide="chevron-left" style="width:14px;height:14px;"></i></span>
+              <span>Account</span>
+              <span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <b>Profile</b>
+            </div>
+            <div class="actions">
+              <span class="pill ok dot" style="font-size:11px;">Online</span>
+            </div>
+          </div>
+
+          <div class="acc-frame">
+            <!-- Account left rail -->
+            <div class="acc-rail">
+              <div class="title">Account</div>
+              <div class="it active"><i data-lucide="user" class="ic"></i>Profile</div>
+              <div class="it"><i data-lucide="credit-card" class="ic"></i>Plan &amp; billing</div>
+              <div class="it"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+              <div class="it"><i data-lucide="plug" class="ic"></i>Integrations</div>
+              <div class="sep"></div>
+              <div class="it danger"><i data-lucide="trash-2" class="ic"></i>Danger zone</div>
+            </div>
+
+            <div class="acc-main">
+              <div class="acc-hero">
+                <div class="l">
+                  <h1>Profile</h1>
+                  <p>Your name, email, avatar, and preferences. These are user-level — they apply across every brand you manage in Kova.</p>
+                </div>
+              </div>
+
+              <div class="acc-content">
+
+                <!-- Identity -->
+                <div class="s-section">
+                  <h2>Identity</h2>
+                  <div class="row-stack">
+                    <div class="row">
+                      <div class="lbl">Avatar
+                        <span class="sub">PNG, JPG or SVG · square · ≥256px.</span>
+                      </div>
+                      <div class="val" style="display:flex;align-items:center;gap:14px;">
+                        <div class="ava-lg">JY</div>
+                        <div style="display:flex;flex-direction:column;gap:3px;">
+                          <span style="font-size:12.5px;color:var(--ink);">Default initials</span>
+                          <span class="mono" style=" font-size:11px;color:var(--ink-3);">No image uploaded</span>
+                        </div>
+                      </div>
+                      <div class="btn sm">Upload image</div>
+                    </div>
+                    <div class="row">
+                      <div class="lbl">Name</div>
+                      <div class="val"><input class="ctrl-input" value="Jiho Yang" /></div>
+                      <div></div>
+                    </div>
+                    <div class="row">
+                      <div class="lbl">Email
+                        <span class="sub">Verified inbox. Used for sign-in and product email.</span>
+                      </div>
+                      <div class="val"><input class="ctrl-input" value="jiho@studio.co" readonly /></div>
+                      <div class="btn sm ghost">Change…</div>
+                    </div>
+                    <div class="row">
+                      <div class="lbl">Password</div>
+                      <div class="val">
+                        <span class="mono" style=" font-size:11.5px;color:var(--ink-3);">Last changed Mar 02 · ••••••••••</span>
+                      </div>
+                      <div class="btn sm">Send reset link</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Accessibility -->
+                <div class="s-section">
+                  <h2>Accessibility</h2>
+                  <p class="desc">Saved to your user preferences. Same controls are also reachable from main menu → Preferences → Accessibility (A8.3).</p>
+                  <div class="row-stack">
+                    <div class="row">
+                      <div class="lbl">Text size
+                        <span class="sub">Affects body, list and dialog text. Tools and canvas chrome stay fixed.</span>
+                      </div>
+                      <div class="val">
+                        <div class="seg">
+                          <div class="o">Small</div>
+                          <div class="o on">Medium</div>
+                          <div class="o">Large</div>
+                        </div>
+                      </div>
+                      <div></div>
+                    </div>
+                    <div class="row">
+                      <div class="lbl">Reduce motion
+                        <span class="sub">Disables panel slide-ins, hover transitions, and AI streaming animations.</span>
+                      </div>
+                      <div class="val"><span style="color:var(--ink-3);font-size:12.5px;">Off · default</span></div>
+                      <div class="toggle"></div>
+                    </div>
+                    <div class="row">
+                      <div class="lbl">High contrast
+                        <span class="sub">Strengthens borders, ink, and focus rings.</span>
+                      </div>
+                      <div class="val"><span style="color:var(--ink-3);font-size:12.5px;">Off · default</span></div>
+                      <div class="toggle"></div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Notifications (small, MVP-acceptable) -->
+                <div class="s-section">
+                  <h2>Notifications</h2>
+                  <div class="row-stack">
+                    <div class="row">
+                      <div class="lbl">Product updates
+                        <span class="sub">New features and changelog highlights.</span>
+                      </div>
+                      <div class="val"><span style="color:var(--ink-3);font-size:12.5px;">Email · monthly</span></div>
+                      <div class="toggle on"></div>
+                    </div>
+                    <div class="row">
+                      <div class="lbl">Sync alerts
+                        <span class="sub">Shopify or generation failures that need attention.</span>
+                      </div>
+                      <div class="val"><span style="color:var(--ink-3);font-size:12.5px;">Email · immediate</span></div>
+                      <div class="toggle on"></div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+              <div class="save-bar">
+                <div class="l"><span class="dot"></span>1 unsaved change · Name</div>
+                <div class="r">
+                  <div class="btn">Discard</div>
+                  <div class="btn primary">Save changes</div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Route is full-page</strong>, replacing the 06 tab-strip. Visual treatment of cards, rows, density, and section heads is identical to 06.a so the user feels continuity.</li>
+      <li><strong>Three accessibility controls</strong> = `users.preferences.accessibility` (Q5 Layer 1). Same component, same defaults, surfaced in A8.3 modal too.</li>
+      <li><strong>Email is read-only</strong> with a "Change…" affordance — Supabase requires verified change flow; we don't allow inline edit.</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- ============================================================
+     A7.2 — Plan & Billing
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">A7 · §2 · Plan &amp; billing (user-level)</div>
+    <h2>Plan &amp; billing</h2>
+    <p class="intro">Per Q14. Plan card uses generic placeholder strings — the founder will wire actual tier names, prices, and limits later. Manage-billing opens Stripe Customer Portal in a new tab. Invoice rows + monthly usage track real Stripe data.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Account · Plan &amp; billing</div><div class="id">A7.2 · hi-fi</div></div>
+    <div class="canvas tall" data-screen-label="A7.2 Plan & billing">
+      <div class="app">
+        <!-- sidebar reused (compressed markup) -->
+        <div class="sidebar">
+          <div class="brand-switch"><div class="logo">N</div><div class="name">Nike</div><div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div></div>
+          <div class="side-search"><i data-lucide="search" style="width:13px;height:13px;"></i><span>Search</span><span class="kbd">⌘K</span></div>
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item"><i data-lucide="clock-4" class="ic"></i>Recents</div>
+            <div class="item"><i data-lucide="calendar-days" class="ic"></i>Calendar<span class="pill" style="margin-left:auto;font-size:9px;padding:1px 5px;">SOON</span></div>
+            <div class="section">Library</div>
+            <div class="item"><i data-lucide="bookmark" class="ic"></i>Swipes<span class="pill" style="margin-left:auto;font-size:9px;padding:1px 5px;">SOON</span></div>
+            <div class="item"><i data-lucide="layout-template" class="ic"></i>Templates<span class="pill" style="margin-left:auto;font-size:9px;padding:1px 5px;">SOON</span></div>
+            <div class="item"><i data-lucide="package" class="ic"></i>Products<span class="count">318</span></div>
+            <div class="section">Brand</div>
+            <div class="item"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+            <div class="item"><i data-lucide="book-open" class="ic"></i>Knowledge base</div>
+          </div>
+          <div class="side-footer">
+            <div class="avatar">JY</div>
+            <div class="who"><b>Jiho Yang</b><span>Pro plan</span></div>
+            <div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+          </div>
+        </div>
+
+        <div class="main">
+          <div class="topbar">
+            <div class="breadcrumb">
+              <span class="back"><i data-lucide="chevron-left" style="width:14px;height:14px;"></i></span>
+              <span>Account</span>
+              <span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <b>Plan &amp; billing</b>
+            </div>
+            <div class="actions">
+              <span class="pill ok dot" style="font-size:11px;">Online</span>
+            </div>
+          </div>
+
+          <div class="acc-frame">
+            <div class="acc-rail">
+              <div class="title">Account</div>
+              <div class="it"><i data-lucide="user" class="ic"></i>Profile</div>
+              <div class="it active"><i data-lucide="credit-card" class="ic"></i>Plan &amp; billing</div>
+              <div class="it"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+              <div class="it"><i data-lucide="plug" class="ic"></i>Integrations</div>
+              <div class="sep"></div>
+              <div class="it danger"><i data-lucide="trash-2" class="ic"></i>Danger zone</div>
+            </div>
+
+            <div class="acc-main">
+              <div class="acc-hero">
+                <div class="l">
+                  <h1>Plan &amp; billing</h1>
+                  <p>Your subscription, invoices, and monthly usage. Billing is handled by Stripe — clicking <b>Manage billing</b> opens the secure Stripe portal in a new tab.</p>
+                </div>
+              </div>
+
+              <div class="acc-content">
+                <!-- Current plan -->
+                <div class="s-section">
+                  <h2>Current plan</h2>
+                  <div class="plan-card">
+                    <div class="l">
+                      <h3>Pro <span class="pill" style="vertical-align:middle;font-size:10px; ">PLACEHOLDER</span></h3>
+                      <div class="price"><b>$—</b> / month · billed monthly</div>
+                      <div class="feats">
+                        <div class="f"><i data-lucide="check" class="ic"></i>Unlimited brands</div>
+                        <div class="f"><i data-lucide="check" class="ic"></i>Generation cap (placeholder)</div>
+                        <div class="f"><i data-lucide="check" class="ic"></i>All integrations</div>
+                        <div class="f"><i data-lucide="check" class="ic"></i>Snapshot history (placeholder)</div>
+                      </div>
+                    </div>
+                    <div class="r">
+                      <span class="pill ok dot">Active</span>
+                      <div class="btn primary"><i data-lucide="external-link" class="ic"></i>Manage billing</div>
+                      <div class="btn">Compare plans</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Usage -->
+                <div class="s-section">
+                  <h2>Usage this month</h2>
+                  <p class="desc">Resets on the 1st. Generations include AI canvas seeds and copy rewrites.</p>
+                  <div class="usage">
+                    <div class="meta">
+                      <div class="l">AI generations</div>
+                      <div class="r">47 / 200 · resets May 1</div>
+                    </div>
+                    <div class="bar"><i style="width:23.5%"></i></div>
+                  </div>
+                  <div class="usage">
+                    <div class="meta">
+                      <div class="l">Storage</div>
+                      <div class="r">412 MB / 5 GB</div>
+                    </div>
+                    <div class="bar"><i style="width:8%"></i></div>
+                  </div>
+                </div>
+
+                <!-- Invoices -->
+                <div class="s-section">
+                  <h2>Invoice history</h2>
+                  <div class="inv-table">
+                    <div class="th"><div>Date</div><div>Description</div><div>Amount</div><div>Status</div><div></div></div>
+                    <div class="tr">
+                      <div class="dt">Apr 1, 2026</div>
+                      <div>Pro · monthly subscription</div>
+                      <div class="amt">$—</div>
+                      <div><span class="tag-mono ok">Paid</span></div>
+                      <div class="dl"><i data-lucide="download" style="width:13px;height:13px;"></i></div>
+                    </div>
+                    <div class="tr">
+                      <div class="dt">Mar 1, 2026</div>
+                      <div>Pro · monthly subscription</div>
+                      <div class="amt">$—</div>
+                      <div><span class="tag-mono ok">Paid</span></div>
+                      <div class="dl"><i data-lucide="download" style="width:13px;height:13px;"></i></div>
+                    </div>
+                    <div class="tr">
+                      <div class="dt">Feb 1, 2026</div>
+                      <div>Pro · monthly subscription</div>
+                      <div class="amt">$—</div>
+                      <div><span class="tag-mono ok">Paid</span></div>
+                      <div class="dl"><i data-lucide="download" style="width:13px;height:13px;"></i></div>
+                    </div>
+                    <div class="tr">
+                      <div class="dt">Jan 1, 2026</div>
+                      <div>Pro · monthly subscription</div>
+                      <div class="amt">$—</div>
+                      <div><span class="tag-mono warn">Failed</span></div>
+                      <div class="dl"><i data-lucide="download" style="width:13px;height:13px;"></i></div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Plan card is generic.</strong> Tier name "Pro", price "$—", and feature bullets are placeholders. A small <code>PLACEHOLDER</code> pill makes the founder-wiring requirement explicit on the artifact.</li>
+      <li><strong>Manage billing opens Stripe Portal in a new tab</strong> (per Q14) — no embedded iframe, no PCI scope.</li>
+      <li><strong>Failed invoice row</strong> uses the same warn token vocabulary as canvas + integration states. One color system, one meaning.</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- ============================================================
+     A7.3 — Brand Kit (longest section: 7 sub-tabs)
+     We render the section once, with all sub-panes visible inline
+     as separate "screens" so the agent's coherence audit is easy.
+     ============================================================ -->
+
+<section class="block">
+  <header>
+    <div class="tag">A7 · §3 · Brand Kit (per-brand, 7 sub-tabs)</div>
+    <h2>Brand Kit</h2>
+    <p class="intro">Per-brand. Vertical sub-nav (your call, recommended) avoids horizontal crowding for 7 entries. The brand-picker dropdown (A2b, identical component to A2a) sits at the top — switching brand swaps every sub-tab's data without leaving Account. Personalization hub fold-in: Identity / Memories / Knowledge base now live here.</p>
+  </header>
+
+  <!-- ---------- A7.3.1 Visuals ---------- -->
+  <div class="screen">
+    <div class="cap"><div class="name">Brand Kit · Visuals</div><div class="id">A7.3.1 · colors · fonts · logo</div></div>
+    <div class="canvas tall" data-screen-label="A7.3.1 Brand Kit Visuals">
+      <div class="app">
+        <div class="sidebar">
+          <div class="brand-switch"><div class="logo">N</div><div class="name">Nike</div><div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div></div>
+          <div class="side-search"><i data-lucide="search" style="width:13px;height:13px;"></i><span>Search</span><span class="kbd">⌘K</span></div>
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item"><i data-lucide="clock-4" class="ic"></i>Recents</div>
+            <div class="item"><i data-lucide="calendar-days" class="ic"></i>Calendar<span class="pill" style="margin-left:auto;font-size:9px;padding:1px 5px;">SOON</span></div>
+            <div class="section">Library</div>
+            <div class="item"><i data-lucide="bookmark" class="ic"></i>Swipes<span class="pill" style="margin-left:auto;font-size:9px;padding:1px 5px;">SOON</span></div>
+            <div class="item"><i data-lucide="layout-template" class="ic"></i>Templates<span class="pill" style="margin-left:auto;font-size:9px;padding:1px 5px;">SOON</span></div>
+            <div class="item"><i data-lucide="package" class="ic"></i>Products<span class="count">318</span></div>
+            <div class="section">Brand</div>
+            <div class="item"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+            <div class="item"><i data-lucide="book-open" class="ic"></i>Knowledge base</div>
+          </div>
+          <div class="side-footer">
+            <div class="avatar">JY</div>
+            <div class="who"><b>Jiho Yang</b><span>Pro plan</span></div>
+            <div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+          </div>
+        </div>
+
+        <div class="main">
+          <div class="topbar">
+            <div class="breadcrumb">
+              <span class="back"><i data-lucide="chevron-left" style="width:14px;height:14px;"></i></span>
+              <span>Account</span>
+              <span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <span>Brand Kit</span>
+              <span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <b>Visuals</b>
+            </div>
+            <div class="actions"><span class="pill ok dot" style="font-size:11px;">Online</span></div>
+          </div>
+
+          <div class="acc-frame">
+            <div class="acc-rail">
+              <div class="title">Account</div>
+              <div class="it"><i data-lucide="user" class="ic"></i>Profile</div>
+              <div class="it"><i data-lucide="credit-card" class="ic"></i>Plan &amp; billing</div>
+              <div class="it active"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+              <div class="it"><i data-lucide="plug" class="ic"></i>Integrations</div>
+              <div class="sep"></div>
+              <div class="it danger"><i data-lucide="trash-2" class="ic"></i>Danger zone</div>
+            </div>
+
+            <div class="acc-main">
+              <div class="acc-hero">
+                <div class="l">
+                  <h1>Brand Kit</h1>
+                  <p>Visuals, voice, and knowledge for one brand. Switch brand from the picker on the right — every sub-tab updates.</p>
+                </div>
+                <div class="r" style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+                  <span class="mono" style=" font-size:10px;letter-spacing:0.1em; color:var(--ink-3);">Editing brand</span>
+                  <div class="brandpick">
+                    <div class="logo">N</div><div class="nm">Nike</div>
+                    <i data-lucide="chevrons-up-down" class="caret" style="width:13px;height:13px;"></i>
+                  </div>
+                </div>
+              </div>
+
+              <div class="acc-content">
+                <div class="bk-wrap">
+                  <!-- vertical sub-nav -->
+                  <div class="bk-subnav">
+                    <div class="head">Brand Kit</div>
+                    <div class="it active"><i data-lucide="palette" class="ic"></i>Visuals</div>
+                    <div class="it"><i data-lucide="user-circle" class="ic"></i>Identity</div>
+                    <div class="it"><i data-lucide="quote" class="ic"></i>Tone snippets<span style="margin-left:auto; font-size:10px;color:var(--ink-3);">8</span></div>
+                    <div class="it"><i data-lucide="layers" class="ic"></i>Saved blocks<span style="margin-left:auto; font-size:10px;color:var(--ink-3);">5</span></div>
+                    <div class="it"><i data-lucide="check-square" class="ic"></i>Writing rules</div>
+                    <div class="it"><i data-lucide="brain" class="ic"></i>Memories<span style="margin-left:auto; font-size:10px;color:var(--ink-3);">19</span></div>
+                    <div class="it"><i data-lucide="book-open" class="ic"></i>Knowledge base</div>
+                  </div>
+
+                  <div class="bk-pane">
+
+                    <!-- Colors -->
+                    <div class="s-section">
+                      <h2>Brand colors</h2>
+                      <p class="desc">Used by AI when generating canvas content. Drag to reorder.</p>
+                      <div class="sw-list">
+                        <div class="sw-item"><div class="fill" style="background:#111111;"></div><div class="body"><div class="nm">Onyx</div><div class="hex">#111111</div></div></div>
+                        <div class="sw-item"><div class="fill" style="background:#fa5400;"></div><div class="body"><div class="nm">Flame</div><div class="hex">#FA5400</div></div></div>
+                        <div class="sw-item"><div class="fill" style="background:#f7f7f5;border:1px solid var(--line-2);"></div><div class="body"><div class="nm">Bone</div><div class="hex">#F7F7F5</div></div></div>
+                        <div class="sw-item"><div class="fill" style="background:#1a4be0;"></div><div class="body"><div class="nm">Cobalt</div><div class="hex">#1A4BE0</div></div></div>
+                        <div class="sw-item"><div class="fill" style="background:#5ec27d;"></div><div class="body"><div class="nm">Field</div><div class="hex">#5EC27D</div></div></div>
+                        <div class="sw-add"><div style="display:flex;flex-direction:column;align-items:center;gap:4px;"><i data-lucide="plus" style="width:14px;height:14px;"></i><span>Add color</span></div></div>
+                      </div>
+                    </div>
+
+                    <!-- Fonts -->
+                    <div class="s-section">
+                      <h2>Brand fonts</h2>
+                      <p class="desc">System fonts work out of the box. Upload your licensed brand fonts (WOFF2 / OTF) — license attestation required per upload (Q6).</p>
+                      <div>
+                        <div class="font-row">
+                          <div>
+                            <div class="preview" style="font-family:Inter,sans-serif;font-weight:600;">Headlines · Inter Tight 600</div>
+                            <div class="meta"><span>Sans · 4 weights</span><span class="mono">system · default</span></div>
+                          </div>
+                          <span class="pill ok dot" style="font-size:11px;">Active</span>
+                          <div class="btn sm ghost"><i data-lucide="more-horizontal" class="ic"></i></div>
+                        </div>
+                        <div class="font-row">
+                          <div>
+                            <div class="preview" style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;">Captions · ui-monospace</div>
+                            <div class="meta"><span>Mono · 2 weights</span><span class="mono">system</span></div>
+                          </div>
+                          <span class="pill outline" style="font-size:11px;">Available</span>
+                          <div class="btn sm ghost"><i data-lucide="more-horizontal" class="ic"></i></div>
+                        </div>
+                        <div class="font-row" style="border-style:dashed;">
+                          <div>
+                            <div class="preview" style="color:var(--ink-3);font-size:14px;">Drop a .woff2 or .otf file here</div>
+                            <div class="meta"><span>License attestation required on upload</span></div>
+                          </div>
+                          <div></div>
+                          <div class="btn sm"><i data-lucide="upload" class="ic"></i>Upload font</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Logo -->
+                    <div class="s-section">
+                      <h2>Logo</h2>
+                      <div class="row-stack">
+                        <div class="row">
+                          <div class="lbl">Primary mark
+                            <span class="sub">Used on every export and in the brand-switcher.</span>
+                          </div>
+                          <div class="val" style="display:flex;align-items:center;gap:12px;">
+                            <div style="width:46px;height:46px;border-radius:8px;background:#ededea;color:#0d0d0c;display:grid;place-items:center;font-weight:700;font-size:20px;letter-spacing:-0.02em;">N</div>
+                            <span class="mono" style=" font-size:11px;color:var(--ink-3);">nike_logo_mark.svg · 14 KB</span>
+                          </div>
+                          <div class="btn sm">Replace</div>
+                        </div>
+                        <div class="row">
+                          <div class="lbl">Wordmark
+                            <span class="sub">Optional. Used in email footers if present.</span>
+                          </div>
+                          <div class="val">
+                            <span class="mono" style=" font-size:11px;color:var(--ink-3);">Not uploaded</span>
+                          </div>
+                          <div class="btn sm"><i data-lucide="upload" class="ic"></i>Upload</div>
+                        </div>
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Brand-picker dropdown (A2b)</strong> sits in the section hero — same component, same logo + name + caret as the dashboard sidebar (A2a). Different anchor, different on-click behavior (this one swaps section data; A2a navigates routes).</li>
+      <li><strong>Sub-nav is vertical</strong> with section heading and per-row counts where data exists. Sticky on scroll so the user always knows where they are inside Brand Kit.</li>
+      <li><strong>Font upload row uses dashed border</strong> — the standard "drop zone" affordance shared with logo/avatar uploads.</li>
+    </ul></div>
+  </div>
+
+  <!-- ---------- A2b · Brand-Kit section with picker open ---------- -->
+  <div class="screen">
+    <div class="cap"><div class="name">A2b · Brand-Kit section with picker open</div><div class="id">A2b · hi-fi · open state</div></div>
+    <div class="canvas tall" data-screen-label="A2b Brand-Kit picker open">
+      <div class="app">
+        <div class="sidebar">
+          <div class="brand-switch"><div class="logo">N</div><div class="name">Nike</div><div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div></div>
+          <div class="side-search"><i data-lucide="search" style="width:13px;height:13px;"></i><span>Search</span><span class="kbd">⌘K</span></div>
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item"><i data-lucide="clock-4" class="ic"></i>Recents</div>
+            <div class="item"><i data-lucide="calendar-days" class="ic"></i>Calendar<span class="pill" style="margin-left:auto;font-size:9px;padding:1px 5px;">SOON</span></div>
+            <div class="section">Library</div>
+            <div class="item"><i data-lucide="bookmark" class="ic"></i>Swipes<span class="pill" style="margin-left:auto;font-size:9px;padding:1px 5px;">SOON</span></div>
+            <div class="item"><i data-lucide="layout-template" class="ic"></i>Templates<span class="pill" style="margin-left:auto;font-size:9px;padding:1px 5px;">SOON</span></div>
+            <div class="item"><i data-lucide="package" class="ic"></i>Products<span class="count">318</span></div>
+            <div class="section">Brand</div>
+            <div class="item"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+            <div class="item"><i data-lucide="book-open" class="ic"></i>Knowledge base</div>
+          </div>
+          <div class="side-footer">
+            <div class="avatar">JY</div>
+            <div class="who"><b>Jiho Yang</b><span>Pro plan</span></div>
+            <div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+          </div>
+        </div>
+
+        <div class="main">
+          <div class="topbar">
+            <div class="breadcrumb">
+              <span class="back"><i data-lucide="chevron-left" style="width:14px;height:14px;"></i></span>
+              <span>Account</span>
+              <span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <span>Brand Kit</span>
+              <span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <b>Visuals</b>
+            </div>
+            <div class="actions"><span class="pill ok dot" style="font-size:11px;">Online</span></div>
+          </div>
+
+          <div class="acc-frame">
+            <div class="acc-rail a2b-dim">
+              <div class="title">Account</div>
+              <div class="it"><i data-lucide="user" class="ic"></i>Profile</div>
+              <div class="it"><i data-lucide="credit-card" class="ic"></i>Plan &amp; billing</div>
+              <div class="it active"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+              <div class="it"><i data-lucide="plug" class="ic"></i>Integrations</div>
+              <div class="sep"></div>
+              <div class="it danger"><i data-lucide="trash-2" class="ic"></i>Danger zone</div>
+            </div>
+
+            <div class="acc-main" style="position:relative;">
+              <div class="acc-hero">
+                <div class="l a2b-dim">
+                  <h1>Brand Kit</h1>
+                  <p>Visuals, voice, and knowledge for one brand. Switch brand from the picker on the right — every sub-tab updates.</p>
+                </div>
+                <div class="r" style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;position:relative;">
+                  <span class="mono" style=" font-size:10px;letter-spacing:0.1em; color:var(--ink-3);">Editing brand</span>
+                  <div class="brandpick open">
+                    <div class="logo">N</div><div class="nm">Nike</div>
+                    <i data-lucide="chevrons-up-down" class="caret" style="width:13px;height:13px;color:var(--ink);"></i>
+                  </div>
+
+                  <!-- A2b dropdown panel: identical markup to A2a sidebar variant -->
+                  <div class="a2b-popover" style="top: 56px; right: 0; width: 280px;">
+                    <div class="pop-search">
+                      <i data-lucide="search" style="width:13px;height:13px;"></i>
+                      <input placeholder="Search brands…" />
+                    </div>
+                    <div class="pop-row active">
+                      <div class="logo">N</div>
+                      <div class="nm">Nike</div>
+                      <span class="meta">12 canvases</span>
+                      <i data-lucide="check" class="ck" style="width:14px;height:14px;"></i>
+                    </div>
+                    <div class="pop-row">
+                      <div class="logo" style="background:#fa5400;color:#fff;">A</div>
+                      <div class="nm">Allbirds</div>
+                      <span class="meta">7</span>
+                    </div>
+                    <div class="pop-row">
+                      <div class="logo" style="background:#1a4be0;color:#fff;">G</div>
+                      <div class="nm">Glossier</div>
+                      <span class="meta">4</span>
+                    </div>
+                    <div class="pop-row">
+                      <div class="logo" style="background:#5ec27d;color:#0d0d0c;">O</div>
+                      <div class="nm">Oatly</div>
+                      <span class="meta">2</span>
+                    </div>
+                    <div class="pop-row muted">
+                      <div class="logo">W</div>
+                      <div class="nm">Warby Parker</div>
+                      <span class="meta tag-mono">archived</span>
+                    </div>
+                    <div class="pop-sep"></div>
+                    <div class="pop-foot">
+                      <i data-lucide="plus" class="ic"></i>Add new brand
+                    </div>
+                  </div>
+
+                  <div class="a2b-anchor-pin" style="left: -14px; top: 30px;">
+                    <div class="dot"></div>
+                    <div class="lbl">trigger · brandpick pill</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="acc-content a2b-dim">
+                <div class="bk-wrap">
+                  <div class="bk-subnav">
+                    <div class="head">Brand Kit</div>
+                    <div class="it active"><i data-lucide="palette" class="ic"></i>Visuals</div>
+                    <div class="it"><i data-lucide="user-circle" class="ic"></i>Identity</div>
+                    <div class="it"><i data-lucide="quote" class="ic"></i>Tone snippets<span style="margin-left:auto; font-size:10px;color:var(--ink-3);">8</span></div>
+                    <div class="it"><i data-lucide="layers" class="ic"></i>Saved blocks<span style="margin-left:auto; font-size:10px;color:var(--ink-3);">5</span></div>
+                    <div class="it"><i data-lucide="check-square" class="ic"></i>Writing rules</div>
+                    <div class="it"><i data-lucide="brain" class="ic"></i>Memories<span style="margin-left:auto; font-size:10px;color:var(--ink-3);">19</span></div>
+                    <div class="it"><i data-lucide="book-open" class="ic"></i>Knowledge base</div>
+                  </div>
+
+                  <div class="bk-pane">
+                    <div class="ph stripes" style="height: 180px; border-radius: 8px;">VISUALS PANE (DIMMED)</div>
+                    <div class="ph stripes" style="height: 140px; border-radius: 8px; margin-top:14px;">FONTS PANE (DIMMED)</div>
+                    <div class="ph stripes" style="height: 120px; border-radius: 8px; margin-top:14px;">LOGO PANE (DIMMED)</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Same dropdown component as A2a</strong>, anchored on Brand-Kit section pill instead of sidebar pill. On select: swaps section data, does NOT navigate.</li>
+      <li><strong>Identical panel markup</strong> — search input → brand list with active check → divider → "+ Add new brand". Same width (280px), same backdrop dim, same Lucide icons at <code>stroke-width: 1.6</code>.</li>
+      <li><strong>Trigger pill carries <code>.open</code> modifier</strong> (border lifts to <code>--ink</code>) — matches the stuck-open treatment used by A2a in file 2.</li>
+    </ul></div>
+  </div>
+
+  <!-- ---------- A7.3.2 Identity (narrative cards) ---------- -->
+  <div class="screen">
+    <div class="cap"><div class="name">Brand Kit · Identity</div><div class="id">A7.3.2 · narrative cards (carried from wireframe v6 §10)</div></div>
+    <div class="canvas tall" data-screen-label="A7.3.2 Brand Kit Identity">
+      <div class="app">
+        <div class="sidebar">
+          <div class="brand-switch"><div class="logo">N</div><div class="name">Nike</div><div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div></div>
+          <div class="side-search"><i data-lucide="search" style="width:13px;height:13px;"></i><span>Search</span><span class="kbd">⌘K</span></div>
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item"><i data-lucide="clock-4" class="ic"></i>Recents</div>
+            <div class="section">Library</div>
+            <div class="item"><i data-lucide="package" class="ic"></i>Products<span class="count">318</span></div>
+            <div class="section">Brand</div>
+            <div class="item"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+            <div class="item"><i data-lucide="book-open" class="ic"></i>Knowledge base</div>
+          </div>
+          <div class="side-footer"><div class="avatar">JY</div><div class="who"><b>Jiho Yang</b><span>Pro plan</span></div><div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div></div>
+        </div>
+
+        <div class="main">
+          <div class="topbar">
+            <div class="breadcrumb">
+              <span class="back"><i data-lucide="chevron-left" style="width:14px;height:14px;"></i></span>
+              <span>Account</span>
+              <span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <span>Brand Kit</span>
+              <span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <b>Identity</b>
+            </div>
+            <div class="actions"><span class="pill ok dot" style="font-size:11px;">Online</span></div>
+          </div>
+
+          <div class="acc-frame">
+            <div class="acc-rail">
+              <div class="title">Account</div>
+              <div class="it"><i data-lucide="user" class="ic"></i>Profile</div>
+              <div class="it"><i data-lucide="credit-card" class="ic"></i>Plan &amp; billing</div>
+              <div class="it active"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+              <div class="it"><i data-lucide="plug" class="ic"></i>Integrations</div>
+              <div class="sep"></div>
+              <div class="it danger"><i data-lucide="trash-2" class="ic"></i>Danger zone</div>
+            </div>
+
+            <div class="acc-main">
+              <div class="acc-hero">
+                <div class="l">
+                  <h1>Identity</h1>
+                  <p>Three narrative cards Kova reads before every generation. Draft each via interview (an AI-led Q&amp;A) or write it yourself.</p>
+                </div>
+                <div class="r" style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+                  <span class="mono" style=" font-size:10px;letter-spacing:0.1em; color:var(--ink-3);">Editing brand</span>
+                  <div class="brandpick"><div class="logo">N</div><div class="nm">Nike</div><i data-lucide="chevrons-up-down" class="caret" style="width:13px;height:13px;"></i></div>
+                </div>
+              </div>
+
+              <div class="acc-content">
+                <div class="bk-wrap">
+                  <div class="bk-subnav">
+                    <div class="head">Brand Kit</div>
+                    <div class="it"><i data-lucide="palette" class="ic"></i>Visuals</div>
+                    <div class="it active"><i data-lucide="user-circle" class="ic"></i>Identity</div>
+                    <div class="it"><i data-lucide="quote" class="ic"></i>Tone snippets<span style="margin-left:auto; font-size:10px;color:var(--ink-3);">8</span></div>
+                    <div class="it"><i data-lucide="layers" class="ic"></i>Saved blocks<span style="margin-left:auto; font-size:10px;color:var(--ink-3);">5</span></div>
+                    <div class="it"><i data-lucide="check-square" class="ic"></i>Writing rules</div>
+                    <div class="it"><i data-lucide="brain" class="ic"></i>Memories<span style="margin-left:auto; font-size:10px;color:var(--ink-3);">19</span></div>
+                    <div class="it"><i data-lucide="book-open" class="ic"></i>Knowledge base</div>
+                  </div>
+
+                  <div class="bk-pane">
+                    <div class="nar-card">
+                      <div class="hd">
+                        <div class="tt">About the brand</div>
+                        <div style="display:flex;gap:6px;">
+                          <div class="btn sm" style="background:var(--accent-soft);border-color:var(--accent-2);color:var(--accent-ink);"><i data-lucide="sparkles" class="ic"></i>Draft via interview</div>
+                          <div class="btn sm ghost"><i data-lucide="pencil" class="ic"></i>Edit</div>
+                        </div>
+                      </div>
+                      <div class="body">Nike makes products for athletes everywhere. Founded 1964 by Phil Knight and Bill Bowerman as Blue Ribbon Sports, the brand is built on innovation in athletic footwear and apparel. Voice is direct, motivational, and grounded in performance — never decorative.</div>
+                      <div class="ft"><span>Last edited Apr 12 by Jiho</span><span>238 words</span></div>
+                    </div>
+
+                    <div class="nar-card">
+                      <div class="hd">
+                        <div class="tt">Voice &amp; tone</div>
+                        <div style="display:flex;gap:6px;">
+                          <div class="btn sm" style="background:var(--accent-soft);border-color:var(--accent-2);color:var(--accent-ink);"><i data-lucide="sparkles" class="ic"></i>Draft via interview</div>
+                          <div class="btn sm ghost"><i data-lucide="pencil" class="ic"></i>Edit</div>
+                        </div>
+                      </div>
+                      <div class="body">Confident, kinetic, second-person. We talk to athletes — not consumers. Verbs first. Short sentences. No hedging, no superlatives stacked on superlatives. Rare exclamation marks. We do not say "amazing", "premium", or "luxurious".</div>
+                      <div class="ft"><span>Last edited Apr 12 by Jiho</span><span>184 words</span></div>
+                    </div>
+
+                    <div class="nar-card">
+                      <div class="hd">
+                        <div class="tt">Story &amp; origin</div>
+                        <div style="display:flex;gap:6px;">
+                          <div class="btn sm" style="background:var(--accent-soft);border-color:var(--accent-2);color:var(--accent-ink);"><i data-lucide="sparkles" class="ic"></i>Draft via interview</div>
+                          <div class="btn sm ghost"><i data-lucide="pencil" class="ic"></i>Edit</div>
+                        </div>
+                      </div>
+                      <div class="body empty">Not drafted yet — start an interview and Kova will guide you with 6–8 questions about how the brand began.</div>
+                      <div class="ft"><span>Never edited</span><span>—</span></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>"Draft via interview"</strong> uses the AI accent vocabulary (soft blue chip background) — same color role as the AI composer on 03 dashboard. Reserved exclusively for AI-generative actions.</li>
+      <li><strong>Empty narrative card</strong> uses italic muted text inside the same body container — no separate skeleton component, just a state.</li>
+    </ul></div>
+  </div>
+
+  <!-- ---------- A7.3.3 Tone snippets ---------- -->
+  <div class="screen">
+    <div class="cap"><div class="name">Brand Kit · Tone snippets</div><div class="id">A7.3.3 · per Q8 · brands.tone_snippets JSONB</div></div>
+    <div class="canvas" data-screen-label="A7.3.3 Brand Kit Tone snippets">
+      <div class="app">
+        <div class="sidebar">
+          <div class="brand-switch"><div class="logo">N</div><div class="name">Nike</div><div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div></div>
+          <div class="side-search"><i data-lucide="search" style="width:13px;height:13px;"></i><span>Search</span><span class="kbd">⌘K</span></div>
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item"><i data-lucide="clock-4" class="ic"></i>Recents</div>
+            <div class="section">Brand</div>
+            <div class="item"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+            <div class="item"><i data-lucide="book-open" class="ic"></i>Knowledge base</div>
+          </div>
+          <div class="side-footer"><div class="avatar">JY</div><div class="who"><b>Jiho Yang</b><span>Pro plan</span></div><div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div></div>
+        </div>
+
+        <div class="main">
+          <div class="topbar">
+            <div class="breadcrumb">
+              <span class="back"><i data-lucide="chevron-left" style="width:14px;height:14px;"></i></span>
+              <span>Account</span>
+              <span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <span>Brand Kit</span>
+              <span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <b>Tone snippets</b>
+            </div>
+            <div class="actions"><span class="pill ok dot" style="font-size:11px;">Online</span></div>
+          </div>
+
+          <div class="acc-frame">
+            <div class="acc-rail">
+              <div class="title">Account</div>
+              <div class="it"><i data-lucide="user" class="ic"></i>Profile</div>
+              <div class="it"><i data-lucide="credit-card" class="ic"></i>Plan &amp; billing</div>
+              <div class="it active"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+              <div class="it"><i data-lucide="plug" class="ic"></i>Integrations</div>
+              <div class="sep"></div>
+              <div class="it danger"><i data-lucide="trash-2" class="ic"></i>Danger zone</div>
+            </div>
+
+            <div class="acc-main">
+              <div class="acc-hero">
+                <div class="l">
+                  <h1>Tone snippets</h1>
+                  <p>Brand-voice exemplars Kova injects as system-prompt examples. Each snippet is a short labeled passage that captures how this brand actually sounds.</p>
+                </div>
+                <div class="r" style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+                  <span class="mono" style=" font-size:10px;letter-spacing:0.1em; color:var(--ink-3);">Editing brand</span>
+                  <div class="brandpick"><div class="logo">N</div><div class="nm">Nike</div><i data-lucide="chevrons-up-down" class="caret" style="width:13px;height:13px;"></i></div>
+                </div>
+              </div>
+
+              <div class="acc-content">
+                <div class="bk-wrap">
+                  <div class="bk-subnav">
+                    <div class="head">Brand Kit</div>
+                    <div class="it"><i data-lucide="palette" class="ic"></i>Visuals</div>
+                    <div class="it"><i data-lucide="user-circle" class="ic"></i>Identity</div>
+                    <div class="it active"><i data-lucide="quote" class="ic"></i>Tone snippets<span style="margin-left:auto; font-size:10px;color:var(--ink);">8</span></div>
+                    <div class="it"><i data-lucide="layers" class="ic"></i>Saved blocks<span style="margin-left:auto; font-size:10px;color:var(--ink-3);">5</span></div>
+                    <div class="it"><i data-lucide="check-square" class="ic"></i>Writing rules</div>
+                    <div class="it"><i data-lucide="brain" class="ic"></i>Memories<span style="margin-left:auto; font-size:10px;color:var(--ink-3);">19</span></div>
+                    <div class="it"><i data-lucide="book-open" class="ic"></i>Knowledge base</div>
+                  </div>
+
+                  <div class="bk-pane">
+                    <div class="list-stack">
+                      <div class="list-row">
+                        <div class="grip"><i data-lucide="grip-vertical" style="width:14px;height:14px;"></i></div>
+                        <div class="lbl-col">Drop the new collection<span class="tag-mono">PROMO</span></div>
+                        <div class="content-col">"It's here. Air Max Plus drops Friday at 7am PT — first 200 pairs include the original 1998 hangtag. No restock. Move when the alarm hits."</div>
+                        <div class="actions-col"><div class="ac"><i data-lucide="pencil" style="width:14px;height:14px;"></i></div><div class="ac"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></div></div>
+                      </div>
+                      <div class="list-row">
+                        <div class="grip"><i data-lucide="grip-vertical" style="width:14px;height:14px;"></i></div>
+                        <div class="lbl-col">Welcome a new athlete<span class="tag-mono">WELCOME</span></div>
+                        <div class="content-col">"Welcome to Nike. You're 10% off your first order — but that's not why we're here. Let's get you running."</div>
+                        <div class="actions-col"><div class="ac"><i data-lucide="pencil" style="width:14px;height:14px;"></i></div><div class="ac"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></div></div>
+                      </div>
+                      <div class="list-row">
+                        <div class="grip"><i data-lucide="grip-vertical" style="width:14px;height:14px;"></i></div>
+                        <div class="lbl-col">Restock after sellout<span class="tag-mono">RESTOCK</span></div>
+                        <div class="content-col">"You waited. Black Pegasus 41 is back. Same colorway, same fit — your size opens at noon."</div>
+                        <div class="actions-col"><div class="ac"><i data-lucide="pencil" style="width:14px;height:14px;"></i></div><div class="ac"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></div></div>
+                      </div>
+                      <div class="list-row">
+                        <div class="grip"><i data-lucide="grip-vertical" style="width:14px;height:14px;"></i></div>
+                        <div class="lbl-col">Abandoned cart nudge<span class="tag-mono">CART</span></div>
+                        <div class="content-col">"Still thinking? The Vomero you left behind is at 8 in stock. We'll hold it 24 hours, then it's open inventory again."</div>
+                        <div class="actions-col"><div class="ac"><i data-lucide="pencil" style="width:14px;height:14px;"></i></div><div class="ac"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></div></div>
+                      </div>
+                      <div class="list-row">
+                        <div class="grip"><i data-lucide="grip-vertical" style="width:14px;height:14px;"></i></div>
+                        <div class="lbl-col">Education / training<span class="tag-mono">TEACH</span></div>
+                        <div class="content-col">"Tempo runs aren't speedwork. Pick a pace 20 seconds slower than your 5K best, hold it 20 minutes, breathe through the nose. That's the work."</div>
+                        <div class="actions-col"><div class="ac"><i data-lucide="pencil" style="width:14px;height:14px;"></i></div><div class="ac"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></div></div>
+                      </div>
+                      <div class="list-add"><i data-lucide="plus" class="ic"></i>Add tone snippet</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Tone snippets replace the deprecated tone-sliders</strong> (founder 2026-04-25). Sliders gave coarse dimensions; exemplars give Kova exact voice patterns to match.</li>
+      <li><strong>Each row has a label, a category tag-mono chip</strong> (PROMO / WELCOME / RESTOCK / etc.), and the snippet itself. Drag handle on the left for reorder; edit + delete on the right.</li>
+    </ul></div>
+  </div>
+
+  <!-- ---------- A7.3.4 Saved blocks ---------- -->
+  <div class="screen">
+    <div class="cap"><div class="name">Brand Kit · Saved blocks</div><div class="id">A7.3.4 · per Q8 · brands.saved_blocks JSONB</div></div>
+    <div class="canvas" data-screen-label="A7.3.4 Brand Kit Saved blocks">
+      <div class="app">
+        <div class="sidebar">
+          <div class="brand-switch"><div class="logo">N</div><div class="name">Nike</div><div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div></div>
+          <div class="side-search"><i data-lucide="search" style="width:13px;height:13px;"></i><span>Search</span><span class="kbd">⌘K</span></div>
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item"><i data-lucide="clock-4" class="ic"></i>Recents</div>
+            <div class="section">Brand</div>
+            <div class="item"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+          </div>
+          <div class="side-footer"><div class="avatar">JY</div><div class="who"><b>Jiho Yang</b><span>Pro plan</span></div><div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div></div>
+        </div>
+
+        <div class="main">
+          <div class="topbar">
+            <div class="breadcrumb">
+              <span class="back"><i data-lucide="chevron-left" style="width:14px;height:14px;"></i></span>
+              <span>Account</span><span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <span>Brand Kit</span><span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <b>Saved blocks</b>
+            </div>
+            <div class="actions"><span class="pill ok dot" style="font-size:11px;">Online</span></div>
+          </div>
+
+          <div class="acc-frame">
+            <div class="acc-rail">
+              <div class="title">Account</div>
+              <div class="it"><i data-lucide="user" class="ic"></i>Profile</div>
+              <div class="it"><i data-lucide="credit-card" class="ic"></i>Plan &amp; billing</div>
+              <div class="it active"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+              <div class="it"><i data-lucide="plug" class="ic"></i>Integrations</div>
+              <div class="sep"></div>
+              <div class="it danger"><i data-lucide="trash-2" class="ic"></i>Danger zone</div>
+            </div>
+
+            <div class="acc-main">
+              <div class="acc-hero">
+                <div class="l">
+                  <h1>Saved blocks</h1>
+                  <p>Reusable copy snippets you drag into a canvas TEXT node. Drag the grip handle from any row onto the canvas (Batch&nbsp;B wires the drag payload).</p>
+                </div>
+                <div class="r" style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+                  <span class="mono" style=" font-size:10px;letter-spacing:0.1em; color:var(--ink-3);">Editing brand</span>
+                  <div class="brandpick"><div class="logo">N</div><div class="nm">Nike</div><i data-lucide="chevrons-up-down" class="caret" style="width:13px;height:13px;"></i></div>
+                </div>
+              </div>
+
+              <div class="acc-content">
+                <div class="bk-wrap">
+                  <div class="bk-subnav">
+                    <div class="head">Brand Kit</div>
+                    <div class="it"><i data-lucide="palette" class="ic"></i>Visuals</div>
+                    <div class="it"><i data-lucide="user-circle" class="ic"></i>Identity</div>
+                    <div class="it"><i data-lucide="quote" class="ic"></i>Tone snippets<span style="margin-left:auto; font-size:10px;color:var(--ink-3);">8</span></div>
+                    <div class="it active"><i data-lucide="layers" class="ic"></i>Saved blocks<span style="margin-left:auto; font-size:10px;color:var(--ink);">5</span></div>
+                    <div class="it"><i data-lucide="check-square" class="ic"></i>Writing rules</div>
+                    <div class="it"><i data-lucide="brain" class="ic"></i>Memories<span style="margin-left:auto; font-size:10px;color:var(--ink-3);">19</span></div>
+                    <div class="it"><i data-lucide="book-open" class="ic"></i>Knowledge base</div>
+                  </div>
+
+                  <div class="bk-pane">
+                    <div class="list-stack">
+                      <div class="list-row">
+                        <div class="grip"><i data-lucide="grip-vertical" style="width:14px;height:14px;"></i></div>
+                        <div class="lbl-col">Standard footer disclaimer<span class="tag-mono">FOOTER</span></div>
+                        <div class="content-col">"You're receiving this because you signed up at nike.com. Manage preferences · Unsubscribe · Nike Inc., One Bowerman Drive, Beaverton OR 97005."</div>
+                        <div class="actions-col"><div class="ac"><i data-lucide="pencil" style="width:14px;height:14px;"></i></div><div class="ac"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></div></div>
+                      </div>
+                      <div class="list-row">
+                        <div class="grip"><i data-lucide="grip-vertical" style="width:14px;height:14px;"></i></div>
+                        <div class="lbl-col">Primary CTA · shop drop<span class="tag-mono">CTA</span></div>
+                        <div class="content-col">"Shop the drop →"</div>
+                        <div class="actions-col"><div class="ac"><i data-lucide="pencil" style="width:14px;height:14px;"></i></div><div class="ac"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></div></div>
+                      </div>
+                      <div class="list-row">
+                        <div class="grip"><i data-lucide="grip-vertical" style="width:14px;height:14px;"></i></div>
+                        <div class="lbl-col">Secondary CTA · keep training<span class="tag-mono">CTA</span></div>
+                        <div class="content-col">"Browse the full collection"</div>
+                        <div class="actions-col"><div class="ac"><i data-lucide="pencil" style="width:14px;height:14px;"></i></div><div class="ac"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></div></div>
+                      </div>
+                      <div class="list-row">
+                        <div class="grip"><i data-lucide="grip-vertical" style="width:14px;height:14px;"></i></div>
+                        <div class="lbl-col">Unsubscribe block<span class="tag-mono">FOOTER</span></div>
+                        <div class="content-col">"Don't want emails like this? Update your preferences or unsubscribe in one click."</div>
+                        <div class="actions-col"><div class="ac"><i data-lucide="pencil" style="width:14px;height:14px;"></i></div><div class="ac"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></div></div>
+                      </div>
+                      <div class="list-row">
+                        <div class="grip"><i data-lucide="grip-vertical" style="width:14px;height:14px;"></i></div>
+                        <div class="lbl-col">Welcome opener<span class="tag-mono">TEXT</span></div>
+                        <div class="content-col">"You're in. Welcome to the Nike membership family — let's lace up."</div>
+                        <div class="actions-col"><div class="ac"><i data-lucide="pencil" style="width:14px;height:14px;"></i></div><div class="ac"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></div></div>
+                      </div>
+                      <div class="list-add"><i data-lucide="plus" class="ic"></i>Add saved block</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Same row component as Tone snippets</strong> — grip / label+type / content / actions. Difference is only the type-tag vocabulary (FOOTER / CTA / TEXT) and that the grip handle is the source of canvas-drag in B.</li>
+      <li><strong>Drag payload</strong> in B = <code>application/x-kova-saved-block</code> (per Q8 + Q24). The handle's hover state will read "drag onto canvas".</li>
+    </ul></div>
+  </div>
+
+  <!-- ---------- A7.3.5 Writing rules ---------- -->
+  <div class="screen">
+    <div class="cap"><div class="name">Brand Kit · Writing rules</div><div class="id">A7.3.5 · binary toggles · sliders dropped per founder 2026-04-25</div></div>
+    <div class="canvas" data-screen-label="A7.3.5 Brand Kit Writing rules">
+      <div class="app">
+        <div class="sidebar">
+          <div class="brand-switch"><div class="logo">N</div><div class="name">Nike</div><div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div></div>
+          <div class="side-search"><i data-lucide="search" style="width:13px;height:13px;"></i><span>Search</span><span class="kbd">⌘K</span></div>
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item"><i data-lucide="clock-4" class="ic"></i>Recents</div>
+            <div class="section">Brand</div>
+            <div class="item"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+          </div>
+          <div class="side-footer"><div class="avatar">JY</div><div class="who"><b>Jiho Yang</b><span>Pro plan</span></div><div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div></div>
+        </div>
+
+        <div class="main">
+          <div class="topbar">
+            <div class="breadcrumb">
+              <span class="back"><i data-lucide="chevron-left" style="width:14px;height:14px;"></i></span>
+              <span>Account</span><span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <span>Brand Kit</span><span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <b>Writing rules</b>
+            </div>
+            <div class="actions"><span class="pill ok dot" style="font-size:11px;">Online</span></div>
+          </div>
+
+          <div class="acc-frame">
+            <div class="acc-rail">
+              <div class="title">Account</div>
+              <div class="it"><i data-lucide="user" class="ic"></i>Profile</div>
+              <div class="it"><i data-lucide="credit-card" class="ic"></i>Plan &amp; billing</div>
+              <div class="it active"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+              <div class="it"><i data-lucide="plug" class="ic"></i>Integrations</div>
+              <div class="sep"></div>
+              <div class="it danger"><i data-lucide="trash-2" class="ic"></i>Danger zone</div>
+            </div>
+
+            <div class="acc-main">
+              <div class="acc-hero">
+                <div class="l">
+                  <h1>Writing rules</h1>
+                  <p>Hard constraints Kova will not violate. Binary toggles only — no sliders, no soft preferences. Tone shaping happens via Tone snippets above.</p>
+                </div>
+                <div class="r" style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+                  <span class="mono" style=" font-size:10px;letter-spacing:0.1em; color:var(--ink-3);">Editing brand</span>
+                  <div class="brandpick"><div class="logo">N</div><div class="nm">Nike</div><i data-lucide="chevrons-up-down" class="caret" style="width:13px;height:13px;"></i></div>
+                </div>
+              </div>
+
+              <div class="acc-content">
+                <div class="bk-wrap">
+                  <div class="bk-subnav">
+                    <div class="head">Brand Kit</div>
+                    <div class="it"><i data-lucide="palette" class="ic"></i>Visuals</div>
+                    <div class="it"><i data-lucide="user-circle" class="ic"></i>Identity</div>
+                    <div class="it"><i data-lucide="quote" class="ic"></i>Tone snippets<span style="margin-left:auto; font-size:10px;color:var(--ink-3);">8</span></div>
+                    <div class="it"><i data-lucide="layers" class="ic"></i>Saved blocks<span style="margin-left:auto; font-size:10px;color:var(--ink-3);">5</span></div>
+                    <div class="it active"><i data-lucide="check-square" class="ic"></i>Writing rules</div>
+                    <div class="it"><i data-lucide="brain" class="ic"></i>Memories<span style="margin-left:auto; font-size:10px;color:var(--ink-3);">19</span></div>
+                    <div class="it"><i data-lucide="book-open" class="ic"></i>Knowledge base</div>
+                  </div>
+
+                  <div class="bk-pane">
+                    <div class="row-stack wr-stack">
+                      <div class="row">
+                        <div class="lbl">No exclamation marks
+                          <span class="sub">Kova rewrites any "!" to a period before output.</span>
+                        </div>
+                        <div class="toggle on"></div>
+                      </div>
+                      <div class="row">
+                        <div class="lbl">No em-dashes
+                          <span class="sub">Replaces "—" with a comma or period.</span>
+                        </div>
+                        <div class="toggle on"></div>
+                      </div>
+                      <div class="row">
+                        <div class="lbl">Sentence-case headlines
+                          <span class="sub">Disables Title-Case in H1/H2 layers.</span>
+                        </div>
+                        <div class="toggle on"></div>
+                      </div>
+                      <div class="row">
+                        <div class="lbl">No superlatives
+                          <span class="sub">Blocks "amazing", "premium", "luxurious", "ultimate", "best-ever".</span>
+                        </div>
+                        <div class="toggle on"></div>
+                      </div>
+                      <div class="row">
+                        <div class="lbl">Active voice only
+                          <span class="sub">Rewrites passive constructions during generation.</span>
+                        </div>
+                        <div class="toggle"></div>
+                      </div>
+                      <div class="row">
+                        <div class="lbl">No emoji
+                          <span class="sub">Strips any 😊-class character from generated copy.</span>
+                        </div>
+                        <div class="toggle on"></div>
+                      </div>
+                      <div class="row">
+                        <div class="lbl">Numerals over words
+                          <span class="sub">"3 days" not "three days" for any number ≥ 2.</span>
+                        </div>
+                        <div class="toggle"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Sliders are gone.</strong> Reading-level slider that was on 06.a is replaced by Writing-rules toggles + Tone snippets — together they cover the same surface area with stronger AI-prompt fidelity.</li>
+      <li><strong>Toggle component identical to Profile + 06.a</strong>. No redesign — same dot, same off→on luminance shift.</li>
+    </ul></div>
+  </div>
+
+  <!-- ---------- A7.3.6 Memories ---------- -->
+  <div class="screen">
+    <div class="cap"><div class="name">Brand Kit · Memories</div><div class="id">A7.3.6 · unified list · type filter · carried from wireframe v6 §10</div></div>
+    <div class="canvas" data-screen-label="A7.3.6 Brand Kit Memories">
+      <div class="app">
+        <div class="sidebar">
+          <div class="brand-switch"><div class="logo">N</div><div class="name">Nike</div><div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div></div>
+          <div class="side-search"><i data-lucide="search" style="width:13px;height:13px;"></i><span>Search</span><span class="kbd">⌘K</span></div>
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item"><i data-lucide="clock-4" class="ic"></i>Recents</div>
+            <div class="section">Brand</div>
+            <div class="item"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+          </div>
+          <div class="side-footer"><div class="avatar">JY</div><div class="who"><b>Jiho Yang</b><span>Pro plan</span></div><div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div></div>
+        </div>
+
+        <div class="main">
+          <div class="topbar">
+            <div class="breadcrumb">
+              <span class="back"><i data-lucide="chevron-left" style="width:14px;height:14px;"></i></span>
+              <span>Account</span><span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <span>Brand Kit</span><span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <b>Memories</b>
+            </div>
+            <div class="actions"><span class="pill ok dot" style="font-size:11px;">Online</span></div>
+          </div>
+
+          <div class="acc-frame">
+            <div class="acc-rail">
+              <div class="title">Account</div>
+              <div class="it"><i data-lucide="user" class="ic"></i>Profile</div>
+              <div class="it"><i data-lucide="credit-card" class="ic"></i>Plan &amp; billing</div>
+              <div class="it active"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+              <div class="it"><i data-lucide="plug" class="ic"></i>Integrations</div>
+              <div class="sep"></div>
+              <div class="it danger"><i data-lucide="trash-2" class="ic"></i>Danger zone</div>
+            </div>
+
+            <div class="acc-main">
+              <div class="acc-hero">
+                <div class="l">
+                  <h1>Memories</h1>
+                  <p>Things Kova has remembered while you worked. One unified list — filter by type (rule / fact / preference), search the row text.</p>
+                </div>
+                <div class="r" style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+                  <span class="mono" style=" font-size:10px;letter-spacing:0.1em; color:var(--ink-3);">Editing brand</span>
+                  <div class="brandpick"><div class="logo">N</div><div class="nm">Nike</div><i data-lucide="chevrons-up-down" class="caret" style="width:13px;height:13px;"></i></div>
+                </div>
+              </div>
+
+              <div class="acc-content">
+                <div class="bk-wrap">
+                  <div class="bk-subnav">
+                    <div class="head">Brand Kit</div>
+                    <div class="it"><i data-lucide="palette" class="ic"></i>Visuals</div>
+                    <div class="it"><i data-lucide="user-circle" class="ic"></i>Identity</div>
+                    <div class="it"><i data-lucide="quote" class="ic"></i>Tone snippets<span style="margin-left:auto; font-size:10px;color:var(--ink-3);">8</span></div>
+                    <div class="it"><i data-lucide="layers" class="ic"></i>Saved blocks<span style="margin-left:auto; font-size:10px;color:var(--ink-3);">5</span></div>
+                    <div class="it"><i data-lucide="check-square" class="ic"></i>Writing rules</div>
+                    <div class="it active"><i data-lucide="brain" class="ic"></i>Memories<span style="margin-left:auto; font-size:10px;color:var(--ink);">19</span></div>
+                    <div class="it"><i data-lucide="book-open" class="ic"></i>Knowledge base</div>
+                  </div>
+
+                  <div class="bk-pane">
+                    <!-- toolbar -->
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                      <div class="seg">
+                        <div class="o on">All <span style="color:var(--ink-3); font-size:10px;margin-left:4px;">19</span></div>
+                        <div class="o">Rules <span style="color:var(--ink-3); font-size:10px;margin-left:4px;">7</span></div>
+                        <div class="o">Facts <span style="color:var(--ink-3); font-size:10px;margin-left:4px;">9</span></div>
+                        <div class="o">Preferences <span style="color:var(--ink-3); font-size:10px;margin-left:4px;">3</span></div>
+                      </div>
+                      <input class="ctrl-input" placeholder="Search memories…" style="flex:1;max-width:240px;" />
+                      <div class="grow" style="flex:1;"></div>
+                      <div class="btn sm"><i data-lucide="plus" class="ic"></i>Add memory</div>
+                    </div>
+
+                    <div class="list-stack">
+                      <div class="mem-row">
+                        <div class="type">Rule</div>
+                        <div class="body">Never use exclamation marks in headlines or body copy.<div class="src">Captured Mar 02 · canvas "Spring Drop"</div></div>
+                        <div class="ac"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+                      </div>
+                      <div class="mem-row">
+                        <div class="type">Fact</div>
+                        <div class="body">Brand HQ is Beaverton, Oregon. Fiscal year ends May 31.<div class="src">Manually added Apr 08 · Jiho</div></div>
+                        <div class="ac"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+                      </div>
+                      <div class="mem-row">
+                        <div class="type">Pref</div>
+                        <div class="body">Prefer black-and-white hero images for technical product launches.<div class="src">Captured Mar 22 · canvas "Pegasus 41 launch"</div></div>
+                        <div class="ac"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+                      </div>
+                      <div class="mem-row">
+                        <div class="type">Rule</div>
+                        <div class="body">Subject lines stay under 38 characters for mobile inbox truncation.<div class="src">Captured Feb 14 · canvas "Welcome flow v2"</div></div>
+                        <div class="ac"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+                      </div>
+                      <div class="mem-row">
+                        <div class="type">Fact</div>
+                        <div class="body">SNKRS app launches Tuesdays and Fridays at 7am PT.<div class="src">Captured Mar 11 · canvas "Air Max anniversary"</div></div>
+                        <div class="ac"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+                      </div>
+                      <div class="mem-row">
+                        <div class="type">Rule</div>
+                        <div class="body">Disclaimer block must include physical mailing address per CAN-SPAM.<div class="src">Manually added Jan 28 · Jiho</div></div>
+                        <div class="ac"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+                      </div>
+                      <div class="mem-row">
+                        <div class="type">Pref</div>
+                        <div class="body">Use Cobalt #1A4BE0 for technical / running content; Flame #FA5400 for lifestyle.<div class="src">Captured Apr 02 · canvas "Vomero 18 teaser"</div></div>
+                        <div class="ac"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>One list, three filters.</strong> Wireframe v6's tabbed Rules / Facts / Preferences is replaced by a segmented filter — same content surface, less click cost.</li>
+      <li><strong>Source line</strong> shows where the memory came from: a canvas (auto-captured) or a manual add. Builds trust in what Kova "knows".</li>
+    </ul></div>
+  </div>
+
+  <!-- ---------- A7.3.7 Knowledge base (60/40) ---------- -->
+  <div class="screen">
+    <div class="cap"><div class="name">Brand Kit · Knowledge base</div><div class="id">A7.3.7 · 60/40 split (sources right, viewer left) · per founder default</div></div>
+    <div class="canvas tall" data-screen-label="A7.3.7 Brand Kit Knowledge base">
+      <div class="app">
+        <div class="sidebar">
+          <div class="brand-switch"><div class="logo">N</div><div class="name">Nike</div><div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div></div>
+          <div class="side-search"><i data-lucide="search" style="width:13px;height:13px;"></i><span>Search</span><span class="kbd">⌘K</span></div>
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item"><i data-lucide="clock-4" class="ic"></i>Recents</div>
+            <div class="section">Brand</div>
+            <div class="item"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+          </div>
+          <div class="side-footer"><div class="avatar">JY</div><div class="who"><b>Jiho Yang</b><span>Pro plan</span></div><div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div></div>
+        </div>
+
+        <div class="main">
+          <div class="topbar">
+            <div class="breadcrumb">
+              <span class="back"><i data-lucide="chevron-left" style="width:14px;height:14px;"></i></span>
+              <span>Account</span><span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <span>Brand Kit</span><span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <b>Knowledge base</b>
+            </div>
+            <div class="actions"><span class="pill ok dot" style="font-size:11px;">Online</span></div>
+          </div>
+
+          <div class="acc-frame">
+            <div class="acc-rail">
+              <div class="title">Account</div>
+              <div class="it"><i data-lucide="user" class="ic"></i>Profile</div>
+              <div class="it"><i data-lucide="credit-card" class="ic"></i>Plan &amp; billing</div>
+              <div class="it active"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+              <div class="it"><i data-lucide="plug" class="ic"></i>Integrations</div>
+              <div class="sep"></div>
+              <div class="it danger"><i data-lucide="trash-2" class="ic"></i>Danger zone</div>
+            </div>
+
+            <div class="acc-main">
+              <div class="acc-hero">
+                <div class="l">
+                  <h1>Knowledge base</h1>
+                  <p>Documents Kova reads as ground-truth context. Pick a source on the left to preview its content on the right. Past emails and Products are persistent sources, listed in their own tab below.</p>
+                </div>
+                <div class="r" style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+                  <span class="mono" style=" font-size:10px;letter-spacing:0.1em; color:var(--ink-3);">Editing brand</span>
+                  <div class="brandpick"><div class="logo">N</div><div class="nm">Nike</div><i data-lucide="chevrons-up-down" class="caret" style="width:13px;height:13px;"></i></div>
+                </div>
+              </div>
+
+              <div class="acc-content">
+                <div class="bk-wrap">
+                  <div class="bk-subnav">
+                    <div class="head">Brand Kit</div>
+                    <div class="it"><i data-lucide="palette" class="ic"></i>Visuals</div>
+                    <div class="it"><i data-lucide="user-circle" class="ic"></i>Identity</div>
+                    <div class="it"><i data-lucide="quote" class="ic"></i>Tone snippets<span style="margin-left:auto; font-size:10px;color:var(--ink-3);">8</span></div>
+                    <div class="it"><i data-lucide="layers" class="ic"></i>Saved blocks<span style="margin-left:auto; font-size:10px;color:var(--ink-3);">5</span></div>
+                    <div class="it"><i data-lucide="check-square" class="ic"></i>Writing rules</div>
+                    <div class="it"><i data-lucide="brain" class="ic"></i>Memories<span style="margin-left:auto; font-size:10px;color:var(--ink-3);">19</span></div>
+                    <div class="it active"><i data-lucide="book-open" class="ic"></i>Knowledge base</div>
+                  </div>
+
+                  <div class="bk-pane">
+                    <!-- toolbar -->
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                      <input class="ctrl-input" placeholder="Search this brand's knowledge…" style="flex:1;max-width:280px;" />
+                      <div class="grow" style="flex:1;"></div>
+                      <div class="btn sm"><i data-lucide="upload" class="ic"></i>Upload PDF</div>
+                      <div class="btn sm"><i data-lucide="plus" class="ic"></i>New note</div>
+                    </div>
+
+                    <div class="kb-grid">
+                      <!-- Sources (left, 40%) -->
+                      <div class="kb-sources">
+                        <div class="hd"><b>Sources</b><span class="count">12</span></div>
+                        <div class="kb-list">
+                          <div class="kb-src-row active">
+                            <i data-lucide="file-text" class="ic"></i>
+                            <div><div class="ttl">Brand bible · 2026</div><div class="meta">PDF · Mar 12 · 42 pages</div></div>
+                            <div class="sz">2.1 MB</div>
+                          </div>
+                          <div class="kb-src-row">
+                            <i data-lucide="file-text" class="ic"></i>
+                            <div><div class="ttl">Spring drop launch plan</div><div class="meta">PDF · Apr 02 · 8 pages</div></div>
+                            <div class="sz">412 KB</div>
+                          </div>
+                          <div class="kb-src-row">
+                            <i data-lucide="sticky-note" class="ic"></i>
+                            <div><div class="ttl">Voice cheat-sheet</div><div class="meta">Note · Feb 22</div></div>
+                            <div class="sz">3 KB</div>
+                          </div>
+                          <div class="kb-src-row">
+                            <i data-lucide="link" class="ic"></i>
+                            <div><div class="ttl">Style guide URL</div><div class="meta">Link · style.nike.com</div></div>
+                            <div class="sz">—</div>
+                          </div>
+                          <div class="kb-src-row">
+                            <i data-lucide="file-text" class="ic"></i>
+                            <div><div class="ttl">Q1 retro &amp; learnings</div><div class="meta">PDF · Apr 18 · 14 pages</div></div>
+                            <div class="sz">880 KB</div>
+                          </div>
+                          <div class="kb-src-row">
+                            <i data-lucide="sticky-note" class="ic"></i>
+                            <div><div class="ttl">Tone do's and don'ts</div><div class="meta">Note · Mar 30</div></div>
+                            <div class="sz">8 KB</div>
+                          </div>
+                          <div class="kb-src-row">
+                            <i data-lucide="file-text" class="ic"></i>
+                            <div><div class="ttl">2026 product catalog · pre-fall</div><div class="meta">PDF · Apr 21 · 64 pages</div></div>
+                            <div class="sz">5.4 MB</div>
+                          </div>
+                        </div>
+                        <div class="kb-srcs-tabs">
+                          <div class="t on"><i data-lucide="book-open" style="width:11px;height:11px;"></i>Knowledge base <span class="num">7</span></div>
+                          <div class="t"><i data-lucide="mail" style="width:11px;height:11px;"></i>Past emails <span class="num">142</span></div>
+                          <div class="t"><i data-lucide="package" style="width:11px;height:11px;"></i>Products <span class="num">318</span></div>
+                        </div>
+                      </div>
+
+                      <!-- Viewer (right, 60%) -->
+                      <div class="kb-viewer">
+                        <div class="hd"><b>Brand bible · 2026</b><span class="mono" style=" font-size:10.5px;color:var(--ink-3);">page 1 / 42 · indexed</span></div>
+                        <div class="body">
+                          <h4>I. Mission</h4>
+                          <p>Nike exists to bring inspiration and innovation to every athlete in the world. The asterisk on "athlete" — if you have a body, you are an athlete — is the foundational principle for everything we ship, write, and design.</p>
+                          <h4>II. Voice principles</h4>
+                          <p>We speak directly to the athlete. Second person. Active voice. Specific verbs. Verbs that carry effort: lace up, push off, hold the line. Avoid the language of consumer goods.</p>
+                          <div class="ph"></div>
+                          <div class="ph" style="width:80%;"></div>
+                          <div class="ph" style="width:60%;"></div>
+                          <h4>III. Visual system</h4>
+                          <p>Onyx and Bone are the foundation. Flame is the punctuation. Cobalt and Field are restricted to technical and outdoor categories.</p>
+                          <div class="ph"></div>
+                          <div class="ph" style="width:90%;"></div>
+                          <div class="ph" style="width:74%;"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>40/60 split chosen</strong> — sources on the left for reading-order familiarity, viewer on the right for content focus. Sources column shows the canonical KB list above and the Knowledge / Past emails / Products tab strip below (per Personalization fold-in).</li>
+      <li><strong>Mixed source types</strong>: PDF, note, URL — all share the same row component, only the leading icon differs. Indexed status implied by "indexed" meta on the active row.</li>
+    </ul></div>
+  </div>
+
+</section>
+
+<!-- ============================================================
+     A7.4 — Integrations (per-brand)
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">A7 · §4 · Integrations (per-brand)</div>
+    <h2>Integrations</h2>
+    <p class="intro">Per-brand. Shopify card carries connection status, last sync, and Reconnect / Disconnect CTAs. Klaviyo is intentionally absent (deferred per CLAUDE.md). Future integrations live in a dashed placeholder card.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Account · Integrations</div><div class="id">A7.4 · hi-fi · expired-token state shown</div></div>
+    <div class="canvas tall" data-screen-label="A7.4 Integrations">
+      <div class="app">
+        <div class="sidebar">
+          <div class="brand-switch"><div class="logo">N</div><div class="name">Nike</div><div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div></div>
+          <div class="side-search"><i data-lucide="search" style="width:13px;height:13px;"></i><span>Search</span><span class="kbd">⌘K</span></div>
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item"><i data-lucide="clock-4" class="ic"></i>Recents</div>
+            <div class="section">Brand</div>
+            <div class="item"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+            <div class="item"><i data-lucide="book-open" class="ic"></i>Knowledge base</div>
+          </div>
+          <div class="side-footer"><div class="avatar">JY</div><div class="who"><b>Jiho Yang</b><span>Pro plan</span></div><div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div></div>
+        </div>
+
+        <div class="main">
+          <div class="topbar">
+            <div class="breadcrumb">
+              <span class="back"><i data-lucide="chevron-left" style="width:14px;height:14px;"></i></span>
+              <span>Account</span><span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <b>Integrations</b>
+            </div>
+            <div class="actions"><span class="pill ok dot" style="font-size:11px;">Online</span></div>
+          </div>
+
+          <!-- Token-expired banner (A10) -->
+          <div style="padding:12px 56px;background:var(--warn-soft);border-bottom:1px solid var(--warn-edge);display:flex;align-items:center;gap:10px;">
+            <i data-lucide="alert-triangle" style="width:14px;height:14px;color:var(--warn);"></i>
+            <span style="font-size:12.5px;color:var(--warn);"><b>Shopify connection expired</b> — reconnect to resume syncing products and orders.</span>
+            <div style="flex:1;"></div>
+            <div class="btn sm" style="border-color:var(--warn-edge);color:var(--warn);">Reconnect Shopify</div>
+            <div class="btn sm ghost"><i data-lucide="x" style="width:13px;height:13px;"></i></div>
+          </div>
+
+          <div class="acc-frame">
+            <div class="acc-rail">
+              <div class="title">Account</div>
+              <div class="it"><i data-lucide="user" class="ic"></i>Profile</div>
+              <div class="it"><i data-lucide="credit-card" class="ic"></i>Plan &amp; billing</div>
+              <div class="it"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+              <div class="it active"><i data-lucide="plug" class="ic"></i>Integrations</div>
+              <div class="sep"></div>
+              <div class="it danger"><i data-lucide="trash-2" class="ic"></i>Danger zone</div>
+            </div>
+
+            <div class="acc-main">
+              <div class="acc-hero">
+                <div class="l">
+                  <h1>Integrations</h1>
+                  <p>External services this brand pulls from. Shopify is the source-of-truth for products and order signals.</p>
+                </div>
+                <div class="r" style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+                  <span class="mono" style=" font-size:10px;letter-spacing:0.1em; color:var(--ink-3);">Editing brand</span>
+                  <div class="brandpick"><div class="logo">N</div><div class="nm">Nike</div><i data-lucide="chevrons-up-down" class="caret" style="width:13px;height:13px;"></i></div>
+                </div>
+              </div>
+
+              <div class="acc-content">
+                <div class="s-section">
+                  <h2>Connected services</h2>
+                  <div class="int-grid">
+
+                    <!-- Shopify · expired -->
+                    <div class="int-card">
+                      <div class="head">
+                        <div class="logo" style="background:#96bf47;">S</div>
+                        <div><div class="nm">Shopify</div><div class="sub">nike.myshopify.com · 318 products</div></div>
+                      </div>
+                      <div class="status warn"><span class="dot"></span>Token expired · last synced 14h ago</div>
+                      <div class="foot">
+                        <div class="last">Expired 02:14 UTC</div>
+                        <div style="display:flex;gap:6px;">
+                          <div class="btn sm">Reconnect</div>
+                          <div class="btn sm ghost">Disconnect</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Future · placeholder -->
+                    <div class="int-card coming">
+                      <div class="head">
+                        <div class="logo">+</div>
+                        <div><div class="nm" style="color:var(--ink-3);">More integrations</div><div class="sub">Klaviyo, Mailchimp, Iterable, Braze coming after MVP.</div></div>
+                      </div>
+                      <div class="status off"><span class="dot" style="background:var(--ink-3);"></span>Not yet available</div>
+                      <div class="foot">
+                        <div class="last">Phase 2</div>
+                        <div class="btn sm ghost">Get notified</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Shows the expired-token state</strong> — top-of-page banner (A10) plus warn dot in the card status. Same warn token used everywhere; reconnect CTA appears in both places (banner = global, card = scoped).</li>
+      <li><strong>Klaviyo card intentionally absent</strong> per CLAUDE.md. The "More integrations" card hints at it without rendering it.</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- ============================================================
+     A7.5 — Danger zone (account-level)
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">A7 · §5 · Danger zone (account-level)</div>
+    <h2>Danger zone</h2>
+    <p class="intro">User-level. Delete account opens A9.1 (typed-confirmation modal · DELETE). Data export is a small inline button — folded here per founder for MVP.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Account · Danger zone</div><div class="id">A7.5 · hi-fi</div></div>
+    <div class="canvas" data-screen-label="A7.5 Danger zone">
+      <div class="app">
+        <div class="sidebar">
+          <div class="brand-switch"><div class="logo">N</div><div class="name">Nike</div><div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div></div>
+          <div class="side-search"><i data-lucide="search" style="width:13px;height:13px;"></i><span>Search</span><span class="kbd">⌘K</span></div>
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item"><i data-lucide="clock-4" class="ic"></i>Recents</div>
+            <div class="section">Brand</div>
+            <div class="item"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+          </div>
+          <div class="side-footer"><div class="avatar">JY</div><div class="who"><b>Jiho Yang</b><span>Pro plan</span></div><div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div></div>
+        </div>
+
+        <div class="main">
+          <div class="topbar">
+            <div class="breadcrumb">
+              <span class="back"><i data-lucide="chevron-left" style="width:14px;height:14px;"></i></span>
+              <span>Account</span><span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <b style="color:var(--warn);">Danger zone</b>
+            </div>
+            <div class="actions"><span class="pill ok dot" style="font-size:11px;">Online</span></div>
+          </div>
+
+          <div class="acc-frame">
+            <div class="acc-rail">
+              <div class="title">Account</div>
+              <div class="it"><i data-lucide="user" class="ic"></i>Profile</div>
+              <div class="it"><i data-lucide="credit-card" class="ic"></i>Plan &amp; billing</div>
+              <div class="it"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+              <div class="it"><i data-lucide="plug" class="ic"></i>Integrations</div>
+              <div class="sep"></div>
+              <div class="it danger active" style="background:rgba(232,122,74,0.10);"><i data-lucide="trash-2" class="ic"></i>Danger zone</div>
+            </div>
+
+            <div class="acc-main">
+              <div class="acc-hero">
+                <div class="l">
+                  <h1 style="color:var(--warn);">Danger zone</h1>
+                  <p>Account-level destructive actions. These cannot be undone after the 30-day grace window.</p>
+                </div>
+              </div>
+
+              <div class="acc-content">
+                <div class="s-section">
+                  <h2>Data &amp; account</h2>
+                  <div class="row-stack">
+                    <div class="row">
+                      <div class="lbl">Request data export
+                        <span class="sub">A ZIP of every brand, canvas, memory, and snippet you own. Emailed within 24 hours per GDPR.</span>
+                      </div>
+                      <div class="val"><span class="mono" style=" font-size:11px;color:var(--ink-3);">No exports requested</span></div>
+                      <div class="btn sm">Request export</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="s-section">
+                  <h2 style="color:var(--warn);">Permanent</h2>
+                  <div class="danger">
+                    <div class="l">
+                      <b>Delete account</b>
+                      <span>Queues every brand, canvas, memory, snippet, and integration for permanent deletion in 30 days. Sign back in within 30 days to cancel and restore.</span>
+                    </div>
+                    <div class="r"><div class="btn">Delete account…</div></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Account-level "Permanent" treatment</strong> mirrors the brand-level Danger zone in 06.a — same warn surface, same edge color, same destructive CTA color. One pattern for all destructive actions.</li>
+      <li><strong>Data export is non-destructive</strong> — it doesn't sit inside the warn surface. Just an unobtrusive row with its own request CTA. Folds GDPR into Danger zone without bloating it.</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- ============================================================
+     Cross-surface notes (delivery)
+     ============================================================ -->
+<section class="block" style="background:var(--page);">
+  <header>
+    <div class="tag">Coherence — what survives Batch B</div>
+    <h2>Patterns this file establishes</h2>
+    <p class="intro">Locked vocabulary. Batch B inherits all of it — no redesigns expected.</p>
+  </header>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;">
+    <div style="border:1px solid var(--line);border-radius:8px;padding:16px;background:var(--rail);">
+      <div class="mono" style=" font-size:10px; color:var(--ink-3); margin-bottom:6px;">Brand-picker dropdown (A2b)</div>
+      <div style="font-size:13px;color:var(--ink-2);">Inline pill: <code>logo · name · caret</code>. Same component as A2a (sidebar). Anchor differs, on-click differs (this swaps section data, A2a navigates).</div>
+    </div>
+    <div style="border:1px solid var(--line);border-radius:8px;padding:16px;background:var(--rail);">
+      <div class="mono" style=" font-size:10px; color:var(--ink-3); margin-bottom:6px;">List-row component</div>
+      <div style="font-size:13px;color:var(--ink-2);">Used by Tone snippets, Saved blocks, Memories. Grip · label+type-tag · content · actions. Drag handle becomes the canvas-drop source in B.</div>
+    </div>
+    <div style="border:1px solid var(--line);border-radius:8px;padding:16px;background:var(--rail);">
+      <div class="mono" style=" font-size:10px; color:var(--ink-3); margin-bottom:6px;">Section vocabulary</div>
+      <div style="font-size:13px;color:var(--ink-2);">Mono uppercase H2 + descriptor + row-stack. Carried verbatim from 06.a. Don't re-invent.</div>
+    </div>
+    <div style="border:1px solid var(--line);border-radius:8px;padding:16px;background:var(--rail);">
+      <div class="mono" style=" font-size:10px; color:var(--ink-3); margin-bottom:6px;">Danger zone surface</div>
+      <div style="font-size:13px;color:var(--ink-2);">Warn-soft bg, warn-edge border, warn ink — applied to row, button, and section heading equivalently for delete-brand and delete-account.</div>
+    </div>
+    <div style="border:1px solid var(--line);border-radius:8px;padding:16px;background:var(--rail);">
+      <div class="mono" style=" font-size:10px; color:var(--ink-3); margin-bottom:6px;">Integration banner (A10)</div>
+      <div style="font-size:13px;color:var(--ink-2);">Top-of-page warn strip with reconnect CTA. Always visible above the content frame; dismissible only after reconnect.</div>
+    </div>
+    <div style="border:1px solid var(--line);border-radius:8px;padding:16px;background:var(--rail);">
+      <div class="mono" style=" font-size:10px; color:var(--ink-3); margin-bottom:6px;">Plan-badge placeholder</div>
+      <div style="font-size:13px;color:var(--ink-2);">Pill component with <code>PLACEHOLDER</code> tag-mono on the plan card. Avatar dropdown will use the same pill at smaller scale. Founder wires real plan strings in a follow-up.</div>
+    </div>
+  </div>
+</section>
+
+<footer style="padding:32px 56px;border-top:1px solid var(--line);background:var(--bg);color:var(--ink-3);font-size:11px; ">
+  Kova · hi-fi · Batch A · A7 Account page · 5 sections · 7 Brand-Kit sub-tabs · v1
+</footer>
+
+<script>
+  if (window.lucide) window.lucide.createIcons({ attrs: { 'stroke-width': 1.6 } });
+</script>
+</body>
+</html>

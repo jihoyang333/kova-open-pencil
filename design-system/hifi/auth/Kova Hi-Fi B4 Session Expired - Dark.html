@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<title>Kova — Hi-fi · B4.7 Session Expired · Dark</title>
+<meta name="viewport" content="width=1440" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+<link rel="stylesheet" href="../../design-system/kova-hifi.css" />
+<script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
+<style>
+/* ============================================================
+   FILE B4.7 — Session expired (mid-session redirect, DARK, 1 scene)
+   Companion to batch-a-additions/light/Kova Hi-Fi B4 Auth Errors - Light.html
+   (which carries B4.1–B4.6 — all light auth-error states).
+
+   Why dark: a Supabase session that expires while the user is inside
+   the app pulls them OUT of authenticated chrome but they're still
+   visually inside the app. Light auth chrome would feel like a
+   different product. Dark pre-auth chrome with no sidebar/topbar is
+   the bridge between "I was just inside" and "I need to sign in again."
+
+   All chrome lifted verbatim from batch-a-additions/dark/batch-0/Kova Hi-Fi B2 Error Pages - Dark.html
+   (round-1 deliverable) per handoff §3.8 LIFT protocol + §8 self-check
+   "B4.7 dark session-expired card chrome matches B2 round-1 deliverable byte-identical."
+
+   Per §3.8 LIFT extension rule, no modifications to the lifted block —
+   one extension class added BELOW (`.btn.disabled.text` for the disabled
+   secondary in the CTA stack, since B2's `.err-cta-stack .btn.text`
+   doesn't have an explicit disabled variant).
+   ============================================================ */
+
+  body { background: var(--bg); }
+
+  /* ---------- Full-viewport error frame — LIFTED FROM B2 verbatim ---------- */
+  .err-page {
+    position: absolute; inset: 0;
+    background: var(--bg);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 32px 24px;
+    gap: 22px;
+  }
+
+  /* The card — focal element, no outer hairline (per design.md §1.4 — full-bleed surfaces aren't rounded; this is the focal surface) */
+  .err-card {
+    width: 420px; max-width: 100%;
+    padding: 40px 32px;
+    display: flex; flex-direction: column; align-items: center;
+    text-align: center;
+    gap: 14px;
+    background: transparent;
+  }
+
+  .err-icon-tile {
+    width: 48px; height: 48px;
+    border-radius: 6px;
+    background: var(--bg);
+    border: none;
+    display: grid; place-items: center;
+    color: var(--ink-3);
+    margin-bottom: 6px;
+  }
+  .err-icon-tile .ic { width: 24px; height: 24px; }
+
+  .err-card h1 {
+    margin: 0;
+    font-size: 15px; font-weight: 600;
+    letter-spacing: -0.005em;
+    color: var(--ink);
+  }
+  .err-card p {
+    margin: 0;
+    font-size: 12.5px; color: var(--ink-2);
+    line-height: 1.55;
+    max-width: 48ch;
+  }
+
+  .err-cta-stack {
+    width: 100%; max-width: 280px;
+    display: flex; flex-direction: column; align-items: stretch;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .err-cta-stack .btn {
+    justify-content: center;
+    padding: 9px 14px; font-size: 13px;
+  }
+  .err-cta-stack .btn.text {
+    border-color: transparent; background: transparent;
+    color: var(--ink-2); padding: 6px 8px;
+    font-size: 12.5px;
+  }
+  .err-cta-stack .btn.text:hover {
+    color: var(--ink); background: var(--line-2);
+  }
+
+  /* ---------- B4.7 extensions (append-only, do not modify lifted block) ---------- */
+  /* Disabled secondary text-button — greyed, no hover affordance.
+     Brief §5.1 B4.7 spec: secondary "Go to dashboard" disabled (greyed).
+     Pre-empts user confusion about whether they can navigate while signed-out. */
+  .err-cta-stack .btn.text.disabled,
+  .err-cta-stack .btn.text[aria-disabled="true"] {
+    color: var(--ink-3); cursor: not-allowed;
+    background: transparent;
+  }
+  .err-cta-stack .btn.text.disabled:hover,
+  .err-cta-stack .btn.text[aria-disabled="true"]:hover {
+    color: var(--ink-3); background: transparent;
+  }
+
+</style>
+</head>
+<body data-screen-label="B4.7 Session Expired · Dark">
+
+<header class="page-head">
+  <div class="eyebrow">HI-FI · BATCH A ADDITIONS · DARK · FILE B4 (companion)</div>
+  <h1>Session expired · 1 scene · dark theme</h1>
+  <p>The seventh scene from chunk 1's auth-error set. Lives in <code>dark/</code> because session loss leaves the user looking at a pre-auth, no-chrome screen — light auth-card chrome (B4.1–B4.6 in <code>light/</code>) belongs to the unauthenticated entry path; this surface belongs to a recently-authenticated user who just got bounced. Same B2 centered-card chrome, lifted verbatim, with a clock glyph swapped for B2.1's compass.</p>
+  <div class="meta">/auth/session-expired · 1 scene · dark · same kova-hifi.css tokens · chrome lifted from B2</div>
+  <div class="legend">
+    <span class="sw"><i style="background:var(--ink);"></i>Primary CTA (ink)</span>
+    <span class="sw"><i style="background:var(--ink-3);"></i>Icon glyph + disabled secondary</span>
+    <span class="sw"><i style="background:var(--ink-2);"></i>Secondary text-button (enabled state)</span>
+  </div>
+</header>
+
+
+<!-- ============================================================
+     B4.7 · SESSION EXPIRED MID-SESSION
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE B4 · §1 · B4.7 · Session expired</div>
+    <h2>B4.7 · Your session expired</h2>
+    <p class="intro">User's Supabase session expires while they're inside the app — could be a 24-hour expiry, an admin-revoked token, or a server-side logout from a different device. Page replaces app chrome with a centered card on the dark plate. No sidebar, no topbar — auth state is lost, so app chrome is also gone. Primary CTA returns to the light /login route; secondary "Go to dashboard" is disabled because the user is no longer signed in to one.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Session expired · pre-auth surface (no sidebar/topbar)</div><div class="id">B4.7 · /auth/session-expired</div></div>
+    <div class="canvas tall" data-screen-label="B4.7 Session expired">
+      <div class="err-page">
+        <div class="err-card">
+          <div class="err-icon-tile"><i data-lucide="clock" class="ic"></i></div>
+          <h1>Your session expired</h1>
+          <p>Sign in again to pick up where you left off — your work is saved. Recent canvas changes are persisted locally and will reload as soon as you're back in.</p>
+          <div class="err-cta-stack">
+            <div class="btn primary"><i data-lucide="log-in" class="ic"></i>Sign in</div>
+            <div class="btn text disabled" aria-disabled="true">Go to dashboard</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Same B2 chrome — clock glyph instead of compass.</strong> Card geometry, padding (40/32), icon-tile invisibility, and CTA-stack max-width 280px are byte-identical to B2.1. Visual continuity tells the user "this is the same product showing me a different state," not "I clicked a link and ended up somewhere else."</li>
+      <li><strong>Disabled secondary tells the user they can't navigate.</strong> "Go to dashboard" is shown but greyed because the user just lost the session that lets them in. Pre-empting the click prevents a broken-feeling 401 round-trip. Once Sign-in succeeds, the dashboard is one click away.</li>
+      <li><strong>Sign-in routes to the light /login surface</strong> (the canonical auth chrome from A15). The dark session-expired page is a one-shot bridge — users don't stay here.</li>
+      <li><strong>Local Yjs autosave is the load-bearing claim in the sub-copy.</strong> "Your work is saved" is true because canvas state persists locally regardless of session — re-mention so users don't worry about losing edits while signed out.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     COHERENCE NOTES
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE B4 · NOTES</div>
+    <h2>Coherence notes — what this file commits to</h2>
+    <p class="intro">Patterns this file inherits and decisions a future code-agent needs to wire.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Coherence audit</div><div class="id">B4.7 · notes</div></div>
+    <div style="padding:24px 28px;">
+      <ul style="margin:0;padding-left:20px;color:var(--ink-2);font-size:13px;line-height:1.7;max-width:820px;">
+        <li><strong>Theme isolation.</strong> Dark only — uses <code>data-theme="dark"</code> and <code>kova-hifi.css</code>; zero light-mode tokens. The companion B4.1–B4.6 lives in <code>batch-a-additions/light/</code>.</li>
+        <li><strong>Chrome lifted from B2 round-1 deliverable.</strong> The <code>.err-page / .err-card / .err-icon-tile / .err-cta-stack / .err-cta-stack .btn.text</code> classes are reproduced byte-for-byte from <code>batch-a-additions/dark/batch-0/Kova Hi-Fi B2 Error Pages - Dark.html</code> lines 32–93. Self-check: <code>diff</code> of the lifted block against B2 source = zero changes.</li>
+        <li><strong>Two append-only extensions:</strong> (a) <code>.err-cta-stack .btn.text.disabled</code> + <code>[aria-disabled="true"]</code> for the dim secondary (B2 didn't have a disabled-text-button variant — added below the lifted block, no modifications to lifted CSS); (b) <code>.err-page .wordmark</code> for the K-mark above the card (matches A15 auth-top wordmark with token-swap to dark — design.md §3.1 logo convention).</li>
+        <li><strong>Spec resolution — icon tile background.</strong> Handoff §5.2 specifies <code>--color-surface-input</code> background for the tile; the B2 round-1 source uses <code>--bg</code> (invisible blend). Per handoff §9 authority order (canonical CSS + Batch A files outrank brief) AND §8 checklist line 370 ("B4.7 chrome matches B2 byte-identical"), lifted B2's <code>--bg</code> verbatim. Visual outcome: 24×24 clock glyph reads as floating directly on the dark plate, same as B2's other glyphs. If founder later wants the visible tile from §5.2's wording, swap one line: <code>background: var(--bg)</code> → <code>background: var(--fill)</code>. Flagged for review.</li>
+        <li><strong>No status hex.</strong> Per design.md §5 ban 12, the expired role is conveyed via copy + clock glyph, not chrome color. When the status palette ships, the icon-tile + foot-meta re-theme via token swap.</li>
+        <li><strong>Routing notes for engineering.</strong> Sign-in CTA → <code>/login</code> (light A15). Disabled "Go to dashboard" is intentionally non-routable — wiring decision: render as <code>aria-disabled="true"</code> button OR omit entirely if the disabled treatment causes confusion in user testing. Started with shown-disabled per founder direction; flag for review.</li>
+        <li><strong>Open wiring questions</strong> (flag for engineering): (a) Detection signal — should the page render on every 401 from the API, or only on a Supabase token-refresh failure? (b) Should the redirect URL after sign-in carry the previous canvas / dashboard route as a query param so the user lands back where they were? (c) Is "Your work is saved" load-bearing — is Yjs persistence guaranteed for in-flight edits at session-expiry time? Confirm with engineering.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<script>
+  if (window.lucide) window.lucide.createIcons({ attrs: { 'stroke-width': 1.6 } });
+</script>
+</body>
+</html>

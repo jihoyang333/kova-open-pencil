@@ -1,0 +1,1013 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<title>Kova — Hi-fi · 14 Find Overlay · Dark</title>
+<meta name="viewport" content="width=1440" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+<link rel="stylesheet" href="../../design-system/kova-hifi.css" />
+<script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
+<style>
+  /* ===================================================================
+     LIFTED FROM Kova Canvas - Final.html (lines 75-502) BYTE-FOR-BYTE
+     Token block + per-file canvas chrome (.kc namespace).
+     DO NOT MODIFY. Diff verifies in DELIVERY_NOTES.md (LIFT 1).
+     =================================================================== */
+  .kc {
+    --bg:    #1a1a1d;        /* side panels */
+    --rail:  #1a1a1d;
+    --canvas:#242428;        /* canvas (per spec) */
+    --fill:  #26262b;
+    --fill2: #303035;
+    --line:  #2c2c30;
+    --line2: #232327;
+    --ink:   #ebebee;
+    --ink2:  #a8a8ad;
+    --ink3:  #6e6e73;
+    --ink4:  #4a4a4f;
+    --select:#3b82f6;
+    --select-soft: rgba(59,130,246,0.16);
+    --accent:#3b82f6;
+    --accent-soft: rgba(59,130,246,0.14);
+    --accent-ink:#a9c4ff;
+    background: var(--bg);
+    color: var(--ink);
+    font-size: 12px;
+    display: grid;
+    grid-template-rows: 44px 1fr;
+  }
+
+  /* TOPBAR ----------------------------------------------------------- */
+  .kc .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--rail);
+    border-bottom: 1px solid var(--line);
+    padding: 0 12px;
+    height: 44px;
+  }
+  .kc .topbar .l, .kc .topbar .r {
+    display:flex; align-items:center; gap: 12px;
+  }
+  .kc .topbar .logo {
+    width: 24px; height: 24px;
+    border-radius: 6px; background: var(--ink); color: var(--bg);
+    display:grid; place-items:center;
+    font-weight: 700; font-size: 11px;
+    letter-spacing: -0.04em;
+  }
+  .kc .topbar .file {
+    display: flex; align-items: center; gap: 8px;
+    color: var(--ink2); font-size: 13px;
+  }
+  .kc .topbar .file .crumb-brand { display: inline-flex; align-items: center; gap: 6px; }
+  .kc .topbar .file .crumb-brand .b {
+    width: 14px; height: 14px; border-radius: 4px; background: #c24a1e;
+  }
+  .kc .topbar .file .sep { color: var(--ink4); }
+  .kc .topbar .file b {
+    color: var(--ink); font-weight: 600; letter-spacing: -0.005em;
+  }
+  .kc .topbar .file .caret { color: var(--ink3); display:grid; place-items:center; }
+  .kc .topbar .icon-btn {
+    width: 28px; height: 28px;
+    display:grid; place-items:center;
+    color: var(--ink2); border-radius: 5px;
+  }
+  .kc .topbar .icon-btn:hover { background: var(--line2); color: var(--ink); }
+  .kc .topbar .avatar {
+    width: 26px; height: 26px;
+    border-radius: 50%; background: #c24a1e; color: #fff;
+    display:grid; place-items:center;
+    font-weight: 600; font-size: 10.5px;
+  }
+
+  /* BODY ------------------------------------------------------------- */
+  .kc .body { display: grid; grid-template-columns: 240px 1fr 264px; min-height: 0; }
+
+  /* LEFT PANEL ------------------------------------------------------- */
+  .kc .left {
+    background: var(--rail);
+    border-right: 1px solid var(--line);
+    display: flex; flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .kc .left .file-row {
+    padding: 14px;
+    border-bottom: 1px solid var(--line2);
+    display:flex; align-items:center; gap: 10px;
+  }
+  .kc .left .file-row .file-icon {
+    width: 30px; height: 30px;
+    border-radius: 7px; background: var(--fill);
+    display: grid; place-items: center;
+    color: var(--ink2);
+  }
+  .kc .left .file-row .name { font-weight: 600; font-size: 13px; color: var(--ink); }
+  .kc .left .file-row .meta { font-size: 11.5px; color: var(--ink3); margin-top: 2px; }
+  .kc .left .sec {
+    padding: 14px 14px 6px;
+    display: flex; align-items:center; justify-content: space-between;
+  }
+  .kc .left .sec h5 {
+    margin: 0; font-size: 11px; font-weight: 500;
+    color: var(--ink3); letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .kc .left .sec .add {
+    width: 20px; height: 20px;
+    display:grid; place-items:center; color: var(--ink3);
+    border-radius: 5px;
+  }
+  .kc .left .pages { padding: 0 8px 6px; }
+  .kc .left .page-row {
+    display:flex; align-items:center; gap: 8px;
+    padding: 7px 10px;
+    border-radius: 7px;
+    color: var(--ink2); font-size: 12.5px;
+  }
+  .kc .left .page-row.active { background: var(--fill); color: var(--ink); }
+  .kc .left .layers { flex: 1; overflow: auto; padding: 0 6px 16px; }
+  .kc .left .layer {
+    display: flex; align-items: center; gap: 7px;
+    padding: 5px 8px;
+    height: 28px;
+    font-size: 12.5px;
+    color: var(--ink2);
+    border-radius: 6px;
+    line-height: 1.3;
+    white-space: nowrap;
+  }
+  .kc .left .layer:hover { background: var(--line2); color: var(--ink); }
+  .kc .left .layer.selected {
+    background: var(--select-soft);
+    color: var(--ink);
+  }
+  .kc .left .layer .caret { width: 10px; color: var(--ink3); display:grid; place-items:center; }
+  .kc .left .layer .ic { color: var(--ink3); display:grid; place-items:center; flex-shrink:0; }
+  .kc .left .layer.selected .ic { color: var(--ink); }
+  .kc .left .layer .name { flex: 1; overflow:hidden; text-overflow:ellipsis; }
+  .kc .left .layer .mask, .kc .left .layer .vis { color: var(--ink3); display:grid; place-items:center; flex-shrink:0; }
+  .kc .left .layer .vis { opacity: 0; }
+  .kc .left .layer:hover .vis, .kc .left .layer.selected .vis { opacity: 1; }
+  .kc .left .layer.dim { color: var(--ink4); }
+  .kc .left .layer.dim .ic { color: var(--ink4); }
+  .kc .left .indent-1 { padding-left: 24px; }
+  .kc .left .indent-2 { padding-left: 40px; }
+
+  /* CENTER (CANVAS) -------------------------------------------------- */
+  .kc .center {
+    background: var(--canvas);
+    position: relative;
+    overflow: hidden;
+  }
+  .kc .center .canvas-grid {
+    position: absolute; inset: 0;
+    background-image:
+      radial-gradient(circle, rgba(255,255,255,0.025) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+  .kc .frames-row {
+    position: absolute; top: 78px; left: 50%;
+    transform: translateX(-50%) scale(0.62);
+    transform-origin: top center;
+    display: flex; gap: 72px;
+  }
+  .kc .frame {
+    width: 600px; height: 900px;
+    background: #fff; color: #111;
+    position: relative; flex-shrink: 0;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .kc .frame-label {
+    position: absolute; top: -24px; left: 0;
+    color: var(--ink2); font-size: 14.5px;
+    white-space: nowrap; letter-spacing: -0.003em;
+  }
+  .kc .frame.selected .frame-label { color: var(--select); font-weight: 500; }
+  .kc .frame.selected {
+    outline: 2px solid var(--select);
+    outline-offset: 0;
+    border-radius: 6px;
+  }
+  .kc .handle {
+    position: absolute; width: 9px; height: 9px;
+    background: #fff;
+    border: 1.5px solid var(--select);
+    border-radius: 2px;
+  }
+  .kc .handle.tl { top:-1px; left:-1px; }
+  .kc .handle.tm { top:-1px; left:50%; transform:translateX(-50%); }
+  .kc .handle.tr { top:-1px; right:-1px; }
+  .kc .handle.lm { top:50%; left:-1px; transform:translateY(-50%); }
+  .kc .handle.rm { top:50%; right:-1px; transform:translateY(-50%); }
+  .kc .handle.bl { bottom:-1px; left:-1px; }
+  .kc .handle.bm { bottom:-1px; left:50%; transform:translateX(-50%); }
+  .kc .handle.br { bottom:-1px; right:-1px; }
+  .kc .size-chip {
+    position: absolute; bottom: -36px; left: 50%; transform: translateX(-50%);
+    background: var(--select); color: #fff;
+    font-size: 15px; padding: 5px 12px; border-radius: 6px;
+    font-weight: 500; letter-spacing: 0.01em;
+  }
+
+  /* TOOLBAR (V1 Kova-Loud chrome, V3 #3b82f6 selection) ------------- */
+  .kc .toolbar {
+    position: absolute;
+    bottom: 22px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1a1a1d;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 6px;
+    display: flex;
+    gap: 2px;
+    box-shadow: 0 8px 24px -6px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.04) inset;
+  }
+  .kc .toolbar .tool {
+    width: 36px; height: 36px;
+    display: grid; place-items:center;
+    color: var(--ink2);
+    border-radius: 6px;
+    cursor: pointer;
+    position: relative;
+  }
+  .kc .toolbar .tool:hover { background: var(--line2); color: var(--ink); }
+  .kc .toolbar .tool.active {
+    background: var(--accent);  /* #3b82f6 — never lilac */
+    color: #fff;
+  }
+  .kc .toolbar .divider {
+    width: 1px; background: var(--line2); margin: 6px 4px;
+  }
+  .kc .toolbar .tool.ai { color: var(--accent-ink); }
+  .kc .toolbar .tool.ai:hover { background: var(--accent-soft); }
+  .kc .toolbar .caret-mini {
+    position: absolute; right: 2px; bottom: 2px;
+    color: var(--ink3); display:grid; place-items:center;
+  }
+
+  /* Zoom HUD --------------------------------------------------------- */
+  .kc .zoom {
+    position: absolute;
+    bottom: 22px;
+    right: 22px;
+    background: #1a1a1d;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 6px 10px;
+    display: flex; align-items:center; gap: 6px;
+    color: var(--ink2);
+    font-size: 12px;
+    letter-spacing: 0.01em;
+  }
+  .kc .zoom .caret { display:grid; place-items:center; color: var(--ink3); }
+
+  /* RIGHT PANEL (vertically descending properties) ------------------ */
+  .kc .right {
+    background: var(--rail);
+    border-left: 1px solid var(--line);
+    display: flex; flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* Tabs row — Design only + zoom on the right */
+  .kc .right .tabs {
+    display: flex; border-bottom: 1px solid var(--line2);
+    padding: 0 14px; height: 44px; align-items: stretch;
+    gap: 4px;
+    justify-content: space-between;
+  }
+  .kc .right .tabs .tabs-l { display: flex; gap: 4px; }
+  .kc .right .tabs .tab {
+    display:flex; align-items:center; padding: 0 4px;
+    font-size: 13px; color: var(--ink3);
+  }
+  .kc .right .tabs .tab.active {
+    color: var(--ink);
+    background: var(--fill);
+    padding: 4px 10px;
+    border-radius: 5px;
+    margin: 8px 0;
+    font-weight: 500;
+  }
+  .kc .right .tabs .zoom-r {
+    display:flex; align-items:center; gap: 4px;
+    color: var(--ink2); font-size: 12px;
+  }
+
+  /* Frame header — title + quick actions */
+  .kc .right .frame-head {
+    padding: 14px 14px 14px;
+    border-bottom: 1px solid var(--line2);
+    display:flex; align-items:center; justify-content: space-between;
+  }
+  .kc .right .frame-head .title {
+    display:flex; align-items:center; gap: 6px;
+    font-size: 15px; font-weight: 600; color: var(--ink);
+    letter-spacing: -0.005em;
+  }
+  .kc .right .frame-head .title .caret { color: var(--ink3); display:grid; place-items:center; }
+  .kc .right .frame-head .actions { display:flex; gap: 2px; color: var(--ink2); }
+  .kc .right .frame-head .actions .a {
+    width: 26px; height: 26px;
+    display: grid; place-items: center; border-radius: 5px;
+  }
+  .kc .right .frame-head .actions .a:hover { background: var(--fill); color: var(--ink); }
+
+  /* Body scroll */
+  .kc .right .pbody { flex: 1; overflow: auto; }
+
+  /* Each property GROUP is a vertically-stacked section */
+  .kc .right .group {
+    padding: 14px 14px 16px;
+    border-bottom: 1px solid var(--line2);
+  }
+  .kc .right .group .ghead {
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom: 12px;
+  }
+  .kc .right .group .ghead h6 {
+    margin: 0; font-size: 13px; font-weight: 600;
+    color: var(--ink); letter-spacing: -0.005em;
+  }
+  .kc .right .group .ghead .actions { display:flex; gap: 2px; color: var(--ink2); }
+  .kc .right .group .ghead .actions .a {
+    width: 24px; height: 24px;
+    display: grid; place-items: center; border-radius: 5px;
+  }
+  .kc .right .group .ghead .actions .a:hover { background: var(--fill); color: var(--ink); }
+
+  /* Sub-section (Alignment, Position, Rotation, Flow, Dimensions...) */
+  .kc .right .sub { margin-bottom: 12px; }
+  .kc .right .sub:last-child { margin-bottom: 0; }
+  .kc .right .sub .lbl-row {
+    color: var(--ink2);
+    font-size: 12px;
+    margin-bottom: 6px;
+    letter-spacing: -0.003em;
+  }
+
+  /* Inputs — Inter everywhere (no monospace) */
+  .kc .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .kc .row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+  .kc .row-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .kc .ipt {
+    background: var(--fill);
+    border: 1px solid transparent;
+    border-radius: 5px;
+    padding: 0 9px;
+    display: flex; align-items: center; gap: 6px;
+    height: 30px; font-size: 12.5px;
+  }
+  .kc .ipt:hover { border-color: var(--line); }
+  .kc .ipt .lbl { color: var(--ink3); font-size: 12px; font-weight: 500; }
+  .kc .ipt .val { color: var(--ink); font-size: 12.5px; flex: 1; }
+  .kc .ipt .unit { color: var(--ink3); font-size: 12px; }
+
+  /* Segmented controls */
+  .kc .seg {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    background: var(--fill);
+    border-radius: 5px;
+    padding: 2px;
+    gap: 1px;
+  }
+  .kc .seg .s {
+    height: 26px; display:grid; place-items:center;
+    color: var(--ink3); border-radius: 4px;
+  }
+  .kc .seg .s.active { background: var(--fill2); color: var(--ink); }
+  .kc .seg .s:hover { color: var(--ink2); }
+  .kc .seg .s.active:hover { color: var(--ink); }
+  .kc .seg .gap { width: 6px; }
+
+  /* Two segments side-by-side */
+  .kc .seg-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+
+  /* Swatch box */
+  .kc .swatch {
+    width: 18px; height: 18px; border-radius: 3px;
+    background: #fff; border: 1px solid var(--line); flex-shrink: 0;
+  }
+
+  /* Empty/collapsed groups (Stroke / Effects / Layout guide) */
+  .kc .empty-row {
+    color: var(--ink3); font-size: 12.5px;
+  }
+
+  /* Checkbox row */
+  .kc .checkbox-row {
+    display:flex; align-items:center; gap: 8px;
+    font-size: 12.5px; color: var(--ink2);
+  }
+  .kc .checkbox-row .cb {
+    width: 14px; height: 14px;
+    border: 1px solid var(--line);
+    border-radius: 3px; background: var(--bg);
+    display:grid; place-items:center;
+  }
+  .kc .checkbox-row.checked .cb {
+    background: var(--select); border-color: var(--select); color: #fff;
+  }
+
+  /* Fill row layout: swatch | hex | opacity | eye | minus */
+  .kc .fill-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto auto auto;
+    gap: 4px;
+    align-items: center;
+    background: var(--fill);
+    border-radius: 5px;
+    padding: 0 6px;
+    height: 30px;
+  }
+  .kc .fill-row .hex { color: var(--ink); font-size: 12.5px; padding-left: 4px; }
+  .kc .fill-row .pct { color: var(--ink); font-size: 12.5px; padding: 0 6px; border-left: 1px solid var(--line2); }
+  .kc .fill-row .ico { width: 20px; height: 20px; display:grid; place-items:center; color: var(--ink3); border-radius: 4px; }
+  .kc .fill-row .ico:hover { background: var(--fill2); color: var(--ink); }
+
+  /* Floating help button */
+  .kc .help-fab {
+    position: absolute; bottom: 14px; right: 14px;
+    width: 28px; height: 28px;
+    border-radius: 50%; background: var(--fill);
+    border: 1px solid var(--line);
+    display:grid; place-items:center;
+    color: var(--ink2); font-size: 13px;
+  }
+
+  /* ===================================================================
+     CHUNK-B1 EXTENSIONS — built on top of LIFT blocks above.
+     Uses :root tokens from kova-hifi.css + lifted .kc {} tokens.
+     Documented per §3.4 / §3.7 ban 14.
+     =================================================================== */
+
+  /* Popover positioning context — mirrors B1 file 13 (consistency across chunk-b1). */
+  .kc { position: relative; }
+
+  /* File-name dropdown trigger — anchors B1.11 popover (documented extension). */
+  .kc .topbar .file-trigger {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 4px 6px 4px 8px;
+    border-radius: 5px;
+    color: var(--ink); font-weight: 600;
+    letter-spacing: -0.005em; cursor: pointer;
+    transition: background 0.1s ease;
+  }
+  .kc .topbar .file-trigger:hover { background: var(--line2); }
+  .kc .topbar .file-trigger.open { background: var(--line2); }
+  .kc .topbar .file-trigger .chev { color: var(--ink3); display: grid; place-items: center; }
+  .kc .topbar .file-trigger .chev i.ic { width: 12px; height: 12px; }
+
+  /* Find overlay (B11) — floating bar fixed at top-of-canvas (Figma-pattern, founder 2026-04-25).
+     Floating elevation per design.md §1.6 (rgba flagged in DELIVERY_NOTES.md token proposal). */
+  .kc .find-overlay {
+    position: absolute;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    padding: 8px 10px;
+    display: flex; align-items: center; gap: 8px;
+    box-shadow: 0 8px 24px -6px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.04) inset;
+    z-index: 10;
+    font-size: 12.5px;
+    color: var(--ink);
+  }
+  .kc .find-overlay .search-wrap {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--fill);
+    border-radius: 5px;
+    padding: 0 8px;
+    height: 30px;
+    width: 240px;
+    border: 1px solid transparent;
+    transition: border-color 0.1s ease;
+  }
+  .kc .find-overlay .search-wrap:focus-within { border-color: var(--accent); }
+  .kc .find-overlay .search-wrap > i.ic {
+    width: 13px; height: 13px;
+    color: var(--ink3);
+    flex-shrink: 0;
+  }
+  .kc .find-overlay .search-wrap input {
+    background: transparent;
+    border: 0;
+    padding: 0;
+    flex: 1; min-width: 0;
+    font-family: inherit;
+    font-size: 12.5px;
+    color: var(--ink);
+    outline: none;
+  }
+  .kc .find-overlay .search-wrap input::placeholder { color: var(--ink3); }
+  .kc .find-overlay .meta {
+    font-size: 11.5px;
+    color: var(--ink3);
+    white-space: nowrap;
+  }
+  .kc .find-overlay .find-btn {
+    width: 26px; height: 26px;
+    display: grid; place-items: center;
+    border-radius: 5px;
+    color: var(--ink2);
+    cursor: pointer;
+    background: transparent;
+    border: 0;
+    font-family: inherit;
+  }
+  .kc .find-overlay .find-btn:hover { background: var(--line2); color: var(--ink); }
+  .kc .find-overlay .find-btn:disabled { color: var(--ink4); cursor: default; }
+  .kc .find-overlay .find-btn:disabled:hover { background: transparent; color: var(--ink4); }
+  .kc .find-overlay .find-btn i.ic { width: 14px; height: 14px; }
+  .kc .find-overlay .vsep {
+    width: 1px; height: 18px; background: var(--line2); margin: 0 2px;
+  }
+  .kc .find-match {
+    position: absolute;
+    border-radius: 2px;
+    background: var(--accent-soft);
+    pointer-events: none;
+  }
+  .kc .find-match.current {
+    outline: 2px solid var(--accent);
+    background: var(--select-soft);
+  }
+
+  /* Outer page chrome (uses :root tokens from kova-hifi.css) */
+  .scene-stack { display: flex; flex-direction: column; gap: 40px; }
+  .scene-cap-row {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 12px; padding: 12px 16px;
+    border-bottom: 1px solid var(--line); background: var(--rail);
+  }
+  .scene-cap-row .name { font-weight: 600; font-size: 12px; color: var(--ink); }
+  .scene-cap-row .id { font-size: 11px; color: var(--ink-3); }
+  .scene-cap-row .where { font-size: 11.5px; color: var(--ink-2); }
+  .scene-frame {
+    background: var(--page);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 0 rgba(255,255,255,0.02), 0 20px 60px -30px rgba(0,0,0,0.8);
+  }
+  .scene-frame .kc { height: 720px; }
+
+  .scene-annot {
+    padding: 12px 16px;
+    border-top: 1px dashed var(--line);
+    background: var(--rail);
+    font-size: 12px; color: var(--ink-2);
+  }
+  .scene-annot ul { margin: 0; padding-left: 18px; }
+  .scene-annot li { margin-bottom: 3px; }
+  .scene-annot strong { color: var(--ink); font-weight: 600; }
+</style>
+</head>
+<body>
+
+<header class="page-head">
+  <div class="eyebrow">HI-FI · BATCH B · CHUNK B1 · FIND OVERLAY</div>
+  <h1>Kova — 14 · Find overlay</h1>
+  <p>The B11 Find overlay (<code>⌘F</code>) is a floating bar fixed at top-of-canvas — Figma-pattern per founder 2026-04-25. Searches TEXT content, layer names, frame names, and page names simultaneously. Highlights matches inline; current match gets a brighter accent ring.</p>
+  <div class="meta">4 scenes · 1440 design width · dark mode · inherits kova-hifi.css · canvas chrome from Final.html</div>
+  <div class="legend">
+    <span class="sw"><i style="background:var(--ink)"></i>primary text</span>
+    <span class="sw"><i style="background:var(--ink-2)"></i>kbd glyph / meta</span>
+    <span class="sw"><i style="background:var(--accent)"></i>current match · accent</span>
+  </div>
+</header>
+
+<!-- ===================================================================
+     14.1 — Find overlay open with empty input
+     =================================================================== -->
+<section class="block">
+  <header>
+    <div class="tag">14.1 · Find overlay — empty input</div>
+    <h2>Find overlay opened, empty input (placeholder visible)</h2>
+    <p class="intro">User just hit <code>⌘F</code>. Empty input shows placeholder "Find on canvas". Match counter and prev/next buttons are disabled. Close button (<code>x</code>) dismisses — also bound to Esc.</p>
+  </header>
+
+  <div class="scene-frame">
+    <div class="scene-cap-row">
+      <div class="name">B11 · Find overlay opened (empty)</div>
+      <div class="where">canvas top-center · ⌘F triggered</div>
+      <div class="id">14.1</div>
+    </div>
+    <div class="kc">
+      <div class="topbar">
+        <div class="l">
+          <div class="logo">K</div>
+          <div class="file">
+            <span class="crumb-brand"><span class="b"></span>Wildgrove</span>
+            <span class="sep">/</span>
+            <span class="file-trigger"><b>Spring Drop · 04</b><span class="chev"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></span>
+          </div>
+        </div>
+        <div class="r">
+          <div class="icon-btn" title="Notifications"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/></svg></div>
+          <div class="icon-btn" title="Present"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
+          <div class="icon-btn" title="Comments"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+          <div class="avatar">JM</div>
+        </div>
+      </div>
+
+      <div class="body">
+        <div class="left">
+          <div class="file-row">
+            <div class="file-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+            <div><div class="name">Spring Drop · 04</div><div class="meta">3 emails · edited 2m ago</div></div>
+          </div>
+          <div class="sec"><h5>Pages</h5><span class="add"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span></div>
+          <div class="pages"><div class="page-row active"><span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg></span><span>Spring Drop · 04</span></div></div>
+          <div class="sec"><h5>Layers</h5></div>
+          <div class="layers">
+            <div class="layer"><span class="caret"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></span><span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg></span><span class="name">Teaser #1</span><span class="vis"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span></div>
+            <div class="layer indent-1"><span class="ic"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg></span><span class="name">Hero image</span><span class="vis"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span></div>
+            <div class="layer indent-1"><span class="ic"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h14v3M9 4v16M7 20h10"/></svg></span><span class="name">Headline</span><span class="vis"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span></div>
+            <div class="layer indent-1"><span class="ic"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/></svg></span><span class="name">CTA · Shop the drop</span><span class="vis"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span></div>
+            <div class="layer"><span class="caret"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></span><span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg></span><span class="name">Teaser #2 (A/B)</span><span class="vis"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span></div>
+            <div class="layer"><span class="caret"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></span><span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg></span><span class="name">Reminder · 48h</span><span class="vis"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span></div>
+          </div>
+        </div>
+
+        <div class="center">
+          <div class="canvas-grid"></div>
+          <div class="frames-row">
+            <div class="frame"><div class="frame-label">Teaser #1</div></div>
+            <div class="frame"><div class="frame-label">Teaser #2 (A/B)</div></div>
+          </div>
+
+          <div class="find-overlay">
+            <div class="search-wrap">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              <input type="text" placeholder="Find on canvas" />
+            </div>
+            <button class="find-btn" disabled title="Previous (⇧⌘D)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg></button>
+            <button class="find-btn" disabled title="Next (⇧⌘F)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button>
+            <span class="vsep"></span>
+            <button class="find-btn" title="Close (Esc)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+          </div>
+
+          <div class="toolbar">
+            <div class="tool active" title="Move (V)"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 2l7 18 2-7 7-2z"/></svg><span class="caret-mini"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div>
+            <div class="tool" title="Frame (F)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg><span class="caret-mini"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div>
+            <div class="tool" title="Rectangle (R)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="2"/></svg><span class="caret-mini"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div>
+            <div class="tool" title="Ellipse (O)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/></svg></div>
+            <div class="tool" title="Pen (P)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.5 7.5"/></svg><span class="caret-mini"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div>
+            <div class="tool" title="Text (T)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h14v3M9 4v16M7 20h10"/></svg></div>
+            <div class="tool" title="Comment (C)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+            <div class="divider"></div>
+            <div class="tool ai" title="Ask Kova"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/><path d="M19 14l.7 2.1L22 17l-2.3.9L19 20l-.7-2.1L16 17l2.3-.9L19 14z"/></svg></div>
+            <div class="tool" title="Components"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>
+          </div>
+          <div class="zoom">100% <span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div>
+        </div>
+
+        <div class="right">
+          <div class="tabs"><div class="tabs-l"><div class="tab active">Design</div></div><div class="zoom-r">292% <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div></div>
+          <div class="frame-head"><div class="title">Frame <span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div></div>
+          <div class="pbody">
+            <div class="group"><div class="ghead"><h6>Position</h6></div>
+              <div class="row-2"><div class="ipt"><span class="lbl">X</span><span class="val">856</span></div><div class="ipt"><span class="lbl">Y</span><span class="val">5166</span></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="scene-annot">
+      <ul>
+        <li><strong>Position.</strong> Fixed at top-of-canvas: <code>top: 16px; left: 50%; transform: translateX(-50%)</code> (per founder 2026-04-25).</li>
+        <li><strong>Disabled controls.</strong> Prev/next greyed (<code>--ink-4</code>) and not interactive while query is empty. Close stays active.</li>
+        <li><strong>Esc dismissal.</strong> Bound globally — same as canvas right-click escape pattern in 09.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===================================================================
+     14.2 — Find overlay populated (1 of 3) with current-match highlight
+     =================================================================== -->
+<section class="block">
+  <header>
+    <div class="tag">14.2 · Find overlay — populated, 1 of 3</div>
+    <h2>Find overlay populated · "button" · 3 results, current match ringed</h2>
+    <p class="intro">Query "button" matches 3 nodes (TEXT content + layer name). Counter shows "1 of 3"; prev/next active. Current match gets a 2px <code>--accent</code> ring; the other two render with a softer <code>--accent-soft</code> tint.</p>
+  </header>
+
+  <div class="scene-frame">
+    <div class="scene-cap-row">
+      <div class="name">B11 · Find overlay populated</div>
+      <div class="where">canvas · 3 matches, current ringed</div>
+      <div class="id">14.2</div>
+    </div>
+    <div class="kc">
+      <div class="topbar">
+        <div class="l">
+          <div class="logo">K</div>
+          <div class="file">
+            <span class="crumb-brand"><span class="b"></span>Wildgrove</span>
+            <span class="sep">/</span>
+            <span class="file-trigger"><b>Spring Drop · 04</b><span class="chev"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></span>
+          </div>
+        </div>
+        <div class="r">
+          <div class="icon-btn" title="Notifications"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/></svg></div>
+          <div class="icon-btn" title="Present"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
+          <div class="icon-btn" title="Comments"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+          <div class="avatar">JM</div>
+        </div>
+      </div>
+
+      <div class="body">
+        <div class="left">
+          <div class="file-row">
+            <div class="file-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+            <div><div class="name">Spring Drop · 04</div><div class="meta">3 emails · edited 2m ago</div></div>
+          </div>
+          <div class="sec"><h5>Pages</h5><span class="add"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span></div>
+          <div class="pages"><div class="page-row active"><span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg></span><span>Spring Drop · 04</span></div></div>
+          <div class="sec"><h5>Layers</h5></div>
+          <div class="layers">
+            <div class="layer"><span class="caret"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></span><span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg></span><span class="name">Teaser #1</span><span class="vis"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span></div>
+            <div class="layer indent-1"><span class="ic"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg></span><span class="name">Hero image</span><span class="vis"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span></div>
+            <div class="layer indent-1"><span class="ic"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h14v3M9 4v16M7 20h10"/></svg></span><span class="name">Headline</span><span class="vis"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span></div>
+            <div class="layer indent-1 selected"><span class="ic"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/></svg></span><span class="name">CTA button · Shop</span><span class="vis"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span></div>
+            <div class="layer"><span class="caret"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></span><span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg></span><span class="name">Teaser #2 (A/B)</span><span class="vis"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span></div>
+            <div class="layer"><span class="caret"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></span><span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg></span><span class="name">Reminder · 48h</span><span class="vis"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span></div>
+          </div>
+        </div>
+
+        <div class="center">
+          <div class="canvas-grid"></div>
+          <div class="frames-row">
+            <div class="frame">
+              <div class="frame-label">Teaser #1</div>
+              <div class="find-match current" style="left:120px; top:540px; width:340px; height:62px;"></div>
+            </div>
+            <div class="frame">
+              <div class="frame-label">Teaser #2 (A/B)</div>
+              <div class="find-match" style="left:140px; top:560px; width:300px; height:60px;"></div>
+            </div>
+          </div>
+
+          <div class="find-overlay">
+            <div class="search-wrap">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              <input type="text" value="button" />
+            </div>
+            <span class="meta">1 of 3</span>
+            <button class="find-btn" title="Previous (⇧⌘D)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg></button>
+            <button class="find-btn" title="Next (⇧⌘F)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button>
+            <span class="vsep"></span>
+            <span class="meta">3 results</span>
+            <span class="vsep"></span>
+            <button class="find-btn" title="Close (Esc)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+          </div>
+
+          <div class="toolbar">
+            <div class="tool active" title="Move (V)"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 2l7 18 2-7 7-2z"/></svg><span class="caret-mini"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div>
+            <div class="tool" title="Frame (F)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg><span class="caret-mini"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div>
+            <div class="tool" title="Rectangle (R)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="2"/></svg><span class="caret-mini"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div>
+            <div class="tool" title="Ellipse (O)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/></svg></div>
+            <div class="tool" title="Pen (P)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.5 7.5"/></svg><span class="caret-mini"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div>
+            <div class="tool" title="Text (T)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h14v3M9 4v16M7 20h10"/></svg></div>
+            <div class="tool" title="Comment (C)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+            <div class="divider"></div>
+            <div class="tool ai" title="Ask Kova"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/><path d="M19 14l.7 2.1L22 17l-2.3.9L19 20l-.7-2.1L16 17l2.3-.9L19 14z"/></svg></div>
+            <div class="tool" title="Components"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>
+          </div>
+          <div class="zoom">100% <span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div>
+        </div>
+
+        <div class="right">
+          <div class="tabs"><div class="tabs-l"><div class="tab active">Design</div></div><div class="zoom-r">292% <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div></div>
+          <div class="frame-head"><div class="title">Frame <span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div></div>
+          <div class="pbody">
+            <div class="group"><div class="ghead"><h6>Position</h6></div>
+              <div class="row-2"><div class="ipt"><span class="lbl">X</span><span class="val">856</span></div><div class="ipt"><span class="lbl">Y</span><span class="val">5166</span></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="scene-annot">
+      <ul>
+        <li><strong>Search scope.</strong> Per founder 2026-04-25 — Figma-exact. Matches TEXT content + layer names + frame names + page names simultaneously. No scope toggle in MVP.</li>
+        <li><strong>Match visual.</strong> Current match: 2px outline <code>--accent</code> + <code>--select-soft</code> fill. Other matches: <code>--accent-soft</code> fill, no outline.</li>
+        <li><strong>Layer panel echo.</strong> Selected layer "CTA button · Shop" shows <code>--select-soft</code> background — Find selection drives layer-tree selection.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===================================================================
+     14.3 — Find overlay populated · "ignite" · No results
+     =================================================================== -->
+<section class="block">
+  <header>
+    <div class="tag">14.3 · Find overlay — no results</div>
+    <h2>Find overlay populated · "ignite" · No results</h2>
+    <p class="intro">Query has zero matches. Counter hides; "No results" replaces the count text. Prev/next disabled. Close still active.</p>
+  </header>
+
+  <div class="scene-frame">
+    <div class="scene-cap-row">
+      <div class="name">B11 · Find overlay no-match</div>
+      <div class="where">canvas · 0 matches</div>
+      <div class="id">14.3</div>
+    </div>
+    <div class="kc">
+      <div class="topbar">
+        <div class="l">
+          <div class="logo">K</div>
+          <div class="file">
+            <span class="crumb-brand"><span class="b"></span>Wildgrove</span>
+            <span class="sep">/</span>
+            <span class="file-trigger"><b>Spring Drop · 04</b><span class="chev"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></span>
+          </div>
+        </div>
+        <div class="r">
+          <div class="icon-btn" title="Notifications"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/></svg></div>
+          <div class="icon-btn" title="Present"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
+          <div class="icon-btn" title="Comments"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+          <div class="avatar">JM</div>
+        </div>
+      </div>
+
+      <div class="body">
+        <div class="left">
+          <div class="file-row">
+            <div class="file-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+            <div><div class="name">Spring Drop · 04</div><div class="meta">3 emails · edited 2m ago</div></div>
+          </div>
+          <div class="sec"><h5>Pages</h5><span class="add"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span></div>
+          <div class="pages"><div class="page-row active"><span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg></span><span>Spring Drop · 04</span></div></div>
+          <div class="sec"><h5>Layers</h5></div>
+          <div class="layers">
+            <div class="layer"><span class="caret"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></span><span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg></span><span class="name">Teaser #1</span><span class="vis"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span></div>
+            <div class="layer indent-1"><span class="ic"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg></span><span class="name">Hero image</span><span class="vis"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span></div>
+            <div class="layer"><span class="caret"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></span><span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg></span><span class="name">Teaser #2 (A/B)</span><span class="vis"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span></div>
+          </div>
+        </div>
+
+        <div class="center">
+          <div class="canvas-grid"></div>
+          <div class="frames-row">
+            <div class="frame"><div class="frame-label">Teaser #1</div></div>
+            <div class="frame"><div class="frame-label">Teaser #2 (A/B)</div></div>
+          </div>
+
+          <div class="find-overlay">
+            <div class="search-wrap">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              <input type="text" value="ignite" />
+            </div>
+            <span class="meta">No results</span>
+            <button class="find-btn" disabled title="Previous (⇧⌘D)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg></button>
+            <button class="find-btn" disabled title="Next (⇧⌘F)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button>
+            <span class="vsep"></span>
+            <button class="find-btn" title="Close (Esc)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+          </div>
+
+          <div class="toolbar">
+            <div class="tool active" title="Move (V)"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 2l7 18 2-7 7-2z"/></svg><span class="caret-mini"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div>
+            <div class="tool" title="Frame (F)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg><span class="caret-mini"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div>
+            <div class="tool" title="Rectangle (R)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="2"/></svg><span class="caret-mini"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div>
+            <div class="tool" title="Ellipse (O)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/></svg></div>
+            <div class="tool" title="Pen (P)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.5 7.5"/></svg><span class="caret-mini"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div>
+            <div class="tool" title="Text (T)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h14v3M9 4v16M7 20h10"/></svg></div>
+            <div class="tool" title="Comment (C)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+            <div class="divider"></div>
+            <div class="tool ai" title="Ask Kova"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/><path d="M19 14l.7 2.1L22 17l-2.3.9L19 20l-.7-2.1L16 17l2.3-.9L19 14z"/></svg></div>
+            <div class="tool" title="Components"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>
+          </div>
+          <div class="zoom">100% <span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div>
+        </div>
+
+        <div class="right">
+          <div class="tabs"><div class="tabs-l"><div class="tab active">Design</div></div><div class="zoom-r">292% <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div></div>
+          <div class="frame-head"><div class="title">Frame <span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div></div>
+          <div class="pbody">
+            <div class="group"><div class="ghead"><h6>Position</h6></div>
+              <div class="row-2"><div class="ipt"><span class="lbl">X</span><span class="val">856</span></div><div class="ipt"><span class="lbl">Y</span><span class="val">5166</span></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="scene-annot">
+      <ul>
+        <li><strong>Empty-state copy.</strong> "No results" — short, neutral. Matches Figma's wording.</li>
+        <li><strong>No toast.</strong> Empty result is shown inline in the bar; a toast would be redundant noise.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ===================================================================
+     14.4 — Find overlay closed (canvas chrome reference)
+     =================================================================== -->
+<section class="block">
+  <header>
+    <div class="tag">14.4 · Find overlay — closed</div>
+    <h2>Canvas — Find overlay dismissed (context comparison)</h2>
+    <p class="intro">Same canvas chrome with the overlay dismissed. Used for visual comparison against 14.1–14.3 to verify the overlay only adds 16px of vertical chrome.</p>
+  </header>
+
+  <div class="scene-frame">
+    <div class="scene-cap-row">
+      <div class="name">B11 · Find overlay closed</div>
+      <div class="where">canvas · idle</div>
+      <div class="id">14.4</div>
+    </div>
+    <div class="kc">
+      <div class="topbar">
+        <div class="l">
+          <div class="logo">K</div>
+          <div class="file">
+            <span class="crumb-brand"><span class="b"></span>Wildgrove</span>
+            <span class="sep">/</span>
+            <span class="file-trigger"><b>Spring Drop · 04</b><span class="chev"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></span>
+          </div>
+        </div>
+        <div class="r">
+          <div class="icon-btn" title="Notifications"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/></svg></div>
+          <div class="icon-btn" title="Present"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
+          <div class="icon-btn" title="Comments"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+          <div class="avatar">JM</div>
+        </div>
+      </div>
+
+      <div class="body">
+        <div class="left">
+          <div class="file-row">
+            <div class="file-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+            <div><div class="name">Spring Drop · 04</div><div class="meta">3 emails · edited 2m ago</div></div>
+          </div>
+          <div class="sec"><h5>Pages</h5><span class="add"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span></div>
+          <div class="pages"><div class="page-row active"><span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg></span><span>Spring Drop · 04</span></div></div>
+          <div class="sec"><h5>Layers</h5></div>
+          <div class="layers">
+            <div class="layer"><span class="caret"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></span><span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg></span><span class="name">Teaser #1</span><span class="vis"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span></div>
+            <div class="layer indent-1"><span class="ic"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg></span><span class="name">Hero image</span><span class="vis"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span></div>
+            <div class="layer indent-1"><span class="ic"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h14v3M9 4v16M7 20h10"/></svg></span><span class="name">Headline</span><span class="vis"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span></div>
+            <div class="layer indent-1"><span class="ic"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/></svg></span><span class="name">CTA button · Shop</span><span class="vis"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span></div>
+            <div class="layer"><span class="caret"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></span><span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg></span><span class="name">Teaser #2 (A/B)</span><span class="vis"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span></div>
+          </div>
+        </div>
+
+        <div class="center">
+          <div class="canvas-grid"></div>
+          <div class="frames-row">
+            <div class="frame"><div class="frame-label">Teaser #1</div></div>
+            <div class="frame"><div class="frame-label">Teaser #2 (A/B)</div></div>
+          </div>
+
+          <div class="toolbar">
+            <div class="tool active" title="Move (V)"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 2l7 18 2-7 7-2z"/></svg><span class="caret-mini"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div>
+            <div class="tool" title="Frame (F)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg><span class="caret-mini"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div>
+            <div class="tool" title="Rectangle (R)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="2"/></svg><span class="caret-mini"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div>
+            <div class="tool" title="Ellipse (O)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/></svg></div>
+            <div class="tool" title="Pen (P)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.5 7.5"/></svg><span class="caret-mini"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div>
+            <div class="tool" title="Text (T)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h14v3M9 4v16M7 20h10"/></svg></div>
+            <div class="tool" title="Comment (C)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+            <div class="divider"></div>
+            <div class="tool ai" title="Ask Kova"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/><path d="M19 14l.7 2.1L22 17l-2.3.9L19 20l-.7-2.1L16 17l2.3-.9L19 14z"/></svg></div>
+            <div class="tool" title="Components"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>
+          </div>
+          <div class="zoom">100% <span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div>
+        </div>
+
+        <div class="right">
+          <div class="tabs"><div class="tabs-l"><div class="tab active">Design</div></div><div class="zoom-r">292% <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div></div>
+          <div class="frame-head"><div class="title">Frame <span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div></div>
+          <div class="pbody">
+            <div class="group"><div class="ghead"><h6>Position</h6></div>
+              <div class="row-2"><div class="ipt"><span class="lbl">X</span><span class="val">856</span></div><div class="ipt"><span class="lbl">Y</span><span class="val">5166</span></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="scene-annot">
+      <ul>
+        <li><strong>Reference frame.</strong> No overlay. Same canvas chrome footprint as 14.1–14.3.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<script>lucide.createIcons();</script>
+</body>
+</html>

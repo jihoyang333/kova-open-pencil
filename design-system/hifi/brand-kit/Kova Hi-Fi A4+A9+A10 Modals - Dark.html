@@ -1,0 +1,1182 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<title>Kova — Hi-fi · A4 Brand CRUD + A9 GDPR + A10 Reconnect · Dark</title>
+<meta name="viewport" content="width=1440" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+<link rel="stylesheet" href="../../design-system/kova-hifi.css" />
+<script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
+<style>
+/* ============================================================
+   FILE 5 — A4 Brand CRUD modals · A9 GDPR flow · A10 Integration reconnect
+
+   Inherits from File 2 (Popovers + Dialogs):
+     · .dlg / .dlg-head / .dlg-body / .dlg-foot shell
+     · .conf-card pattern (visual reference card variant)
+     · .fld form fields
+     · .btn.danger
+     · .modal-backdrop
+   These are RE-DECLARED here only because each html file is self-contained;
+   the markup + classnames are byte-identical to File 2's. No new tokens.
+   ============================================================ */
+
+  body { background: var(--bg); }
+
+  /* Section heads — locked Inter 16/600/sentence-case */
+  section.block .s-section h2 {
+    margin: 0 0 2px; font-size: 16px;
+    letter-spacing: -0.005em;
+    color: var(--ink); font-weight: 600;
+    font-family: 'Inter', system-ui, sans-serif;
+    text-transform: none;
+  }
+
+  /* ---------- Backdrop / dim ---------- */
+  .modal-backdrop {
+    position: absolute; inset: 0;
+    background: rgba(26,26,29,0.72);
+    backdrop-filter: blur(2px);
+    z-index: 5;
+  }
+
+  /* ---------- Generic dialog shell (byte-identical to File 2) ---------- */
+  .dlg {
+    position: absolute; left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--page); border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: 0 24px 80px -20px rgba(0,0,0,0.7), 0 1px 0 rgba(255,255,255,0.03) inset;
+    z-index: 10;
+    display: flex; flex-direction: column;
+    min-width: 360px; max-width: 92%;
+  }
+  .dlg.sm { width: 460px; }
+  .dlg.md { width: 540px; }
+  .dlg.lg { width: 880px; max-height: 78%; }
+  .dlg .dlg-head {
+    padding: 18px 22px 12px;
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
+  }
+  .dlg .dlg-head h3 {
+    margin: 0; font-size: 16px; font-weight: 600; letter-spacing: -0.005em; color: var(--ink);
+  }
+  .dlg .dlg-head .sub {
+    margin: 4px 0 0; font-size: 12.5px; color: var(--ink-3); line-height: 1.5;
+  }
+  .dlg .dlg-head .x {
+    width: 26px; height: 26px; border-radius: 5px;
+    display: grid; place-items: center; color: var(--ink-3); cursor: pointer;
+    flex-shrink: 0;
+  }
+  .dlg .dlg-head .x:hover { background: var(--line-2); color: var(--ink); }
+  .dlg .dlg-body {
+    padding: 4px 22px 18px;
+    display: flex; flex-direction: column; gap: 14px; min-height: 0;
+  }
+  .dlg .dlg-foot {
+    padding: 14px 22px;
+    border-top: 1px solid var(--line-2);
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    background: var(--rail);
+    border-bottom-left-radius: 10px; border-bottom-right-radius: 10px;
+  }
+  .dlg .dlg-foot .l { color: var(--ink-3); font-size: 11.5px; display: flex; align-items: center; gap: 6px; }
+  .dlg .dlg-foot .r { display: flex; gap: 8px; }
+
+  /* ---------- Form fields (inherit File 2) ---------- */
+  .fld { display: flex; flex-direction: column; gap: 6px; }
+  .fld > label {
+    font-size: 12px; font-weight: 500; color: var(--ink); letter-spacing: -0.003em;
+  }
+  .fld > label .opt { color: var(--ink-3); font-weight: 400; margin-left: 6px; font-size: 11px; }
+  .fld .help { color: var(--ink-3); font-size: 11.5px; }
+  .fld input.input, .fld textarea.input {
+    background: var(--page); border: 1px solid var(--line); color: var(--ink);
+    border-radius: 6px; padding: 8px 11px; font: inherit; font-size: 13px;
+    transition: border-color .1s ease, box-shadow .1s ease;
+    width: 100%;
+  }
+  .fld textarea.input { resize: vertical; min-height: 76px; line-height: 1.5; }
+  .fld input.input:focus, .fld textarea.input:focus {
+    outline: none; border-color: var(--ink-2);
+    box-shadow: 0 0 0 3px rgba(237,237,234,0.05);
+  }
+  .fld input.input.confirm-typed { font-size: 13px;
+    letter-spacing: 0.04em;
+  }
+  .fld input.input.confirm-typed.ok {
+    border-color: var(--warn); box-shadow: 0 0 0 3px rgba(232,122,74,0.10);
+  }
+  .fld input.input.confirm-typed.partial {
+    border-color: var(--ink-3);
+  }
+
+  /* ---------- Destructive button ---------- */
+  .btn.danger {
+    background: var(--warn); color: #fff; border-color: var(--warn);
+  }
+  .btn.danger:hover { background: #d36a3a; border-color: #d36a3a; }
+  .btn.danger[disabled],
+  .btn.danger.disabled {
+    background: var(--fill); color: var(--ink-3); border-color: var(--line-2);
+    cursor: not-allowed;
+  }
+
+  /* ---------- Topbar avatar (anchor for chrome) ---------- */
+  .top-avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--warn); color: #fff;
+    display: grid; place-items: center;
+    font-weight: 600; font-size: 10.5px;
+    cursor: pointer; border: 2px solid transparent;
+  }
+
+  /* ---------- A4 specifics ---------- */
+  /* Archive explainer block — quiet info card inside dialog body */
+  .info-card {
+    border: 1px solid var(--line-2);
+    background: var(--rail);
+    border-radius: 7px;
+    padding: 12px 14px;
+    display: flex; gap: 11px; align-items: flex-start;
+    font-size: 12.5px; color: var(--ink-2); line-height: 1.55;
+  }
+  .info-card .ic {
+    flex-shrink: 0; width: 28px; height: 28px;
+    background: var(--fill); border-radius: 6px;
+    display: grid; place-items: center; color: var(--ink-2);
+  }
+  .info-card b { color: var(--ink); font-weight: 600; display: block; margin-bottom: 2px; font-size: 12.5px; }
+  .info-card .row {
+    display: flex; align-items: center; gap: 6px;
+    color: var(--ink-2); font-size: 12px; padding: 2px 0;
+  }
+  .info-card .row i.dot {
+    width: 4px; height: 4px; border-radius: 50%;
+    background: var(--ink-3); flex-shrink: 0;
+    display: inline-block;
+  }
+  .info-card .stack { display: flex; flex-direction: column; gap: 1px; margin-top: 2px; }
+
+  /* Brand-summary pill row in delete dialog */
+  .brand-summary {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    background: var(--rail);
+  }
+  .brand-summary .logo {
+    width: 28px; height: 28px; border-radius: 6px;
+    background: #ededea; color: #0d0d0c;
+    display: grid; place-items: center;
+    font-weight: 700; font-size: 12px; letter-spacing: -0.02em;
+    flex-shrink: 0;
+  }
+  .brand-summary .nm { font-weight: 600; font-size: 13px; color: var(--ink); letter-spacing: -0.005em; }
+  .brand-summary .meta { font-size: 11px; color: var(--ink-3); margin-top: 1px; }
+  .brand-summary .right { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; }
+
+  /* Loss-list (what gets deleted) */
+  .loss-list {
+    border: 1px solid var(--warn-edge);
+    background: var(--warn-soft);
+    border-radius: 7px;
+    padding: 11px 13px;
+    display: flex; flex-direction: column; gap: 5px;
+  }
+  .loss-list .hdr {
+    font-size: 11px; letter-spacing: 0.1em; color: var(--warn); font-weight: 600; margin-bottom: 4px;
+  }
+  .loss-list .ll {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12.5px; color: var(--ink);
+  }
+  .loss-list .ll .ic { width: 13px; height: 13px; color: var(--warn); }
+  .loss-list .ll .qty { margin-left: auto; font-size: 11px; color: var(--ink-2); }
+
+  /* ---------- A9.3 Full-page deletion landing ---------- */
+  .deleted-page {
+    position: absolute; inset: 0;
+    background: var(--bg);
+    display: flex; flex-direction: column;
+  }
+  .deleted-page .topstrip {
+    height: 52px;
+    border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 28px;
+    background: var(--bg);
+  }
+  .deleted-page .topstrip .brand {
+    display: flex; align-items: center; gap: 8px;
+    font-weight: 600; font-size: 14px;
+    color: var(--ink); letter-spacing: -0.005em;
+  }
+  .deleted-page .topstrip .brand .mark {
+    width: 22px; height: 22px; border-radius: 5px;
+    background: #ededea; color: #0d0d0c;
+    display: grid; place-items: center;
+    font-weight: 700; font-size: 11px;
+  }
+  .deleted-page .topstrip .right {
+    display: flex; align-items: center; gap: 12px;
+    color: var(--ink-3); font-size: 11.5px; letter-spacing: 0.04em;
+  }
+  .deleted-page .body {
+    flex: 1; display: grid; place-items: center;
+    padding: 40px 24px;
+  }
+  .deleted-card {
+    width: 540px; max-width: 100%;
+    display: flex; flex-direction: column; gap: 22px;
+    text-align: left;
+  }
+  .deleted-card .eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 4px 10px;
+    background: var(--warn-soft);
+    border: 1px solid var(--warn-edge);
+    border-radius: 999px; font-size: 10.5px; letter-spacing: 0.1em; color: var(--warn); font-weight: 600;
+    align-self: flex-start;
+  }
+  .deleted-card h1 {
+    margin: 0; font-size: 28px; font-weight: 600;
+    letter-spacing: -0.015em; line-height: 1.2; color: var(--ink);
+  }
+  .deleted-card h1 .date {
+    color: var(--warn); font-variant-numeric: tabular-nums;
+  }
+  .deleted-card p {
+    margin: 0; font-size: 14px; color: var(--ink-2); line-height: 1.55;
+    max-width: 480px;
+  }
+  .deleted-card .countdown {
+    display: flex; gap: 12px; padding: 14px 16px;
+    background: var(--rail); border: 1px solid var(--line);
+    border-radius: 8px; align-items: center;
+  }
+  .deleted-card .countdown .num { font-size: 24px; color: var(--ink); font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
+  .deleted-card .countdown .lbl {
+    font-size: 11.5px; color: var(--ink-3);
+    line-height: 1.3;
+  }
+  .deleted-card .countdown .lbl b { color: var(--ink); font-weight: 600; display: block; }
+  .deleted-card .countdown .div {
+    width: 1px; height: 28px; background: var(--line);
+  }
+  .deleted-card .acts {
+    display: flex; gap: 10px; align-items: center; margin-top: 4px;
+  }
+  .deleted-card .acts .btn { padding: 9px 18px; font-size: 13px; }
+  .deleted-card .foot {
+    margin-top: 10px;
+    padding-top: 18px; border-top: 1px solid var(--line-2);
+    display: flex; align-items: center; gap: 10px;
+    color: var(--ink-3); font-size: 11.5px;
+  }
+  .deleted-card .foot .ic { width: 13px; height: 13px; color: var(--ink-3); }
+
+  /* ---------- A10 Banner ---------- */
+  .reconnect-banner {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 16px;
+    background: var(--warn-soft);
+    border-bottom: 1px solid var(--warn-edge);
+    color: var(--ink);
+    font-size: 12.5px;
+  }
+  .reconnect-banner .ic-warn {
+    width: 26px; height: 26px; border-radius: 5px;
+    background: rgba(232,122,74,0.18); color: var(--warn);
+    display: grid; place-items: center; flex-shrink: 0;
+  }
+  .reconnect-banner .copy { flex: 1; line-height: 1.45; }
+  .reconnect-banner .copy b { color: var(--ink); font-weight: 600; }
+  .reconnect-banner .copy span { color: var(--ink-2); }
+  .reconnect-banner .meta { font-size: 10.5px;
+    color: var(--warn); letter-spacing: 0.04em;
+  }
+  .reconnect-banner .actions { display: flex; gap: 8px; align-items: center; }
+  .reconnect-banner .dismiss {
+    width: 24px; height: 24px; border-radius: 4px;
+    display: grid; place-items: center;
+    color: var(--ink-3); cursor: pointer;
+  }
+  .reconnect-banner .dismiss:hover { background: var(--line-2); color: var(--ink); }
+
+  /* ---------- A10 Reconnect modal — diagnostic strip ---------- */
+  .diag-strip {
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    background: var(--rail);
+    padding: 0;
+    display: flex; flex-direction: column;
+  }
+  .diag-strip .row {
+    display: grid; grid-template-columns: 28px 1fr auto;
+    align-items: center; gap: 10px;
+    padding: 10px 12px;
+    border-top: 1px solid var(--line-2);
+  }
+  .diag-strip .row:first-child { border-top: 0; }
+  .diag-strip .row .ic-st {
+    width: 22px; height: 22px; border-radius: 5px;
+    display: grid; place-items: center;
+    background: var(--fill); color: var(--ink-2);
+  }
+  .diag-strip .row .ic-st.ok { background: var(--ok-soft); color: var(--ok); }
+  .diag-strip .row .ic-st.bad { background: var(--warn-soft); color: var(--warn); border: 1px solid var(--warn-edge); }
+  .diag-strip .row .lbl {
+    font-size: 12.5px; color: var(--ink); font-weight: 500;
+  }
+  .diag-strip .row .lbl .sub {
+    display: block; color: var(--ink-3); font-size: 11px;
+    font-weight: 400; margin-top: 1px; letter-spacing: 0.02em;
+  }
+  .diag-strip .row .meta { font-size: 10.5px;
+    color: var(--ink-3); letter-spacing: 0.04em; text-align: right;
+  }
+
+  /* ---------- Banner-trigger anchor pin ---------- */
+  .anchor-pin {
+    position: absolute; z-index: 4; pointer-events: none;
+  }
+  .anchor-pin .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    border: 2px solid var(--accent); background: var(--page);
+  }
+  .anchor-pin .lbl {
+    position: absolute; left: 14px; top: -2px;
+    background: var(--page); color: var(--ink-2);
+    border: 1px solid var(--line); border-radius: 4px;
+    padding: 2px 6px; font-size: 10.5px; letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+
+  /* Visual-reference grid (3 modals shown side-by-side, no chrome) */
+  .ref-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+    padding: 56px 64px;
+  }
+  .ref-card {
+    border: 1px solid var(--line); border-radius: 10px;
+    background: var(--page);
+    display: flex; flex-direction: column; overflow: hidden;
+    box-shadow: 0 1px 0 rgba(255,255,255,0.02), 0 12px 40px -20px rgba(0,0,0,0.4);
+  }
+  .ref-card .ref-cap {
+    padding: 10px 14px; border-bottom: 1px solid var(--line-2);
+    background: var(--rail); display: flex; justify-content: space-between; gap: 8px;
+    font-size: 11.5px;
+  }
+  .ref-card .ref-cap b { font-weight: 600; color: var(--ink); }
+  .ref-card .ref-cap span { font-size: 10px; color: var(--ink-3); }
+
+  /* Inside ref-card, dialogs are static (no positioning) */
+  .ref-card .dlg-static {
+    background: var(--page);
+    display: flex; flex-direction: column;
+    border: 0; box-shadow: none; border-radius: 0;
+    position: static; transform: none;
+    width: 100%; max-width: none;
+  }
+
+  /* Annotation callout used inside section blocks (matches File 2) */
+  .annot-card {
+    margin: 0 64px 56px;
+    border-radius: 8px; border: 1px dashed var(--line);
+    background: var(--rail);
+    padding: 14px 16px;
+    font-size: 12px; color: var(--ink-2);
+  }
+  .annot-card ul { margin: 0; padding-left: 18px; }
+  .annot-card li { margin-bottom: 4px; }
+  .annot-card strong { color: var(--ink); font-weight: 600; }
+  .annot-card code { font-size: 11px;
+    background: var(--fill); padding: 1px 5px; border-radius: 3px; color: var(--ink);
+  }
+
+</style>
+</head>
+<body data-screen-label="A4 Brand CRUD + A9 GDPR + A10 Integration reconnect">
+
+<header class="page-head">
+  <div class="eyebrow">HI-FI · BATCH A · DARK · FILE 5</div>
+  <h1>Brand CRUD · GDPR · Integration reconnect</h1>
+  <p>Eight modal &amp; full-page surfaces, all inheriting the canonical <code>.dlg</code> shell + <code>.btn.danger</code> destructive vocabulary established in File 2 (Popovers &amp; Dialogs). A4 covers brand Rename / Archive / Delete (typed-confirm with brand name). A9 covers Delete account (typed-confirm with literal "DELETE"), the full-page <code>/account-deleted</code> grace-period landing, and notes on A9.2 email (scoped out). A10 covers the Shopify reconnect banner, the Reconnect modal, and the Disconnect confirmation.</p>
+  <div class="meta">8 surfaces · same kova-hifi.css tokens · same modal chrome as File 2 · density carried from A7</div>
+  <div class="legend">
+    <span class="sw"><i style="background:#ededea"></i>primary action</span>
+    <span class="sw"><i style="background:#5a7dff"></i>AI / accent</span>
+    <span class="sw"><i style="background:#5ec27d"></i>connected / ok</span>
+    <span class="sw"><i style="background:#e87a4a"></i>destructive / disconnected</span>
+  </div>
+</header>
+
+
+<!-- ============================================================
+     A4.1 · Rename brand modal
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE 5 · §1 · A4.1 Rename brand</div>
+    <div class="s-section"><h2>A4.1 · Rename brand</h2></div>
+    <p class="intro">Launched from the brand-picker row kebab, the brand-card kebab on the brand-picker page (A2), or the brand dashboard header. Single text input for the new name, with optional URL slug surfaced read-only so the user understands the slug auto-derives from the name. Neutral primary CTA — this is not destructive.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Dashboard chrome · rename brand modal</div><div class="id">A4.1 · hi-fi</div></div>
+    <div class="canvas tall" data-screen-label="A4.1 Rename brand">
+      <div class="app">
+        <div class="sidebar">
+          <div class="brand-switch"><div class="logo">N</div><div class="name">Nike</div><div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div></div>
+          <div class="side-search"><i data-lucide="search" style="width:13px;height:13px;"></i><span>Search</span><span class="kbd" style=" font-size:10px;color:var(--ink-3);background:var(--fill);padding:1px 5px;border-radius:3px;border:1px solid var(--line-2);margin-left:auto;">⌘K</span></div>
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item"><i data-lucide="clock-4" class="ic"></i>Recents</div>
+            <div class="section">Brand</div>
+            <div class="item"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+            <div class="item"><i data-lucide="book-open" class="ic"></i>Knowledge base</div>
+          </div>
+          <div class="side-footer"><div class="avatar">JY</div><div class="who"><b>Jiho Yang</b><span>Pro plan</span></div><div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div></div>
+        </div>
+        <div class="main">
+          <div class="topbar">
+            <div class="breadcrumb"><span><i data-lucide="layout-grid" style="width:14px;height:14px;"></i></span><b>Brand dashboard</b></div>
+            <div class="actions"><div class="top-avatar">JY</div></div>
+          </div>
+          <div class="content" style="opacity:.35;">
+            <div class="ph stripes" style="height: 220px; border-radius: 8px;">DASHBOARD CONTENT (DIMMED)</div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">
+              <div class="ph stripes" style="height: 140px; border-radius: 8px;">CARD</div>
+              <div class="ph stripes" style="height: 140px; border-radius: 8px;">CARD</div>
+              <div class="ph stripes" style="height: 140px; border-radius: 8px;">CARD</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-backdrop"></div>
+
+      <div class="dlg sm">
+        <div class="dlg-head">
+          <div>
+            <h3>Rename brand</h3>
+            <p class="sub">Update the display name. The URL slug stays linked to the original brand ID, so existing links keep working.</p>
+          </div>
+          <div class="x"><i data-lucide="x" style="width:14px;height:14px;"></i></div>
+        </div>
+        <div class="dlg-body">
+          <div class="fld">
+            <label>Brand name</label>
+            <input class="input" value="Nike" />
+            <span class="help">Shows in the sidebar pill, brand picker, and all canvas chrome.</span>
+          </div>
+          <div class="fld">
+            <label>URL slug <span class="opt">read-only</span></label>
+            <input class="input" value="nike" readonly style=" color:var(--ink-3);background:var(--bg);" />
+            <span class="help">Auto-derived from the name on first creation. Slug never changes.</span>
+          </div>
+        </div>
+        <div class="dlg-foot">
+          <div class="l"><i data-lucide="info" style="width:12px;height:12px;"></i>Renaming is reversible. No data is touched.</div>
+          <div class="r">
+            <div class="btn">Cancel</div>
+            <div class="btn primary">Save</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Slug is intentionally read-only</strong> in MVP — surfacing it next to the name pre-empts the question "does my URL change?" without exposing a footgun. If a renamer later requests a slug change, that's a follow-up surface.</li>
+      <li><strong>Same <code>.dlg.sm</code> width as A8.1 Snapshot</strong> — single-input modals share visual weight regardless of which surface owns them.</li>
+      <li><strong>Foot meta is reassuring, not a warning.</strong> Rename is the most innocuous of the three CRUD modals; the reassurance ("reversible · no data is touched") is the calibration that distinguishes it from Archive (cautioning) and Delete (warning).</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     A4.2 · Archive brand modal
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE 5 · §2 · A4.2 Archive brand</div>
+    <div class="s-section"><h2>A4.2 · Archive brand</h2></div>
+    <p class="intro">A4.2 is a <strong>neutral</strong> confirmation per the A8.4 component pattern (variant 2). The headline framing is still a question ("Archive 'Glossier'?") but the risk is recoverable, so the CTA is the standard primary, not <code>.danger</code>. The body absorbs the explainer the brief asked for: what does "archived" mean, exactly?</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Brand picker · archive brand modal</div><div class="id">A4.2 · hi-fi</div></div>
+    <div class="canvas" data-screen-label="A4.2 Archive brand">
+      <div class="app">
+        <div class="sidebar">
+          <div class="brand-switch"><div class="logo">N</div><div class="name">Nike</div><div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div></div>
+          <div class="side-search"><i data-lucide="search" style="width:13px;height:13px;"></i><span>Search</span><span style=" font-size:10px;color:var(--ink-3);background:var(--fill);padding:1px 5px;border-radius:3px;border:1px solid var(--line-2);margin-left:auto;">⌘K</span></div>
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item active"><i data-lucide="layout-grid" class="ic"></i>Brands</div>
+            <div class="section">Brand</div>
+            <div class="item"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+          </div>
+          <div class="side-footer"><div class="avatar">JY</div><div class="who"><b>Jiho Yang</b><span>Pro plan</span></div><div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div></div>
+        </div>
+        <div class="main">
+          <div class="topbar"><div class="breadcrumb"><b>Brands</b></div><div class="actions"><div class="top-avatar">JY</div></div></div>
+          <div class="content" style="opacity:.35;">
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">
+              <div class="ph stripes" style="height: 160px; border-radius: 8px;">BRAND CARD</div>
+              <div class="ph stripes" style="height: 160px; border-radius: 8px;">BRAND CARD</div>
+              <div class="ph stripes" style="height: 160px; border-radius: 8px;">BRAND CARD</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-backdrop"></div>
+
+      <div class="dlg md">
+        <div class="dlg-head">
+          <div>
+            <h3>Archive "Glossier"?</h3>
+            <p class="sub">Archived brands are hidden from the picker but stay restorable. Pick this if you're done with a brand for now but might come back.</p>
+          </div>
+          <div class="x"><i data-lucide="x" style="width:14px;height:14px;"></i></div>
+        </div>
+        <div class="dlg-body">
+
+          <div class="info-card">
+            <div class="ic"><i data-lucide="archive" style="width:14px;height:14px;"></i></div>
+            <div>
+              <b>What "archived" means</b>
+              <div class="stack">
+                <div class="row"><i class="dot"></i>Hidden from the sidebar brand-switcher and brand picker</div>
+                <div class="row"><i class="dot"></i>All canvases, snapshots, brand-kit data &amp; integrations are kept</div>
+                <div class="row"><i class="dot"></i>Shopify connection stays connected — no re-auth on restore</div>
+                <div class="row"><i class="dot"></i>Restore any time from <code style=" font-size:11.5px;background:var(--fill);padding:1px 4px;border-radius:3px;">Settings → Archive</code></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="brand-summary">
+            <div class="logo" style="background:#1a4be0;color:#fff;">G</div>
+            <div>
+              <div class="nm">Glossier</div>
+              <div class="meta">4 canvases · last edited Apr 19, 2026</div>
+            </div>
+            <div class="right">
+              <span class="pill ok dot" style="font-size:11px;">Shopify connected</span>
+            </div>
+          </div>
+
+          <p style="margin:0;font-size:12.5px;color:var(--ink-2);line-height:1.55;">Archived brands are hidden from the brand picker but kept intact &mdash; canvases, brand kit, and Shopify connection are preserved. You can unarchive any time from Account &rarr; Brand Kit &rarr; Archived brands. No data is deleted.</p>
+
+        </div>
+        <div class="dlg-foot">
+          <div class="l"><i data-lucide="info" style="width:12px;height:12px;"></i>Reversible. No data is removed.</div>
+          <div class="r">
+            <div class="btn">Cancel</div>
+            <div class="btn primary">Archive brand</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Neutral primary CTA, not <code>.danger</code>.</strong> Archive is recoverable; coloring it red would over-warn and make the user hesitate on a routine action.</li>
+      <li><strong>Explainer is structured, not paragraph prose.</strong> Four bullets answer the four questions a user actually has before clicking Archive: where does it go, what's kept, what about Shopify, and how do I get it back.</li>
+      <li><strong>Brand summary row reuses the brand-card vocabulary</strong> — same logo treatment, same canvas-count + last-edited tag-mono pattern from the A2 brand picker. Consistency by reuse, not by re-drawing.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     A4.3 · Delete brand modal (typed-confirm: brand name)
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE 5 · §3 · A4.3 Delete brand</div>
+    <div class="s-section"><h2>A4.3 · Delete brand · typed-confirm</h2></div>
+    <p class="intro">Inherits A8.4 variant 3 (typed-confirm). User must type the <strong>brand name</strong> to enable the destructive CTA — locked decision: brand name disambiguates from A9.1 Delete-account, which uses the literal "DELETE". The destructive CTA stays disabled until the input matches exactly; this state shown here mid-typing.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Brand picker · delete brand modal · mid-typing state</div><div class="id">A4.3 · hi-fi</div></div>
+    <div class="canvas" data-screen-label="A4.3 Delete brand typed-confirm">
+      <div class="app">
+        <div class="sidebar">
+          <div class="brand-switch"><div class="logo">N</div><div class="name">Nike</div><div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div></div>
+          <div class="side-search"><i data-lucide="search" style="width:13px;height:13px;"></i><span>Search</span><span style=" font-size:10px;color:var(--ink-3);background:var(--fill);padding:1px 5px;border-radius:3px;border:1px solid var(--line-2);margin-left:auto;">⌘K</span></div>
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item active"><i data-lucide="layout-grid" class="ic"></i>Brands</div>
+            <div class="section">Brand</div>
+            <div class="item"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+          </div>
+          <div class="side-footer"><div class="avatar">JY</div><div class="who"><b>Jiho Yang</b><span>Pro plan</span></div><div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div></div>
+        </div>
+        <div class="main">
+          <div class="topbar"><div class="breadcrumb"><b>Brands</b></div><div class="actions"><div class="top-avatar">JY</div></div></div>
+          <div class="content" style="opacity:.35;">
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">
+              <div class="ph stripes" style="height: 160px; border-radius: 8px;">BRAND CARD</div>
+              <div class="ph stripes" style="height: 160px; border-radius: 8px;">BRAND CARD</div>
+              <div class="ph stripes" style="height: 160px; border-radius: 8px;">BRAND CARD</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-backdrop"></div>
+
+      <div class="dlg md">
+        <div class="dlg-head">
+          <div>
+            <h3>Delete brand "Warby Parker"?</h3>
+            <p class="sub">This permanently removes the brand and everything inside it. <strong style="color:var(--ink);">It cannot be undone.</strong></p>
+          </div>
+          <div class="x"><i data-lucide="x" style="width:14px;height:14px;"></i></div>
+        </div>
+        <div class="dlg-body">
+
+          <div class="brand-summary">
+            <div class="logo" style="background:#0a3a73;color:#fff;">W</div>
+            <div>
+              <div class="nm">Warby Parker</div>
+              <div class="meta">created 2025-11-04 · last edited 4 days ago</div>
+            </div>
+            <div class="right">
+              <span class="pill ok dot" style="font-size:11px;">Shopify connected</span>
+            </div>
+          </div>
+
+          <div class="loss-list">
+            <div class="hdr">What will be permanently removed</div>
+            <div class="ll"><i data-lucide="layout-template" class="ic"></i>Canvases<span class="qty">8</span></div>
+            <div class="ll"><i data-lucide="history" class="ic"></i>Snapshots<span class="qty">142</span></div>
+            <div class="ll"><i data-lucide="palette" class="ic"></i>Brand-kit data — colors, fonts, snippets, memories<span class="qty">all</span></div>
+            <div class="ll"><i data-lucide="book-open" class="ic"></i>Knowledge-base sources<span class="qty">23</span></div>
+            <div class="ll"><i data-lucide="shopping-bag" class="ic"></i>Shopify connection (token revoked)<span class="qty">1</span></div>
+          </div>
+
+          <div class="fld">
+            <label>Type <code style=" font-size:11.5px;background:var(--fill);padding:1px 5px;border-radius:3px;color:var(--ink);">Warby Parker</code> to confirm</label>
+            <input class="input confirm-typed partial" value="Warby" />
+            <span class="help">Brand name is case-sensitive. The Delete button activates when it matches exactly.</span>
+          </div>
+
+        </div>
+        <div class="dlg-foot">
+          <div class="l"><i data-lucide="alert-triangle" style="width:12px;height:12px;color:var(--warn);"></i>This action is permanent.</div>
+          <div class="r">
+            <div class="btn">Cancel</div>
+            <div class="btn danger disabled">Delete brand</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Mid-typing state</strong> shown intentionally — the input border sits at <code>--ink-3</code> (neutral) and the destructive CTA stays disabled. Compare to File 2 A8.4 variant 3 which renders the matched (<code>.ok</code>) state. Both states share the same component.</li>
+      <li><strong>Loss-list quantifies the damage</strong> in the warn-soft surface — five concrete numbers ("8 canvases · 142 snapshots · 23 KB sources") force the user to confront scope before typing.</li>
+      <li><strong>Brand name as the typed string, not "DELETE".</strong> Locked decision. Disambiguates from A9.1 Delete-account; reading the brand name back to the user inside a destructive context is the same intentional friction as GitHub's "type the repo name to delete".</li>
+      <li><strong>Foot meta switches to warn glyph</strong> (<code>alert-triangle</code> in <code>--warn</code>) — Rename's "info" and Archive's "info" both use the neutral <code>--ink-3</code> info icon. Foot semantics earn their color.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     A9.1 · Delete account modal
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE 5 · §4 · A9.1 Delete account</div>
+    <div class="s-section"><h2>A9.1 · Delete account · typed-confirm "DELETE"</h2></div>
+    <p class="intro">Launched from Account → Danger zone → "Delete account". Typed-confirm uses the literal string <code>DELETE</code> so the action feels universal-and-final rather than personal-and-specific (compare A4.3 which uses the brand name). Body explicitly states the 30-day grace + restore window so the user knows this is reversible up to a date.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Account · Danger zone · delete account modal</div><div class="id">A9.1 · hi-fi</div></div>
+    <div class="canvas" data-screen-label="A9.1 Delete account modal">
+      <div class="app">
+        <div class="sidebar">
+          <div class="brand-switch"><div class="logo">N</div><div class="name">Nike</div><div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div></div>
+          <div class="side-search"><i data-lucide="search" style="width:13px;height:13px;"></i><span>Search</span><span style=" font-size:10px;color:var(--ink-3);background:var(--fill);padding:1px 5px;border-radius:3px;border:1px solid var(--line-2);margin-left:auto;">⌘K</span></div>
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item"><i data-lucide="clock-4" class="ic"></i>Recents</div>
+            <div class="section">Brand</div>
+            <div class="item"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+          </div>
+          <div class="side-footer"><div class="avatar">JY</div><div class="who"><b>Jiho Yang</b><span>Pro plan</span></div><div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div></div>
+        </div>
+        <div class="main">
+          <div class="topbar">
+            <div class="breadcrumb">
+              <span><i data-lucide="user" style="width:14px;height:14px;"></i></span>
+              <span style="color:var(--ink-2);">Account</span>
+              <span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <b>Danger zone</b>
+            </div>
+            <div class="actions"><div class="top-avatar">JY</div></div>
+          </div>
+          <div class="content" style="opacity:.35; padding: 24px 32px;">
+            <div class="ph stripes" style="height: 160px; border-radius: 8px;">DANGER ZONE SECTION (DIMMED)</div>
+            <div class="ph stripes" style="height: 100px; border-radius: 8px;">DATA EXPORT</div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-backdrop"></div>
+
+      <div class="dlg md">
+        <div class="dlg-head">
+          <div>
+            <h3>Delete your account?</h3>
+            <p class="sub">All brands, canvases, snapshots, and integrations associated with <strong style="color:var(--ink);">jiho@studio.co</strong> will be queued for permanent removal.</p>
+          </div>
+          <div class="x"><i data-lucide="x" style="width:14px;height:14px;"></i></div>
+        </div>
+        <div class="dlg-body">
+
+          <div class="info-card">
+            <div class="ic" style="background:var(--accent-soft);color:var(--accent-ink);border:1px solid var(--accent-2);"><i data-lucide="clock-4" style="width:14px;height:14px;"></i></div>
+            <div>
+              <b>You have a 30-day grace period</b>
+              <div class="stack">
+                <div class="row"><i class="dot"></i>You'll be signed out immediately after confirming</div>
+                <div class="row"><i class="dot"></i>Sign back in any time within 30 days to restore your account</div>
+                <div class="row"><i class="dot"></i>After <strong style="color:var(--ink);">May 27, 2026</strong>, all data is permanently and irreversibly removed</div>
+                <div class="row"><i class="dot"></i>A confirmation email will be sent to your address with the restore link</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="loss-list">
+            <div class="hdr">What's queued for permanent deletion</div>
+            <div class="ll"><i data-lucide="layout-grid" class="ic"></i>Brands<span class="qty">5</span></div>
+            <div class="ll"><i data-lucide="layout-template" class="ic"></i>Canvases across all brands<span class="qty">37</span></div>
+            <div class="ll"><i data-lucide="history" class="ic"></i>Snapshots<span class="qty">~620</span></div>
+            <div class="ll"><i data-lucide="user" class="ic"></i>Profile, preferences, and billing record<span class="qty">all</span></div>
+          </div>
+
+          <div class="fld">
+            <label>Type <code style=" font-size:11.5px;background:var(--fill);padding:1px 5px;border-radius:3px;color:var(--ink);">DELETE</code> to confirm</label>
+            <input class="input confirm-typed ok" value="DELETE" />
+            <span class="help">Use uppercase exactly. The Delete-account button activates when it matches.</span>
+          </div>
+
+        </div>
+        <div class="dlg-foot">
+          <div class="l"><i data-lucide="alert-triangle" style="width:12px;height:12px;color:var(--warn);"></i>You'll be signed out immediately on submit.</div>
+          <div class="r">
+            <div class="btn">Cancel</div>
+            <div class="btn danger">Delete account</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Matched ("ok") typed-confirm state</strong> shown — input border is <code>--warn</code>, soft warn glow, and the destructive CTA is enabled. Pair this with A4.3's mid-typing state to see both halves of the typed-confirm component on one page.</li>
+      <li><strong>The 30-day grace block uses the AI-accent info-card</strong> (soft blue) instead of warn-orange — this is reassuring information ("you can come back"), not a warning. The warn surface is reserved for the loss-list directly below it, where the message <em>is</em> warning ("here's what disappears").</li>
+      <li><strong>Concrete date in body</strong> ("May 27, 2026") wired to <code>now() + 30d</code>. Showing the actual date rather than "in 30 days" is the difference between abstract policy and a calendar a user can see.</li>
+      <li><strong>Email confirmation referenced inline</strong> — A9.2 (the email itself) is scoped out per locked decision; the in-modal copy carries the user's expectation forward so the unrendered email isn't a surprise.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     A9.3 · Account-pending-deletion landing (full-page route)
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE 5 · §5 · A9.3 /account-deletion-pending landing</div>
+    <div class="s-section"><h2>A9.3 · Account-pending-deletion landing</h2></div>
+    <p class="intro">Full-page route at <code>/account-deletion-pending</code>. Auth middleware redirects here when a user signs in within their 30-day grace window. Calm, dark, trust-building. Two CTAs: <strong>Restore account</strong> (primary) and <strong>Sign out</strong> (secondary). Concrete deletion date + a tabular-numerals countdown make the urgency feel like a real calendar, not a vague threat.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Full-page route · /account-deletion-pending (dark)</div><div class="id">A9.3 · hi-fi</div></div>
+    <div class="canvas tall" data-screen-label="A9.3 Account-pending-deletion landing">
+      <div class="deleted-page">
+        <div class="topstrip">
+          <div class="brand">
+            <div class="mark">K</div>
+            <span>Kova</span>
+          </div>
+          <div class="right">
+            <span>jiho@studio.co</span>
+            <span style="opacity:.5;">·</span>
+            <span>signed in to a deleting account</span>
+          </div>
+        </div>
+        <div class="body">
+          <div class="deleted-card">
+            <span class="eyebrow">
+              <i data-lucide="alert-triangle" style="width:11px;height:11px;"></i>
+              Pending deletion
+            </span>
+            <h1>Your account is scheduled for deletion on <span class="date">May 27, 2026</span>.</h1>
+            <p>You requested deletion 4 days ago. Your data is intact and restorable until that date — sign back in normally and we'll cancel the deletion. After May 27 the account and everything inside it (5 brands · 37 canvases · ~620 snapshots) is permanently removed.</p>
+
+            <div class="countdown">
+              <div>
+                <div class="num">26</div>
+                <div class="lbl"><b>days remaining</b>until permanent deletion</div>
+              </div>
+              <div class="div"></div>
+              <div>
+                <div class="num">2026-05-27</div>
+                <div class="lbl"><b>final date</b>00:00 UTC</div>
+              </div>
+            </div>
+
+            <div class="acts">
+              <div class="btn primary"><i data-lucide="rotate-ccw" style="width:14px;height:14px;"></i>Restore account</div>
+              <div class="btn">Sign out</div>
+            </div>
+
+            <div class="foot">
+              <i data-lucide="info" class="ic"></i>
+              Restoring takes you straight to your last-active brand. No re-authentication needed.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Full-page, not modal</strong> per locked decision. A modal would imply the user could dismiss the state and proceed; a full-page route makes "this account is in a special mode" the only thing they can interact with until they choose Restore or Sign out.</li>
+      <li><strong>Topstrip is minimal</strong> — Kova logo + signed-in email + a quiet eyebrow ("signed in to a deleting account"). No sidebar, no breadcrumb, no nav. The user is not in the app.</li>
+      <li><strong>Countdown uses tabular numerals + monospace</strong> (<code>26</code> / <code>2026-05-27</code>) — same vocabulary as the loss-list quantities, the meta tags on brand summaries, and the <code>--warn</code> eyebrow. Calendar-as-fact, not as decoration.</li>
+      <li><strong>Restore CTA uses the standard primary button</strong> (light, not danger-orange) — restore is the calm, recoverable path. Sign-out is the equally-quiet secondary. Neither is colored to push the user; the <em>only</em> warm surface on this page is the eyebrow pill.</li>
+      <li><strong>Route name resolved:</strong> renamed from <code>/account-deleted</code> to <code>/account-deletion-pending</code> in cleanup pass — the original read odd while the account isn't yet deleted. Founder approved.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     A9.2 · Email reference (scoped out — note only)
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE 5 · §6 · A9.2 Email reference</div>
+    <div class="s-section"><h2>A9.2 · Email confirmation reference · scoped out</h2></div>
+    <p class="intro">A9.2 is intentionally not designed in this batch — locked decision per the brief. The static email is rendered server-side later by the founder. The in-app surfaces (A9.1 modal + A9.3 landing) both reference the email so the user expectation is set; the email itself can be plain-text on first ship.</p>
+  </header>
+
+  <div style="padding: 0 64px 56px;">
+    <div class="info-card" style="border:1px dashed var(--line); background:var(--rail); padding: 16px 18px;">
+      <div class="ic" style="background:var(--fill);color:var(--ink-2);"><i data-lucide="mail" style="width:14px;height:14px;"></i></div>
+      <div>
+        <b style="font-size:13px;">Why this is deferred</b>
+        <p style="margin: 4px 0 0; color: var(--ink-2); line-height: 1.55; max-width: 640px;">
+          Designing a transactional email in the dark hi-fi vocabulary requires a separate light-mode email template (most clients render dark themes inconsistently). Rather than ship a stylized email that breaks in Outlook, we recommend the founder send a minimal plain-text message with a single restore link in MVP, and queue email-template design as its own follow-up batch when there's a second transactional surface to design alongside it.
+        </p>
+        <div style="display:flex; gap: 16px; margin-top: 10px; font-size: 11px; color: var(--ink-3); flex-wrap: wrap;">
+          <span><b style="color:var(--ink);">Subject ·</b> Your Kova account is scheduled for deletion</span>
+          <span><b style="color:var(--ink);">From ·</b> hello@kova.app</span>
+          <span><b style="color:var(--ink);">CTA ·</b> Restore account → /account-deletion-pending</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     A10.1 · Reconnect banner (top-of-page warning)
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE 5 · §7 · A10.1 Reconnect banner</div>
+    <div class="s-section"><h2>A10.1 · Shopify connection expired · banner</h2></div>
+    <p class="intro">Sits between the topbar and the content area whenever a brand's Shopify token is expired. Warn-soft surface, single line of copy, two affordances: primary <strong>Reconnect</strong> CTA (opens A10.2 modal) and a quiet dismiss icon. Visible globally on every brand-scoped route until reconnected — not just on Integrations.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Brand dashboard · reconnect banner visible</div><div class="id">A10.1 · hi-fi</div></div>
+    <div class="canvas tall" data-screen-label="A10.1 Reconnect banner">
+      <div class="app">
+        <div class="sidebar">
+          <div class="brand-switch"><div class="logo">N</div><div class="name">Nike</div><div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div></div>
+          <div class="side-search"><i data-lucide="search" style="width:13px;height:13px;"></i><span>Search</span><span style=" font-size:10px;color:var(--ink-3);background:var(--fill);padding:1px 5px;border-radius:3px;border:1px solid var(--line-2);margin-left:auto;">⌘K</span></div>
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item"><i data-lucide="clock-4" class="ic"></i>Recents</div>
+            <div class="item"><i data-lucide="package" class="ic"></i>Products<span class="count">—</span></div>
+            <div class="section">Brand</div>
+            <div class="item"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+            <div class="item"><i data-lucide="book-open" class="ic"></i>Knowledge base</div>
+          </div>
+          <div class="side-footer"><div class="avatar">JY</div><div class="who"><b>Jiho Yang</b><span>Pro plan</span></div><div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div></div>
+        </div>
+        <div class="main">
+          <div class="topbar">
+            <div class="breadcrumb"><span><i data-lucide="layout-grid" style="width:14px;height:14px;"></i></span><b>Brand dashboard</b></div>
+            <div class="actions">
+              <span class="pill warn dot" style="font-size:11px;"><i data-lucide="alert-triangle" style="width:11px;height:11px;"></i>Shopify expired</span>
+              <div class="top-avatar">JY</div>
+            </div>
+          </div>
+
+          <!-- The banner sits directly under the topbar -->
+          <div class="reconnect-banner">
+            <div class="ic-warn"><i data-lucide="alert-triangle" style="width:13px;height:13px;"></i></div>
+            <div class="copy">
+              <b>Shopify connection expired.</b>
+              <span>Product sync, order data, and store-aware AI suggestions are paused for <b>Nike</b> until you reconnect.</span>
+            </div>
+            <div class="meta">last sync · 2026-04-19 09:14</div>
+            <div class="actions">
+              <div class="btn sm">Disconnect</div>
+              <div class="btn sm primary"><i data-lucide="plug" style="width:13px;height:13px;"></i>Reconnect</div>
+              <div class="dismiss"><i data-lucide="x" style="width:13px;height:13px;"></i></div>
+            </div>
+          </div>
+
+          <div class="content" style="padding: 24px 32px;">
+            <div class="ph stripes" style="height: 220px; border-radius: 8px;">DASHBOARD CONTENT</div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">
+              <div class="ph stripes" style="height: 140px; border-radius: 8px;">CARD</div>
+              <div class="ph stripes" style="height: 140px; border-radius: 8px;">CARD</div>
+              <div class="ph stripes" style="height: 140px; border-radius: 8px;">CARD</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Anchor pin -->
+      <div class="anchor-pin" style="left: 240px; top: 56px;">
+        <div class="dot"></div>
+        <div class="lbl">below topbar · sticky</div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Banner is brand-scoped, not user-scoped.</strong> Switching to a brand whose Shopify is healthy hides it. The topbar pill (<code>.pill.warn</code> "Shopify expired") is the persistent corner-of-eye signal that survives scroll; the banner is the actionable surface.</li>
+      <li><strong>Products count in the sidebar drops to <code>—</code></strong> when sync is paused — a quiet secondary signal that something downstream is affected. Comes back to a number once reconnected.</li>
+      <li><strong>Three actions in priority order</strong> right-to-left: Reconnect (primary), Disconnect (secondary, escapes the broken state without re-auth), dismiss (×, hides the banner this session — pill in topbar still visible).</li>
+      <li><strong>Last-sync timestamp</strong> is a mono meta — gives the user a calibration ("8 days stale") that "expired" alone doesn't.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     A10.2 · Reconnect modal
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE 5 · §8 · A10.2 Reconnect modal</div>
+    <div class="s-section"><h2>A10.2 · Reconnect Shopify</h2></div>
+    <p class="intro">Triggered from the banner Reconnect CTA, the topbar warn-pill, or the Integrations page Reconnect button. Diagnostic strip explains exactly what's broken (token expired, last sync date) and what reconnect will restore (products, orders, store-aware AI). Primary CTA hands off to Shopify OAuth in a new tab.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Brand dashboard · reconnect modal</div><div class="id">A10.2 · hi-fi</div></div>
+    <div class="canvas tall" data-screen-label="A10.2 Reconnect modal">
+      <div class="app">
+        <div class="sidebar">
+          <div class="brand-switch"><div class="logo">N</div><div class="name">Nike</div><div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div></div>
+          <div class="side-search"><i data-lucide="search" style="width:13px;height:13px;"></i><span>Search</span><span style=" font-size:10px;color:var(--ink-3);background:var(--fill);padding:1px 5px;border-radius:3px;border:1px solid var(--line-2);margin-left:auto;">⌘K</span></div>
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item"><i data-lucide="clock-4" class="ic"></i>Recents</div>
+            <div class="section">Brand</div>
+            <div class="item"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+            <div class="item"><i data-lucide="book-open" class="ic"></i>Knowledge base</div>
+          </div>
+          <div class="side-footer"><div class="avatar">JY</div><div class="who"><b>Jiho Yang</b><span>Pro plan</span></div><div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div></div>
+        </div>
+        <div class="main">
+          <div class="topbar">
+            <div class="breadcrumb"><b>Brand dashboard</b></div>
+            <div class="actions"><span class="pill warn dot" style="font-size:11px;">Shopify expired</span><div class="top-avatar">JY</div></div>
+          </div>
+          <div class="content" style="opacity:.35;">
+            <div class="ph stripes" style="height: 100%; border-radius: 8px;">DIMMED</div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-backdrop"></div>
+
+      <div class="dlg md">
+        <div class="dlg-head">
+          <div>
+            <h3>Reconnect Shopify</h3>
+            <p class="sub">Your access token expired. Reconnecting restores product sync and the store-aware AI features for <strong style="color:var(--ink);">Nike</strong>.</p>
+          </div>
+          <div class="x"><i data-lucide="x" style="width:14px;height:14px;"></i></div>
+        </div>
+        <div class="dlg-body">
+
+          <div class="diag-strip">
+            <div class="row">
+              <div class="ic-st"><div style="width:18px;height:18px;border-radius:4px;background:#95bf47;color:#fff;display:grid;place-items:center;font-weight:700;font-size:9px;">S</div></div>
+              <div class="lbl">
+                Shopify store
+                <span class="sub">nike.myshopify.com</span>
+              </div>
+              <div class="meta">connected since<br/>2025-09-12</div>
+            </div>
+            <div class="row">
+              <div class="ic-st bad"><i data-lucide="key-round" style="width:13px;height:13px;"></i></div>
+              <div class="lbl">
+                Access token
+                <span class="sub">expired · OAuth refresh failed</span>
+              </div>
+              <div class="meta" style="color:var(--warn);">2026-04-19<br/>09:14 UTC</div>
+            </div>
+            <div class="row">
+              <div class="ic-st bad"><i data-lucide="package" style="width:13px;height:13px;"></i></div>
+              <div class="lbl">
+                Product sync
+                <span class="sub">paused — last successful pull 8 days ago</span>
+              </div>
+              <div class="meta">318 products<br/>cached</div>
+            </div>
+            <div class="row">
+              <div class="ic-st ok"><i data-lucide="check" style="width:13px;height:13px;"></i></div>
+              <div class="lbl">
+                Brand-kit data
+                <span class="sub">untouched · stays intact through reconnect</span>
+              </div>
+              <div class="meta">no action<br/>needed</div>
+            </div>
+          </div>
+
+          <div class="info-card">
+            <div class="ic" style="background:var(--accent-soft);color:var(--accent-ink);border:1px solid var(--accent-2);"><i data-lucide="external-link" style="width:13px;height:13px;"></i></div>
+            <div>
+              <b>What happens when you click Reconnect</b>
+              <div class="stack">
+                <div class="row"><i class="dot"></i>You'll be redirected to Shopify in a new tab to authorize Kova</div>
+                <div class="row"><i class="dot"></i>Sign in with the same Shopify admin account that connected originally</div>
+                <div class="row"><i class="dot"></i>You'll come back here automatically — sync resumes within ~30 seconds</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+        <div class="dlg-foot">
+          <div class="l"><i data-lucide="info" style="width:12px;height:12px;"></i>Brand-kit, canvases, and snapshots are unaffected.</div>
+          <div class="r">
+            <div class="btn">Cancel</div>
+            <div class="btn primary"><i data-lucide="external-link" style="width:13px;height:13px;"></i>Reconnect on Shopify</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Diagnostic strip is the centerpiece.</strong> Four rows = four facts: store identity, token state, sync state, and what's safe. The warn rows (token, sync) carry warn-soft icons; the OK row (brand-kit) carries the ok-soft icon. Reading the strip top-to-bottom answers "what broke and what didn't" in five seconds.</li>
+      <li><strong>Primary CTA copy is "Reconnect on Shopify"</strong> + external-link glyph — telling the user up-front that they're leaving the app and coming back. The accent-blue info-card below reinforces the round-trip ("you'll come back here automatically").</li>
+      <li><strong>The 318 cached products meta</strong> reassures the user that the canvas they were just working on isn't going to drop product data while they reconnect — cache survives the broken state.</li>
+      <li><strong>Modal width is <code>.dlg.md</code> (540px)</strong>, same as A4.2 Archive and A9.1 Delete-account. Three medium-density modals, three identical widths.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     A10.3 · Disconnect Shopify confirmation
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE 5 · §9 · A10.3 Disconnect confirm</div>
+    <div class="s-section"><h2>A10.3 · Disconnect Shopify</h2></div>
+    <p class="intro">Inherits A8.4 confirmation pattern (destructive variant — non-typed). Reached from Account → Integrations → Shopify card → Disconnect, or from the A10.1 banner Disconnect button. Warns that products + orders + store-aware AI break for this brand, but explicitly notes that brand-kit and canvases survive — the brief asks for "warns about loss of products/sync".</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Account · Integrations · disconnect Shopify confirm</div><div class="id">A10.3 · hi-fi</div></div>
+    <div class="canvas" data-screen-label="A10.3 Disconnect Shopify confirm">
+      <div class="app">
+        <div class="sidebar">
+          <div class="brand-switch"><div class="logo">N</div><div class="name">Nike</div><div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div></div>
+          <div class="side-search"><i data-lucide="search" style="width:13px;height:13px;"></i><span>Search</span><span style=" font-size:10px;color:var(--ink-3);background:var(--fill);padding:1px 5px;border-radius:3px;border:1px solid var(--line-2);margin-left:auto;">⌘K</span></div>
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item"><i data-lucide="clock-4" class="ic"></i>Recents</div>
+            <div class="section">Brand</div>
+            <div class="item"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+          </div>
+          <div class="side-footer"><div class="avatar">JY</div><div class="who"><b>Jiho Yang</b><span>Pro plan</span></div><div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div></div>
+        </div>
+        <div class="main">
+          <div class="topbar">
+            <div class="breadcrumb">
+              <span><i data-lucide="user" style="width:14px;height:14px;"></i></span>
+              <span style="color:var(--ink-2);">Account</span>
+              <span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <b>Integrations</b>
+            </div>
+            <div class="actions"><div class="top-avatar">JY</div></div>
+          </div>
+          <div class="content" style="opacity:.35; padding: 24px 32px;">
+            <div class="ph stripes" style="height: 160px; border-radius: 8px;">SHOPIFY CARD (DIMMED)</div>
+            <div class="ph stripes" style="height: 100px; border-radius: 8px;">FUTURE INTEGRATIONS PLACEHOLDER</div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-backdrop"></div>
+
+      <div class="dlg sm">
+        <div class="dlg-head">
+          <div>
+            <h3>Disconnect Shopify from "Nike"?</h3>
+            <p class="sub">Sync stops immediately. You can reconnect later — but you'll need to re-authorize from your Shopify admin account.</p>
+          </div>
+          <div class="x"><i data-lucide="x" style="width:14px;height:14px;"></i></div>
+        </div>
+        <div class="dlg-body">
+
+          <div class="loss-list">
+            <div class="hdr">What stops working</div>
+            <div class="ll"><i data-lucide="package" class="ic"></i>Live product sync to canvas<span class="qty">paused</span></div>
+            <div class="ll"><i data-lucide="shopping-bag" class="ic"></i>Order &amp; cart data in AI prompts<span class="qty">paused</span></div>
+            <div class="ll"><i data-lucide="sparkles" class="ic"></i>Store-aware AI suggestions<span class="qty">paused</span></div>
+          </div>
+
+          <div class="info-card">
+            <div class="ic" style="background:var(--ok-soft); color:var(--ok); border:1px solid #214d2d;"><i data-lucide="check" style="width:13px;height:13px;"></i></div>
+            <div>
+              <b style="color:var(--ok);">What stays</b>
+              <div class="stack">
+                <div class="row"><i class="dot"></i>All canvases, snapshots, and brand-kit data — untouched</div>
+                <div class="row"><i class="dot"></i>318 cached product references stay on existing canvases (frozen at last sync)</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+        <div class="dlg-foot">
+          <div class="l"><i data-lucide="alert-triangle" style="width:12px;height:12px;color:var(--warn);"></i>Reversible · re-auth required to reconnect.</div>
+          <div class="r">
+            <div class="btn">Cancel</div>
+            <div class="btn danger">Disconnect</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Two parallel surfaces</strong> — a warn-tinted "What stops" loss-list and a green-tinted "What stays" info-card. Side-by-side framing answers the user's reflexive question ("does this break my work?") with a directly visible "no" before they decide.</li>
+      <li><strong>Destructive CTA, but not typed-confirm.</strong> Disconnect is reversible (re-auth required, but data survives). Typed-confirm is reserved for irreversible actions — A4.3 Delete brand and A9.1 Delete account. This stays at the simpler A8.4 destructive variant.</li>
+      <li><strong>Re-auth requirement is foot-meta, not body-paragraph.</strong> Surfaces the most likely surprise ("can I reconnect with one click?") in the foot rather than burying it in dense copy.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<script>
+  if (window.lucide) {
+    window.lucide.createIcons({ attrs: { 'stroke-width': 1.6 } });
+  }
+</script>
+
+</body>
+</html>

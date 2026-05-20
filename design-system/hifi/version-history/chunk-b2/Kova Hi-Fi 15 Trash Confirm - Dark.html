@@ -1,0 +1,970 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<title>Kova — Hi-fi · 15 Trash Confirm · Dark</title>
+<meta name="viewport" content="width=1440" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+<link rel="stylesheet" href="../../design-system/kova-hifi.css" />
+<script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
+<style>
+/* ============================================================
+   FILE 15 — Trash confirm flow (B13)
+   Surfaces: B13.1 confirm modal · B13.2 hover · B13.3 post-confirm
+   Built on top of:
+     · LIFTED `.kc` chrome from batch-b/Kova Canvas - Final.html
+       (token block lines 75-97 + topbar/body/center/toolbar/zoom rules)
+     · LIFTED `.dlg` shell from batch-a/dark/Kova Hi-Fi A6+A2a Popovers
+       + A8 Dialogs - Dark.html (lines 44-86)
+     · LIFTED `.btn.danger` from same A6+A2a (lines 327-335)
+     · CORRECTED `.modal-backdrop` rgba(26,26,29,0.72) — derived from
+       canonical --bg #1a1a1d at 72%; the BANNED pre-rewire warm-brown
+       rgba(13,13,12,0.72) is NOT used here.
+     · `.toast` shell LIFTED from batch-a-additions/dark/batch-0/B1
+       Toasts (lines 430-501) for the 15.3 success-toast scene.
+   No new tokens, no new fonts, no monospace on chrome.
+   ============================================================ */
+
+  body { background: var(--bg); }
+
+  /* Section heading bump (locked Batch A convention) */
+  section.block .s-section h2 {
+    margin: 0 0 2px; font-size: 16px;
+    letter-spacing: -0.005em;
+    color: var(--ink); font-weight: 600;
+    font-family: 'Inter', system-ui, sans-serif;
+    text-transform: none;
+  }
+
+  /* Scene helper — single-pane canvas chrome (no left/right panels in
+     these stages so the modal stays visually centered above the canvas
+     plate). Token block + topbar markup are still lifted byte-for-byte. */
+  .scene-stage { height: 100%; }
+  .scene-stage .body { grid-template-columns: 1fr !important; }
+
+  /* ============================================================
+     LIFTED VERBATIM from batch-b/Kova Canvas - Final.html ·
+     style block lines 75-502. Diff against source must be zero
+     lines (see DELIVERY_NOTES.md §3.10).
+     ============================================================ */
+  .kc {
+    --bg:    #1a1a1d;        /* side panels */
+    --rail:  #1a1a1d;
+    --canvas:#242428;        /* canvas (per spec) */
+    --fill:  #26262b;
+    --fill2: #303035;
+    --line:  #2c2c30;
+    --line2: #232327;
+    --ink:   #ebebee;
+    --ink2:  #a8a8ad;
+    --ink3:  #6e6e73;
+    --ink4:  #4a4a4f;
+    --select:#3b82f6;
+    --select-soft: rgba(59,130,246,0.16);
+    --accent:#3b82f6;
+    --accent-soft: rgba(59,130,246,0.14);
+    --accent-ink:#a9c4ff;
+    background: var(--bg);
+    color: var(--ink);
+    font-size: 12px;
+    display: grid;
+    grid-template-rows: 44px 1fr;
+  }
+
+  /* TOPBAR ----------------------------------------------------------- */
+  .kc .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--rail);
+    border-bottom: 1px solid var(--line);
+    padding: 0 12px;
+    height: 44px;
+  }
+  .kc .topbar .l, .kc .topbar .r {
+    display:flex; align-items:center; gap: 12px;
+  }
+  .kc .topbar .logo {
+    width: 24px; height: 24px;
+    border-radius: 6px; background: var(--ink); color: var(--bg);
+    display:grid; place-items:center;
+    font-weight: 700; font-size: 11px;
+    letter-spacing: -0.04em;
+  }
+  .kc .topbar .file {
+    display: flex; align-items: center; gap: 8px;
+    color: var(--ink2); font-size: 13px;
+  }
+  .kc .topbar .file .crumb-brand { display: inline-flex; align-items: center; gap: 6px; }
+  .kc .topbar .file .crumb-brand .b {
+    width: 14px; height: 14px; border-radius: 4px; background: #c24a1e;
+  }
+  .kc .topbar .file .sep { color: var(--ink4); }
+  .kc .topbar .file b {
+    color: var(--ink); font-weight: 600; letter-spacing: -0.005em;
+  }
+  .kc .topbar .file .caret { color: var(--ink3); display:grid; place-items:center; }
+  .kc .topbar .icon-btn {
+    width: 28px; height: 28px;
+    display:grid; place-items:center;
+    color: var(--ink2); border-radius: 5px;
+  }
+  .kc .topbar .icon-btn:hover { background: var(--line2); color: var(--ink); }
+  .kc .topbar .avatar {
+    width: 26px; height: 26px;
+    border-radius: 50%; background: #c24a1e; color: #fff;
+    display:grid; place-items:center;
+    font-weight: 600; font-size: 10.5px;
+  }
+
+  /* BODY ------------------------------------------------------------- */
+  .kc .body { display: grid; grid-template-columns: 240px 1fr 264px; min-height: 0; }
+
+  /* LEFT PANEL ------------------------------------------------------- */
+  .kc .left {
+    background: var(--rail);
+    border-right: 1px solid var(--line);
+    display: flex; flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .kc .left .file-row {
+    padding: 14px;
+    border-bottom: 1px solid var(--line2);
+    display:flex; align-items:center; gap: 10px;
+  }
+  .kc .left .file-row .file-icon {
+    width: 30px; height: 30px;
+    border-radius: 7px; background: var(--fill);
+    display: grid; place-items: center;
+    color: var(--ink2);
+  }
+  .kc .left .file-row .name { font-weight: 600; font-size: 13px; color: var(--ink); }
+  .kc .left .file-row .meta { font-size: 11.5px; color: var(--ink3); margin-top: 2px; }
+  .kc .left .sec {
+    padding: 14px 14px 6px;
+    display: flex; align-items:center; justify-content: space-between;
+  }
+  .kc .left .sec h5 {
+    margin: 0; font-size: 11px; font-weight: 500;
+    color: var(--ink3); letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .kc .left .sec .add {
+    width: 20px; height: 20px;
+    display:grid; place-items:center; color: var(--ink3);
+    border-radius: 5px;
+  }
+  .kc .left .pages { padding: 0 8px 6px; }
+  .kc .left .page-row {
+    display:flex; align-items:center; gap: 8px;
+    padding: 7px 10px;
+    border-radius: 7px;
+    color: var(--ink2); font-size: 12.5px;
+  }
+  .kc .left .page-row.active { background: var(--fill); color: var(--ink); }
+  .kc .left .layers { flex: 1; overflow: auto; padding: 0 6px 16px; }
+  .kc .left .layer {
+    display: flex; align-items: center; gap: 7px;
+    padding: 5px 8px;
+    height: 28px;
+    font-size: 12.5px;
+    color: var(--ink2);
+    border-radius: 6px;
+    line-height: 1.3;
+    white-space: nowrap;
+  }
+  .kc .left .layer:hover { background: var(--line2); color: var(--ink); }
+  .kc .left .layer.selected {
+    background: var(--select-soft);
+    color: var(--ink);
+  }
+  .kc .left .layer .caret { width: 10px; color: var(--ink3); display:grid; place-items:center; }
+  .kc .left .layer .ic { color: var(--ink3); display:grid; place-items:center; flex-shrink:0; }
+  .kc .left .layer.selected .ic { color: var(--ink); }
+  .kc .left .layer .name { flex: 1; overflow:hidden; text-overflow:ellipsis; }
+  .kc .left .layer .mask, .kc .left .layer .vis { color: var(--ink3); display:grid; place-items:center; flex-shrink:0; }
+  .kc .left .layer .vis { opacity: 0; }
+  .kc .left .layer:hover .vis, .kc .left .layer.selected .vis { opacity: 1; }
+  .kc .left .layer.dim { color: var(--ink4); }
+  .kc .left .layer.dim .ic { color: var(--ink4); }
+  .kc .left .indent-1 { padding-left: 24px; }
+  .kc .left .indent-2 { padding-left: 40px; }
+
+  /* CENTER (CANVAS) -------------------------------------------------- */
+  .kc .center {
+    background: var(--canvas);
+    position: relative;
+    overflow: hidden;
+  }
+  .kc .center .canvas-grid {
+    position: absolute; inset: 0;
+    background-image:
+      radial-gradient(circle, rgba(255,255,255,0.025) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+  .kc .frames-row {
+    position: absolute; top: 78px; left: 50%;
+    transform: translateX(-50%) scale(0.62);
+    transform-origin: top center;
+    display: flex; gap: 72px;
+  }
+  .kc .frame {
+    width: 600px; height: 900px;
+    background: #fff; color: #111;
+    position: relative; flex-shrink: 0;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .kc .frame-label {
+    position: absolute; top: -24px; left: 0;
+    color: var(--ink2); font-size: 14.5px;
+    white-space: nowrap; letter-spacing: -0.003em;
+  }
+  .kc .frame.selected .frame-label { color: var(--select); font-weight: 500; }
+  .kc .frame.selected {
+    outline: 2px solid var(--select);
+    outline-offset: 0;
+    border-radius: 6px;
+  }
+  .kc .handle {
+    position: absolute; width: 9px; height: 9px;
+    background: #fff;
+    border: 1.5px solid var(--select);
+    border-radius: 2px;
+  }
+  .kc .handle.tl { top:-1px; left:-1px; }
+  .kc .handle.tm { top:-1px; left:50%; transform:translateX(-50%); }
+  .kc .handle.tr { top:-1px; right:-1px; }
+  .kc .handle.lm { top:50%; left:-1px; transform:translateY(-50%); }
+  .kc .handle.rm { top:50%; right:-1px; transform:translateY(-50%); }
+  .kc .handle.bl { bottom:-1px; left:-1px; }
+  .kc .handle.bm { bottom:-1px; left:50%; transform:translateX(-50%); }
+  .kc .handle.br { bottom:-1px; right:-1px; }
+  .kc .size-chip {
+    position: absolute; bottom: -36px; left: 50%; transform: translateX(-50%);
+    background: var(--select); color: #fff;
+    font-size: 15px; padding: 5px 12px; border-radius: 6px;
+    font-weight: 500; letter-spacing: 0.01em;
+  }
+
+  /* TOOLBAR (V1 Kova-Loud chrome, V3 #3b82f6 selection) ------------- */
+  .kc .toolbar {
+    position: absolute;
+    bottom: 22px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1a1a1d;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 6px;
+    display: flex;
+    gap: 2px;
+    box-shadow: 0 8px 24px -6px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.04) inset;
+  }
+  .kc .toolbar .tool {
+    width: 36px; height: 36px;
+    display: grid; place-items:center;
+    color: var(--ink2);
+    border-radius: 6px;
+    cursor: pointer;
+    position: relative;
+  }
+  .kc .toolbar .tool:hover { background: var(--line2); color: var(--ink); }
+  .kc .toolbar .tool.active {
+    background: var(--accent);  /* #3b82f6 — never lilac */
+    color: #fff;
+  }
+  .kc .toolbar .divider {
+    width: 1px; background: var(--line2); margin: 6px 4px;
+  }
+  .kc .toolbar .tool.ai { color: var(--accent-ink); }
+  .kc .toolbar .tool.ai:hover { background: var(--accent-soft); }
+  .kc .toolbar .caret-mini {
+    position: absolute; right: 2px; bottom: 2px;
+    color: var(--ink3); display:grid; place-items:center;
+  }
+
+  /* Zoom HUD --------------------------------------------------------- */
+  .kc .zoom {
+    position: absolute;
+    bottom: 22px;
+    right: 22px;
+    background: #1a1a1d;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 6px 10px;
+    display: flex; align-items:center; gap: 6px;
+    color: var(--ink2);
+    font-size: 12px;
+    letter-spacing: 0.01em;
+  }
+  .kc .zoom .caret { display:grid; place-items:center; color: var(--ink3); }
+
+  /* RIGHT PANEL (vertically descending properties) ------------------ */
+  .kc .right {
+    background: var(--rail);
+    border-left: 1px solid var(--line);
+    display: flex; flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* Tabs row — Design only + zoom on the right */
+  .kc .right .tabs {
+    display: flex; border-bottom: 1px solid var(--line2);
+    padding: 0 14px; height: 44px; align-items: stretch;
+    gap: 4px;
+    justify-content: space-between;
+  }
+  .kc .right .tabs .tabs-l { display: flex; gap: 4px; }
+  .kc .right .tabs .tab {
+    display:flex; align-items:center; padding: 0 4px;
+    font-size: 13px; color: var(--ink3);
+  }
+  .kc .right .tabs .tab.active {
+    color: var(--ink);
+    background: var(--fill);
+    padding: 4px 10px;
+    border-radius: 5px;
+    margin: 8px 0;
+    font-weight: 500;
+  }
+  .kc .right .tabs .zoom-r {
+    display:flex; align-items:center; gap: 4px;
+    color: var(--ink2); font-size: 12px;
+  }
+
+  /* Frame header — title + quick actions */
+  .kc .right .frame-head {
+    padding: 14px 14px 14px;
+    border-bottom: 1px solid var(--line2);
+    display:flex; align-items:center; justify-content: space-between;
+  }
+  .kc .right .frame-head .title {
+    display:flex; align-items:center; gap: 6px;
+    font-size: 15px; font-weight: 600; color: var(--ink);
+    letter-spacing: -0.005em;
+  }
+  .kc .right .frame-head .title .caret { color: var(--ink3); display:grid; place-items:center; }
+  .kc .right .frame-head .actions { display:flex; gap: 2px; color: var(--ink2); }
+  .kc .right .frame-head .actions .a {
+    width: 26px; height: 26px;
+    display: grid; place-items: center; border-radius: 5px;
+  }
+  .kc .right .frame-head .actions .a:hover { background: var(--fill); color: var(--ink); }
+
+  /* Body scroll */
+  .kc .right .pbody { flex: 1; overflow: auto; }
+
+  /* Each property GROUP is a vertically-stacked section */
+  .kc .right .group {
+    padding: 14px 14px 16px;
+    border-bottom: 1px solid var(--line2);
+  }
+  .kc .right .group .ghead {
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom: 12px;
+  }
+  .kc .right .group .ghead h6 {
+    margin: 0; font-size: 13px; font-weight: 600;
+    color: var(--ink); letter-spacing: -0.005em;
+  }
+  .kc .right .group .ghead .actions { display:flex; gap: 2px; color: var(--ink2); }
+  .kc .right .group .ghead .actions .a {
+    width: 24px; height: 24px;
+    display: grid; place-items: center; border-radius: 5px;
+  }
+  .kc .right .group .ghead .actions .a:hover { background: var(--fill); color: var(--ink); }
+
+  /* Sub-section (Alignment, Position, Rotation, Flow, Dimensions...) */
+  .kc .right .sub { margin-bottom: 12px; }
+  .kc .right .sub:last-child { margin-bottom: 0; }
+  .kc .right .sub .lbl-row {
+    color: var(--ink2);
+    font-size: 12px;
+    margin-bottom: 6px;
+    letter-spacing: -0.003em;
+  }
+
+  /* Inputs — Inter everywhere (no monospace) */
+  .kc .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .kc .row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+  .kc .row-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .kc .ipt {
+    background: var(--fill);
+    border: 1px solid transparent;
+    border-radius: 5px;
+    padding: 0 9px;
+    display: flex; align-items: center; gap: 6px;
+    height: 30px; font-size: 12.5px;
+  }
+  .kc .ipt:hover { border-color: var(--line); }
+  .kc .ipt .lbl { color: var(--ink3); font-size: 12px; font-weight: 500; }
+  .kc .ipt .val { color: var(--ink); font-size: 12.5px; flex: 1; }
+  .kc .ipt .unit { color: var(--ink3); font-size: 12px; }
+
+  /* Segmented controls */
+  .kc .seg {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    background: var(--fill);
+    border-radius: 5px;
+    padding: 2px;
+    gap: 1px;
+  }
+  .kc .seg .s {
+    height: 26px; display:grid; place-items:center;
+    color: var(--ink3); border-radius: 4px;
+  }
+  .kc .seg .s.active { background: var(--fill2); color: var(--ink); }
+  .kc .seg .s:hover { color: var(--ink2); }
+  .kc .seg .s.active:hover { color: var(--ink); }
+  .kc .seg .gap { width: 6px; }
+
+  /* Two segments side-by-side */
+  .kc .seg-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+
+  /* Swatch box */
+  .kc .swatch {
+    width: 18px; height: 18px; border-radius: 3px;
+    background: #fff; border: 1px solid var(--line); flex-shrink: 0;
+  }
+
+  /* Empty/collapsed groups (Stroke / Effects / Layout guide) */
+  .kc .empty-row {
+    color: var(--ink3); font-size: 12.5px;
+  }
+
+  /* Checkbox row */
+  .kc .checkbox-row {
+    display:flex; align-items:center; gap: 8px;
+    font-size: 12.5px; color: var(--ink2);
+  }
+  .kc .checkbox-row .cb {
+    width: 14px; height: 14px;
+    border: 1px solid var(--line);
+    border-radius: 3px; background: var(--bg);
+    display:grid; place-items:center;
+  }
+  .kc .checkbox-row.checked .cb {
+    background: var(--select); border-color: var(--select); color: #fff;
+  }
+
+  /* Fill row layout: swatch | hex | opacity | eye | minus */
+  .kc .fill-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto auto auto;
+    gap: 4px;
+    align-items: center;
+    background: var(--fill);
+    border-radius: 5px;
+    padding: 0 6px;
+    height: 30px;
+  }
+  .kc .fill-row .hex { color: var(--ink); font-size: 12.5px; padding-left: 4px; }
+  .kc .fill-row .pct { color: var(--ink); font-size: 12.5px; padding: 0 6px; border-left: 1px solid var(--line2); }
+  .kc .fill-row .ico { width: 20px; height: 20px; display:grid; place-items:center; color: var(--ink3); border-radius: 4px; }
+  .kc .fill-row .ico:hover { background: var(--fill2); color: var(--ink); }
+
+  /* Floating help button */
+  .kc .help-fab {
+    position: absolute; bottom: 14px; right: 14px;
+    width: 28px; height: 28px;
+    border-radius: 50%; background: var(--fill);
+    border: 1px solid var(--line);
+    display:grid; place-items:center;
+    color: var(--ink2); font-size: 13px;
+  }
+
+  /* ============================================================
+     LIFTED VERBATIM from batch-a/dark/Kova Hi-Fi A6+A2a Popovers
+     + A8 Dialogs - Dark.html · style block lines 44-86
+     (the .dlg shell — head/body/foot). Modal-backdrop rule below
+     is NOT lifted from A6+A2a (which uses the banned warm-brown
+     rgba) — it is rebuilt with the correct dark rgba.
+     ============================================================ */
+  .dlg {
+    position: absolute; left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--page); border: 1px solid var(--line);
+    border-radius: 10px; box-shadow: 0 24px 80px -20px rgba(0,0,0,0.7), 0 1px 0 rgba(255,255,255,0.03) inset;
+    z-index: 10;
+    display: flex; flex-direction: column;
+    min-width: 360px; max-width: 92%;
+  }
+  .dlg.sm { width: 460px; }
+  .dlg.md { width: 540px; }
+  .dlg.lg { width: 880px; max-height: 78%; }
+  .dlg .dlg-head {
+    padding: 18px 22px 12px;
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
+  }
+  .dlg .dlg-head h3 {
+    margin: 0; font-size: 16px; font-weight: 600; letter-spacing: -0.005em; color: var(--ink);
+  }
+  .dlg .dlg-head .sub {
+    margin: 4px 0 0; font-size: 12.5px; color: var(--ink-3); line-height: 1.5;
+  }
+  .dlg .dlg-head .x {
+    width: 26px; height: 26px; border-radius: 5px;
+    display: grid; place-items: center; color: var(--ink-3); cursor: pointer;
+    flex-shrink: 0;
+  }
+  .dlg .dlg-head .x:hover { background: var(--line-2); color: var(--ink); }
+  .dlg .dlg-body {
+    padding: 4px 22px 18px;
+    display: flex; flex-direction: column; gap: 14px;
+    min-height: 0;
+  }
+  .dlg .dlg-body.flush { padding: 0; }
+  .dlg .dlg-foot {
+    padding: 14px 22px;
+    border-top: 1px solid var(--line-2);
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    background: var(--rail);
+    border-bottom-left-radius: 10px; border-bottom-right-radius: 10px;
+  }
+  .dlg .dlg-foot .l { color: var(--ink-3); font-size: 11.5px; display: flex; align-items: center; gap: 6px; }
+  .dlg .dlg-foot .r { display: flex; gap: 8px; }
+
+  /* ============================================================
+     CORRECTED `.modal-backdrop` — derived from canonical --bg
+     #1a1a1d at 72%. The A6+A2a source declares a banned
+     rgba(13,13,12,0.72) (pre-rewire warm-brown #0d0d0c) which
+     fails verifier §3.9. THIS file uses rgba(26,26,29,0.72).
+     ============================================================ */
+  .modal-backdrop {
+    position: absolute; inset: 0;
+    background: rgba(26,26,29,0.72);
+    backdrop-filter: blur(2px);
+    z-index: 5;
+  }
+
+  /* ============================================================
+     LIFTED VERBATIM from batch-a/dark/Kova Hi-Fi A6+A2a Popovers
+     + A8 Dialogs - Dark.html · style block lines 326-335
+     (the .btn.danger destructive variant).
+     ============================================================ */
+  /* Destructive variant */
+  .btn.danger {
+    background: var(--warn); color: #fff; border-color: var(--warn);
+  }
+  .btn.danger:hover { background: #d36a3a; border-color: #d36a3a; }
+  .btn.danger[disabled],
+  .btn.danger.disabled {
+    background: var(--fill); color: var(--ink-3); border-color: var(--line-2);
+    cursor: not-allowed;
+  }
+
+  /* ============================================================
+     LIFTED VERBATIM from batch-a-additions/dark/batch-0/Kova
+     Hi-Fi B1 Toasts - Dark.html · style block lines 430-501
+     (toast shell + variants). Used here for the 15.3
+     post-confirm success-toast scene (cross-references File 16).
+     ============================================================ */
+  .toast-stack {
+    position: absolute;
+    bottom: 22px; right: 22px;
+    display: flex; flex-direction: column; gap: 8px;
+    align-items: flex-end;
+    z-index: 20;
+    pointer-events: none;
+    max-width: 420px;
+  }
+  .toast {
+    pointer-events: auto;
+    display: flex; align-items: flex-start; gap: 11px;
+    min-width: 280px; max-width: 420px;
+    padding: 12px 14px;
+    background: var(--page);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    box-shadow:
+      0 8px 24px -6px rgba(0,0,0,0.6),
+      0 1px 0 rgba(255,255,255,0.04) inset;
+    font-size: 12.5px;
+    color: var(--ink);
+    line-height: 1.45;
+  }
+  .toast .ic-lead {
+    flex-shrink: 0;
+    width: 14px; height: 14px;
+    color: var(--ink-2);
+    margin-top: 2px;
+  }
+  .toast .body {
+    flex: 1; min-width: 0;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .toast .msg { color: var(--ink); word-wrap: break-word; overflow-wrap: anywhere; }
+  .toast .msg b { font-weight: 600; }
+  .toast .meta { color: var(--ink-3); font-size: 11.5px; }
+  .toast .row-actions {
+    display: flex; gap: 14px; align-items: center;
+    margin-top: 2px;
+  }
+  .toast .ta {
+    font-size: 12px; font-weight: 500;
+    color: var(--accent);
+    cursor: pointer;
+    background: transparent; border: 0; padding: 0;
+    letter-spacing: -0.003em;
+    font-family: inherit;
+  }
+  .toast .ta:hover { text-decoration: underline; }
+  .toast .ta.muted { color: var(--ink-3); font-weight: 400; }
+  .toast .ta.muted:hover { color: var(--ink-2); text-decoration: none; }
+  .toast .dismiss {
+    flex-shrink: 0;
+    width: 18px; height: 18px;
+    border-radius: 3px;
+    display: grid; place-items: center;
+    color: var(--ink-3); cursor: pointer;
+    margin-top: -1px; margin-right: -4px;
+  }
+  .toast .dismiss:hover { color: var(--ink); background: var(--line-2); }
+  .toast .dismiss .ic { width: 13px; height: 13px; }
+
+  /* Variants — variant ink/edge only; structure is identical */
+  .toast.success .ic-lead { color: var(--ink-2); }
+  .toast.error   .ic-lead { color: var(--warn); }
+  .toast.error            { border-color: var(--warn-edge); }
+  .toast.info    .msg     { color: var(--ink-2); }
+  .toast.info    .ic-lead { color: var(--ink-3); }
+  .toast.action  .ic-lead { color: var(--ink-2); }
+  .toast.ai      .ic-lead { color: var(--accent-ink); }
+  .toast.ai               { border-color: var(--accent-2); }
+
+  /* ============================================================
+     SCENE-SPECIFIC LAYOUT — page-head + screen captions inherit
+     from kova-hifi.css. .scene-stage above forces single-column
+     body so the canvas plate spans full width behind modal.
+     `.kc .frame-stub` is the only NEW chrome rule here — represents
+     the canvas-content email frame placeholder. Lifted .kc .center
+     + .kc .center .canvas-grid (already present in the lifted block
+     above) handle the canvas plate + grid background; this scene
+     just adds a frame stub on top.
+     ============================================================ */
+  .kc .frame-stub {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 360px; height: 540px;
+    background: var(--ink); border-radius: 6px;
+    opacity: 0.18;
+  }
+</style>
+</head>
+<body data-screen-label="15 Trash Confirm">
+
+<header class="page-head">
+  <div class="eyebrow">HI-FI · BATCH B · CHUNK B2 · DARK · FILE 15</div>
+  <h1>Trash confirm flow · B13.1 – B13.3</h1>
+  <p>Destructive confirmation that opens from the <strong>dashboard right-click context</strong> — right-clicking a file row in the brand dashboard (or in the dashboard's file-picker grid) and choosing "Move to trash." Per founder 2026-05-09 (Figma pattern: cannot trash a file you have open), the trash flow is <strong>NOT</strong> reachable from within the canvas editor itself; the in-canvas file dropdown has no Move-to-trash entry (cross-reference: chunk-b1 file 13 scene 13.2 strips the canvas-side dropdown item). Anchor surface: dashboard / file-picker right-click menu. The canvas chrome rendered behind the modal in these mockups is a layout-demonstration artifact only — in production the modal overlays the dashboard / file-picker surface (cross-reference 03 Brand Dashboard, not redrawn). Lifts the canonical <code>.dlg</code> chrome from A6+A2a's A8.4 useConfirm pattern; the destructive CTA uses canonical <code>.btn.danger</code>. Backdrop chrome (<code>.kc</code> token block + <code>.topbar</code> + <code>.toolbar</code>) is lifted byte-for-byte from <code>Kova Canvas - Final.html</code>. Backdrop dim is the corrected <code>rgba(26,26,29,0.72)</code> derived from <code>--bg #1a1a1d</code> — the banned pre-rewire warm-brown rgba 13/13/12 at 72% (documented in scene 1 backdrop annotation) is NOT used. Body copy follows Q19 indefinite-retention policy: no 30-day auto-purge warning, no "permanently deleted" copy.</p>
+  <div class="meta">3 scenes · dashboard-context anchor · canonical .dlg + .btn.danger · corrected backdrop rgba · Q19 retention copy · zero hex outside lifted blocks</div>
+</header>
+
+<!-- ============================================================
+     B13.1 · Trash confirm modal — idle
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE 15 · §1 · B13.1 Trash confirm (idle)</div>
+    <h2>B13.1 · Move to trash · destructive useConfirm</h2>
+    <p class="intro">Triggered from the <strong>dashboard right-click menu</strong> on a file row (or the dashboard file-picker's right-click context) → "Move to trash" → opens this confirm modal. Per founder 2026-05-09, this flow is dashboard-only; the in-canvas file dropdown no longer offers Move-to-trash (chunk-b1 strips the canvas-side dropdown item in file 13 scene 13.2). Lifts the canonical <code>.dlg.sm</code> shell from A6+A2a's A8.4 destructive variant. Title names the file being trashed. Body copy follows Q19 indefinite-retention policy — restore anytime, no auto-purge warning.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Canvas chrome · trash confirm modal · idle</div><div class="id">B13.1 · hi-fi</div></div>
+    <div class="canvas tall" data-screen-label="B13.1 Trash confirm idle" style="height: 720px;">
+      <div class="kc scene-stage">
+        <div class="topbar">
+          <div class="l">
+            <div class="logo">K</div>
+            <div class="file">
+              <span class="crumb-brand"><span class="b"></span>Wildgrove</span>
+              <span class="sep">/</span>
+              <b>Spring Drop · 04</b>
+              <span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span>
+            </div>
+          </div>
+          <div class="r">
+            <div class="icon-btn" title="Notifications"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/></svg></div>
+            <div class="icon-btn" title="Present"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
+            <div class="icon-btn" title="Comments"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+            <div class="avatar">JM</div>
+          </div>
+        </div>
+        <div class="body">
+          <div class="center">
+            <div class="canvas-grid"></div>
+            <div class="frame-stub"></div>
+            <div class="toolbar">
+              <div class="tool active" title="Move">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 2l7 18 2-7 7-2z"/></svg>
+              </div>
+              <div class="tool" title="Frame">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg>
+              </div>
+              <div class="tool" title="Rectangle">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+              </div>
+              <div class="tool" title="Ellipse">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/></svg>
+              </div>
+              <div class="tool" title="Pen">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.5 7.5"/></svg>
+              </div>
+              <div class="tool" title="Text">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h14v3M9 4v16M7 20h10"/></svg>
+              </div>
+              <div class="tool" title="Comment">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              </div>
+              <div class="divider"></div>
+              <div class="tool ai" title="Ask Kova">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/><path d="M19 14l.7 2.1L22 17l-2.3.9L19 20l-.7-2.1L16 17l2.3-.9L19 14z"/></svg>
+              </div>
+              <div class="tool" title="Components">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+              </div>
+            </div>
+            <div class="zoom">100%<span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Backdrop + modal overlay -->
+      <div class="modal-backdrop"></div>
+
+      <div class="dlg sm">
+        <div class="dlg-head">
+          <div>
+            <h3>Move "Spring Drop · 04" to trash?</h3>
+            <p class="sub">Restore anytime from Trash.</p>
+          </div>
+          <div class="x"><i data-lucide="x" style="width:14px;height:14px;"></i></div>
+        </div>
+        <div class="dlg-body">
+          <p style="margin:0; font-size:12.5px; color: var(--ink-2); line-height:1.55;">This canvas and all of its snapshots will be moved to Trash. You can restore it from Trash whenever you want.</p>
+        </div>
+        <div class="dlg-foot">
+          <div class="l"></div>
+          <div class="r">
+            <div class="btn">Cancel</div>
+            <div class="btn danger">Move to trash</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Surface scope.</strong> This modal is reachable ONLY from the dashboard / file-picker right-click context. The in-canvas file dropdown no longer offers Move to trash (founder decision 2026-05-09 — Figma pattern: cannot trash a file you have open). Anchor surface: dashboard. NOT reachable from any in-canvas surface (canvas trash entry-point removed per founder 2026-05-09).</li>
+      <li><strong>Entry point.</strong> Dashboard file-row right-click menu → "Move to trash" → opens this confirm modal. Also reachable from the file-picker's right-click context within the dashboard file grid. Cross-reference: chunk-b1 file 13 scene 13.2 strips the canvas-side dropdown item (handled in CHUNK_B1_REWASH.md §5.9).</li>
+      <li><strong>Modal shell is canonical <code>.dlg.sm</code></strong> — lifted byte-for-byte from A6+A2a (the same shell as A8.1 Snapshot, A8.4 destructive useConfirm).</li>
+      <li><strong>Backdrop = <code>rgba(26,26,29,0.72)</code></strong>, derived from canonical <code>--bg #1a1a1d</code> at 72%. The pre-rewire warm-brown <code>rgba(13,13,12,0.72)</code> declared in A6+A2a's <code>.modal-backdrop</code> rule is corrected here per CHUNK_B2 §3.1 + §3.10.</li>
+      <li><strong>Confirm CTA uses <code>.btn.danger</code></strong> (canonical destructive) — degrades to neutral ink + warm-orange hover until status palette ships per design.md §1.1.</li>
+      <li><strong>Q19 retention copy</strong>: "Restore anytime from Trash." No 30-day auto-purge warning, no "permanently deleted in N days" copy.</li>
+      <li><strong>Mockup chrome note.</strong> Canvas chrome behind the modal is a layout-demonstration artifact in this hi-fi mockup; in production the modal overlays the dashboard / file-picker view (cross-reference 03 Brand Dashboard, not redrawn).</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- ============================================================
+     B13.2 · Trash confirm modal — Move-to-trash button hovered
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE 15 · §2 · B13.2 Trash confirm (CTA hover)</div>
+    <h2>B13.2 · Move-to-trash · hover state</h2>
+    <p class="intro">Same modal shell as B13.1 (same dashboard-context anchor — see scene 15.1 Surface scope), with the destructive CTA in its <code>:hover</code> state. Forced via inline style on the button matching the lifted <code>.btn.danger:hover</code> declaration so the screenshot captures the warm-orange hover treatment without JS.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Canvas chrome · trash confirm modal · CTA hover</div><div class="id">B13.2 · hi-fi</div></div>
+    <div class="canvas tall" data-screen-label="B13.2 Trash confirm hover" style="height: 720px;">
+      <div class="kc scene-stage">
+        <div class="topbar">
+          <div class="l">
+            <div class="logo">K</div>
+            <div class="file">
+              <span class="crumb-brand"><span class="b"></span>Wildgrove</span>
+              <span class="sep">/</span>
+              <b>Spring Drop · 04</b>
+              <span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span>
+            </div>
+          </div>
+          <div class="r">
+            <div class="icon-btn" title="Notifications"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/></svg></div>
+            <div class="icon-btn" title="Present"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
+            <div class="icon-btn" title="Comments"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+            <div class="avatar">JM</div>
+          </div>
+        </div>
+        <div class="body">
+          <div class="center">
+            <div class="canvas-grid"></div>
+            <div class="frame-stub"></div>
+            <div class="toolbar">
+              <div class="tool active" title="Move">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 2l7 18 2-7 7-2z"/></svg>
+              </div>
+              <div class="tool" title="Frame">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg>
+              </div>
+              <div class="tool" title="Rectangle">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+              </div>
+              <div class="tool" title="Ellipse">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/></svg>
+              </div>
+              <div class="tool" title="Pen">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.5 7.5"/></svg>
+              </div>
+              <div class="tool" title="Text">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h14v3M9 4v16M7 20h10"/></svg>
+              </div>
+              <div class="tool" title="Comment">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              </div>
+              <div class="divider"></div>
+              <div class="tool ai" title="Ask Kova">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/><path d="M19 14l.7 2.1L22 17l-2.3.9L19 20l-.7-2.1L16 17l2.3-.9L19 14z"/></svg>
+              </div>
+              <div class="tool" title="Components">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+              </div>
+            </div>
+            <div class="zoom">100%<span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-backdrop"></div>
+
+      <div class="dlg sm">
+        <div class="dlg-head">
+          <div>
+            <h3>Move "Spring Drop · 04" to trash?</h3>
+            <p class="sub">Restore anytime from Trash.</p>
+          </div>
+          <div class="x"><i data-lucide="x" style="width:14px;height:14px;"></i></div>
+        </div>
+        <div class="dlg-body">
+          <p style="margin:0; font-size:12.5px; color: var(--ink-2); line-height:1.55;">This canvas and all of its snapshots will be moved to Trash. You can restore it from Trash whenever you want.</p>
+        </div>
+        <div class="dlg-foot">
+          <div class="l"></div>
+          <div class="r">
+            <div class="btn">Cancel</div>
+            <div class="btn danger" style="background:#d36a3a; border-color:#d36a3a; color:#fff;">Move to trash</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Surface scope.</strong> Inherits B13.1 anchor — dashboard / file-picker right-click only. NOT reachable from any in-canvas surface (canvas trash entry-point removed per founder 2026-05-09).</li>
+      <li><strong>Hover state forced via inline style</strong> matching the lifted <code>.btn.danger:hover</code> declaration (<code>#d36a3a</code> warm-orange) so the screenshot captures the depressed CTA without JS.</li>
+      <li><strong>Destructive CTA carries the warm-orange ink only on hover</strong> — idle state stays neutral (canonical destructive degradation per design.md §1.1).</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- ============================================================
+     B13.3 · Post-confirm transition — modal closed, success toast
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE 15 · §3 · B13.3 Post-confirm</div>
+    <h2>B13.3 · Moved to trash · success toast</h2>
+    <p class="intro">Modal has closed; the dashboard view returns to its file-grid state with the moved file removed from the active list (cross-reference 03 Brand Dashboard — not redrawn here). Since the trigger surface is the dashboard right-click context (see scene 15.1 Surface scope), the post-confirm view stays inside the dashboard — there is no canvas-to-dashboard route transition for this flow. Mid-transition state shows a success toast confirming the action. Toast shell is lifted from B1 Round 1; cross-references File 16 success variant.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Canvas chrome · post-confirm transition · success toast</div><div class="id">B13.3 · hi-fi</div></div>
+    <div class="canvas tall" data-screen-label="B13.3 Post-confirm" style="height: 720px;">
+      <div class="kc scene-stage">
+        <div class="topbar">
+          <div class="l">
+            <div class="logo">K</div>
+            <div class="file">
+              <span class="crumb-brand"><span class="b"></span>Wildgrove</span>
+              <span class="sep">/</span>
+              <b>Spring Drop · 04</b>
+              <span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span>
+            </div>
+          </div>
+          <div class="r">
+            <div class="icon-btn" title="Notifications"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/></svg></div>
+            <div class="icon-btn" title="Present"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
+            <div class="icon-btn" title="Comments"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+            <div class="avatar">JM</div>
+          </div>
+        </div>
+        <div class="body">
+          <div class="center">
+            <div class="canvas-grid"></div>
+            <div class="frame-stub" style="opacity: 0.10;"></div>
+            <div class="toolbar">
+              <div class="tool active" title="Move">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 2l7 18 2-7 7-2z"/></svg>
+              </div>
+              <div class="tool" title="Frame">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg>
+              </div>
+              <div class="tool" title="Rectangle">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+              </div>
+              <div class="tool" title="Ellipse">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/></svg>
+              </div>
+              <div class="tool" title="Pen">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.5 7.5"/></svg>
+              </div>
+              <div class="tool" title="Text">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h14v3M9 4v16M7 20h10"/></svg>
+              </div>
+              <div class="tool" title="Comment">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              </div>
+              <div class="divider"></div>
+              <div class="tool ai" title="Ask Kova">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/><path d="M19 14l.7 2.1L22 17l-2.3.9L19 20l-.7-2.1L16 17l2.3-.9L19 14z"/></svg>
+              </div>
+              <div class="tool" title="Components">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+              </div>
+            </div>
+            <div class="zoom">100%<span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div>
+
+            <!-- Post-confirm success toast (Round 1 B1 success variant — lifted shell) -->
+            <div class="toast-stack">
+              <div class="toast success">
+                <i data-lucide="check-circle" class="ic-lead"></i>
+                <div class="body">
+                  <div class="msg">Moved to trash. Restore anytime from Trash.</div>
+                </div>
+                <div class="dismiss" title="Dismiss"><i data-lucide="x" class="ic"></i></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Surface scope.</strong> Inherits B13.1 anchor — the post-confirm state lives in the dashboard / file-picker view. The trash flow never enters the canvas editor. NOT reachable from any in-canvas surface (canvas trash entry-point removed per founder 2026-05-09).</li>
+      <li><strong>Modal has closed</strong>; the file-content placeholder fades out to indicate the moved file is no longer in the active list (the canvas chrome behind is mockup scaffolding only — see page-head note; production overlays the dashboard file-grid).</li>
+      <li><strong>Success toast uses File 16 B15.1 variant</strong> — lifted <code>.toast.success</code> shell from B1 Round 1, <code>check-circle</code> Lucide glyph, ink-2 lead per design.md §5 ban 12 (no green).</li>
+      <li><strong>Toast copy mirrors the modal sub-line</strong>: "Restore anytime from Trash." Same Q19 indefinite-retention contract.</li>
+    </ul></div>
+  </div>
+</section>
+
+<script>
+  if (window.lucide) {
+    window.lucide.createIcons({ attrs: { 'stroke-width': 1.6 } });
+  }
+</script>
+
+</body>
+</html>

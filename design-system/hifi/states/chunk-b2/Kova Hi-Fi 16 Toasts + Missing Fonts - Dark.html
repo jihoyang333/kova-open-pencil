@@ -1,0 +1,1069 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<title>Kova — Hi-fi · 16 Toasts + Missing Fonts · Dark</title>
+<meta name="viewport" content="width=1440" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+<link rel="stylesheet" href="../../design-system/kova-hifi.css" />
+<script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
+<style>
+/* ============================================================
+   FILE 16 — Toasts + Missing-fonts pill (B15)
+   Surfaces: B15.1 success · B15.2 info · B15.3 progress ·
+             B15.4 error · B15.5 missing-fonts pill (top-bar)
+   Built on top of:
+     · LIFTED `.kc` chrome from batch-b/Kova Canvas - Final.html
+       (token block + topbar + body + center + toolbar + zoom)
+     · LIFTED `.toast` shell + variants from batch-a-additions/
+       dark/batch-0/Kova Hi-Fi B1 Toasts - Dark.html (lines 430-501)
+     · CORRECTED `.modal-backdrop` rgba(26,26,29,0.72) — included
+       defensively even though no modal scenes here, so this file
+       still passes the verifier rgba check.
+     · `.pill.warn` is canonical (kova-hifi.css) — used for the
+       missing-fonts pill anchored in the top-bar.
+   New per-variant ink/icon treatment for B15.1–B15.4 sits BELOW
+   the lifted `.toast` block as a small extension; existing
+   variant rules (`.toast.success`, `.toast.error`, `.toast.info`)
+   carry over unchanged.
+   No new tokens, no new fonts, no monospace on chrome.
+   ============================================================ */
+
+  body { background: var(--bg); }
+
+  /* Section heading bump (locked Batch A convention) */
+  section.block .s-section h2 {
+    margin: 0 0 2px; font-size: 16px;
+    letter-spacing: -0.005em;
+    color: var(--ink); font-weight: 600;
+    font-family: 'Inter', system-ui, sans-serif;
+    text-transform: none;
+  }
+
+  /* Scene helper — single-pane canvas chrome */
+  .scene-stage { height: 100%; }
+  .scene-stage .body { grid-template-columns: 1fr !important; }
+
+  /* B15.1 success: icon ink lifts to --accent (no green per
+     design.md §5 ban 12). Overrides lifted `.toast.success
+     .ic-lead { color: var(--ink-2); }` for THIS file's success
+     variant. */
+  .toast.b15-success .ic-lead { color: var(--accent); }
+
+  /* B15.3 progress: rotate the loader-2 icon */
+  @keyframes spin-360 { to { transform: rotate(360deg); } }
+  .toast.progress .ic-lead { animation: spin-360 1.2s linear infinite; transform-origin: 50% 50%; }
+
+  /* Missing-fonts pill — anchored in topbar right region.
+     `.pill.warn` is canonical (degrades neutral until status
+     palette ships per design.md §1.1 + §5 ban 12). */
+  .kc .topbar .topbar-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 9px; border-radius: 999px;
+    background: var(--fill); color: var(--ink-2);
+    border: 1px solid var(--line);
+    font-size: 11.5px; font-weight: 500;
+    letter-spacing: -0.003em; cursor: pointer;
+    white-space: nowrap;
+  }
+  .kc .topbar .topbar-pill:hover { border-color: var(--ink-3); color: var(--ink); }
+  .kc .topbar .topbar-pill .ic { width: 12px; height: 12px; color: var(--ink-3); }
+
+  /* ============================================================
+     LIFTED VERBATIM from batch-b/Kova Canvas - Final.html ·
+     style block lines 75-502.
+     ============================================================ */
+  .kc {
+    --bg:    #1a1a1d;        /* side panels */
+    --rail:  #1a1a1d;
+    --canvas:#242428;        /* canvas (per spec) */
+    --fill:  #26262b;
+    --fill2: #303035;
+    --line:  #2c2c30;
+    --line2: #232327;
+    --ink:   #ebebee;
+    --ink2:  #a8a8ad;
+    --ink3:  #6e6e73;
+    --ink4:  #4a4a4f;
+    --select:#3b82f6;
+    --select-soft: rgba(59,130,246,0.16);
+    --accent:#3b82f6;
+    --accent-soft: rgba(59,130,246,0.14);
+    --accent-ink:#a9c4ff;
+    background: var(--bg);
+    color: var(--ink);
+    font-size: 12px;
+    display: grid;
+    grid-template-rows: 44px 1fr;
+  }
+
+  /* TOPBAR ----------------------------------------------------------- */
+  .kc .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--rail);
+    border-bottom: 1px solid var(--line);
+    padding: 0 12px;
+    height: 44px;
+  }
+  .kc .topbar .l, .kc .topbar .r {
+    display:flex; align-items:center; gap: 12px;
+  }
+  .kc .topbar .logo {
+    width: 24px; height: 24px;
+    border-radius: 6px; background: var(--ink); color: var(--bg);
+    display:grid; place-items:center;
+    font-weight: 700; font-size: 11px;
+    letter-spacing: -0.04em;
+  }
+  .kc .topbar .file {
+    display: flex; align-items: center; gap: 8px;
+    color: var(--ink2); font-size: 13px;
+  }
+  .kc .topbar .file .crumb-brand { display: inline-flex; align-items: center; gap: 6px; }
+  .kc .topbar .file .crumb-brand .b {
+    width: 14px; height: 14px; border-radius: 4px; background: #c24a1e;
+  }
+  .kc .topbar .file .sep { color: var(--ink4); }
+  .kc .topbar .file b {
+    color: var(--ink); font-weight: 600; letter-spacing: -0.005em;
+  }
+  .kc .topbar .file .caret { color: var(--ink3); display:grid; place-items:center; }
+  .kc .topbar .icon-btn {
+    width: 28px; height: 28px;
+    display:grid; place-items:center;
+    color: var(--ink2); border-radius: 5px;
+  }
+  .kc .topbar .icon-btn:hover { background: var(--line2); color: var(--ink); }
+  .kc .topbar .avatar {
+    width: 26px; height: 26px;
+    border-radius: 50%; background: #c24a1e; color: #fff;
+    display:grid; place-items:center;
+    font-weight: 600; font-size: 10.5px;
+  }
+
+  /* BODY ------------------------------------------------------------- */
+  .kc .body { display: grid; grid-template-columns: 240px 1fr 264px; min-height: 0; }
+
+  /* LEFT PANEL ------------------------------------------------------- */
+  .kc .left {
+    background: var(--rail);
+    border-right: 1px solid var(--line);
+    display: flex; flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .kc .left .file-row {
+    padding: 14px;
+    border-bottom: 1px solid var(--line2);
+    display:flex; align-items:center; gap: 10px;
+  }
+  .kc .left .file-row .file-icon {
+    width: 30px; height: 30px;
+    border-radius: 7px; background: var(--fill);
+    display: grid; place-items: center;
+    color: var(--ink2);
+  }
+  .kc .left .file-row .name { font-weight: 600; font-size: 13px; color: var(--ink); }
+  .kc .left .file-row .meta { font-size: 11.5px; color: var(--ink3); margin-top: 2px; }
+  .kc .left .sec {
+    padding: 14px 14px 6px;
+    display: flex; align-items:center; justify-content: space-between;
+  }
+  .kc .left .sec h5 {
+    margin: 0; font-size: 11px; font-weight: 500;
+    color: var(--ink3); letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .kc .left .sec .add {
+    width: 20px; height: 20px;
+    display:grid; place-items:center; color: var(--ink3);
+    border-radius: 5px;
+  }
+  .kc .left .pages { padding: 0 8px 6px; }
+  .kc .left .page-row {
+    display:flex; align-items:center; gap: 8px;
+    padding: 7px 10px;
+    border-radius: 7px;
+    color: var(--ink2); font-size: 12.5px;
+  }
+  .kc .left .page-row.active { background: var(--fill); color: var(--ink); }
+  .kc .left .layers { flex: 1; overflow: auto; padding: 0 6px 16px; }
+  .kc .left .layer {
+    display: flex; align-items: center; gap: 7px;
+    padding: 5px 8px;
+    height: 28px;
+    font-size: 12.5px;
+    color: var(--ink2);
+    border-radius: 6px;
+    line-height: 1.3;
+    white-space: nowrap;
+  }
+  .kc .left .layer:hover { background: var(--line2); color: var(--ink); }
+  .kc .left .layer.selected {
+    background: var(--select-soft);
+    color: var(--ink);
+  }
+  .kc .left .layer .caret { width: 10px; color: var(--ink3); display:grid; place-items:center; }
+  .kc .left .layer .ic { color: var(--ink3); display:grid; place-items:center; flex-shrink:0; }
+  .kc .left .layer.selected .ic { color: var(--ink); }
+  .kc .left .layer .name { flex: 1; overflow:hidden; text-overflow:ellipsis; }
+  .kc .left .layer .mask, .kc .left .layer .vis { color: var(--ink3); display:grid; place-items:center; flex-shrink:0; }
+  .kc .left .layer .vis { opacity: 0; }
+  .kc .left .layer:hover .vis, .kc .left .layer.selected .vis { opacity: 1; }
+  .kc .left .layer.dim { color: var(--ink4); }
+  .kc .left .layer.dim .ic { color: var(--ink4); }
+  .kc .left .indent-1 { padding-left: 24px; }
+  .kc .left .indent-2 { padding-left: 40px; }
+
+  /* CENTER (CANVAS) -------------------------------------------------- */
+  .kc .center {
+    background: var(--canvas);
+    position: relative;
+    overflow: hidden;
+  }
+  .kc .center .canvas-grid {
+    position: absolute; inset: 0;
+    background-image:
+      radial-gradient(circle, rgba(255,255,255,0.025) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+  .kc .frames-row {
+    position: absolute; top: 78px; left: 50%;
+    transform: translateX(-50%) scale(0.62);
+    transform-origin: top center;
+    display: flex; gap: 72px;
+  }
+  .kc .frame {
+    width: 600px; height: 900px;
+    background: #fff; color: #111;
+    position: relative; flex-shrink: 0;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .kc .frame-label {
+    position: absolute; top: -24px; left: 0;
+    color: var(--ink2); font-size: 14.5px;
+    white-space: nowrap; letter-spacing: -0.003em;
+  }
+  .kc .frame.selected .frame-label { color: var(--select); font-weight: 500; }
+  .kc .frame.selected {
+    outline: 2px solid var(--select);
+    outline-offset: 0;
+    border-radius: 6px;
+  }
+  .kc .handle {
+    position: absolute; width: 9px; height: 9px;
+    background: #fff;
+    border: 1.5px solid var(--select);
+    border-radius: 2px;
+  }
+  .kc .handle.tl { top:-1px; left:-1px; }
+  .kc .handle.tm { top:-1px; left:50%; transform:translateX(-50%); }
+  .kc .handle.tr { top:-1px; right:-1px; }
+  .kc .handle.lm { top:50%; left:-1px; transform:translateY(-50%); }
+  .kc .handle.rm { top:50%; right:-1px; transform:translateY(-50%); }
+  .kc .handle.bl { bottom:-1px; left:-1px; }
+  .kc .handle.bm { bottom:-1px; left:50%; transform:translateX(-50%); }
+  .kc .handle.br { bottom:-1px; right:-1px; }
+  .kc .size-chip {
+    position: absolute; bottom: -36px; left: 50%; transform: translateX(-50%);
+    background: var(--select); color: #fff;
+    font-size: 15px; padding: 5px 12px; border-radius: 6px;
+    font-weight: 500; letter-spacing: 0.01em;
+  }
+
+  /* TOOLBAR (V1 Kova-Loud chrome, V3 #3b82f6 selection) ------------- */
+  .kc .toolbar {
+    position: absolute;
+    bottom: 22px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1a1a1d;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 6px;
+    display: flex;
+    gap: 2px;
+    box-shadow: 0 8px 24px -6px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.04) inset;
+  }
+  .kc .toolbar .tool {
+    width: 36px; height: 36px;
+    display: grid; place-items:center;
+    color: var(--ink2);
+    border-radius: 6px;
+    cursor: pointer;
+    position: relative;
+  }
+  .kc .toolbar .tool:hover { background: var(--line2); color: var(--ink); }
+  .kc .toolbar .tool.active {
+    background: var(--accent);  /* #3b82f6 — never lilac */
+    color: #fff;
+  }
+  .kc .toolbar .divider {
+    width: 1px; background: var(--line2); margin: 6px 4px;
+  }
+  .kc .toolbar .tool.ai { color: var(--accent-ink); }
+  .kc .toolbar .tool.ai:hover { background: var(--accent-soft); }
+  .kc .toolbar .caret-mini {
+    position: absolute; right: 2px; bottom: 2px;
+    color: var(--ink3); display:grid; place-items:center;
+  }
+
+  /* Zoom HUD --------------------------------------------------------- */
+  .kc .zoom {
+    position: absolute;
+    bottom: 22px;
+    right: 22px;
+    background: #1a1a1d;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 6px 10px;
+    display: flex; align-items:center; gap: 6px;
+    color: var(--ink2);
+    font-size: 12px;
+    letter-spacing: 0.01em;
+  }
+  .kc .zoom .caret { display:grid; place-items:center; color: var(--ink3); }
+
+  /* RIGHT PANEL (vertically descending properties) ------------------ */
+  .kc .right {
+    background: var(--rail);
+    border-left: 1px solid var(--line);
+    display: flex; flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* Tabs row — Design only + zoom on the right */
+  .kc .right .tabs {
+    display: flex; border-bottom: 1px solid var(--line2);
+    padding: 0 14px; height: 44px; align-items: stretch;
+    gap: 4px;
+    justify-content: space-between;
+  }
+  .kc .right .tabs .tabs-l { display: flex; gap: 4px; }
+  .kc .right .tabs .tab {
+    display:flex; align-items:center; padding: 0 4px;
+    font-size: 13px; color: var(--ink3);
+  }
+  .kc .right .tabs .tab.active {
+    color: var(--ink);
+    background: var(--fill);
+    padding: 4px 10px;
+    border-radius: 5px;
+    margin: 8px 0;
+    font-weight: 500;
+  }
+  .kc .right .tabs .zoom-r {
+    display:flex; align-items:center; gap: 4px;
+    color: var(--ink2); font-size: 12px;
+  }
+
+  /* Frame header — title + quick actions */
+  .kc .right .frame-head {
+    padding: 14px 14px 14px;
+    border-bottom: 1px solid var(--line2);
+    display:flex; align-items:center; justify-content: space-between;
+  }
+  .kc .right .frame-head .title {
+    display:flex; align-items:center; gap: 6px;
+    font-size: 15px; font-weight: 600; color: var(--ink);
+    letter-spacing: -0.005em;
+  }
+  .kc .right .frame-head .title .caret { color: var(--ink3); display:grid; place-items:center; }
+  .kc .right .frame-head .actions { display:flex; gap: 2px; color: var(--ink2); }
+  .kc .right .frame-head .actions .a {
+    width: 26px; height: 26px;
+    display: grid; place-items: center; border-radius: 5px;
+  }
+  .kc .right .frame-head .actions .a:hover { background: var(--fill); color: var(--ink); }
+
+  /* Body scroll */
+  .kc .right .pbody { flex: 1; overflow: auto; }
+
+  /* Each property GROUP is a vertically-stacked section */
+  .kc .right .group {
+    padding: 14px 14px 16px;
+    border-bottom: 1px solid var(--line2);
+  }
+  .kc .right .group .ghead {
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom: 12px;
+  }
+  .kc .right .group .ghead h6 {
+    margin: 0; font-size: 13px; font-weight: 600;
+    color: var(--ink); letter-spacing: -0.005em;
+  }
+  .kc .right .group .ghead .actions { display:flex; gap: 2px; color: var(--ink2); }
+  .kc .right .group .ghead .actions .a {
+    width: 24px; height: 24px;
+    display: grid; place-items: center; border-radius: 5px;
+  }
+  .kc .right .group .ghead .actions .a:hover { background: var(--fill); color: var(--ink); }
+
+  /* Sub-section (Alignment, Position, Rotation, Flow, Dimensions...) */
+  .kc .right .sub { margin-bottom: 12px; }
+  .kc .right .sub:last-child { margin-bottom: 0; }
+  .kc .right .sub .lbl-row {
+    color: var(--ink2);
+    font-size: 12px;
+    margin-bottom: 6px;
+    letter-spacing: -0.003em;
+  }
+
+  /* Inputs — Inter everywhere (no monospace) */
+  .kc .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .kc .row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+  .kc .row-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .kc .ipt {
+    background: var(--fill);
+    border: 1px solid transparent;
+    border-radius: 5px;
+    padding: 0 9px;
+    display: flex; align-items: center; gap: 6px;
+    height: 30px; font-size: 12.5px;
+  }
+  .kc .ipt:hover { border-color: var(--line); }
+  .kc .ipt .lbl { color: var(--ink3); font-size: 12px; font-weight: 500; }
+  .kc .ipt .val { color: var(--ink); font-size: 12.5px; flex: 1; }
+  .kc .ipt .unit { color: var(--ink3); font-size: 12px; }
+
+  /* Segmented controls */
+  .kc .seg {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    background: var(--fill);
+    border-radius: 5px;
+    padding: 2px;
+    gap: 1px;
+  }
+  .kc .seg .s {
+    height: 26px; display:grid; place-items:center;
+    color: var(--ink3); border-radius: 4px;
+  }
+  .kc .seg .s.active { background: var(--fill2); color: var(--ink); }
+  .kc .seg .s:hover { color: var(--ink2); }
+  .kc .seg .s.active:hover { color: var(--ink); }
+  .kc .seg .gap { width: 6px; }
+
+  /* Two segments side-by-side */
+  .kc .seg-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+
+  /* Swatch box */
+  .kc .swatch {
+    width: 18px; height: 18px; border-radius: 3px;
+    background: #fff; border: 1px solid var(--line); flex-shrink: 0;
+  }
+
+  /* Empty/collapsed groups (Stroke / Effects / Layout guide) */
+  .kc .empty-row {
+    color: var(--ink3); font-size: 12.5px;
+  }
+
+  /* Checkbox row */
+  .kc .checkbox-row {
+    display:flex; align-items:center; gap: 8px;
+    font-size: 12.5px; color: var(--ink2);
+  }
+  .kc .checkbox-row .cb {
+    width: 14px; height: 14px;
+    border: 1px solid var(--line);
+    border-radius: 3px; background: var(--bg);
+    display:grid; place-items:center;
+  }
+  .kc .checkbox-row.checked .cb {
+    background: var(--select); border-color: var(--select); color: #fff;
+  }
+
+  /* Fill row layout: swatch | hex | opacity | eye | minus */
+  .kc .fill-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto auto auto;
+    gap: 4px;
+    align-items: center;
+    background: var(--fill);
+    border-radius: 5px;
+    padding: 0 6px;
+    height: 30px;
+  }
+  .kc .fill-row .hex { color: var(--ink); font-size: 12.5px; padding-left: 4px; }
+  .kc .fill-row .pct { color: var(--ink); font-size: 12.5px; padding: 0 6px; border-left: 1px solid var(--line2); }
+  .kc .fill-row .ico { width: 20px; height: 20px; display:grid; place-items:center; color: var(--ink3); border-radius: 4px; }
+  .kc .fill-row .ico:hover { background: var(--fill2); color: var(--ink); }
+
+  /* Floating help button */
+  .kc .help-fab {
+    position: absolute; bottom: 14px; right: 14px;
+    width: 28px; height: 28px;
+    border-radius: 50%; background: var(--fill);
+    border: 1px solid var(--line);
+    display:grid; place-items:center;
+    color: var(--ink2); font-size: 13px;
+  }
+
+  /* ============================================================
+     LIFTED VERBATIM from batch-a-additions/dark/batch-0/Kova
+     Hi-Fi B1 Toasts - Dark.html · style block lines 430-501
+     (toast shell + variants).
+     ============================================================ */
+  .toast-stack {
+    position: absolute;
+    bottom: 22px; right: 22px;
+    display: flex; flex-direction: column; gap: 8px;
+    align-items: flex-end;
+    z-index: 20;
+    pointer-events: none;
+    max-width: 420px;
+  }
+  .toast {
+    pointer-events: auto;
+    display: flex; align-items: flex-start; gap: 11px;
+    min-width: 280px; max-width: 420px;
+    padding: 12px 14px;
+    background: var(--page);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    box-shadow:
+      0 8px 24px -6px rgba(0,0,0,0.6),
+      0 1px 0 rgba(255,255,255,0.04) inset;
+    font-size: 12.5px;
+    color: var(--ink);
+    line-height: 1.45;
+  }
+  .toast .ic-lead {
+    flex-shrink: 0;
+    width: 14px; height: 14px;
+    color: var(--ink-2);
+    margin-top: 2px;
+  }
+  .toast .body {
+    flex: 1; min-width: 0;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .toast .msg { color: var(--ink); word-wrap: break-word; overflow-wrap: anywhere; }
+  .toast .msg b { font-weight: 600; }
+  .toast .meta { color: var(--ink-3); font-size: 11.5px; }
+  .toast .row-actions {
+    display: flex; gap: 14px; align-items: center;
+    margin-top: 2px;
+  }
+  .toast .ta {
+    font-size: 12px; font-weight: 500;
+    color: var(--accent);
+    cursor: pointer;
+    background: transparent; border: 0; padding: 0;
+    letter-spacing: -0.003em;
+    font-family: inherit;
+  }
+  .toast .ta:hover { text-decoration: underline; }
+  .toast .ta.muted { color: var(--ink-3); font-weight: 400; }
+  .toast .ta.muted:hover { color: var(--ink-2); text-decoration: none; }
+  .toast .dismiss {
+    flex-shrink: 0;
+    width: 18px; height: 18px;
+    border-radius: 3px;
+    display: grid; place-items: center;
+    color: var(--ink-3); cursor: pointer;
+    margin-top: -1px; margin-right: -4px;
+  }
+  .toast .dismiss:hover { color: var(--ink); background: var(--line-2); }
+  .toast .dismiss .ic { width: 13px; height: 13px; }
+
+  /* Variants — variant ink/edge only; structure is identical */
+  .toast.success .ic-lead { color: var(--ink-2); }
+  .toast.error   .ic-lead { color: var(--warn); }
+  .toast.error            { border-color: var(--warn-edge); }
+  .toast.info    .msg     { color: var(--ink-2); }
+  .toast.info    .ic-lead { color: var(--ink-3); }
+  .toast.action  .ic-lead { color: var(--ink-2); }
+  .toast.ai      .ic-lead { color: var(--accent-ink); }
+  .toast.ai               { border-color: var(--accent-2); }
+
+  /* ============================================================
+     CORRECTED `.modal-backdrop` — defensive include so this
+     file passes the rgba(26,26,29,0.72) verifier check even
+     though no modal scenes are rendered here.
+     ============================================================ */
+  .modal-backdrop {
+    position: absolute; inset: 0;
+    background: rgba(26,26,29,0.72);
+    backdrop-filter: blur(2px);
+    z-index: 5;
+  }
+
+  /* ============================================================
+     SCENE-SPECIFIC LAYOUT — canvas plate behind toast scenes.
+     `.kc .frame-stub` is the only NEW chrome rule here — a
+     placeholder for the canvas-content email frame. Lifted
+     .kc .center + .kc .center .canvas-grid (already in the
+     lifted block above) handle the canvas plate + grid.
+     ============================================================ */
+  .kc .frame-stub {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 360px; height: 540px;
+    background: var(--ink); border-radius: 6px;
+    opacity: 0.18;
+  }
+</style>
+</head>
+<body data-screen-label="16 Toasts + Missing Fonts">
+
+<header class="page-head">
+  <div class="eyebrow">HI-FI · BATCH B · CHUNK B2 · DARK · FILE 16</div>
+  <h1>Toasts + Missing fonts pill · B15.1 – B15.5</h1>
+  <p>Four toast variants (success / info / progress / error) extending the Round 1 B1 toast pattern, plus the missing-fonts pill anchored in the top-bar. All toasts lift the canonical <code>.toast</code> shell from B1 byte-for-byte; per-variant differences are icon glyph + ink only. Success icon uses <code>var(--accent)</code> (no green per design.md §5 ban 12); error icon uses <code>var(--warn)</code> (canonical, degrades neutral until status palette ships). Missing-fonts pill uses <code>.pill.warn</code> (canonical) anchored top-bar right, between the file-name region and the avatar.</p>
+  <div class="meta">5 scenes · canonical .toast (lifted) · canonical .pill.warn · zero hex outside lifted blocks · top-bar anchor for missing-fonts pill (designer choice)</div>
+</header>
+
+<!-- ============================================================
+     B15.1 · Success toast — "Version saved"
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE 16 · §1 · B15.1 Success toast</div>
+    <h2>B15.1 · Success · "Version saved"</h2>
+    <p class="intro">Auto-dismiss confirmation toast for fire-and-forget CRUD success (snapshot saved, version captured, "Moved to trash"). Lifts <code>.toast</code> shell from B1 Round 1; icon ink overridden to <code>var(--accent)</code> via <code>.toast.b15-success</code> per CHUNK_B2 §3.3 (no green per design.md §5 ban 12). Anchored bottom-right matching B1 Round 1 (22px from edges).</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Canvas chrome · success toast (bottom-right)</div><div class="id">B15.1 · hi-fi</div></div>
+    <div class="canvas tall" data-screen-label="B15.1 Success" style="height: 720px;">
+      <div class="kc scene-stage">
+        <div class="topbar">
+          <div class="l">
+            <div class="logo">K</div>
+            <div class="file">
+              <span class="crumb-brand"><span class="b"></span>Wildgrove</span>
+              <span class="sep">/</span>
+              <b>Spring Drop · 04</b>
+              <span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span>
+            </div>
+          </div>
+          <div class="r">
+            <div class="icon-btn" title="Notifications"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/></svg></div>
+            <div class="icon-btn" title="Present"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
+            <div class="icon-btn" title="Comments"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+            <div class="avatar">JM</div>
+          </div>
+        </div>
+        <div class="body">
+          <div class="center">
+            <div class="canvas-grid"></div>
+            <div class="frame-stub"></div>
+            <div class="toolbar">
+              <div class="tool active" title="Move">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 2l7 18 2-7 7-2z"/></svg>
+              </div>
+              <div class="tool" title="Frame">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg>
+              </div>
+              <div class="tool" title="Rectangle">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+              </div>
+              <div class="tool" title="Ellipse">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/></svg>
+              </div>
+              <div class="tool" title="Pen">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.5 7.5"/></svg>
+              </div>
+              <div class="tool" title="Text">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h14v3M9 4v16M7 20h10"/></svg>
+              </div>
+              <div class="tool" title="Comment">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              </div>
+              <div class="divider"></div>
+              <div class="tool ai" title="Ask Kova">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/><path d="M19 14l.7 2.1L22 17l-2.3.9L19 20l-.7-2.1L16 17l2.3-.9L19 14z"/></svg>
+              </div>
+              <div class="tool" title="Components">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+              </div>
+            </div>
+            <div class="zoom">100%<span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div>
+
+            <div class="toast-stack">
+              <div class="toast success b15-success">
+                <i data-lucide="check-circle" class="ic-lead"></i>
+                <div class="body">
+                  <div class="msg">Version saved</div>
+                </div>
+                <div class="dismiss" title="Dismiss"><i data-lucide="x" class="ic"></i></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Icon glyph: Lucide <code>check-circle</code></strong>, ink overridden to <code>var(--accent)</code> per §3.3 (no green hex anywhere — status palette deferred per design.md §5 ban 12).</li>
+      <li><strong>Auto-dismiss 4s</strong> per Round 1 B1 convention (Material 4–10s, Apple 4s).</li>
+      <li><strong>Single-line, single-action</strong> — when a CRUD action just worked, the toast says so and disappears. Round 1 B1 pattern.</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- ============================================================
+     B15.2 · Info toast — "Exporting your selection…"
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE 16 · §2 · B15.2 Info toast</div>
+    <h2>B15.2 · Info · "Exporting your selection…"</h2>
+    <p class="intro">Neutral status toast for non-blocking foreground tasks (export started, brand-switch in progress). Uses lifted <code>.toast.info</code> variant — message ink dims to <code>var(--ink-2)</code>, lead glyph dims to <code>var(--ink-3)</code>. No retry / dismiss action.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Canvas chrome · info toast (bottom-right)</div><div class="id">B15.2 · hi-fi</div></div>
+    <div class="canvas tall" data-screen-label="B15.2 Info" style="height: 720px;">
+      <div class="kc scene-stage">
+        <div class="topbar">
+          <div class="l">
+            <div class="logo">K</div>
+            <div class="file">
+              <span class="crumb-brand"><span class="b"></span>Wildgrove</span>
+              <span class="sep">/</span>
+              <b>Spring Drop · 04</b>
+              <span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span>
+            </div>
+          </div>
+          <div class="r">
+            <div class="icon-btn" title="Notifications"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/></svg></div>
+            <div class="icon-btn" title="Present"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
+            <div class="icon-btn" title="Comments"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+            <div class="avatar">JM</div>
+          </div>
+        </div>
+        <div class="body">
+          <div class="center">
+            <div class="canvas-grid"></div>
+            <div class="frame-stub"></div>
+            <div class="toolbar">
+              <div class="tool active" title="Move">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 2l7 18 2-7 7-2z"/></svg>
+              </div>
+              <div class="tool" title="Frame">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg>
+              </div>
+              <div class="tool" title="Rectangle">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+              </div>
+              <div class="tool" title="Ellipse">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/></svg>
+              </div>
+              <div class="tool" title="Pen">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.5 7.5"/></svg>
+              </div>
+              <div class="tool" title="Text">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h14v3M9 4v16M7 20h10"/></svg>
+              </div>
+              <div class="tool" title="Comment">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              </div>
+              <div class="divider"></div>
+              <div class="tool ai" title="Ask Kova">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/><path d="M19 14l.7 2.1L22 17l-2.3.9L19 20l-.7-2.1L16 17l2.3-.9L19 14z"/></svg>
+              </div>
+              <div class="tool" title="Components">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+              </div>
+            </div>
+            <div class="zoom">100%<span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div>
+
+            <div class="toast-stack">
+              <div class="toast info">
+                <i data-lucide="info" class="ic-lead"></i>
+                <div class="body">
+                  <div class="msg">Exporting your selection…</div>
+                </div>
+                <div class="dismiss" title="Dismiss"><i data-lucide="x" class="ic"></i></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Icon glyph: Lucide <code>info</code></strong>, ink in <code>var(--ink-3)</code> via lifted <code>.toast.info .ic-lead</code> rule — quietly states a non-blocking task is in flight.</li>
+      <li><strong>Auto-dismiss when the task completes</strong> (timeout falls back to 4s). When the export finishes, this toast is replaced by a B15.1 success toast.</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- ============================================================
+     B15.3 · Progress toast — "Uploading 3 of 5 fonts…"
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE 16 · §3 · B15.3 Progress toast</div>
+    <h2>B15.3 · Progress · "Uploading 3 of 5 fonts…"</h2>
+    <p class="intro">Long-running task with quantified progress. Lifts <code>.toast</code> shell; lead glyph is Lucide <code>loader-2</code> rotated via CSS keyframe (<code>spin-360</code>). Includes a meta line under the message to surface the progress fraction. Sticky until task completes.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Canvas chrome · progress toast (bottom-right)</div><div class="id">B15.3 · hi-fi</div></div>
+    <div class="canvas tall" data-screen-label="B15.3 Progress" style="height: 720px;">
+      <div class="kc scene-stage">
+        <div class="topbar">
+          <div class="l">
+            <div class="logo">K</div>
+            <div class="file">
+              <span class="crumb-brand"><span class="b"></span>Wildgrove</span>
+              <span class="sep">/</span>
+              <b>Spring Drop · 04</b>
+              <span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span>
+            </div>
+          </div>
+          <div class="r">
+            <div class="icon-btn" title="Notifications"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/></svg></div>
+            <div class="icon-btn" title="Present"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
+            <div class="icon-btn" title="Comments"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+            <div class="avatar">JM</div>
+          </div>
+        </div>
+        <div class="body">
+          <div class="center">
+            <div class="canvas-grid"></div>
+            <div class="frame-stub"></div>
+            <div class="toolbar">
+              <div class="tool active" title="Move">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 2l7 18 2-7 7-2z"/></svg>
+              </div>
+              <div class="tool" title="Frame">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg>
+              </div>
+              <div class="tool" title="Rectangle">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+              </div>
+              <div class="tool" title="Ellipse">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/></svg>
+              </div>
+              <div class="tool" title="Pen">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.5 7.5"/></svg>
+              </div>
+              <div class="tool" title="Text">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h14v3M9 4v16M7 20h10"/></svg>
+              </div>
+              <div class="tool" title="Comment">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              </div>
+              <div class="divider"></div>
+              <div class="tool ai" title="Ask Kova">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/><path d="M19 14l.7 2.1L22 17l-2.3.9L19 20l-.7-2.1L16 17l2.3-.9L19 14z"/></svg>
+              </div>
+              <div class="tool" title="Components">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+              </div>
+            </div>
+            <div class="zoom">100%<span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div>
+
+            <div class="toast-stack">
+              <div class="toast progress">
+                <i data-lucide="loader-2" class="ic-lead"></i>
+                <div class="body">
+                  <div class="msg">Uploading fonts…</div>
+                  <div class="meta">3 of 5 · Karrik Variable, Söhne Buch</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Icon glyph: Lucide <code>loader-2</code></strong>, animated via <code>@keyframes spin-360</code> (1.2s linear infinite). Ink stays <code>var(--ink-2)</code> from the lifted toast base.</li>
+      <li><strong>Sticky</strong> — does not auto-dismiss. Cleared by the runtime when the task completes (then replaced by a B15.1 success or B15.4 error).</li>
+      <li><strong>Meta line</strong> uses the lifted <code>.toast .meta</code> rule (<code>var(--ink-3)</code>, 11.5px) to surface the count without competing with the primary message.</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- ============================================================
+     B15.4 · Error toast — "Export failed — retry?"
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE 16 · §4 · B15.4 Error toast</div>
+    <h2>B15.4 · Error · "Export failed — retry?"</h2>
+    <p class="intro">Sticky failure toast with inline retry. Lifts <code>.toast.error</code> variant from B1 — lead glyph in <code>var(--warn)</code>, border lifts to <code>var(--warn-edge)</code>. Retry is a <code>.toast .ta</code> action button (canonical accent ink). Dismiss is explicit; no auto-fade.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Canvas chrome · error toast (sticky · bottom-right)</div><div class="id">B15.4 · hi-fi</div></div>
+    <div class="canvas tall" data-screen-label="B15.4 Error" style="height: 720px;">
+      <div class="kc scene-stage">
+        <div class="topbar">
+          <div class="l">
+            <div class="logo">K</div>
+            <div class="file">
+              <span class="crumb-brand"><span class="b"></span>Wildgrove</span>
+              <span class="sep">/</span>
+              <b>Spring Drop · 04</b>
+              <span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span>
+            </div>
+          </div>
+          <div class="r">
+            <div class="icon-btn" title="Notifications"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/></svg></div>
+            <div class="icon-btn" title="Present"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
+            <div class="icon-btn" title="Comments"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+            <div class="avatar">JM</div>
+          </div>
+        </div>
+        <div class="body">
+          <div class="center">
+            <div class="canvas-grid"></div>
+            <div class="frame-stub"></div>
+            <div class="toolbar">
+              <div class="tool active" title="Move">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 2l7 18 2-7 7-2z"/></svg>
+              </div>
+              <div class="tool" title="Frame">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg>
+              </div>
+              <div class="tool" title="Rectangle">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+              </div>
+              <div class="tool" title="Ellipse">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/></svg>
+              </div>
+              <div class="tool" title="Pen">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.5 7.5"/></svg>
+              </div>
+              <div class="tool" title="Text">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h14v3M9 4v16M7 20h10"/></svg>
+              </div>
+              <div class="tool" title="Comment">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              </div>
+              <div class="divider"></div>
+              <div class="tool ai" title="Ask Kova">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/><path d="M19 14l.7 2.1L22 17l-2.3.9L19 20l-.7-2.1L16 17l2.3-.9L19 14z"/></svg>
+              </div>
+              <div class="tool" title="Components">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+              </div>
+            </div>
+            <div class="zoom">100%<span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div>
+
+            <div class="toast-stack">
+              <div class="toast error">
+                <i data-lucide="alert-circle" class="ic-lead"></i>
+                <div class="body">
+                  <div class="msg">Export failed</div>
+                  <div class="meta">Network timed out at slice 3 of 5.</div>
+                  <div class="row-actions">
+                    <button class="ta">Retry</button>
+                    <button class="ta muted">Dismiss</button>
+                  </div>
+                </div>
+                <div class="dismiss" title="Dismiss"><i data-lucide="x" class="ic"></i></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Icon glyph: Lucide <code>alert-circle</code></strong>, ink <code>var(--warn)</code> from lifted <code>.toast.error .ic-lead</code> rule. Border lifts to <code>var(--warn-edge)</code> for a subtle distinction from neutral toasts.</li>
+      <li><strong>Sticky</strong> — only dismisses on user click, so the user sees the failure even if they were context-switching when it happened.</li>
+      <li><strong>Inline Retry</strong> as <code>.toast .ta</code> action button — accent ink + bare-button styling. Status palette is deferred per design.md §1.1 + §5 ban 12; the warn-tinted icon + edge is the only error signal.</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- ============================================================
+     B15.5 · Missing-fonts pill — anchored top-bar right
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE 16 · §5 · B15.5 Missing-fonts pill</div>
+    <h2>B15.5 · Missing fonts pill · top-bar anchor</h2>
+    <p class="intro">Globally-visible pill that surfaces missing-font count for the current canvas. Anchored in the top-bar right region, between the file-name region and the avatar (per Figma pattern). Uses canonical <code>.pill.warn</code> styling — degrades to neutral until status palette ships per design.md §1.1. Click target opens Brand Kit → Visuals → fonts upload (cross-cuts to A7.3 — out of scope for this file).</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Canvas chrome · missing-fonts pill in top-bar</div><div class="id">B15.5 · hi-fi</div></div>
+    <div class="canvas tall" data-screen-label="B15.5 Missing fonts pill" style="height: 720px;">
+      <div class="kc scene-stage">
+        <div class="topbar">
+          <div class="l">
+            <div class="logo">K</div>
+            <div class="file">
+              <span class="crumb-brand"><span class="b"></span>Wildgrove</span>
+              <span class="sep">/</span>
+              <b>Spring Drop · 04</b>
+              <span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span>
+            </div>
+          </div>
+          <div class="r">
+            <!-- B15.5 Missing-fonts pill — anchored between file-name and avatar -->
+            <div class="topbar-pill" title="Open Brand Kit · Visuals · Fonts">
+              <i data-lucide="alert-triangle" class="ic"></i>
+              <span>2 fonts missing</span>
+            </div>
+            <div class="icon-btn" title="Notifications"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/></svg></div>
+            <div class="icon-btn" title="Present"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
+            <div class="icon-btn" title="Comments"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+            <div class="avatar">JM</div>
+          </div>
+        </div>
+        <div class="body">
+          <div class="center">
+            <div class="canvas-grid"></div>
+            <div class="frame-stub"></div>
+            <div class="toolbar">
+              <div class="tool active" title="Move">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 2l7 18 2-7 7-2z"/></svg>
+              </div>
+              <div class="tool" title="Frame">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg>
+              </div>
+              <div class="tool" title="Rectangle">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+              </div>
+              <div class="tool" title="Ellipse">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/></svg>
+              </div>
+              <div class="tool" title="Pen">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.5 7.5"/></svg>
+              </div>
+              <div class="tool" title="Text">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h14v3M9 4v16M7 20h10"/></svg>
+              </div>
+              <div class="tool" title="Comment">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              </div>
+              <div class="divider"></div>
+              <div class="tool ai" title="Ask Kova">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/><path d="M19 14l.7 2.1L22 17l-2.3.9L19 20l-.7-2.1L16 17l2.3-.9L19 14z"/></svg>
+              </div>
+              <div class="tool" title="Components">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+              </div>
+            </div>
+            <div class="zoom">100%<span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Anchor: top-bar, right region, between file-name and avatar</strong> — globally visible across canvas (Figma-pattern). Documented designer choice per CHUNK_B2 §6.2; cross-references CHUNK_B4 right-panel inspector font-row anchor for consistency.</li>
+      <li><strong>Pill class: <code>.topbar-pill</code></strong> — local extension that mirrors canonical <code>.pill</code> sizing/radius/border-treatment. Background <code>var(--fill)</code>, ink <code>var(--ink-2)</code>, border <code>var(--line)</code>. Status palette deferred per design.md §1.1 + §5 ban 12, so pill degrades neutral.</li>
+      <li><strong>Icon glyph: Lucide <code>alert-triangle</code></strong>, ink <code>var(--ink-3)</code>. Designer's call within Lucide (<code>type</code> alternative considered; <code>alert-triangle</code> picked because it reads as "attention required" without color reliance).</li>
+      <li><strong>Click action</strong>: opens Brand Kit → Visuals → fonts upload (A7.3 cross-cut — out of scope for this file).</li>
+    </ul></div>
+  </div>
+</section>
+
+<script>
+  if (window.lucide) {
+    window.lucide.createIcons({ attrs: { 'stroke-width': 1.6 } });
+  }
+</script>
+
+</body>
+</html>
