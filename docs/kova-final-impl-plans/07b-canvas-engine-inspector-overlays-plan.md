@@ -3408,61 +3408,105 @@ git add kova-open-pencil-1/src/components/canvas-overlays/SliceRegionOverlay.vue
 git commit -m "feat(07b): add SliceRegionOverlay"
 ```
 
-### Task 4.5–4.10: Remaining 6 overlays (PixelGrid, LayoutGuides, HoverContour, SnapIndicators, FindHighlight, EyedropperCrosshair, MeasurementAnnotations)
+### Tasks 4.5 – 4.12: Per-overlay TDD (8 overlays — each a discrete RED → GREEN → COMMIT cycle)
 
-Each follows the same pattern as 4.2–4.4. The component files mirror the spec in PRD §6.4.3. Per-task structure:
+C-MED-07b.1 split: each overlay below is its OWN task with its own failing test, implementation, and atomic commit. Follow the explicit 4-step pattern from Task 4.4 (failing test → run test (FAIL) → implementation → run test (PASS) → commit). Listed compactly below to avoid plan bloat, but the engineer MUST execute each as a separate TDD cycle and SEPARATE commit per the dispatch's "one commit per overlay" rule.
 
 #### Task 4.5: PixelGridOverlay
 
-- [ ] Test asserts: hidden when zoom ≤ 8.0; visible when zoom > 8.0; uses `OVERLAY_COLOR.PIXEL_GRID` 18% gray, 8×8 background.
-- [ ] Component reads `useCanvas().zoom` (existing composable). Renders single absolute div with `linear-gradient` background.
-- [ ] Commit: `feat(07b): add PixelGridOverlay (auto > 800% zoom)`
+**Files:**
+- Create: `kova-open-pencil-1/src/components/canvas-overlays/PixelGridOverlay.vue`
+- Test: `kova-open-pencil-1/tests/unit/components/canvas-overlays/PixelGridOverlay.test.ts`
+
+- [ ] **Step 1 (RED):** Test asserts hidden when `useCanvas().zoom <= 8.0`; visible when zoom > 8.0; uses `OVERLAY_COLOR.PIXEL_GRID` 18% gray; 8×8 `linear-gradient` background; z-index = `OVERLAY_Z.PIXEL_GRID`.
+- [ ] **Step 2 (verify FAIL):** `bun test tests/unit/components/canvas-overlays/PixelGridOverlay.test.ts` → FAIL (component missing).
+- [ ] **Step 3 (GREEN):** Component reads `useCanvas().zoom` (existing composable). Renders single absolute div with `linear-gradient` background when `zoom > 8`. `v-if="zoom > 8"` guard.
+- [ ] **Step 4 (verify PASS):** Re-run; expect PASS.
+- [ ] **Step 5 (COMMIT):** `git add ... && git commit -m "feat(07b): add PixelGridOverlay (auto > 800% zoom)"`
 
 #### Task 4.6: LayoutGuidesOverlay
 
-- [ ] Test asserts: per-frame layout-grid read; Uniform / Columns / Rows render correctly with red 10% (`OVERLAY_COLOR.LAYOUT_GUIDE_RED`); default ON per Q24.
-- [ ] Component iterates `figma.currentPage.children.filter(n => n.type === 'FRAME')` and reads `frame.layoutGrids: LayoutGrid[]`. Per-grid renders.
-- [ ] Commit: `feat(07b): add LayoutGuidesOverlay (Q24 default-ON red 10%)`
+**Files:**
+- Create: `kova-open-pencil-1/src/components/canvas-overlays/LayoutGuidesOverlay.vue`
+- Test: `kova-open-pencil-1/tests/unit/components/canvas-overlays/LayoutGuidesOverlay.test.ts`
+
+- [ ] **Step 1 (RED):** Test asserts per-frame `layoutGrids: LayoutGrid[]` read; Uniform / Columns / Rows render correctly with red 10% (`OVERLAY_COLOR.LAYOUT_GUIDE_RED`); default ON per Q24.
+- [ ] **Step 2 (verify FAIL).**
+- [ ] **Step 3 (GREEN):** Component iterates `figma.currentPage.children.filter(n => n.type === 'FRAME')` and reads `frame.layoutGrids: LayoutGrid[]`. Per-grid renders.
+- [ ] **Step 4 (verify PASS).**
+- [ ] **Step 5 (COMMIT):** `git commit -m "feat(07b): add LayoutGuidesOverlay (Q24 default-ON red 10%)"`
 
 #### Task 4.7: HoverContourOverlay
 
-- [ ] Test asserts: hidden when `useCanvasInput.hoveredNodeId` is null; renders contour when set; 1.5px `var(--select)` border-radius 0.
-- [ ] Component reads existing composable. Single absolute div per hovered node.
-- [ ] Commit: `feat(07b): add HoverContourOverlay`
+**Files:**
+- Create: `kova-open-pencil-1/src/components/canvas-overlays/HoverContourOverlay.vue`
+- Test: `kova-open-pencil-1/tests/unit/components/canvas-overlays/HoverContourOverlay.test.ts`
+
+- [ ] **Step 1 (RED):** Test asserts hidden when `useCanvasInput.hoveredNodeId === null`; renders contour when set; 1.5px `var(--select)`; border-radius 0; z-index = `OVERLAY_Z.HOVER_CONTOUR`.
+- [ ] **Step 2 (verify FAIL).**
+- [ ] **Step 3 (GREEN):** Component reads existing composable. Single absolute div per hovered node sized to bbox.
+- [ ] **Step 4 (verify PASS).**
+- [ ] **Step 5 (COMMIT):** `git commit -m "feat(07b): add HoverContourOverlay"`
 
 #### Task 4.8: SnapIndicatorsOverlay
 
-- [ ] Test asserts: empty render when no `snapHits`; renders snap-pixel + spacing-tag chrome when array populated; uses `OVERLAY_COLOR.SNAP_RED`.
-- [ ] Component reads snap-state from `useCanvas` (existing OpenPencil hook; 07a confirms API).
-- [ ] Commit: `feat(07b): add SnapIndicatorsOverlay (hi-fi B8.1)`
+**Files:**
+- Create: `kova-open-pencil-1/src/components/canvas-overlays/SnapIndicatorsOverlay.vue`
+- Test: `kova-open-pencil-1/tests/unit/components/canvas-overlays/SnapIndicatorsOverlay.test.ts`
+
+- [ ] **Step 1 (RED):** Test asserts empty render when no `snapHits`; renders snap-pixel + spacing-tag chrome when array populated; uses `OVERLAY_COLOR.SNAP_RED`; z-index = `OVERLAY_Z.SNAP`.
+- [ ] **Step 2 (verify FAIL).**
+- [ ] **Step 3 (GREEN):** Component reads snap-state from `useCanvas` (existing OpenPencil hook; 07a confirms API). Renders per snap-hit.
+- [ ] **Step 4 (verify PASS).**
+- [ ] **Step 5 (COMMIT):** `git commit -m "feat(07b): add SnapIndicatorsOverlay (hi-fi B8.1)"`
 
 #### Task 4.9: DimLayerOverlay (PRD §12.12 — primitive for find focus mode)
 
-- [ ] Test asserts: pure-render component; `dimmedNodeIds: string[]` prop drives output; renders absolute-positioned div with `rgba(0, 0, 0, 0.6)` (from `OVERLAY_COLOR.FIND_DIM`) over each dimmed node's screen-space bbox; empty array → renders nothing; z-index = `OVERLAY_Z.DIM_LAYER` (6); pointer-events: none on the dim layer itself (input handling lives on FindOverlay).
-- [ ] Component reads node bbox via `figma.getNodeById(id).absoluteBoundingBox` for each ID in prop; transforms world coords → screen coords via `figma.viewport.center` + `figma.viewport.zoom`.
-- [ ] Commit: `feat(07b): add DimLayerOverlay (PRD §12.12 — primitive for find focus mode)`
+**Files:**
+- Create: `kova-open-pencil-1/src/components/canvas-overlays/DimLayerOverlay.vue`
+- Test: `kova-open-pencil-1/tests/unit/components/canvas-overlays/DimLayerOverlay.test.ts`
+
+- [ ] **Step 1 (RED):** Test asserts pure-render component; `dimmedNodeIds: string[]` prop drives output; renders absolute-positioned div with `rgba(0, 0, 0, 0.6)` (from `OVERLAY_COLOR.FIND_DIM`) over each dimmed node's screen-space bbox; empty array → renders nothing; z-index = `OVERLAY_Z.DIM_LAYER` (6); `pointer-events: none` on the dim layer itself (input handling lives on FindOverlay).
+- [ ] **Step 2 (verify FAIL).**
+- [ ] **Step 3 (GREEN):** Component reads node bbox via `figma.getNodeById(id).absoluteBoundingBox` for each ID in prop; transforms world coords → screen coords via `figma.viewport.center` + `figma.viewport.zoom`.
+- [ ] **Step 4 (verify PASS).**
+- [ ] **Step 5 (COMMIT):** `git commit -m "feat(07b): add DimLayerOverlay (PRD §12.12 — primitive for find focus mode)"`
 
 #### Task 4.10: FindOverlay (PRD §12.12 — orchestrator + clickthrough)
 
-- [ ] Test asserts: mounts only when `useFindStore.active === true`; composes `<DimLayerOverlay :dimmedNodeIds="findStore.dimmedNodeIds">`; attaches `@click` on canvas-overlay-layer that, if click position hits a node NOT in `findStore.matchedNodeIds`, calls `findStore.exitOnDimClick(clickedNodeId)` + sets new selection on `useEditorStore`; if click hits a matched node, does NOT exit find (lets event bubble for normal selection).
-- [ ] Component test mocks `useFindStore` and `useEditorStore`; simulates click at screen coords that resolve to a known node ID; asserts `findStore.exitOnDimClick` called with correct ID for dim click, NOT called for matched click.
-- [ ] Component code: `dimmedNodeIds` is computed from the inverse of `findStore.matchedNodeIds` within the viewport — done in the overlay (not the store) so it can use viewport culling + scene-graph traversal.
-- [ ] Re-enables pointer-events: `class="pointer-events-auto"` on the wrapper (overrides parent `pointer-events: none`).
-- [ ] Commit: `feat(07b): add FindOverlay (PRD §12.12 — clickthrough orchestrator)`
+**Files:**
+- Create: `kova-open-pencil-1/src/components/canvas-overlays/FindOverlay.vue`
+- Test: `kova-open-pencil-1/tests/unit/components/canvas-overlays/FindOverlay.test.ts`
 
-#### Task 4.10b: EyedropperCrosshair
+- [ ] **Step 1 (RED):** Test asserts mounts only when `useFindStore.active === true`; composes `<DimLayerOverlay :dimmedNodeIds="findStore.dimmedNodeIds">`; attaches `@click` on canvas-overlay-layer that, if click position hits a node NOT in `findStore.matchedNodeIds`, calls `findStore.exitOnDimClick(clickedNodeId)` + sets new selection on `useEditorStore`; if click hits a matched node, does NOT exit find (lets event bubble for normal selection).
+- [ ] **Step 2 (verify FAIL):** Component test mocks `useFindStore` and `useEditorStore`; simulates click at screen coords that resolve to a known node ID; asserts `findStore.exitOnDimClick` called with correct ID for dim click, NOT called for matched click.
+- [ ] **Step 3 (GREEN):** Component code: `dimmedNodeIds` is computed from the inverse of `findStore.matchedNodeIds` within the viewport — done in the overlay (not the store) so it can use viewport culling + scene-graph traversal. Re-enables pointer-events: `class="pointer-events-auto"` on the wrapper (overrides parent `pointer-events: none`).
+- [ ] **Step 4 (verify PASS).**
+- [ ] **Step 5 (COMMIT):** `git commit -m "feat(07b): add FindOverlay (PRD §12.12 — clickthrough orchestrator)"`
 
-- [ ] Test asserts: hidden when `useEyedropperStore.active=false`; renders 96px magnifier + 16px reticle + hex chip when active.
-- [ ] Component reads pointer position via `useCanvasInput`. Hex sample via `figma.canvas.readPixel(x, y)` (07a API per PRD §12.9).
-- [ ] Commit: `feat(07b): add EyedropperCrosshair (hi-fi B8.7)`
+#### Task 4.11: EyedropperCrosshair
 
-#### Task 4.11: MeasurementAnnotations
+**Files:**
+- Create: `kova-open-pencil-1/src/components/canvas-overlays/EyedropperCrosshair.vue`
+- Test: `kova-open-pencil-1/tests/unit/components/canvas-overlays/EyedropperCrosshair.test.ts`
 
-- [ ] Test asserts: renders one annotation per MEASUREMENT NodeType in viewport; dashed `#F24822` line + caps + label per hi-fi B8.9.
-- [ ] Component iterates `figma.currentPage.children.filter(n => n.type === 'MEASUREMENT')`.
-- [ ] Commit: `feat(07b): add MeasurementAnnotations (hi-fi B8.9)`
+- [ ] **Step 1 (RED):** Test asserts hidden when `useEyedropperStore.active === false`; renders 96px magnifier + 16px reticle + hex chip when active; z-index = `OVERLAY_Z.EYEDROPPER`.
+- [ ] **Step 2 (verify FAIL).**
+- [ ] **Step 3 (GREEN):** Component reads pointer position via `useCanvasInput`. Hex sample via `figma.canvas.readPixel(x, y)` (07a API per PRD §12.9).
+- [ ] **Step 4 (verify PASS).**
+- [ ] **Step 5 (COMMIT):** `git commit -m "feat(07b): add EyedropperCrosshair (hi-fi B8.7)"`
 
-(Each task above gets its own failing test → component → pass test → commit cycle, identical in shape to Tasks 4.2–4.4. Listed concise here to avoid plan bloat — when executing, follow the 4-step pattern from 4.2.)
+#### Task 4.11b: MeasurementAnnotations
+
+**Files:**
+- Create: `kova-open-pencil-1/src/components/canvas-overlays/MeasurementAnnotations.vue`
+- Test: `kova-open-pencil-1/tests/unit/components/canvas-overlays/MeasurementAnnotations.test.ts`
+
+- [ ] **Step 1 (RED):** Test asserts renders one annotation per page-level measurement (via `figma.currentPage.getMeasurements()`) in viewport; dashed `#F24822` line + caps + label per hi-fi B8.9; z-index = `OVERLAY_Z.MEASUREMENT`.
+- [ ] **Step 2 (verify FAIL).**
+- [ ] **Step 3 (GREEN):** Component iterates `figma.currentPage.getMeasurements()` (page-level Measurement system per PRD 07a §7.1b — NOT a NodeType filter). For each measurement, computes start/end anchor screen coords and renders annotation.
+- [ ] **Step 4 (verify PASS).**
+- [ ] **Step 5 (COMMIT):** `git commit -m "feat(07b): add MeasurementAnnotations (hi-fi B8.9 — page-level addMeasurement model)"`
 
 ---
 
