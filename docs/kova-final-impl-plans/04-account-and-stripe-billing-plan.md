@@ -3549,16 +3549,16 @@ git commit -m "docs(04): Stripe Dashboard + webhook setup runbook"
 
 > **C-MED13 — All 4 templates compose Cluster 11's `<EmailShell>` via `buildEmail()`** (from `@/composables/use-email-shell`, shipped by Plan 11 Task 8.2). Each template is a TypeScript module that exports an async function returning `{ html, text }`. Plain HTML files are forbidden — they bypass shell composition (wordmark, Inter font, List-Unsubscribe header, X-Entity-Ref-ID header, juice CSS inlining, automatic plain-text sibling) and are a maintenance liability. Resend SDK consumes both `html` and `text` from the return value.
 
-**Cross-cluster dependency:** `buildEmail()` ships from Plan 11 Task 8.2. Verify the W1 Cluster 11 merge (`70932143`) includes the composable before Cluster 04 merges. The body of each template is plain HTML passed as `bodyHtml` — `<EmailShell>` adds the wordmark, Inter font, and footer. Mustache variables (`{{ var }}`) inside `bodyHtml` are preserved verbatim and substituted by Resend at send time.
+**Cross-cluster dependency:** `buildEmail()` ships from Plan 11 Task 8.2. Verify the W1 Cluster 11 merge (`70932143`) includes the composable before Cluster 04 merges. The body of each template is built as a JS template literal (`${prop}` interpolation in the render function) and passed as `bodyHtml` to `buildEmail({ title, preheader, bodyHtml })` — `<EmailShell>` then adds the wordmark, Inter font, and footer. Substitution happens at render-call time in the webhook handler, not at send time, so Resend receives a fully-rendered HTML string per call.
 
 **Subject lines (founder-approved 2026-05-17):**
 
-| Template | Subject |
+| Template module | Subject |
 |---|---|
-| `subscription-new.html` | `Welcome to Kova {{ planName }} 🎉` |
-| `subscription-upgraded.html` | `You're now on Kova {{ planName }}` |
-| `subscription-cancelled.html` | `Your Kova subscription has been cancelled` |
-| `subscription-payment-failed.html` | `Action needed: payment failed for Kova` |
+| `subscription-new.ts` | `Welcome to Kova ${planName} 🎉` |
+| `subscription-upgraded.ts` | `You're now on Kova ${planName}` |
+| `subscription-cancelled.ts` | `Your Kova subscription has been cancelled` |
+| `subscription-payment-failed.ts` | `Action needed: payment failed for Kova` |
 
 - [ ] **Step 1: Create `subscription-new.ts` — composes `<EmailShell>` via `buildEmail()`**
 
@@ -3597,65 +3597,106 @@ Variables: `planName`, `amount`, `currency` (default USD), `hosted_invoice_url`,
 
 Steps 2-4 (subscription-upgraded.ts, subscription-cancelled.ts, subscription-payment-failed.ts) follow the same `buildEmail()` composition pattern: define a typed props interface, build `bodyHtml` as a template literal with `${prop}` interpolation, pass through `buildEmail({ title, preheader, bodyHtml })`, return `{ html, text, subject }`. Do not author plain `.html` files — `<EmailShell>` composition is mandatory per C-MED13.
 
-- [ ] **Step 2: Create `subscription-upgraded.html`**
+- [ ] **Step 2: Create `subscription-upgraded.ts` — composes `<EmailShell>` via `buildEmail()`**
 
-```html
-<!-- emails/account/subscription-upgraded.html -->
-<!doctype html>
-<html lang="en">
-<head><meta charset="utf-8" /><title>You're on Kova {{ planName }}</title></head>
-<body>
-  <h1>You're on {{ planName }}</h1>
-  <p>Your plan changed from <strong>{{ oldPlanName }}</strong> to <strong>{{ planName }}</strong> effective immediately.</p>
-  <p>Your next invoice for <strong>${{ amount }}</strong> renews <strong>{{ currentPeriodEnd | date('long') }}</strong>.</p>
-  <p><a href="https://kova.app/dashboard" class="btn-primary">Open Kova</a></p>
-  <p><a href="https://kova.app/account/billing">Manage subscription</a></p>
-</body>
-</html>
+```typescript
+// emails/account/subscription-upgraded.ts
+import { buildEmail } from '@/composables/use-email-shell'
+
+export interface SubscriptionUpgradedProps {
+  planName: string
+  oldPlanName: string
+  amount: number            // dollars; render as `${amount.toFixed(2)}`
+  currentPeriodEnd: string  // pre-formatted long date (e.g., "June 1, 2026")
+  user_id: string
+}
+
+export async function renderSubscriptionUpgraded(props: SubscriptionUpgradedProps): Promise<{ html: string; text: string; subject: string }> {
+  const bodyHtml = `
+    <h1>You're on ${props.planName}</h1>
+    <p>Your plan changed from <strong>${props.oldPlanName}</strong> to <strong>${props.planName}</strong> effective immediately.</p>
+    <p>Your next invoice for <strong>$${props.amount.toFixed(2)}</strong> renews <strong>${props.currentPeriodEnd}</strong>.</p>
+    <p><a href="https://kova.app/dashboard" class="btn-primary">Open Kova</a></p>
+    <p><a href="https://kova.app/account/billing">Manage subscription</a></p>
+  `
+  const { html, text } = await buildEmail({
+    title: `You're on Kova ${props.planName}`,
+    preheader: `Your plan is now ${props.planName}.`,
+    bodyHtml,
+  })
+  return { html, text, subject: `You're now on Kova ${props.planName}` }
+}
 ```
 
 Variables: `planName`, `oldPlanName`, `amount`, `currentPeriodEnd`, `user_id`.
 
-- [ ] **Step 3: Create `subscription-cancelled.html` (handles both scheduled-cancel and post-cancel)**
+- [ ] **Step 3: Create `subscription-cancelled.ts` (handles both scheduled-cancel and post-cancel) — composes `<EmailShell>` via `buildEmail()`**
 
-```html
-<!-- emails/account/subscription-cancelled.html -->
-<!doctype html>
-<html lang="en">
-<head><meta charset="utf-8" /><title>Your Kova subscription has been cancelled</title></head>
-<body>
-  <h1>Subscription cancelled</h1>
-  {% if wasScheduled %}
-    <p>Your subscription will end on <strong>{{ accessEndsOn | date('long') }}</strong>. Until then, you keep full access.</p>
-  {% else %}
-    <p>Your subscription ended on <strong>{{ accessEndsOn | date('long') }}</strong>. We've moved you to the Free plan.</p>
-  {% endif %}
-  <p>We'd love to know what we could've done better — reply to this email anytime.</p>
-  <p><a href="https://kova.app/account/billing" class="btn-primary">Reactivate</a></p>
-  <p><a href="mailto:hello@kova.app">Send feedback</a></p>
-</body>
-</html>
+```typescript
+// emails/account/subscription-cancelled.ts
+import { buildEmail } from '@/composables/use-email-shell'
+
+export interface SubscriptionCancelledProps {
+  accessEndsOn: string      // pre-formatted long date
+  wasScheduled: boolean
+  user_id: string
+}
+
+export async function renderSubscriptionCancelled(props: SubscriptionCancelledProps): Promise<{ html: string; text: string; subject: string }> {
+  const statusBlock = props.wasScheduled
+    ? `<p>Your subscription will end on <strong>${props.accessEndsOn}</strong>. Until then, you keep full access.</p>`
+    : `<p>Your subscription ended on <strong>${props.accessEndsOn}</strong>. We've moved you to the Free plan.</p>`
+  const bodyHtml = `
+    <h1>Subscription cancelled</h1>
+    ${statusBlock}
+    <p>We'd love to know what we could've done better — reply to this email anytime.</p>
+    <p><a href="https://kova.app/account/billing" class="btn-primary">Reactivate</a></p>
+    <p><a href="mailto:hello@kova.app">Send feedback</a></p>
+  `
+  const { html, text } = await buildEmail({
+    title: 'Your Kova subscription has been cancelled',
+    preheader: props.wasScheduled
+      ? `Your subscription will end ${props.accessEndsOn}.`
+      : `Your subscription ended ${props.accessEndsOn}.`,
+    bodyHtml,
+  })
+  return { html, text, subject: 'Your Kova subscription has been cancelled' }
+}
 ```
 
 Variables: `accessEndsOn`, `wasScheduled` (boolean), `user_id`.
 
-- [ ] **Step 4: Create `subscription-payment-failed.html`**
+- [ ] **Step 4: Create `subscription-payment-failed.ts` — composes `<EmailShell>` via `buildEmail()`**
 
-```html
-<!-- emails/account/subscription-payment-failed.html -->
-<!doctype html>
-<html lang="en">
-<head><meta charset="utf-8" /><title>Action needed: payment failed</title></head>
-<body>
-  <h1>We couldn't charge your card</h1>
-  <p>Your last payment of <strong>${{ amount }}</strong> didn't go through (attempt {{ attemptCount }} of 4).</p>
-  <p>Update your card before <strong>{{ deadline | date('long') }}</strong> to keep your subscription. After that, Kova will downgrade your account.</p>
-  <p><a href="https://kova.app/account/billing" class="btn-primary">Update payment method</a></p>
-  <p><a href="{{ hosted_invoice_url }}">View invoice</a></p>
-  <hr />
-  <p class="footer">Stripe is our payment processor and will also email you separately about this charge.</p>
-</body>
-</html>
+```typescript
+// emails/account/subscription-payment-failed.ts
+import { buildEmail } from '@/composables/use-email-shell'
+
+export interface SubscriptionPaymentFailedProps {
+  amount: number             // dollars; render as `${amount.toFixed(2)}`
+  attemptCount: number       // 1..4
+  deadline: string           // pre-formatted long date
+  hosted_invoice_url: string
+  user_id: string
+}
+
+export async function renderSubscriptionPaymentFailed(props: SubscriptionPaymentFailedProps): Promise<{ html: string; text: string; subject: string }> {
+  const bodyHtml = `
+    <h1>We couldn't charge your card</h1>
+    <p>Your last payment of <strong>$${props.amount.toFixed(2)}</strong> didn't go through (attempt ${props.attemptCount} of 4).</p>
+    <p>Update your card before <strong>${props.deadline}</strong> to keep your subscription. After that, Kova will downgrade your account.</p>
+    <p><a href="https://kova.app/account/billing" class="btn-primary">Update payment method</a></p>
+    <p><a href="${props.hosted_invoice_url}">View invoice</a></p>
+    <hr />
+    <p class="footer">Stripe is our payment processor and will also email you separately about this charge.</p>
+  `
+  const { html, text } = await buildEmail({
+    title: 'Action needed: payment failed',
+    preheader: `Update your card before ${props.deadline} to keep your subscription.`,
+    bodyHtml,
+  })
+  return { html, text, subject: 'Action needed: payment failed for Kova' }
+}
 ```
 
 Variables: `amount`, `attemptCount`, `deadline`, `hosted_invoice_url`, `user_id`.
@@ -3666,23 +3707,24 @@ Founder decision 2026-05-17 — all 4 emails fire from `handle-*` webhook handle
 
 Update these webhook handlers (already implemented in Phase 3 — extend them):
 
-| Handler | Template | Trigger condition |
+| Handler | Template module + render fn | Trigger condition |
 |---|---|---|
-| `handle-subscription-created.ts` | `subscription-new.html` | `sub.plan !== 'free'` (skip for free-tier; only paid subs trigger welcome email) |
-| `handle-subscription-updated.ts` | `subscription-upgraded.html` | New price-id maps to a different plan name than the previous DB value |
-| `handle-subscription-updated.ts` | `subscription-cancelled.html` with `wasScheduled: true` | `sub.cancel_at_period_end` flipped `false → true` |
-| `handle-subscription-deleted.ts` | `subscription-cancelled.html` with `wasScheduled: false` | (Always — subscription has actually ended) |
-| `handle-invoice-payment-failed.ts` | `subscription-payment-failed.html` | (Always — every failed payment) |
+| `handle-subscription-created.ts` | `subscription-new.ts` → `renderSubscriptionNew()` | `sub.plan !== 'free'` (skip for free-tier; only paid subs trigger welcome email) |
+| `handle-subscription-updated.ts` | `subscription-upgraded.ts` → `renderSubscriptionUpgraded()` | New price-id maps to a different plan name than the previous DB value |
+| `handle-subscription-updated.ts` | `subscription-cancelled.ts` → `renderSubscriptionCancelled({ wasScheduled: true })` | `sub.cancel_at_period_end` flipped `false → true` |
+| `handle-subscription-deleted.ts` | `subscription-cancelled.ts` → `renderSubscriptionCancelled({ wasScheduled: false })` | (Always — subscription has actually ended) |
+| `handle-invoice-payment-failed.ts` | `subscription-payment-failed.ts` → `renderSubscriptionPaymentFailed()` | (Always — every failed payment) |
 
-- [ ] **Step 6: Generate plain-text siblings + commit**
+- [ ] **Step 6: Commit the 4 template modules**
+
+`buildEmail()` from `@/composables/use-email-shell` returns `{ html, text }` per call — the plain-text sibling is generated in-process via the same juice/strip-html pipeline Cluster 11 ships. No separate `.txt` files on disk.
 
 ```bash
-# Run plain-text extractor (Cluster 11 ships this helper)
-bun run emails:txt
-# Verify all 4 .txt files generated
-ls emails/account/*.txt
-git add emails/account/subscription-*.html emails/account/subscription-*.txt
-git commit -m "feat(04): Resend templates — 4 events (new/upgraded/cancelled/payment-failed)"
+git add emails/account/subscription-new.ts \
+        emails/account/subscription-upgraded.ts \
+        emails/account/subscription-cancelled.ts \
+        emails/account/subscription-payment-failed.ts
+git commit -m "feat(04): Resend templates — 4 events (new/upgraded/cancelled/payment-failed) composing <EmailShell>"
 ```
 
 - [ ] **Step 7: Configure Stripe Dashboard supplementary emails**
