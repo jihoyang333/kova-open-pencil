@@ -349,6 +349,55 @@ git add src/stores/editor.ts tests/unit/stores/editor-extension.test.ts
 git commit -m "feat(cluster-06): extend useEditorStore — 3-state showUI + panelsVisible + dropTarget refs"
 ```
 
+- [ ] **Step 6: Migrate 6 legacy `showUI` callsites to 3-state enum (C-MED17)**
+
+The previous boolean-toggle and old-enum callsites must be rewritten in the same wave that introduces the 3-state enum — otherwise the store ships with consumers that mutate `showUI` via patterns that no longer compile / type-check.
+
+| Callsite | Before | After |
+|---|---|---|
+| `src/composables/use-keyboard.ts:140` | `store.state.showUI = !store.state.showUI` | `store.setUIVisibility(store.showUI === 'hidden' ? 'full' : 'hidden')` |
+| `src/components/AppMenu.vue:216` | `store.state.showUI = !store.state.showUI` (or `=== 'all'` enum reference) | `store.setUIVisibility(store.showUI === 'hidden' ? 'full' : 'hidden')` (toggle path) OR `store.showUI === 'full'` (read path — replace `'all'` with `'full'`) |
+| `src/views/EditorView.vue:164` | `store.state.showUI = !store.state.showUI` (or boolean-style read) | replace assignment with `store.setUIVisibility(...)` per intent; replace read with `store.showUI === 'full'` |
+| `src/views/EditorView.vue:234` | same | same — see L164 |
+| `src/views/EditorView.vue:246` | same | same — see L164 |
+| `src/views/EditorView.vue:266` | same | same — see L164 |
+
+**Rule:** never assign `showUI` directly anywhere outside `editor.ts` — always go through `setUIVisibility(mode)`. The store no longer exposes `showUI` as a writable; it's a `Readonly<Ref>` returned from the setup-store. Reads use the 3 valid string literals (`'hidden' | 'minimized' | 'full'`); the legacy `'all' | 'minimal'` strings are not valid.
+
+For the keyboard toggle (use-keyboard.ts), the intent of `!store.state.showUI` was "toggle visible ↔ invisible". The 3-state mapping is `hidden ↔ full` (skip `minimized` on shortcut press); `minimized` is reachable only via the explicit AppMenu item. If a future shortcut needs to cycle through all 3, that is a follow-up task — out of scope here.
+
+Apply edits at each callsite. After all 6 are updated, run typecheck:
+
+```bash
+bun run check        # oxlint --type-check; expect 0 errors on the migrated files
+bun test tests/unit/stores/editor-extension.test.ts
+```
+
+- [ ] **Step 7: CI grep guard — block regressions**
+
+Add a CI step (and/or `lefthook.yml` pre-commit hook) that fails the build if any of the legacy `showUI` mutation / enum patterns reappear:
+
+```bash
+# Block direct mutation of showUI outside editor.ts + boolean-style reads + old enum strings
+if grep -rnE "showUI\s*=\s*!|showUI\s*[=!]==?\s*['\"](all|minimal)['\"]" src/ \
+     --include='*.ts' --include='*.vue' \
+     | grep -v 'src/stores/editor.ts:'; then
+  echo '::error::Forbidden showUI pattern — use setUIVisibility(mode) and the 3-state enum hidden|minimized|full'
+  exit 1
+fi
+```
+
+Expected: 0 hits after the migration in Step 6.
+
+- [ ] **Step 8: Commit migration as separate commit (logically follows Step 5)**
+
+```bash
+git add src/composables/use-keyboard.ts \
+        src/components/AppMenu.vue \
+        src/views/EditorView.vue
+git commit -m "refactor(cluster-06): migrate 6 showUI callsites to 3-state enum (C-MED17)"
+```
+
 ---
 
 ### Task 3: useRightPanelStore (NEW Pinia)
