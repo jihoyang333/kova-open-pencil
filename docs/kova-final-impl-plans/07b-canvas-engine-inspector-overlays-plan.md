@@ -989,6 +989,67 @@ git add kova-open-pencil-1/src/composables/use-eyedropper.ts kova-open-pencil-1/
 git commit -m "feat(07b): add useEyedropper composable"
 ```
 
+**Feature flag: `EYEDROPPER_NATIVE_TAURI` (C-LOW07b.5 — gate macOS Tauri-native screen sampling behind a Phase-2 flag)**
+
+MVP ships canvas-only sampling via the Vue/Web composable above (matches PRD 07b §12.9 + Q20 lock `EYEDROPPER_CANVAS_ONLY: true`). The flag below lights up screen-wide sampling via a native Tauri IPC once the macOS Tauri build is signed + notarized post-launch.
+
+Default: `false` (MVP). Switch to `true` only when:
+1. macOS Tauri build ships with `eyedropper_sample_screen` Rust command implemented,
+2. Founder has verified the screen-permissions prompt UX,
+3. Q20 lock is explicitly lifted in PRD 07b.
+
+```ts
+// kova-open-pencil-1/src/config/feature-flags.ts (EXTEND)
+export const EYEDROPPER_NATIVE_TAURI = import.meta.env.VITE_EYEDROPPER_NATIVE_TAURI === 'true'
+```
+
+```ts
+// kova-open-pencil-1/src/composables/use-eyedropper.ts (EXTEND activate path)
+import { EYEDROPPER_NATIVE_TAURI } from '@/config/feature-flags'
+import { isTauri } from '@/lib/runtime'
+import { invoke } from '@tauri-apps/api/core'
+
+// inside activate(cb):
+async function activate(onSample: (hex: string) => void): Promise<void> {
+  if (EYEDROPPER_NATIVE_TAURI && isTauri()) {
+    const hex = await invoke<string>('eyedropper_sample_screen')
+    onSample(hex)
+    return
+  }
+  // MVP canvas-only path (Q20 lock):
+  store.activate(onSample)
+}
+```
+
+Add to `.env.example`:
+
+```
+# Cluster 07b (C-LOW07b.5) — Phase 2 flag for macOS Tauri-native screen-wide eyedropper.
+# Keep false until: (1) Tauri eyedropper_sample_screen Rust command shipped, (2) macOS build signed/notarized, (3) PRD 07b §12.9 Q20 lock lifted by founder.
+VITE_EYEDROPPER_NATIVE_TAURI=false
+```
+
+Test (asserts MVP default stays Q20-compliant):
+
+```ts
+// tests/unit/composables/use-eyedropper-feature-flag.test.ts
+import { describe, expect, it } from 'bun:test'
+import { EYEDROPPER_NATIVE_TAURI } from '@/config/feature-flags'
+
+describe('EYEDROPPER_NATIVE_TAURI feature flag (C-LOW07b.5)', () => {
+  it('defaults to false in MVP (Q20 canvas-only lock active)', () => {
+    expect(EYEDROPPER_NATIVE_TAURI).toBe(false)
+  })
+})
+```
+
+Commit (separate atom):
+
+```bash
+git add kova-open-pencil-1/src/config/feature-flags.ts kova-open-pencil-1/src/composables/use-eyedropper.ts kova-open-pencil-1/tests/unit/composables/use-eyedropper-feature-flag.test.ts .env.example
+git commit -m "feat(07b): EYEDROPPER_NATIVE_TAURI feature flag (default false; macOS Tauri Phase 2) (C-LOW07b.5)"
+```
+
 ### Task 2.3: useSliceTool — failing test
 
 **Files:**
