@@ -2070,10 +2070,19 @@ async function handleSubmit(text: string, campaignType?: CampaignType) {
     return
   }
 
+  // W4 B-MED5: ensureChat (initializes Chat + builds the system prompt) and
+  // chatImages.buildMessagePayload (base64-encodes attached images for the SDK) are
+  // independent — neither's input depends on the other's output. Run in parallel so the
+  // user's first send round-trip is one async-payload step instead of two sequential ones.
+  let payload: Awaited<ReturnType<typeof chatImages.buildMessagePayload>>
   try {
     initError.value = null
-    const c = await ensureChat(conversationId)
+    const [c, p] = await Promise.all([
+      ensureChat(conversationId),
+      chatImages.buildMessagePayload(text),
+    ])
     if (c) chat.value = markRaw(c)
+    payload = p
   } catch (e) {
     console.error('Failed to initialize chat:', e)
     initError.value = e instanceof Error ? e.message : String(e)
@@ -2084,8 +2093,6 @@ async function handleSubmit(text: string, campaignType?: CampaignType) {
     toast.show('Waiting for image upload to finish…', 'warning')
     return
   }
-
-  const payload = await chatImages.buildMessagePayload(text)
 
   try { await chatStore.addMessage(conversationId, 'user', payload.text) } catch (e) { console.error(e) }
 
