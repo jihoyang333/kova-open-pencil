@@ -937,6 +937,89 @@ git commit -m "feat(09): snapshot codec composable (Yjs + Kiwi-style envelope + 
 
 ---
 
+## Task 7b (C-LOW09.11): `format_version` ↔ Kiwi schema lockstep CI grep
+
+**Files:**
+- Create: `kova-open-pencil-1/src/composables/version-history/snapshot-migration-registry.ts`
+- Modify: `kova-open-pencil-1/.github/workflows/ci.yml` (or whichever workflow runs `bun run check`) — add a CI step that grep-checks for `format_version` bumps in `packages/core/codec/` diffs against base.
+
+**Why (W4):** `C-LOW09.11` (CONSOLIDATED-TRIAGE.md). Plan 07a Step 8.11 ships `FORMAT_VERSION = '2.0.0'` and tells the W4 Cluster 09 fix agent to author a snapshot-migration registry plus a CI grep that prevents silent Kiwi schema bumps without a migration registration. This task closes that handshake.
+
+- [ ] **Step 1: Snapshot-migration registry stub**
+
+```typescript
+// kova-open-pencil-1/src/composables/version-history/snapshot-migration-registry.ts
+import { FORMAT_VERSION } from '@kova/core/src/kiwi/protocol'
+
+// Migration chain: keyed by source formatVersion → mutator returning the next-version snapshot.
+// Plan 09 use-snapshot-codec.decodeCanvasSnapshot() reads snap.formatVersion, looks up the entry,
+// and applies until snap.formatVersion === FORMAT_VERSION.
+export type SnapshotMigration = (snap: unknown) => unknown
+
+export const SNAPSHOT_MIGRATIONS: Record<string, { to: string; migrate: SnapshotMigration }> = {
+  '1.0.0': {
+    to: '2.0.0',
+    migrate: (snap) => {
+      // Kiwi schema v2 (Cluster 07a Step 8.6): adds SLICE NodeType + page-level Measurement
+      // structs + new SceneNode + CharacterStyleOverride fields. Old snapshots are
+      // forward-compatible because the new fields are all optional. This entry registers the
+      // bump in the chain so loadSnapshot() does NOT throw 'format_version_unsupported' on
+      // pre-2.0.0 snapshots.
+      return snap
+    },
+  },
+}
+
+export function isFormatVersionRegistered(fv: string): boolean {
+  return fv === FORMAT_VERSION || fv in SNAPSHOT_MIGRATIONS
+}
+```
+
+- [ ] **Step 2: CI grep step**
+
+Add to the workflow that runs `bun run check`:
+
+```yaml
+- name: Guard format_version vs migration registry (W4 C-LOW09.11)
+  run: |
+    # If packages/core/codec/ or packages/core/src/kiwi/ changes in this PR, the diff MUST
+    # mention either FORMAT_VERSION (an explicit bump) or snapshot-migration-registry.ts
+    # (a migration entry). Otherwise we risk a silent schema drift that breaks restore.
+    BASE="${{ github.base_ref || 'main' }}"
+    if git diff --name-only "origin/${BASE}...HEAD" | grep -qE '^(kova-open-pencil-1/)?packages/core/(codec|src/kiwi)/'; then
+      if ! git diff "origin/${BASE}...HEAD" -- '*.ts' | grep -qE 'FORMAT_VERSION|snapshot-migration-registry'; then
+        echo "::error::Codec/Kiwi schema changed without a FORMAT_VERSION bump or snapshot-migration-registry update."
+        exit 1
+      fi
+    fi
+```
+
+- [ ] **Step 3: Wire registry into `decodeCanvasSnapshot` (Task 7 above)**
+
+In `use-snapshot-codec.ts`, replace the unconditional `throw new Error('format_version_unsupported')` with a registry lookup:
+
+```typescript
+import { FORMAT_VERSION } from '@kova/core/src/kiwi/protocol'
+import { SNAPSHOT_MIGRATIONS, isFormatVersionRegistered } from './snapshot-migration-registry'
+
+// ... inside decodeCanvasSnapshot ...
+if (fv !== FORMAT_VERSION && !isFormatVersionRegistered(String(fv))) {
+  throw new Error('format_version_unsupported')
+}
+// (apply registered migrations until fv === FORMAT_VERSION)
+```
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add kova-open-pencil-1/src/composables/version-history/snapshot-migration-registry.ts \
+        kova-open-pencil-1/.github/workflows/ci.yml \
+        kova-open-pencil-1/src/composables/version-history/use-snapshot-codec.ts
+git commit -m "feat(09): format_version CI grep + snapshot-migration-registry (W4 C-LOW09.11, coord: Cluster 07a FORMAT_VERSION 2.0.0)"
+```
+
+---
+
 ## Task 8: `useSnapshotThumbnail` composable
 
 **Files:**
