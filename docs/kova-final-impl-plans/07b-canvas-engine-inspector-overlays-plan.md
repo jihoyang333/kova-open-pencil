@@ -2332,6 +2332,22 @@ describe('PaintEditor', () => {
     })
     expect(diamondWrap.find('[data-test="gradient-angle"]').exists()).toBe(false)
   })
+
+  // C-LOW07b.3: explicit per-type test (one it() per gradient type) so a regression in any single type fails its own named test
+  for (const [m, hasAngle] of [['linear', true], ['radial', false], ['angular', true], ['diamond', false]] as const) {
+    it(`renders ${m} gradient — has stops UI, angle input ${hasAngle ? 'visible' : 'hidden'} per Figma`, () => {
+      const wrapper = mount(PaintEditor, {
+        props: {
+          modelValue: { type: `GRADIENT_${m.toUpperCase()}` as const, gradientStops: [{position:0,color:{r:0,g:0,b:0,a:1}},{position:1,color:{r:1,g:1,b:1,a:1}}] } as unknown as GradientPaint,
+          mode: m,
+        },
+      })
+      expect(wrapper.find('[data-test="gradient-stops"]').exists()).toBe(true)
+      expect(wrapper.findAll('[data-stop]').length).toBe(2)
+      expect(wrapper.find('[data-test="gradient-angle"]').exists()).toBe(hasAngle)
+      expect(wrapper.find(`[data-gradient-type="${m}"]`).exists()).toBe(true)
+    })
+  }
 })
 ```
 
