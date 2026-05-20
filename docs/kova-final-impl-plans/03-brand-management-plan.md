@@ -2389,9 +2389,23 @@ Create `tests/composables/use-new-brand-flow.test.ts`:
 import { test, expect, mock, beforeEach } from 'bun:test'
 import { createPinia, setActivePinia } from 'pinia'
 import { useNewBrandFlow } from '../../src/composables/brands/use-new-brand-flow'
-import { useBrandsStore } from '../../src/stores/brands'
 
-beforeEach(() => setActivePinia(createPinia()))
+// File-scope mock of the brands store. Replaces the previous pattern of
+// reassigning `store.createBrand = mock(...)` inside a test body
+// (B-MED17 — inline reassignment violates the mock.module discipline used
+// elsewhere in this cluster's tests).
+const createBrandMock = mock(async () => ({ id: 'new-brand', name: 'Test' } as any))
+mock.module('@/stores/brands', () => ({
+  useBrandsStore: () => ({
+    createBrand: createBrandMock,
+    // Extend with other store members as the test suite grows.
+  }),
+}))
+
+beforeEach(() => {
+  setActivePinia(createPinia())
+  createBrandMock.mockClear()
+})
 
 test('initial step is name-url', () => {
   const flow = useNewBrandFlow()
@@ -2414,13 +2428,11 @@ test('isDirty reflects any field input', () => {
 })
 
 test('commitAndAdvance calls store.createBrand + advances to done', async () => {
-  const store = useBrandsStore()
-  store.createBrand = mock(async () => ({ id: 'new-brand', name: 'Test' } as any))
   const flow = useNewBrandFlow()
   flow.name.value = 'Test'
   flow.step.value = 'brand-kit'
   await flow.commitAndAdvance()
-  expect(store.createBrand).toHaveBeenCalledTimes(1)
+  expect(createBrandMock).toHaveBeenCalledTimes(1)
   expect(flow.brandId.value).toBe('new-brand')
   expect(flow.step.value).toBe('done')
 })
