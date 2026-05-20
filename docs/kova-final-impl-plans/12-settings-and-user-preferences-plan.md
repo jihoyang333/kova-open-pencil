@@ -2118,15 +2118,31 @@ interface Payload {
   lastSyncAt: string
 }
 
+/**
+ * W0-13 — Deno-runtime parallel to Plan 11 Task 1.3c's `loadEnvOrSkip`. Inline
+ * here until Cluster 01 ships `supabase/functions/_shared/env.ts` (then import
+ * from there). Returns null + warn breadcrumb when env var is missing/empty.
+ * Pre-launch §11 graduates console.warn → Sentry.captureMessage.
+ */
+function loadEnvOrSkip(name: string): string | null {
+  const value = Deno.env.get(name)
+  if (value === undefined || value === '') {
+    console.warn(`[env] skipped — ${name} unset (stub mode)`)
+    return null
+  }
+  return value
+}
+
 export default async function handler(req: Request): Promise<Response> {
   if (req.method !== 'POST') {
     return new Response('Method not allowed', { status: 405 })
   }
 
-  // Env-guard (founder ratified 2026-05-17 — defer Resend signup to pre-launch).
-  const apiKey = Deno.env.get('RESEND_API_KEY')
+  // W0-13 stub-guard (founder ratified 2026-05-17 — defer Resend signup to pre-launch).
+  // Returns 200 + skipped:no_api_key so the caller (Cluster 06 retry-hook) does
+  // NOT retry-storm a known-skip case.
+  const apiKey = loadEnvOrSkip('RESEND_API_KEY')
   if (!apiKey) {
-    console.warn('Resend not configured — skipping send')
     return new Response(JSON.stringify({ ok: true, skipped: 'no_api_key' }), {
       status: 200,
       headers: { 'content-type': 'application/json' },
@@ -2136,17 +2152,15 @@ export default async function handler(req: Request): Promise<Response> {
   const auth = req.headers.get('authorization')
   if (!auth) return new Response('Unauthorized', { status: 401 })
 
-  // C-MED12.4: require both Supabase env vars up-front. The previous form used
-  // `?? ''` fallbacks, which would silently construct a client with an empty
-  // URL/key and surface as a confusing PostgrestError later in the request.
-  // Fail fast at the boundary instead — 500 with a clear error code so ops
-  // sees the misconfiguration in logs immediately.
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')
-  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')
+  // W0-13 stub-guard for Supabase env (founder ratified 2026-05-20 — was 500,
+  // now 200 + skipped:supabase_env_unset). Treat dev/CI without Supabase env
+  // as "stub mode" rather than misconfiguration: the caller (Cluster 06
+  // retry-hook) does not retry-storm; ops sees the breadcrumb in logs.
+  const supabaseUrl = loadEnvOrSkip('SUPABASE_URL')
+  const supabaseAnonKey = loadEnvOrSkip('SUPABASE_ANON_KEY')
   if (!supabaseUrl || !supabaseAnonKey) {
-    console.error('send-sync-alert: SUPABASE_URL or SUPABASE_ANON_KEY unset')
-    return new Response(JSON.stringify({ ok: false, error: 'supabase_env_unset' }), {
-      status: 500,
+    return new Response(JSON.stringify({ ok: true, skipped: 'supabase_env_unset' }), {
+      status: 200,
       headers: { 'content-type': 'application/json' },
     })
   }

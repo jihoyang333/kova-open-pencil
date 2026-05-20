@@ -879,6 +879,111 @@ git commit -m "feat(cluster-11): add requireEnv() helper (W0-9 — founder lock 
 
 ---
 
+### Task 1.3c: `loadEnvOrSkip()` helper (TDD) — W0-13 / stub-guard pattern
+
+**Files:**
+- Modify: `kova-open-pencil-1/api/_shared/env.ts` (extend Task 1.3b file)
+- Test: `kova-open-pencil-1/tests/unit/api/_shared/env.test.ts` (extend Task 1.3b test)
+
+**Contract:** `loadEnvOrSkip(name: string): string | null` reads `process.env[name]` and returns `null` + emits a `console.warn` breadcrumb when the var is missing or empty. Callers short-circuit (typically return `200 { ok: true, skipped: true }`). For REQUIRED env that must throw, use `requireEnv()` from Task 1.3b. W0-13 centralizes the stub-guard pattern reinvented in 4 places (Task 1.5 Sentry stub, Task 1.6 Resend stub, Plan 12 Task 16 send-sync-alert) so future stubs consume the helper instead of forking the pattern.
+
+**Why optional vs required:** stub-mode integrations (Resend, Sentry, marketing-email cron) are deferred to pre-launch per `00-PRD_SCOPE_PLAN.md §11` + memory `project_external_accounts_deferred`. Dev + CI runs without those secrets. The helper expresses "absence is expected at MVP" with a single signature.
+
+**Pre-launch §11 graduation:** the `console.warn` becomes `Sentry.captureMessage(`env_skipped:${name}`, 'warning')` when `@sentry/node` lands. Helper signature unchanged — only the breadcrumb emitter swaps.
+
+- [ ] **Step 1: Extend the failing unit test**
+
+```typescript
+// tests/unit/api/_shared/env.test.ts (append to Task 1.3b test file)
+import { loadEnvOrSkip } from '@/api/_shared/env'
+
+describe('loadEnvOrSkip (W0-13)', () => {
+  let original: string | undefined
+  const warnMock = mock(() => undefined)
+  const origWarn = console.warn
+
+  beforeEach(() => {
+    original = process.env.KOVA_LOAD_OR_SKIP_TEST_VAR
+    warnMock.mockClear()
+    console.warn = warnMock
+  })
+  afterEach(() => {
+    if (original === undefined) delete process.env.KOVA_LOAD_OR_SKIP_TEST_VAR
+    else process.env.KOVA_LOAD_OR_SKIP_TEST_VAR = original
+    console.warn = origWarn
+  })
+
+  it('returns the value when set', () => {
+    process.env.KOVA_LOAD_OR_SKIP_TEST_VAR = 'value'
+    expect(loadEnvOrSkip('KOVA_LOAD_OR_SKIP_TEST_VAR')).toBe('value')
+    expect(warnMock).not.toHaveBeenCalled()
+  })
+
+  it('returns null + warn breadcrumb when missing', () => {
+    delete process.env.KOVA_LOAD_OR_SKIP_TEST_VAR
+    expect(loadEnvOrSkip('KOVA_LOAD_OR_SKIP_TEST_VAR')).toBeNull()
+    expect(warnMock).toHaveBeenCalled()
+    expect(String(warnMock.mock.calls[0][0])).toContain('KOVA_LOAD_OR_SKIP_TEST_VAR')
+    expect(String(warnMock.mock.calls[0][0])).toContain('stub mode')
+  })
+
+  it('returns null + warn breadcrumb when empty string', () => {
+    process.env.KOVA_LOAD_OR_SKIP_TEST_VAR = ''
+    expect(loadEnvOrSkip('KOVA_LOAD_OR_SKIP_TEST_VAR')).toBeNull()
+    expect(warnMock).toHaveBeenCalled()
+  })
+})
+```
+
+- [ ] **Step 2: Run → FAIL (no export)**
+
+Run: `cd kova-open-pencil-1 && bun test tests/unit/api/_shared/env.test.ts`
+Expected: FAIL with `loadEnvOrSkip` not exported.
+
+- [ ] **Step 3: Extend the helper**
+
+```typescript
+// api/_shared/env.ts (append to Task 1.3b file)
+
+/**
+ * Read OPTIONAL env var. Returns null + console.warn breadcrumb when missing
+ * or empty. Caller short-circuits (typically 200 { ok: true, skipped: true }).
+ *
+ * For REQUIRED env that must throw on absence, use requireEnv() above.
+ *
+ * Use for stub-mode integrations (Resend, Sentry, marketing-email) where
+ * absence is expected at MVP per 00-PRD_SCOPE_PLAN.md §11. Pre-launch §11
+ * graduates the warn to Sentry.captureMessage(`env_skipped:${name}`, 'warning').
+ */
+export function loadEnvOrSkip(name: string): string | null {
+  const value = process.env[name]
+  if (value === undefined || value === '') {
+    console.warn(`[env] skipped — ${name} unset (stub mode)`)
+    return null
+  }
+  return value
+}
+```
+
+- [ ] **Step 4: Run → PASS (3/3 new + 4/4 from Task 1.3b)**
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add kova-open-pencil-1/api/_shared/env.ts kova-open-pencil-1/tests/unit/api/_shared/env.test.ts
+git commit -m "feat(cluster-11): add loadEnvOrSkip() helper (W0-13 — stub-guard pattern)"
+```
+
+**Consumer-wave usage:**
+- Task 1.5 (Sentry server stub) consumes `loadEnvOrSkip('SENTRY_DSN_SERVER')`
+- Task 1.6 (Resend stub) consumes `loadEnvOrSkip('RESEND_API_KEY')`
+- Plan 12 Task 16 (send-sync-alert, Deno runtime) ships an inline Deno-parallel helper at the top of `supabase/functions/send-sync-alert/index.ts` until a shared `supabase/functions/_shared/env.ts` lands (Cluster 01)
+- CI grep gate (Task 11.8) flags any new ad-hoc `process.env['NAME'] ?? ''` / `process.env.NAME || ''` stub-guard reinvention.
+
+**Why no Deno cross-runtime variant in this file:** `api/_shared/` is Vercel-Node territory. `supabase/functions/_shared/` is Deno territory (owned by Cluster 01). Two runtimes, two helpers with the same signature — DRY at the contract level, not at the file level.
+
+---
+
 ### Task 1.4: Sentry browser install (STUB — env-guarded)
 
 **Files:**
@@ -1008,32 +1113,35 @@ afterAll(() => { console.warn = origWarn })
 
 - [ ] **Step 2: Run → fail**
 
-- [ ] **Step 3: Write `api/_shared/sentry.ts` (stub mode)**
+- [ ] **Step 3: Write `api/_shared/sentry.ts` (stub mode — consumes W0-13 helper)**
 
 ```typescript
 // api/_shared/sentry.ts
-const dsn = process.env.SENTRY_DSN_SERVER
+import { loadEnvOrSkip } from './env'
 
 let initialized = false
+let cachedDsn: string | null | undefined  // undefined = not yet checked
+function getDsn(): string | null {
+  if (cachedDsn === undefined) cachedDsn = loadEnvOrSkip('SENTRY_DSN_SERVER')
+  return cachedDsn
+}
 
 export function initSentry(): void {
-  if (!dsn) {
-    console.warn('[sentry] SENTRY_DSN_SERVER missing — Sentry disabled (stub mode)')
-    return
-  }
+  const dsn = getDsn()
+  if (!dsn) return  // breadcrumb already emitted by loadEnvOrSkip
   if (initialized) return
   // TODO(pre-launch §11): import + init @sentry/node here once DSN provisioned
   initialized = true
 }
 
 export function captureException(err: unknown, context?: Record<string, unknown>): void {
-  if (!dsn) {
-    console.warn('[sentry] captureException called but disabled (stub mode):', err)
-    return
-  }
+  const dsn = getDsn()
+  if (!dsn) return  // breadcrumb already emitted by loadEnvOrSkip
   // TODO(pre-launch §11): Sentry.captureException(err, { extra: context })
 }
 ```
+
+**W0-13:** stub-guard pattern centralized in `loadEnvOrSkip` (Task 1.3c). The cached-DSN pattern prevents warn-spam on repeated calls; first call emits the breadcrumb, subsequent calls hit the cache.
 
 - [ ] **Step 4: Run + pass**
 - [ ] **Step 5: Commit**
@@ -1112,26 +1220,22 @@ export interface EmailSendResult {
 }
 ```
 
-- [ ] **Step 3: Write `api/_shared/email.ts` (stub mode — CT-015 breadcrumb pattern)**
+- [ ] **Step 3: Write `api/_shared/email.ts` (stub mode — consumes W0-13 helper)**
 
 ```typescript
 // api/_shared/email.ts
+import { loadEnvOrSkip } from './env'
 import type { EmailPayload, EmailSendResult } from './types'
 
-const apiKey = process.env.RESEND_API_KEY
-
-// CT-015 / founder lock #19 — stub-guard pattern. Returns a sentinel id +
-// `skipped: true` when RESEND_API_KEY is unset so production divergence is
-// observable (a) in logs via the warn breadcrumb, (b) at Sentry once
-// pre-launch wiring lands, (c) in callsites that surface "email sent" UX.
-// Replace the console.warn with Sentry.captureMessage at pre-launch §11.
+// CT-015 / founder lock #19 / W0-13 — stub-guard pattern centralized in
+// loadEnvOrSkip (Task 1.3c). Returns a sentinel id + `skipped: true` when
+// RESEND_API_KEY is unset so production divergence is observable (a) in logs
+// via the helper's warn breadcrumb, (b) at Sentry once pre-launch §11 wiring
+// lands (graduates console.warn → Sentry.captureMessage), (c) in callsites
+// that surface "email sent" UX.
 export async function sendEmail(payload: EmailPayload): Promise<EmailSendResult> {
+  const apiKey = loadEnvOrSkip('RESEND_API_KEY')
   if (!apiKey) {
-    console.warn(
-      '[resend] skipped — RESEND_API_KEY not set (stub mode)',
-      { to: payload.to, subject: payload.subject }
-    )
-    // TODO(pre-launch §11): Sentry.captureMessage('resend_skipped_no_api_key', 'warning')
     return { id: `stub_${crypto.randomUUID()}`, skipped: true }
   }
   // TODO(pre-launch §11): import { Resend } from 'resend' + resend.emails.send(payload)
@@ -3804,6 +3908,56 @@ git commit -am "ci(cluster-11): founder lock #10 sweep gate — no \`as any\` + 
 ```
 
 **Wave-2/3 follow-up:** cluster-fix agents for 03 (49 occurrences), 06 (41 occurrences), 07b (17 occurrences), and every other plan replace `as any` with explicit type narrowing (`as MyType`, `unknown` + valibot parse, type predicates) during their pass. Every `process.env.X!` callsite migrates to `requireEnv('X')` (Task 1.3b).
+
+---
+
+### Task 11.8: Stub-guard reinvention CI gate (W0-13)
+
+**Files:**
+- Modify: `.github/workflows/ci.yml`
+- Modify: `kova-open-pencil-1/package.json` — `check:stub-guard` script
+
+**Contract:** W0-13 centralizes the stub-guard pattern (`process.env.X` + null-guard + skipped:true response) in `loadEnvOrSkip()` (Task 1.3c) for Vercel-Node, and inline Deno parallels for `supabase/functions/*`. This CI gate flags any new ad-hoc reinvention so the helper stays load-bearing.
+
+- [ ] **Step 1: Add the CI grep step**
+
+```yaml
+- name: Verify W0-13 — no ad-hoc stub-guard reinvention
+  run: |
+    # Pattern A: `process.env.X ?? ''` or `process.env['X'] ?? ''` (Vercel-Node)
+    if grep -rnE "process\.env(\.[A-Z_]+|\['[A-Z_]+'\])\s*\?\?\s*['\"]" \
+         kova-open-pencil-1/api/ kova-open-pencil-1/src/ 2>/dev/null \
+         | grep -v "_shared/env.ts"; then
+      echo "ERROR: ad-hoc \`process.env.X ?? ''\` stub-guard found (W0-13). Use loadEnvOrSkip() from api/_shared/env.ts."
+      exit 1
+    fi
+    # Pattern B: `process.env.X || ''` (Vercel-Node)
+    if grep -rnE "process\.env(\.[A-Z_]+|\['[A-Z_]+'\])\s*\|\|\s*['\"]" \
+         kova-open-pencil-1/api/ kova-open-pencil-1/src/ 2>/dev/null \
+         | grep -v "_shared/env.ts"; then
+      echo "ERROR: ad-hoc \`process.env.X || ''\` stub-guard found (W0-13). Use loadEnvOrSkip() from api/_shared/env.ts."
+      exit 1
+    fi
+```
+
+- [ ] **Step 2: Wire into `bun run check`**
+
+```json
+"check:stub-guard": "! grep -rnE 'process\\.env(\\.[A-Z_]+|\\[\\x27[A-Z_]+\\x27\\])\\s*\\?\\?\\s*[\\x27\\x22]' api/ src/ | grep -v '_shared/env.ts'",
+"check": "oxlint --type-aware --type-check && bun run check:rls && bun run check:test-framework && bun run check:lock10 && bun run check:stub-guard"
+```
+
+- [ ] **Step 3: Smoke-test locally**
+
+Create temp `src/__delete-me.ts` with `const x = process.env.FOO ?? ''`. Run `bun run check:stub-guard`. Expect exit 1. Delete file. Re-run. Expect exit 0.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git commit -am "ci(cluster-11): stub-guard reinvention gate (W0-13)"
+```
+
+**Scope note:** the gate covers Vercel-Node (`process.env`) only. Deno-runtime parallels (`Deno.env.get(name) ?? ''`) live in `supabase/functions/*` and are flagged at code-review until Cluster 01 ships `supabase/functions/_shared/env.ts` with a Deno `loadEnvOrSkip`.
 
 ---
 
