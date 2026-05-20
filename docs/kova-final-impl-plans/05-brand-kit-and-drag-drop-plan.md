@@ -692,6 +692,68 @@ git add supabase/migrations/20260615_05_brand_kit.sql tests/integration/db/rls-*
 git commit -m "feat(cluster-05): RLS policies for brand_fonts + brand_kb_sources + voice_drafts (service-role insert for drafts)"
 ```
 
+- [ ] **Step 6: `SET search_path = public, pg_temp` lock assertion for all 11 Plan-05 RPCs (CT-013)**
+
+Tasks 2–4 introduced 11 `SECURITY DEFINER` RPCs into `supabase/migrations/20260615_05_brand_kit.sql` (4 tone-snippet + 4 saved-block + 1 writing-rule + 1 brand-identity + 2 voice-draft). Per W0-5 / founder lock #15 (PRD 03 §5.1; PRD 05 §4.1), every `CREATE FUNCTION ... SECURITY DEFINER` block MUST include `SET search_path = public, pg_temp` inside the same function declaration — otherwise the function inherits the caller's `search_path` and is exploitable via shadowing.
+
+Plan 05 previously deferred this to PRD §4.1 source-of-truth without inlining the bodies, leaving the lock invisible at plan level. CT-013 closure: enforce it here as a test that scans the migration file directly.
+
+Write the assertion test:
+
+```ts
+// tests/integration/db/rpc-search-path-lock.test.ts
+import { describe, test, expect } from 'bun:test'
+import { readFileSync } from 'node:fs'
+
+describe('Plan 05 RPC search_path lock (W0-5 / CT-013)', () => {
+  test('every SECURITY DEFINER block has SET search_path = public, pg_temp', () => {
+    const sql = readFileSync('supabase/migrations/20260615_05_brand_kit.sql', 'utf8')
+
+    // Split on CREATE [OR REPLACE] FUNCTION ... SECURITY DEFINER blocks.
+    // Each block ends at the matching `$$;` terminator.
+    const definerBlockRegex =
+      /CREATE\s+(?:OR\s+REPLACE\s+)?FUNCTION[\s\S]*?SECURITY\s+DEFINER[\s\S]*?\$\$;/gi
+    const blocks = sql.match(definerBlockRegex) ?? []
+
+    expect(blocks.length).toBeGreaterThanOrEqual(11) // 4 + 4 + 1 + 1 + 2 — at least
+
+    const missing: string[] = []
+    for (const block of blocks) {
+      const hasLock = /SET\s+search_path\s*=\s*public\s*,\s*pg_temp/i.test(block)
+      if (!hasLock) {
+        const fnNameMatch = block.match(/CREATE\s+(?:OR\s+REPLACE\s+)?FUNCTION\s+(?:public\.)?(\w+)/i)
+        missing.push(fnNameMatch?.[1] ?? '(unknown)')
+      }
+    }
+
+    if (missing.length > 0) {
+      throw new Error(
+        `SECURITY DEFINER RPC(s) missing 'SET search_path = public, pg_temp': ${missing.join(', ')}\n` +
+        `Per W0-5 / founder lock #15 (PRD 03 §5.1), add 'SET search_path = public, pg_temp' to each declaration.`
+      )
+    }
+    expect(missing).toEqual([])
+  })
+})
+```
+
+Run the test:
+
+```bash
+bun test tests/integration/db/rpc-search-path-lock.test.ts
+```
+
+Expected: PASS once every RPC body copied from PRD §4.1 includes the lock. If FAIL, open the migration, locate each function name in the error list, and add `SET search_path = public, pg_temp` between the `LANGUAGE plpgsql SECURITY DEFINER` and `AS $$` lines.
+
+This test also feeds the global `bun run check:rls` gate (Plan 11 Task 11.5) which scans all cluster migrations.
+
+- [ ] **Step 7: Commit the assertion**
+
+```bash
+git add tests/integration/db/rpc-search-path-lock.test.ts
+git commit -m "test(cluster-05): assert search_path lock on all 11 SECURITY DEFINER RPCs (CT-013)"
+```
+
 ---
 
 ### Task 6: Storage buckets + path-prefix RLS
