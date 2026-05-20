@@ -131,9 +131,19 @@ kova-open-pencil-1/
 
 > **Authoritative method:** `docs/execution-phase/claude-design-files/IMPLEMENTATION_PROMPT.md` (read end-to-end before any UI task). This section maps PRD 02 §3 hi-fi citations onto Plan tasks + points at actual Kova source paths.
 
-**Translation rule:** hi-fi HTML = visual source of truth; port to idiomatic Vue 3 using Cluster 11 primitives. **Mockup wins** — drift protocol (RIDER §2.1) on any value not in `kova-hifi.css :root`.
+**3-rule fidelity contract** (per `docs/execution-phase/claude-design-files/IMPLEMENTATION_PROMPT.md` §0):
 
-**Per-screen diff loop** (per IMPLEMENTATION_PROMPT.md Phase 4): mockup + Vue at 1440px → screenshot both → list discrepancies → fix → re-diff. Cluster-boundary Playwright gate ≤ 2%.
+1. **Visual values are copied.** Every color, spacing, type, radius, shadow, gap, padding, line-height, tracking, and proportion in the rendered output MUST match the mockup pixel-for-pixel.
+2. **DOM structure is translated.** Vue 3 SFCs + Reka UI primitives + Cluster 11 primitives + K* component layer (`design.md` §3). NOT the mockup's hand-rolled HTML.
+3. **Behavior is engineered.** State in Pinia / refs / composables. Hover / focus / active / selected / disabled states are dynamic bindings, NEVER hardcoded classes.
+
+**Trap phrase ban:** "copy DOM verbatim" is forbidden. Drift protocol per RIDER §2.1 + IMPLEMENTATION_PROMPT.md §7 on any hi-fi value not in `kova-hifi.css :root` — never silently round.
+
+**Phase 1 audit gate** (per IMPLEMENTATION_PROMPT.md §3): produce `KOVA_AUDIT.md` + `tokens-used.md` BEFORE any Vue code. `tokens-used.md` enumerates every visual value in this cluster's surfaces mapped to either an existing token or ⚠️ MISSING (founder decision via AskUserQuestion). No Vue until founder-approved.
+
+**Per-screen diff loop** (per IMPLEMENTATION_PROMPT.md §6): in-repo mockup + Vue route at 1440px → screenshot both → walk Appendix A per property → list discrepancies in `tests/snapshots/cluster-02/<surface>-diff.md` → fix → re-diff until empty. **Visual-diff thresholds: ≤ 0.1% component / ≤ 0.5% screen** (Playwright `maxDiffPixelRatio: 0.005, threshold: 0.2`, masking volatile regions per IMPLEMENTATION_PROMPT.md §10).
+
+**PR artifact:** every PR touching a UI surface in this cluster MUST include 3-screenshot row (mockup / impl / diff) per surface in the PR description.
 
 ### Cluster 11 primitives — use these, do NOT reinvent
 
@@ -157,14 +167,14 @@ Source: `kova-open-pencil-1/src/components/ui/`:
 
 | Plan surface | Hi-fi file | Scene IDs |
 |---|---|---|
-| Onboarding wizard (BrandNameStep + BrandUrlStep + StoreTypeStep + ExtractionStep + ReviewStep + WelcomeStep refactor + splash) | `main-main-kova-scope/batch-a/dark/Kova Hi-Fi A1 Onboarding - Dark.html` | A1.01.c (first brand), A1.01.d (Shopify connect), A1.01.e (brand kit), A1.01.f (splash) |
-| Dashboard chrome (sidebar `.brand-switch` + `.side-search` + `.nav` + `.side-footer` + topbar `.breadcrumb` + content `.greeting` + composer + file-grid) | `main-main-kova-scope/batch-a/dark/Kova Hi-Fi 03 Brand Dashboard - Dark.html` | 03.a |
-| Sidebar brand-switcher popover | `main-main-kova-scope/batch-a/dark/Kova Hi-Fi A2+A3 Brand picker & New brand - Dark.html` | A2.a (Cluster 03 owns full A2 spec; Cluster 02 only ships the trigger + dropdown wiring) |
-| Canvas-creation transition (composer idle / submitting / transition / splash hand-off) | `main-main-kova-scope/batch-a-additions/dark/Kova Hi-Fi B11 Canvas Creation Transition - Dark.html` | B11.1, B11.2, B11.3, B11.4 |
-| Dashboard skeleton (initial load) | `main-main-kova-scope/batch-a-additions/dark/Kova Hi-Fi B7 Loading Skeletons - Dark.html` | B7.1 |
-| Empty states (zero canvases / zero brands fallback / file-grid search empty) | `main-main-kova-scope/batch-a/dark/Kova Hi-Fi A11+A12+A13+A_canvas_nav - Dark.html` (A11.1, A11.7) + `main-main-kova-scope/batch-a-additions/dark/Kova Hi-Fi B9 List Search Empty - Dark.html` (B9-pattern) | A11.1, A11.7, B9-pattern |
-| Coming-soon shells (Calendar / Swipes / Templates) | `main-main-kova-scope/batch-a/dark/Kova Hi-Fi A11+A12+A13+A_canvas_nav - Dark.html` | A12.1, A12.2, A12.3 |
-| Cross-ref: B12 Brands page (Cluster 03 ships full page) | `main-main-kova-scope/batch-a-additions/dark/Kova Hi-Fi B12 Brands page - Dark.html` | B12.1 (link target from sidebar "Manage brands") |
+| Onboarding wizard (BrandNameStep + BrandUrlStep + StoreTypeStep + ExtractionStep + ReviewStep + WelcomeStep refactor + splash) | `design-system/hifi/onboarding/Kova Hi-Fi A1 Onboarding - Dark.html` | A1.01.c (first brand), A1.01.d (Shopify connect), A1.01.e (brand kit), A1.01.f (splash) |
+| Dashboard chrome (sidebar `.brand-switch` + `.side-search` + `.nav` + `.side-footer` + topbar `.breadcrumb` + content `.greeting` + composer + file-grid) | `design-system/hifi/dashboard/Kova Hi-Fi 03 Brand Dashboard - Dark.html` | 03.a |
+| Sidebar brand-switcher popover | `design-system/hifi/brand-mgmt/Kova Hi-Fi A2+A3 Brand picker & New brand - Dark.html` | A2.a (Cluster 03 owns full A2 spec; Cluster 02 only ships the trigger + dropdown wiring) |
+| Canvas-creation transition (composer idle / submitting / transition / splash hand-off) | `design-system/hifi/onboarding/Kova Hi-Fi B11 Canvas Creation Transition - Dark.html` | B11.1, B11.2, B11.3, B11.4 |
+| Dashboard skeleton (initial load) | `design-system/hifi/states/Kova Hi-Fi B7 Loading Skeletons - Dark.html` | B7.1 |
+| Empty states (zero canvases / zero brands fallback / file-grid search empty) | `design-system/hifi/dashboard/Kova Hi-Fi A11+A12+A13+A_canvas_nav - Dark.html` (A11.1, A11.7) + `design-system/hifi/states/Kova Hi-Fi B9 List Search Empty - Dark.html` (B9-pattern) | A11.1, A11.7, B9-pattern |
+| Coming-soon shells (Calendar / Swipes / Templates) | `design-system/hifi/dashboard/Kova Hi-Fi A11+A12+A13+A_canvas_nav - Dark.html` | A12.1, A12.2, A12.3 |
+| Cross-ref: B12 Brands page (Cluster 03 ships full page) | `design-system/hifi/brand-mgmt/Kova Hi-Fi B12 Brands page - Dark.html` | B12.1 (link target from sidebar "Manage brands") |
 
 ### Per-property extraction checklist
 

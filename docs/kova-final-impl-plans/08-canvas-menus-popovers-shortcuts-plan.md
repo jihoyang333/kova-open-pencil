@@ -70,9 +70,19 @@ Isolated worktree on a new branch off `feat/m9-shopify`.
 
 > **Authoritative method:** `docs/execution-phase/claude-design-files/IMPLEMENTATION_PROMPT.md` (read end-to-end before any UI task). Maps PRD 08 §3 hi-fi citations to Plan tasks + actual Kova source paths.
 
-**Translation rule:** hi-fi HTML = visual source of truth; idiomatic Vue 3 + Cluster 11 primitives. **Mockup wins**; drift protocol (RIDER §2.1). Theme: dark.
+**3-rule fidelity contract** (per `docs/execution-phase/claude-design-files/IMPLEMENTATION_PROMPT.md` §0):
 
-**Per-screen diff loop** per IMPLEMENTATION_PROMPT.md Phase 4. Cluster-boundary Playwright gate ≤ 2%.
+1. **Visual values are copied.** Every color, spacing, type, radius, shadow, gap, padding, line-height, tracking, and proportion in the rendered output MUST match the mockup pixel-for-pixel.
+2. **DOM structure is translated.** Vue 3 SFCs + Reka UI primitives + Cluster 11 primitives + K* component layer (`design.md` §3). NOT the mockup's hand-rolled HTML.
+3. **Behavior is engineered.** State in Pinia / refs / composables. Hover / focus / active / selected / disabled states are dynamic bindings, NEVER hardcoded classes.
+
+**Trap phrase ban:** "copy DOM verbatim" is forbidden. Drift protocol per RIDER §2.1 + IMPLEMENTATION_PROMPT.md §7 on any hi-fi value not in `kova-hifi.css :root` — never silently round. **Theme: dark.**
+
+**Phase 1 audit gate** (per IMPLEMENTATION_PROMPT.md §3): produce `KOVA_AUDIT.md` + `tokens-used.md` BEFORE any Vue code. `tokens-used.md` enumerates every visual value in this cluster's surfaces mapped to either an existing token or ⚠️ MISSING (founder decision via AskUserQuestion). No Vue until founder-approved.
+
+**Per-screen diff loop** (per IMPLEMENTATION_PROMPT.md §6): in-repo mockup + Vue route at 1440px → screenshot both → walk Appendix A per property → list discrepancies in `tests/snapshots/cluster-08/<surface>-diff.md` → fix → re-diff until empty. **Visual-diff thresholds: ≤ 0.1% component / ≤ 0.5% screen** (Playwright `maxDiffPixelRatio: 0.005, threshold: 0.2`, masking volatile regions per IMPLEMENTATION_PROMPT.md §10).
+
+**PR artifact:** every PR touching a UI surface in this cluster MUST include 3-screenshot row (mockup / impl / diff) per surface in the PR description.
 
 ### Cluster 11 primitives — use these
 
@@ -95,7 +105,7 @@ Source: `kova-open-pencil-1/src/components/ui/`:
 
 | Plan surface | Hi-fi file | Scene IDs |
 |---|---|---|
-| Main menu root popover (8 entries) | `main-main-kova-scope/batch-b/Kova Hi-Fi 08 Top Chrome Menus - Dark.html` | B1.1 |
+| Main menu root popover (8 entries) | `design-system/hifi/canvas-chrome/Kova Hi-Fi 08 Top Chrome Menus - Dark.html` | B1.1 |
 | File ▶ submenu | same | B1.2 |
 | Edit ▶ submenu + Copy as ▶ sub-of-sub | same | B1.3 |
 | View ▶ submenu + Outlines ▶ sub-of-sub + Panels ▶ sub-of-sub | same | B1.4 |
@@ -104,12 +114,12 @@ Source: `kova-open-pencil-1/src/components/ui/`:
 | Arrange ▶ submenu | same | B1.7 |
 | Preferences ▶ submenu | same | B1.8 |
 | Help & account ▶ submenu | same | B1.9 |
-| File-name dropdown popover | `main-main-kova-scope/batch-b/Kova Hi-Fi 08 Top Chrome Menus - Dark.html` + `main-main-kova-scope/batch-b/chunk-b1/Kova Hi-Fi 13 Canvas Popovers - Dark.html` | B1.11 (08) + 13.1 closed + 13.2 open |
+| File-name dropdown popover | `design-system/hifi/canvas-chrome/Kova Hi-Fi 08 Top Chrome Menus - Dark.html` + `design-system/hifi/canvas-menus/Kova Hi-Fi 13 Canvas Popovers - Dark.html` | B1.11 (08) + 13.1 closed + 13.2 open |
 | Canvas right-click (object / empty / page row / layer row / brand-asset row / brand-card active / brand-card archived) | `Kova Hi-Fi 08 Top Chrome Menus - Dark.html` (Reka shell LOCK) | items per PRD §6 dispatch table |
 | Inspector overflow `•••` menu | 08 Top Chrome Menus (shell) | n/a (subset per Q18) |
-| Find overlay (empty / populated / no-results / dismissed) | `main-main-kova-scope/batch-b/chunk-b1/Kova Hi-Fi 14 Find Overlay - Dark.html` | 14.1, 14.2, 14.3, 14.4 |
+| Find overlay (empty / populated / no-results / dismissed) | `design-system/hifi/canvas-engine/Kova Hi-Fi 14 Find Overlay - Dark.html` | 14.1, 14.2, 14.3, 14.4 |
 | Keyboard shortcuts dialog (centered modal, 11 visible category tabs) | composes A8.2 modal shell + `<KovaModal>` (Cluster 11) — no dedicated scene | n/a |
-| Trash confirm modal (cross-cut Cluster 09) | `main-main-kova-scope/batch-b/chunk-b2/Kova Hi-Fi 15 Trash Confirm - Dark.html` | B13.1, B13.2, B13.3 |
+| Trash confirm modal (cross-cut Cluster 09) | `design-system/hifi/version-history/Kova Hi-Fi 15 Trash Confirm - Dark.html` | B13.1, B13.2, B13.3 |
 | Reka DropdownMenu shell visual contract (LOCK) | 08 Top Chrome Menus § LOCK HERE | shared by every popover in §3.1, §3.2, §3.3 |
 
 ### Per-property extraction checklist

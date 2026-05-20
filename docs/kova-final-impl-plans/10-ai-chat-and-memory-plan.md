@@ -62,9 +62,19 @@
 
 > **Authoritative method:** `docs/execution-phase/claude-design-files/IMPLEMENTATION_PROMPT.md` (read end-to-end before any UI task). Maps PRD 10 §3 hi-fi citations to Plan tasks + actual Kova source paths.
 
-**Translation rule:** hi-fi HTML = visual source of truth; idiomatic Vue 3 + Cluster 11 primitives. **Mockup wins**; drift protocol (RIDER §2.1). Theme: dark.
+**3-rule fidelity contract** (per `docs/execution-phase/claude-design-files/IMPLEMENTATION_PROMPT.md` §0):
 
-**Per-screen diff loop** per IMPLEMENTATION_PROMPT.md Phase 4. Cluster-boundary Playwright gate ≤ 2%.
+1. **Visual values are copied.** Every color, spacing, type, radius, shadow, gap, padding, line-height, tracking, and proportion in the rendered output MUST match the mockup pixel-for-pixel.
+2. **DOM structure is translated.** Vue 3 SFCs + Reka UI primitives + Cluster 11 primitives + K* component layer (`design.md` §3). NOT the mockup's hand-rolled HTML.
+3. **Behavior is engineered.** State in Pinia / refs / composables. Hover / focus / active / selected / disabled states are dynamic bindings, NEVER hardcoded classes.
+
+**Trap phrase ban:** "copy DOM verbatim" is forbidden. Drift protocol per RIDER §2.1 + IMPLEMENTATION_PROMPT.md §7 on any hi-fi value not in `kova-hifi.css :root` — never silently round. **Theme: dark.**
+
+**Phase 1 audit gate** (per IMPLEMENTATION_PROMPT.md §3): produce `KOVA_AUDIT.md` + `tokens-used.md` BEFORE any Vue code. `tokens-used.md` enumerates every visual value in this cluster's surfaces mapped to either an existing token or ⚠️ MISSING (founder decision via AskUserQuestion). No Vue until founder-approved.
+
+**Per-screen diff loop** (per IMPLEMENTATION_PROMPT.md §6): in-repo mockup + Vue route at 1440px → screenshot both → walk Appendix A per property → list discrepancies in `tests/snapshots/cluster-10/<surface>-diff.md` → fix → re-diff until empty. **Visual-diff thresholds: ≤ 0.1% component / ≤ 0.5% screen** (Playwright `maxDiffPixelRatio: 0.005, threshold: 0.2`, masking volatile regions per IMPLEMENTATION_PROMPT.md §10).
+
+**PR artifact:** every PR touching a UI surface in this cluster MUST include 3-screenshot row (mockup / impl / diff) per surface in the PR description.
 
 **No dedicated hi-fi for chat panel** (per PRD 10 §3.4). The chat surface composes from:
 - `Kova Canvas - Final.html` right-panel inspector chrome (Cluster 06 source-of-truth)
@@ -100,7 +110,7 @@ Reka primitives consumed directly:
 | Task 12 — `<ProductReferenceChip>` | composed from spec `docs/superpowers/specs/2026-05-14-shopify-product-reference-design.md` §4.2 + existing chat-attachment thumbnail row in `ChatInput.vue` lines 96–118 | 48×48 product image (or fallback monogram); product name truncated ~14 chars; `×` button top-right at opacity-60 default + full on hover/focus; chip body click = no-op |
 | Task 13 — `<ProductReferenceChipRow>` | composed | One chip per active reference; max 20 chips; horizontal scroll on overflow |
 | Task 14 — Wire chip row into `<ChatInput>` | existing `ChatInput.vue` chrome (lines 86–217) + insert chip row between attachment thumbnails block and `<form>` | Composer-footer vertical stack order: `image attachments → product chips → textarea → send/stop buttons` per founder lock §12.12 item 7 |
-| Task 15 — Refactor `<ChatPanel>` — full right-panel chat surface | `main-main-kova-scope/batch-b/Kova Canvas - Final.html` (right-panel inspector chrome — lifts ChatPanel.vue lines 119–127 empty-state chrome + ChatPopup.vue lines 286–317 chip-row chrome) | Right-panel AI tab default-active on first canvas open per Cluster 06 §12.13 |
+| Task 15 — Refactor `<ChatPanel>` — full right-panel chat surface | `design-system/hifi/canvas-chrome/Kova Canvas - Final.html` (right-panel inspector chrome — lifts ChatPanel.vue lines 119–127 empty-state chrome + ChatPopup.vue lines 286–317 chip-row chrome) | Right-panel AI tab default-active on first canvas open per Cluster 06 §12.13 |
 | Task 16 — Mount `<ChatPanel>` in right-panel AI tab (Cluster 06 cross-cut) | Cluster 06 `<RightPanelTabs>` host — see Cluster 06 PRD §3.5 | AI tab is child of `.right .pbody` when `activeTab === 'ai'` |
 
 ### Per-property extraction checklist
