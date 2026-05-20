@@ -899,7 +899,7 @@ Vercel Agent Browser preferred per `e2e-runner` agent default. Playwright fallba
 | `tests/e2e/dashboard/file-grid-search.spec.ts` | Brand with 8 canvases → type "Welcome" in search → assert 1 card visible after 200ms → clear search → assert all 8 visible |
 | `tests/e2e/dashboard/file-grid-empty-state.spec.ts` | New brand with 0 canvases → assert A11.1 empty pane renders → click "New canvas" → assert B11 transition |
 | `tests/e2e/dashboard/coming-soon-shells.spec.ts` | Visit `/brand/{id}/calendar` → assert cs-pane + "Notify me when it's ready" button. Same for `/swipes` + `/templates`. |
-| `tests/e2e/dashboard/offline-indicator.spec.ts` | Set `context.setOffline(true)` → assert sidebar footer net-strip + topbar warn pill + per-pane banner all render. Set online → assert all three signals clear. |
+| `tests/e2e/dashboard/offline-indicator.spec.ts` | Set `context.setOffline(true)` → assert the single global `<NetworkStatusIndicator>` renders the 14×14 `cloud-off` icon at top-right of the viewport; hover surfaces `<KovaTooltip>` "You're offline. Changes are saved locally and will sync when you reconnect." Set online → assert the icon renders nothing (component is silent while online, per Plan 11 §3.7 / commit f08fa551). Assert NO legacy A13.1 topbar warn pill, A13.2 sidebar `.net-strip`, or per-pane `.offline-banner` is rendered (retired 2026-05-17). |
 | `tests/e2e/dashboard/wizard-reentry.spec.ts` | Mid-onboarding (step 2 filled), reload page → assert step 2 state restored from sessionStorage |
 
 ### 9.4 Manual QA (founder browser smoke)
@@ -914,7 +914,7 @@ Per `feedback_browser_smoke_test_before_done` memory.
 - [ ] Type "test" in composer → ⌘↵ → observe B11 transition → land in editor
 - [ ] Topbar "New canvas" → observe transition + editor
 - [ ] Open `/brand/{id}/calendar` → observe coming-soon
-- [ ] DevTools → toggle offline → observe 3 offline signals
+- [ ] DevTools → toggle offline → observe the single `<NetworkStatusIndicator>` cloud-off icon at top-right of the viewport; hover shows the offline tooltip. Toggle online → icon disappears (no other surfaces should show or hide — the retired 3-signal pattern must NOT appear).
 - [ ] File grid search → debounce visible (200ms)
 - [ ] Sort dropdown → switch to "Name" → grid re-sorts
 - [ ] Right-click a file card → context menu opens (Cluster 08 ships full menu; this PRD's smoke test only checks invocation hook fires)
