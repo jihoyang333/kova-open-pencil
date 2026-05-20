@@ -2454,6 +2454,8 @@ import { createClient } from '@supabase/supabase-js'
 import { verifyAuth } from '../_shared/auth'                // existing helper from M9 / Cluster 01
 import { verifyIdempotency } from '../_shared/idempotency'  // Plan 11 Task 1.3
 
+export const config = { runtime: 'edge' }  // W4 C-LOW09.9: Vercel Fluid Compute Edge runtime
+
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!
 const SUPABASE_URL = process.env.SUPABASE_URL!
 
@@ -2725,6 +2727,8 @@ describe('POST /api/cron/snapshot-prune', () => {
 // kova-open-pencil-1/api/cron/snapshot-prune.ts
 import { createClient } from '@supabase/supabase-js'
 import { SNAPSHOT_FREE_RETENTION_DAYS } from '@/config/feature-flags'  // W4 C-MED24
+
+export const config = { runtime: 'edge' }  // W4 C-LOW09.9: Vercel Fluid Compute Edge runtime
 
 const SUPABASE_URL = process.env.SUPABASE_URL!
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!
