@@ -352,17 +352,27 @@ export async function seedCanvas(opts: { brand_id: string; user_id: string; tras
   return data!.id
 }
 
-export async function signInAs(userId: string) {
-  // Generate a JWT for the user via the admin API; return a client that signs with it
-  const { data } = await admin.auth.admin.generateLink({ type: 'magiclink', email: `mock-${userId}@local` })
-  // For local testing, easier path: createClient with anon key + setSession from admin-issued tokens.
-  // Implementation detail varies; if seed.ts already exists in the repo, reuse its signInAs pattern.
-  // Intent: returned client has auth.uid() = userId for SECURITY DEFINER RPC calls.
-  return createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!, {
-    global: { headers: { Authorization: `Bearer ${data.properties?.action_link}` } }
+export async function signInAs(userId: string, password = `test-${crypto.randomUUID()}`) {
+  // B-CRIT13 / B-HIGH20 fix (W4): the prior implementation passed a magic-link URL as a Bearer
+  // token, which is NOT a JWT — the returned client silently fell back to anon, so all 14 RLS
+  // tests were dead-on-arrival (they exercised anon, not the target user). Correct pattern:
+  // set a known password via admin API, then signInWithPassword. Returned client has
+  // auth.uid() = userId for SECURITY DEFINER RPC calls.
+  await admin.auth.admin.updateUserById(userId, { password })
+  const { data: userRow, error: getErr } = await admin.auth.admin.getUserById(userId)
+  if (getErr || !userRow?.user) throw getErr ?? new Error(`signInAs: user ${userId} not found`)
+
+  const userClient = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!)
+  const { error: signInErr } = await userClient.auth.signInWithPassword({
+    email: userRow.user.email!,
+    password,
   })
+  if (signInErr) throw signInErr
+  return userClient
 }
 ```
+
+**Re-run verification (W4):** before this fix lands, the 14 RLS tests SHOULD FAIL — they were silently passing as anon, hiding RLS regressions. After the fix, they MUST PASS. Run `bun test ./tests/integration/snapshots/rls-*.test.ts` twice (pre- and post-fix) and diff the output to prove correctness.
 
 (If a `signInAs` already exists in this repo's test helpers from M9 / Cluster 01 work, re-use it instead — the repo convention wins. Grep `tests/integration/helpers` first.)
 
