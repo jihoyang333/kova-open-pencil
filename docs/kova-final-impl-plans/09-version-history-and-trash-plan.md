@@ -134,10 +134,11 @@ Expected: green `bun run check`. If red, fix unrelated drift first or pause.
 // kova-open-pencil-1/tests/integration/snapshots/migrations.test.ts
 import { describe, expect, it } from 'bun:test'
 import { createClient } from '@supabase/supabase-js'
+import { requireEnv } from '@/api/_shared/env'
 
 const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
+  requireEnv('SUPABASE_URL'),
+  requireEnv('SUPABASE_SERVICE_ROLE_KEY')
 )
 
 describe('20260615_09_canvas_snapshots migration', () => {
@@ -280,9 +281,10 @@ git commit -m "feat(09): add canvas_snapshots table + RLS + Storage bucket"
 import { describe, expect, it, beforeAll } from 'bun:test'
 import { createClient } from '@supabase/supabase-js'
 import { seedTestUser, seedBrand, seedCanvas, signInAs } from '../helpers/seed'
+import { requireEnv } from '@/api/_shared/env'
 
-const url = process.env.SUPABASE_URL!
-const anonKey = process.env.SUPABASE_ANON_KEY!
+const url = requireEnv('SUPABASE_URL')
+const anonKey = requireEnv('SUPABASE_ANON_KEY')
 
 describe('create_snapshot RPC', () => {
   let userId: string, brandId: string, canvasId: string
@@ -311,7 +313,7 @@ describe('create_snapshot RPC', () => {
 
   it('raises quota_exceeded when brand sum + new size > 100 MB', async () => {
     // First fill the brand with one 100MB snapshot via service-role direct insert
-    const admin = createClient(url, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+    const admin = createClient(url, requireEnv('SUPABASE_SERVICE_ROLE_KEY'))
     await admin.from('canvas_snapshots').insert({
       canvas_id: canvasId, brand_id: brandId, user_id: userId,
       kind: 'manual', scene_blob_path: 'big', scene_size_bytes: 100 * 1024 * 1024 - 1,
@@ -378,8 +380,9 @@ You'll need a small `tests/integration/helpers/seed.ts` exporting `seedTestUser`
 ```typescript
 // kova-open-pencil-1/tests/integration/helpers/seed.ts
 import { createClient } from '@supabase/supabase-js'
+import { requireEnv } from '@/api/_shared/env'
 
-const admin = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+const admin = createClient(requireEnv('SUPABASE_URL'), requireEnv('SUPABASE_SERVICE_ROLE_KEY'))
 
 export async function seedTestUser(opts: { plan?: 'free' | 'solo' | 'agency' } = {}): Promise<string> {
   const { data: auth } = await admin.auth.admin.createUser({
@@ -413,7 +416,7 @@ export async function signInAs(userId: string, password = `test-${crypto.randomU
   const { data: userRow, error: getErr } = await admin.auth.admin.getUserById(userId)
   if (getErr || !userRow?.user) throw getErr ?? new Error(`signInAs: user ${userId} not found`)
 
-  const userClient = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!)
+  const userClient = createClient(requireEnv('SUPABASE_URL'), requireEnv('SUPABASE_ANON_KEY'))
   const { error: signInErr } = await userClient.auth.signInWithPassword({
     email: userRow.user.email!,
     password,
@@ -2594,11 +2597,12 @@ describe('POST /api/snapshots/duplicate-to-canvas', () => {
 import { createClient } from '@supabase/supabase-js'
 import { verifyAuth } from '../_shared/auth'                // existing helper from M9 / Cluster 01
 import { verifyIdempotency } from '../_shared/idempotency'  // Plan 11 Task 1.3
+import { requireEnv } from '@/api/_shared/env'
 
 export const config = { runtime: 'edge' }  // W4 C-LOW09.9: Vercel Fluid Compute Edge runtime
 
-const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!
-const SUPABASE_URL = process.env.SUPABASE_URL!
+const SERVICE_KEY = requireEnv('SUPABASE_SERVICE_ROLE_KEY')
+const SUPABASE_URL = requireEnv('SUPABASE_URL')
 
 export default async function handler(req: Request): Promise<Response> {
   const auth = await verifyAuth(req)
@@ -2772,8 +2776,9 @@ GRANT  EXECUTE ON FUNCTION public.claim_snapshots_for_prune(int, int) TO service
 import { describe, expect, it, beforeAll } from 'bun:test'
 import { createClient } from '@supabase/supabase-js'
 import { seedTestUser, seedBrand, seedCanvas } from '../helpers/seed'
+import { requireEnv } from '@/api/_shared/env'
 
-const admin = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+const admin = createClient(requireEnv('SUPABASE_URL'), requireEnv('SUPABASE_SERVICE_ROLE_KEY'))
 
 describe('claim_snapshots_for_prune RPC', () => {
   let userId: string, brandId: string, canvasId: string
@@ -2868,12 +2873,13 @@ describe('POST /api/cron/snapshot-prune', () => {
 // kova-open-pencil-1/api/cron/snapshot-prune.ts
 import { createClient } from '@supabase/supabase-js'
 import { SNAPSHOT_FREE_RETENTION_DAYS } from '@/config/feature-flags'  // W4 C-MED24
+import { requireEnv } from '@/api/_shared/env'
 
 export const config = { runtime: 'edge' }  // W4 C-LOW09.9: Vercel Fluid Compute Edge runtime
 
-const SUPABASE_URL = process.env.SUPABASE_URL!
-const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!
-const CRON_SECRET = process.env.CRON_SECRET!
+const SUPABASE_URL = requireEnv('SUPABASE_URL')
+const SERVICE_KEY = requireEnv('SUPABASE_SERVICE_ROLE_KEY')
+const CRON_SECRET = requireEnv('CRON_SECRET')
 
 export default async function handler(req: Request): Promise<Response> {
   const auth = req.headers.get('authorization')
@@ -2988,12 +2994,13 @@ describe('POST /api/cron/snapshot-storage-sweep', () => {
 ```typescript
 // kova-open-pencil-1/api/cron/snapshot-storage-sweep.ts
 import { createClient } from '@supabase/supabase-js'
+import { requireEnv } from '@/api/_shared/env'
 
 export const config = { runtime: 'edge' }
 
-const SUPABASE_URL = process.env.SUPABASE_URL!
-const SERVICE_KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY!
-const CRON_SECRET  = process.env.CRON_SECRET!
+const SUPABASE_URL = requireEnv('SUPABASE_URL')
+const SERVICE_KEY  = requireEnv('SUPABASE_SERVICE_ROLE_KEY')
+const CRON_SECRET  = requireEnv('CRON_SECRET')
 
 export default async function handler(req: Request): Promise<Response> {
   const auth = req.headers.get('authorization')
