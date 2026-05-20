@@ -330,7 +330,7 @@ describe('useClipboardStore', () => {
       cornerRadius: 4,
       paddingLeft: 0, paddingRight: 0, paddingTop: 0, paddingBottom: 0,
       layoutMode: 'NONE',
-    } as any
+    } as unknown as SceneNode
     store.copyProps(node)
     expect(store.copiedProps).not.toBeNull()
     expect(store.copiedProps!.sourceNodeId).toBe('n1')
@@ -340,7 +340,7 @@ describe('useClipboardStore', () => {
 
   it('clear resets copiedProps to null', () => {
     const store = useClipboardStore()
-    store.copyProps({ id: 'n1', type: 'RECTANGLE' } as any)
+    store.copyProps({ id: 'n1', type: 'RECTANGLE' } as unknown as SceneNode)
     store.clear()
     expect(store.copiedProps).toBeNull()
   })
@@ -1378,10 +1378,17 @@ const buildSceneGraph = (names: string[]) => ({
     names.map((name, i) => ({ id: `n${i}`, name })).filter(predicate),
 })
 
+// B-LOW typed test-globals (no `as any`)
+interface MockFigmaGlobal {
+  figma: { currentPage: ReturnType<typeof buildSceneGraph>; getNodeById?: (id: string) => unknown }
+  window: { innerWidth: number; innerHeight: number }
+}
+const G = globalThis as unknown as MockFigmaGlobal
+
 describe('useFindSearch', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
-    ;(globalThis as any).figma = {
+    G.figma = {
       currentPage: buildSceneGraph(['Frame 1', 'Frame 4', 'Frame 5', 'Header', 'Footer']),
     }
   })
@@ -1426,7 +1433,7 @@ describe('useFindSearch', () => {
 
   it('runQuery returns max 200 results', async () => {
     const manyNames = Array.from({ length: 500 }, (_, i) => `Frame ${i}`)
-    ;(globalThis as any).figma.currentPage = buildSceneGraph(manyNames)
+    G.figma.currentPage = buildSceneGraph(manyNames)
     const store = useFindStore()
     const { runQuery } = useFindSearch()
     runQuery('frame')
@@ -1528,12 +1535,18 @@ git commit -m "feat(07b): add useFindSearch composable (PRD §12.12 — query �
 import { describe, expect, it, beforeEach } from 'bun:test'
 import { useCameraPan } from '@/composables/use-camera-pan'
 
+// B-LOW typed test-globals (no `as any`)
+interface ViewportMock { center: { x: number; y: number }; zoom: number }
+interface FigmaMock { viewport: ViewportMock; getNodeById: (id: string) => { id: string; absoluteBoundingBox: { x: number; y: number; width: number; height: number } } }
+interface MockGlobals { figma: FigmaMock; window: { innerWidth: number; innerHeight: number } }
+const G = globalThis as unknown as MockGlobals
+
 describe('useCameraPan', () => {
-  let viewport: { center: { x: number; y: number }; zoom: number }
+  let viewport: ViewportMock
 
   beforeEach(() => {
     viewport = { center: { x: 0, y: 0 }, zoom: 1 }
-    ;(globalThis as any).figma = {
+    G.figma = {
       viewport,
       getNodeById: (id: string) => ({
         id,
@@ -1564,7 +1577,7 @@ describe('useCameraPan', () => {
     // → effective viewport target: 1000 * 0.9 = 900 × 600 * 0.9 = 540
     // → zoom = min(900/200, 540/100) = min(4.5, 5.4) = 4.5
     const { panToNode } = useCameraPan()
-    ;(globalThis as any).window = { innerWidth: 1000, innerHeight: 600 }
+    G.window = { innerWidth: 1000, innerHeight: 600 }
     await panToNode('n1')
     expect(viewport.zoom).toBeCloseTo(4.5, 1)
   })
@@ -1573,7 +1586,7 @@ describe('useCameraPan', () => {
     const { panToNode } = useCameraPan()
     const p1 = panToNode('n1')
     await new Promise(r => setTimeout(r, 50)) // mid-flight
-    ;(globalThis as any).figma.getNodeById = (id: string) => ({
+    G.figma.getNodeById = (id: string) => ({
       id,
       absoluteBoundingBox: { x: 0, y: 0, width: 100, height: 100 },
     })
@@ -1650,8 +1663,8 @@ export function useCameraPan() {
     const bbox = node.absoluteBoundingBox
     const targetCenter = { x: bbox.x + bbox.width / 2, y: bbox.y + bbox.height / 2 }
 
-    const viewportW = (globalThis as any).window?.innerWidth ?? 1000
-    const viewportH = (globalThis as any).window?.innerHeight ?? 600
+    const viewportW = typeof window !== 'undefined' ? window.innerWidth : 1000
+    const viewportH = typeof window !== 'undefined' ? window.innerHeight : 600
     const paddingFactor = 1 - CAMERA_PAN.PADDING_PCT / 100
     const targetZoom = Math.min(
       (viewportW * paddingFactor) / bbox.width,
@@ -2257,7 +2270,7 @@ describe('PaintEditor', () => {
     for (const m of ['linear', 'radial', 'angular', 'diamond'] as const) {
       const wrapper = mount(PaintEditor, {
         props: {
-          modelValue: { type: `GRADIENT_${m.toUpperCase()}`, gradientStops: [] } as any,
+          modelValue: { type: `GRADIENT_${m.toUpperCase()}`, gradientStops: [] } as unknown as GradientPaint,
           mode: m,
         },
       })
@@ -2267,22 +2280,22 @@ describe('PaintEditor', () => {
 
   it('renders angle input for Linear + Angular (not for Radial + Diamond)', () => {
     const linearWrap = mount(PaintEditor, {
-      props: { modelValue: { type: 'GRADIENT_LINEAR', gradientStops: [] } as any, mode: 'linear' },
+      props: { modelValue: { type: 'GRADIENT_LINEAR', gradientStops: [] } as unknown as GradientPaint, mode: 'linear' },
     })
     expect(linearWrap.find('[data-test="gradient-angle"]').exists()).toBe(true)
 
     const angularWrap = mount(PaintEditor, {
-      props: { modelValue: { type: 'GRADIENT_ANGULAR', gradientStops: [] } as any, mode: 'angular' },
+      props: { modelValue: { type: 'GRADIENT_ANGULAR', gradientStops: [] } as unknown as GradientPaint, mode: 'angular' },
     })
     expect(angularWrap.find('[data-test="gradient-angle"]').exists()).toBe(true)
 
     const radialWrap = mount(PaintEditor, {
-      props: { modelValue: { type: 'GRADIENT_RADIAL', gradientStops: [] } as any, mode: 'radial' },
+      props: { modelValue: { type: 'GRADIENT_RADIAL', gradientStops: [] } as unknown as GradientPaint, mode: 'radial' },
     })
     expect(radialWrap.find('[data-test="gradient-angle"]').exists()).toBe(false)
 
     const diamondWrap = mount(PaintEditor, {
-      props: { modelValue: { type: 'GRADIENT_DIAMOND', gradientStops: [] } as any, mode: 'diamond' },
+      props: { modelValue: { type: 'GRADIENT_DIAMOND', gradientStops: [] } as unknown as GradientPaint, mode: 'diamond' },
     })
     expect(diamondWrap.find('[data-test="gradient-angle"]').exists()).toBe(false)
   })
@@ -2388,8 +2401,8 @@ function pickColor(): void {
       max="360"
       step="1"
       class="rounded border border-border bg-surface px-2 py-1 text-xs"
-      :value="(modelValue as any).rotation ?? 90"
-      @input="emit('update:modelValue', { ...(modelValue as any), rotation: Number(($event.target as HTMLInputElement).value) })"
+      :value="(modelValue as GradientPaint).rotation ?? 90"
+      @input="emit('update:modelValue', { ...(modelValue as GradientPaint), rotation: Number(($event.target as HTMLInputElement).value) })"
     />
 
     <!-- Eyedropper trigger (always visible — hi-fi 12.5) -->
@@ -3633,8 +3646,13 @@ import { mount } from '@vue/test-utils'
 import { setActivePinia, createPinia } from 'pinia'
 import SearchResultRow from '@/components/find/SearchResultRow.vue'
 
+// B-LOW typed test-globals (no `as any`)
+interface FigmaNodeMock { id: string; name: string; type: string; parent: { name: string } }
+interface MockGlobals { figma: { getNodeById: (id: string) => FigmaNodeMock } }
+const G = globalThis as unknown as MockGlobals
+
 beforeEach(() => {
-  ;(globalThis as any).figma = {
+  G.figma = {
     getNodeById: (id: string) => ({ id, name: `Node ${id}`, type: 'FRAME', parent: { name: 'Page' } }),
   }
 })
