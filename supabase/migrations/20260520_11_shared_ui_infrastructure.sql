@@ -59,4 +59,11 @@ CREATE POLICY idempotency_service_only
 -- DELETE through PostgREST (anon/authenticated rely on RLS-empty = denied).
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.idempotency_keys TO service_role;
 
+-- ---- audit_log retroactive grant -----------------------------------------
+-- 20260519_w1_audit_log.sql created the table + RLS policy but did not GRANT.
+-- The writeAudit() helper (Task 1.3a) and every downstream service-role write
+-- need explicit DML privileges. Idempotent: GRANT TO an already-granted role
+-- is a no-op.
+GRANT SELECT, INSERT ON public.audit_log TO service_role;
+
 COMMIT;
