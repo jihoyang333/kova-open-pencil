@@ -2509,6 +2509,124 @@ git commit -m "feat(09): /api/snapshots/duplicate-to-canvas Edge Function"
 
 ---
 
+## Task 19b (C-HIGH8): `claimed_at` column + `claim_snapshots_for_prune` RPC
+
+**Files:**
+- Create: `kova-open-pencil-1/supabase/migrations/20260617_09_claim_snapshots_for_prune.sql`
+- Test: `kova-open-pencil-1/tests/integration/snapshots/claim-snapshots-rpc.test.ts`
+
+**Why (W4):** `C-HIGH8` (CONSOLIDATED-TRIAGE.md). The cron handler in Task 20 below does an unguarded `SELECT … LIMIT 1000` and then `DELETE … IN (ids)`. If Vercel Cron retries on timeout (or two cron schedules overlap during a deploy window), two invocations select overlapping rows, race on Storage `remove()`, and double-count `storage_failures`. The fix is a SECURITY DEFINER RPC that claims rows atomically via `FOR UPDATE SKIP LOCKED` and stamps a `claimed_at` timestamp so a concurrent invocation skips them.
+
+- [ ] **Step 1: Write the migration**
+
+```sql
+-- kova-open-pencil-1/supabase/migrations/20260617_09_claim_snapshots_for_prune.sql
+-- W4 C-HIGH8: cron-safe claim function + claimed_at column for snapshot-prune.
+ALTER TABLE public.canvas_snapshots
+  ADD COLUMN IF NOT EXISTS claimed_at timestamptz;
+
+CREATE INDEX IF NOT EXISTS idx_canvas_snapshots_prune_candidates
+  ON public.canvas_snapshots(taken_at)
+  WHERE retention_class = 'free' AND kind = 'autosave' AND claimed_at IS NULL;
+
+CREATE OR REPLACE FUNCTION public.claim_snapshots_for_prune(p_batch_size int DEFAULT 1000)
+RETURNS TABLE (id uuid, scene_blob_path text, thumbnail_path text)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  RETURN QUERY
+  UPDATE canvas_snapshots
+  SET claimed_at = now()
+  WHERE canvas_snapshots.id IN (
+    SELECT cs.id
+      FROM canvas_snapshots cs
+     WHERE cs.retention_class = 'free'
+       AND cs.kind = 'autosave'
+       AND cs.taken_at < now() - (SELECT (value::int || ' days')::interval
+                                    FROM public.feature_flags
+                                   WHERE key = 'SNAPSHOT_FREE_RETENTION_DAYS')
+       AND cs.claimed_at IS NULL
+     ORDER BY cs.taken_at
+     LIMIT p_batch_size
+     FOR UPDATE SKIP LOCKED
+  )
+  RETURNING canvas_snapshots.id, canvas_snapshots.scene_blob_path, canvas_snapshots.thumbnail_path;
+END;
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.claim_snapshots_for_prune(int) FROM public;
+GRANT  EXECUTE ON FUNCTION public.claim_snapshots_for_prune(int) TO service_role;
+```
+
+**Note:** the retention-day lookup `(SELECT value FROM public.feature_flags WHERE key = …)` keeps the constant single-sourced (paired with C-MED24 below). If a `feature_flags` row keyed table doesn't yet exist in the project, substitute the literal `30 days` in the RPC and accept the duplication until Plan 11 ships the table — flag as a follow-up.
+
+- [ ] **Step 2: Integration test (concurrency)**
+
+```typescript
+// kova-open-pencil-1/tests/integration/snapshots/claim-snapshots-rpc.test.ts
+import { describe, expect, it, beforeAll } from 'bun:test'
+import { createClient } from '@supabase/supabase-js'
+import { seedTestUser, seedBrand, seedCanvas } from '../helpers/seed'
+
+const admin = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+
+describe('claim_snapshots_for_prune RPC', () => {
+  let userId: string, brandId: string, canvasId: string
+
+  beforeAll(async () => {
+    userId = await seedTestUser({ plan: 'free' })
+    brandId = await seedBrand({ user_id: userId })
+    canvasId = await seedCanvas({ brand_id: brandId, user_id: userId })
+    // Seed 100 free-tier autosaves with taken_at = 31 days ago
+    const rows = Array.from({ length: 100 }, (_, i) => ({
+      canvas_id: canvasId, brand_id: brandId, user_id: userId,
+      kind: 'autosave', retention_class: 'free',
+      scene_blob_path: `seed/${i}`, scene_size_bytes: 1024,
+      taken_at: new Date(Date.now() - 31 * 24 * 60 * 60 * 1000).toISOString(),
+    }))
+    await admin.from('canvas_snapshots').insert(rows)
+  })
+
+  it('two concurrent calls never claim the same row', async () => {
+    const [a, b] = await Promise.all([
+      admin.rpc('claim_snapshots_for_prune', { p_batch_size: 50 }),
+      admin.rpc('claim_snapshots_for_prune', { p_batch_size: 50 }),
+    ])
+    const idsA = new Set((a.data as Array<{ id: string }>).map(r => r.id))
+    const idsB = new Set((b.data as Array<{ id: string }>).map(r => r.id))
+    const intersection = [...idsA].filter(id => idsB.has(id))
+    expect(intersection).toEqual([])
+    expect(idsA.size + idsB.size).toBe(100) // together they claim all 100
+  })
+
+  it('claim is idempotent — a second call after claim returns no rows for already-claimed', async () => {
+    const { data } = await admin.rpc('claim_snapshots_for_prune', { p_batch_size: 1000 })
+    expect((data as unknown[]).length).toBe(0) // first test already drained all 100
+  })
+})
+```
+
+- [ ] **Step 3: Apply + run**
+
+```bash
+supabase migration up
+bun test ./tests/integration/snapshots/claim-snapshots-rpc.test.ts
+```
+
+Expected: PASS both tests.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add kova-open-pencil-1/supabase/migrations/20260617_09_claim_snapshots_for_prune.sql \
+        kova-open-pencil-1/tests/integration/snapshots/claim-snapshots-rpc.test.ts
+git commit -m "feat(09): claim_snapshots_for_prune RPC + claimed_at column (W4 C-HIGH8)"
+```
+
+---
+
 ## Task 20: Edge Function `POST /api/cron/snapshot-prune` + vercel.json
 
 **Files:**
@@ -2558,15 +2676,11 @@ export default async function handler(req: Request): Promise<Response> {
   const supabase = createClient(SUPABASE_URL, SERVICE_KEY)
   let scanned = 0, pruned = 0, storageFailures = 0
 
-  // Process up to 1000 rows per invocation (cron runs daily; tail catches up next day)
-  const { data: rows, error } = await supabase
-    .from('canvas_snapshots')
-    .select('id, scene_blob_path, thumbnail_path')
-    .eq('retention_class', 'free').eq('kind', 'autosave')
-    .lt('taken_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
-    .order('taken_at', { ascending: true })
-    .limit(1000)
-  if (error) return new Response(JSON.stringify({ error: 'select_failed' }), { status: 500 })
+  // W4 C-HIGH8: claim rows atomically via SECURITY DEFINER RPC with FOR UPDATE SKIP LOCKED.
+  // Two concurrent cron invocations cannot claim the same row, so the subsequent storage.remove +
+  // DELETE cannot race. The RPC stamps claimed_at so retried invocations also skip.
+  const { data: rows, error } = await supabase.rpc('claim_snapshots_for_prune', { p_batch_size: 1000 })
+  if (error) return new Response(JSON.stringify({ error: 'claim_failed' }), { status: 500 })
   scanned = rows?.length ?? 0
   if (!rows || rows.length === 0) return Response.json({ scanned, pruned, storage_failures: 0 })
 
