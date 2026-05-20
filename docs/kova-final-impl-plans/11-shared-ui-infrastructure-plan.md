@@ -807,7 +807,7 @@ git commit -m "feat(cluster-11): add writeAudit() helper (W0-1 — founder lock 
 - Create: `kova-open-pencil-1/api/_shared/env.ts`
 - Test: `kova-open-pencil-1/tests/unit/api/_shared/env.test.ts`
 
-**Contract:** `requireEnv(name: string): string` reads `process.env[name]` and throws an Error with the missing key name if absent / empty. Callers receive a typed `string` (not `string | undefined`), eliminating the founder-lock-#10-forbidden `process.env.X!` non-null-assertion pattern that QA-B HIGH-1 found in 24 places across the plan corpus. Consumer waves replace every `process.env.X!` callsite with `requireEnv('X')`.
+**Contract:** `requireEnv(name: string): string` reads `process.env[name]` and throws an Error with the missing key name if absent / empty. Callers receive a typed `string` (not `string | undefined`), eliminating the founder-lock-#10-forbidden `requireEnv('X')` non-null-assertion pattern that QA-B HIGH-1 found in 24 places across the plan corpus. Consumer waves replace every `requireEnv('X')` callsite with `requireEnv('X')`.
 
 - [ ] **Step 1: Write the failing unit test**
 
@@ -857,6 +857,7 @@ Expected: FAIL with module-not-found error
 
 ```typescript
 // api/_shared/env.ts
+import { requireEnv } from '@/api/_shared/env'
 export function requireEnv(name: string): string {
   const value = process.env[name]
   if (value === undefined || value === '') {
@@ -875,7 +876,7 @@ git add kova-open-pencil-1/api/_shared/env.ts kova-open-pencil-1/tests/unit/api/
 git commit -m "feat(cluster-11): add requireEnv() helper (W0-9 — founder lock #10)"
 ```
 
-**Consumer-wave usage:** every `process.env.SUPABASE_SERVICE_ROLE_KEY!` becomes `requireEnv('SUPABASE_SERVICE_ROLE_KEY')`. The 24 callsites flagged by QA-B HIGH-1 are migrated by their respective Wave-1/2/3 cluster fix agents.
+**Consumer-wave usage:** every `requireEnv('SUPABASE_SERVICE_ROLE_KEY')` becomes `requireEnv('SUPABASE_SERVICE_ROLE_KEY')`. The 24 callsites flagged by QA-B HIGH-1 are migrated by their respective Wave-1/2/3 cluster fix agents.
 
 ---
 
@@ -946,6 +947,7 @@ Expected: FAIL with `loadEnvOrSkip` not exported.
 // api/_shared/env.ts (append to Task 1.3b file)
 
 /**
+import { requireEnv } from '@/api/_shared/env'
  * Read OPTIONAL env var. Returns null + console.warn breadcrumb when missing
  * or empty. Caller short-circuits (typically 200 { ok: true, skipped: true }).
  *
@@ -3871,19 +3873,19 @@ git commit -am "ci(cluster-11): bun:test framework grep gate (W0-6)"
 - Modify: `.github/workflows/ci.yml`
 - Modify: `kova-open-pencil-1/package.json` — `check:lock10` script
 
-**Contract:** founder lock #10 forbids `as any` casts and `process.env.X!` non-null assertions in production code (`src/` + `api/` + `supabase/functions/`). QA-B HIGH-2 found ~214 `as any` casts (49 in Plan 03, 41 in Plan 06, 17 in Plan 07b, etc.). QA-B HIGH-1 found 24 `process.env.X!` callsites. W0-9 ships the CI gate that flags any new occurrence; the requireEnv helper (Task 1.3b) replaces the env-var pattern; per-cluster sweep happens in Wave-2/3 fix passes.
+**Contract:** founder lock #10 forbids `as any` casts and `requireEnv('X')` non-null assertions in production code (`src/` + `api/` + `supabase/functions/`). QA-B HIGH-2 found ~214 `as any` casts (49 in Plan 03, 41 in Plan 06, 17 in Plan 07b, etc.). QA-B HIGH-1 found 24 `requireEnv('X')` callsites. W0-9 ships the CI gate that flags any new occurrence; the requireEnv helper (Task 1.3b) replaces the env-var pattern; per-cluster sweep happens in Wave-2/3 fix passes.
 
 - [ ] **Step 1: Add the CI grep step**
 
 ```yaml
-- name: Verify founder lock #10 — no `as any` + no `process.env.X!` (W0-9)
+- name: Verify founder lock #10 — no `as any` + no `requireEnv('X')` (W0-9)
   run: |
     if grep -rnE "\bas\s+any\b" kova-open-pencil-1/src/ kova-open-pencil-1/api/ kova-open-pencil-1/supabase/functions/ 2>/dev/null; then
       echo "ERROR: 'as any' cast found (founder lock #10). Type-narrow explicitly or use unknown + valibot parse."
       exit 1
     fi
     if grep -rnE "process\.env\.[A-Z_]+!" kova-open-pencil-1/src/ kova-open-pencil-1/api/ kova-open-pencil-1/supabase/functions/ 2>/dev/null; then
-      echo "ERROR: process.env.X! non-null assertion found (founder lock #10). Use requireEnv('X') from api/_shared/env.ts."
+      echo "ERROR: requireEnv('X') non-null assertion found (founder lock #10). Use requireEnv('X') from api/_shared/env.ts."
       exit 1
     fi
 ```
@@ -3899,15 +3901,15 @@ In `kova-open-pencil-1/package.json` `"scripts"`:
 
 - [ ] **Step 3: Smoke-test locally**
 
-Create a temporary file `src/__delete-me.ts` containing `const x = {} as any; const y = process.env.FOO!`. Run `bun run check:lock10`. Expect exit code 1 (twice). Delete. Re-run. Expect exit code 0.
+Create a temporary file `src/__delete-me.ts` containing `const x = {} as any; const y = requireEnv('FOO')`. Run `bun run check:lock10`. Expect exit code 1 (twice). Delete. Re-run. Expect exit code 0.
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git commit -am "ci(cluster-11): founder lock #10 sweep gate — no \`as any\` + no \`process.env.X!\` (W0-9)"
+git commit -am "ci(cluster-11): founder lock #10 sweep gate — no \`as any\` + no \`requireEnv('X')\` (W0-9)"
 ```
 
-**Wave-2/3 follow-up:** cluster-fix agents for 03 (49 occurrences), 06 (41 occurrences), 07b (17 occurrences), and every other plan replace `as any` with explicit type narrowing (`as MyType`, `unknown` + valibot parse, type predicates) during their pass. Every `process.env.X!` callsite migrates to `requireEnv('X')` (Task 1.3b).
+**Wave-2/3 follow-up:** cluster-fix agents for 03 (49 occurrences), 06 (41 occurrences), 07b (17 occurrences), and every other plan replace `as any` with explicit type narrowing (`as MyType`, `unknown` + valibot parse, type predicates) during their pass. Every `requireEnv('X')` callsite migrates to `requireEnv('X')` (Task 1.3b).
 
 ---
 
