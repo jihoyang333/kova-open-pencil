@@ -251,10 +251,11 @@ Create `tests/integration/brands-migration.test.ts`:
 ```typescript
 import { test, expect } from 'bun:test'
 import { createClient } from '@supabase/supabase-js'
+import { requireEnv } from '@/api/_shared/env'
 
 const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  requireEnv('SUPABASE_URL'),
+  requireEnv('SUPABASE_SERVICE_ROLE_KEY'),
 )
 
 test('brands table has new columns', async () => {
@@ -981,6 +982,7 @@ git commit -m "feat(brands): add delete_brand + list_active_brands + list_archiv
 Append:
 
 ```typescript
+import { requireEnv } from '@/api/_shared/env'
 test('User B cannot call any RPC on User A brand', async () => {
   const userA = await createTestUser()
   const userB = await createTestUser()
@@ -1009,8 +1011,8 @@ test('User B cannot call any RPC on User A brand', async () => {
 // This guards against RLS being accidentally relaxed in a future migration.
 test('anonymous client cannot call any mutating RPC (auth.uid() defense)', async () => {
   const anonClient = createClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_ANON_KEY!,
+    requireEnv('SUPABASE_URL'),
+    requireEnv('SUPABASE_ANON_KEY'),
   )
   for (const op of [
     ['create_brand', { p_name: 'x', p_url: null, p_description: null }],
@@ -1030,8 +1032,8 @@ test('anonymous client cannot call any mutating RPC (auth.uid() defense)', async
 // rather than another user's rows.
 test('anonymous client gets empty result from list_* RPCs (not other users\\' brands)', async () => {
   const anonClient = createClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_ANON_KEY!,
+    requireEnv('SUPABASE_URL'),
+    requireEnv('SUPABASE_ANON_KEY'),
   )
   for (const op of ['list_active_brands', 'list_archived_brands'] as const) {
     const { data, error } = await anonClient.rpc(op)
@@ -1433,6 +1435,7 @@ Create `api/brands/create.ts`:
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
 import { validateBrandName, validateBrandUrl, validateDescription } from '../_shared/brand-validation'
+import { requireEnv } from '@/api/_shared/env'
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   if (req.method !== 'POST') { res.status(405).json({ error: 'method_not_allowed' }); return }
@@ -1447,8 +1450,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   if (!descV.ok) { res.status(422).json({ error: descV.error }); return }
 
   const supabase = createClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_ANON_KEY!,
+    requireEnv('SUPABASE_URL'),
+    requireEnv('SUPABASE_ANON_KEY'),
     { global: { headers: { Authorization: auth } } },
   )
 
@@ -1537,6 +1540,7 @@ Create `api/brands/rename.ts`:
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
 import { validateBrandName } from '../_shared/brand-validation'
+import { requireEnv } from '@/api/_shared/env'
 
 function isUuid(s: unknown): s is string {
   return typeof s === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s)
@@ -1551,8 +1555,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   if (!nameV.ok) { res.status(422).json({ error: nameV.error }); return }
 
   const supabase = createClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_ANON_KEY!,
+    requireEnv('SUPABASE_URL'),
+    requireEnv('SUPABASE_ANON_KEY'),
     { global: { headers: { Authorization: auth } } },
   )
 
@@ -1634,6 +1638,7 @@ Create `api/brands/archive.ts`:
 ```typescript
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
+import { requireEnv } from '@/api/_shared/env'
 
 function isUuid(s: unknown): s is string {
   return typeof s === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s)
@@ -1646,8 +1651,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   if (!isUuid((req.body as any)?.brand_id)) { res.status(422).json({ error: 'brand_id_required' }); return }
 
   const supabase = createClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_ANON_KEY!,
+    requireEnv('SUPABASE_URL'),
+    requireEnv('SUPABASE_ANON_KEY'),
     { global: { headers: { Authorization: auth } } },
   )
 
@@ -1743,6 +1748,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
 import { verifyIdempotency } from '../_shared/idempotency'  // Cluster 11
 import { writeAudit } from '../_shared/audit'               // Cluster 11
+import { requireEnv } from '@/api/_shared/env'
 
 function isUuid(s: unknown): s is string {
   return typeof s === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s)
@@ -1763,8 +1769,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   if (!isUuid(brandId)) { res.status(422).json({ error: 'brand_id_required' }); return }
 
   const supabase = createClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_ANON_KEY!,
+    requireEnv('SUPABASE_URL'),
+    requireEnv('SUPABASE_ANON_KEY'),
     { global: { headers: { Authorization: auth } } },
   )
   const { data: userData, error: userErr } = await supabase.auth.getUser()
@@ -1883,6 +1889,7 @@ Create `api/brands/delete.ts`:
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
 import { purgeBrandStorageObjects } from '../_shared/storage-sweep'
+import { requireEnv } from '@/api/_shared/env'
 
 function isUuid(s: unknown): s is string {
   return typeof s === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s)
@@ -1898,8 +1905,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   if (typeof typed !== 'string' || typed.length === 0) { res.status(422).json({ error: 'confirm_required' }); return }
 
   const supabase = createClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_ANON_KEY!,
+    requireEnv('SUPABASE_URL'),
+    requireEnv('SUPABASE_ANON_KEY'),
     { global: { headers: { Authorization: auth } } },
   )
 
