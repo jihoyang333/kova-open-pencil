@@ -1776,9 +1776,9 @@ const props = defineProps<{ modelValue: Vertical }>()
 const emit = defineEmits<{ 'update:modelValue': [value: Vertical] }>()
 
 const OPTIONS: Array<{ value: Vertical; label: string; icon: string }> = [
-  { value: 'TOP',    label: 'Top',    icon: 'i-lucide-align-vertical-justify-start' },
-  { value: 'CENTER', label: 'Middle', icon: 'i-lucide-align-vertical-justify-center' },
-  { value: 'BOTTOM', label: 'Bottom', icon: 'i-lucide-align-vertical-justify-end' },
+  { value: 'TOP',    label: 'Top',    icon: 'align-vertical-justify-start' },
+  { value: 'CENTER', label: 'Middle', icon: 'align-vertical-justify-center' },
+  { value: 'BOTTOM', label: 'Bottom', icon: 'align-vertical-justify-end' },
 ]
 </script>
 
@@ -2047,10 +2047,10 @@ import { figma } from '@open-pencil/core'
 type BoolOp = 'UNION' | 'SUBTRACT' | 'INTERSECT' | 'EXCLUDE'
 
 const OPS: Array<{ op: BoolOp; label: string; shortcut: string; icon: string }> = [
-  { op: 'UNION',     label: 'Union',     shortcut: '⌘⌥U', icon: 'i-lucide-square' },
-  { op: 'SUBTRACT',  label: 'Subtract',  shortcut: '⌘⌥S', icon: 'i-lucide-square-minus' },
-  { op: 'INTERSECT', label: 'Intersect', shortcut: '⌘⌥I', icon: 'i-lucide-square-dot' },
-  { op: 'EXCLUDE',   label: 'Exclude',   shortcut: '⌘⌥X', icon: 'i-lucide-square-x' },
+  { op: 'UNION',     label: 'Union',     shortcut: '⌘⌥U', icon: 'square' },
+  { op: 'SUBTRACT',  label: 'Subtract',  shortcut: '⌘⌥S', icon: 'square-minus' },
+  { op: 'INTERSECT', label: 'Intersect', shortcut: '⌘⌥I', icon: 'square-dot' },
+  { op: 'EXCLUDE',   label: 'Exclude',   shortcut: '⌘⌥X', icon: 'square-x' },
 ]
 
 function applyOp(op: BoolOp): void {
@@ -2333,12 +2333,12 @@ const emit = defineEmits<{
 
 // PRD §12.5 founder decision (2026-05-17): all 4 gradient types in MVP — match Figma.
 const TABS: Array<{ value: Mode; label: string; icon: string }> = [
-  { value: 'solid',   label: 'Solid',   icon: 'i-lucide-square' },
-  { value: 'linear',  label: 'Linear',  icon: 'i-lucide-move-right' },
-  { value: 'radial',  label: 'Radial',  icon: 'i-lucide-circle' },
-  { value: 'angular', label: 'Angular', icon: 'i-lucide-pie-chart' },
-  { value: 'diamond', label: 'Diamond', icon: 'i-lucide-diamond' },
-  { value: 'image',   label: 'Image',   icon: 'i-lucide-image' },
+  { value: 'solid',   label: 'Solid',   icon: 'square' },
+  { value: 'linear',  label: 'Linear',  icon: 'move-right' },
+  { value: 'radial',  label: 'Radial',  icon: 'circle' },
+  { value: 'angular', label: 'Angular', icon: 'pie-chart' },
+  { value: 'diamond', label: 'Diamond', icon: 'diamond' },
+  { value: 'image',   label: 'Image',   icon: 'image' },
 ]
 
 // Hi-fi 12.12: page-bg context hides mode tabs (single-mode picker)
@@ -2412,7 +2412,7 @@ function pickColor(): void {
       class="self-end text-ink3 hover:text-ink"
       @click="pickColor"
     >
-      <span class="i-lucide-pipette size-4" />
+      <KovaIcon name="pipette" size="sm" />
     </button>
   </div>
 </template>
@@ -2696,7 +2696,7 @@ const meta = computed(() => {
     :class="isSelected ? 'bg-fill2 ring-1 ring-accent' : ''"
     @click="emit('select')"
   >
-    <span class="i-lucide-grip-vertical size-3 cursor-grab text-ink3" />
+    <KovaIcon name="grip-vertical" size="xs" class="cursor-grab text-ink3" />
     <span class="flex-1">{{ TYPE_LABELS[effect.type] || effect.type }}</span>
     <span class="font-mono text-ink3">{{ meta }}</span>
     <button
@@ -2706,7 +2706,7 @@ const meta = computed(() => {
       :title="effect.visible ? 'Hide effect' : 'Show effect'"
       @click.stop="emit('toggle-visibility')"
     >
-      <span :class="effect.visible ? 'i-lucide-eye' : 'i-lucide-eye-off'" class="size-3" />
+      <KovaIcon :name="effect.visible ? 'eye' : 'eye-off'" size="xs" />
     </button>
     <button
       type="button"
@@ -3005,7 +3005,7 @@ function fillLabel(fill: Fill): string {
       data-test="fill-row"
       class="flex items-center gap-2 rounded px-2 py-1 text-xs hover:bg-fill2"
     >
-      <span class="i-lucide-grip-vertical size-3 cursor-grab text-ink3" />
+      <KovaIcon name="grip-vertical" size="xs" class="cursor-grab text-ink3" />
       <span class="size-4 rounded border border-border" :style="fillSwatch(fill)" />
       <span class="flex-1">{{ fillLabel(fill) }}</span>
       <span class="font-mono text-ink3">{{ Math.round((fill.opacity ?? 1) * 100) }}%</span>
@@ -3015,7 +3015,7 @@ function fillLabel(fill: Fill): string {
         :title="fill.visible ? 'Hide' : 'Show'"
         @click="emit('toggle-visibility', index)"
       >
-        <span :class="fill.visible !== false ? 'i-lucide-eye' : 'i-lucide-eye-off'" class="size-3" />
+        <KovaIcon :name="fill.visible !== false ? 'eye' : 'eye-off'" size="xs" />
       </button>
       <button
         type="button"
@@ -3626,7 +3626,7 @@ const resultCountLabel = computed(() => {
         class="text-ink3 hover:text-ink"
         @click="findStore.close()"
       >
-        <span class="i-lucide-x size-4" />
+        <KovaIcon name="x" size="sm" />
       </button>
     </div>
 
@@ -3749,15 +3749,15 @@ defineEmits<{ click: [] }>()
 const node = computed(() => figma.getNodeById(props.nodeId))
 
 const ICON_BY_TYPE: Record<string, string> = {
-  FRAME: 'i-lucide-frame',
-  TEXT: 'i-lucide-type',
-  RECTANGLE: 'i-lucide-square',
-  ELLIPSE: 'i-lucide-circle',
-  VECTOR: 'i-lucide-pen-tool',
-  IMAGE: 'i-lucide-image',
-  GROUP: 'i-lucide-folder',
+  FRAME: 'frame',
+  TEXT: 'type',
+  RECTANGLE: 'square',
+  ELLIPSE: 'circle',
+  VECTOR: 'pen-tool',
+  IMAGE: 'image',
+  GROUP: 'folder',
 }
-const icon = computed(() => ICON_BY_TYPE[node.value?.type ?? ''] ?? 'i-lucide-box')
+const icon = computed(() => ICON_BY_TYPE[node.value?.type ?? ''] ?? 'box')
 </script>
 
 <template>
