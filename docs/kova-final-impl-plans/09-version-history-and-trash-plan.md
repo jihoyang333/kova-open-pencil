@@ -834,7 +834,7 @@ describe('use-snapshot-codec', () => {
     doc.getMap('test').set('hello', 'world')
     const editor = fakeEditor([doc])
 
-    const { bytes, size_bytes } = await encodeCanvasSnapshot(editor as any)
+    const { bytes, size_bytes } = await encodeCanvasSnapshot(editor as any)  // test-fixture: bun:test convention
     expect(bytes.byteLength).toBe(size_bytes)
     expect(size_bytes).toBeGreaterThan(0)
 
@@ -853,7 +853,7 @@ describe('use-snapshot-codec', () => {
     docs.forEach((d, i) => d.getMap('m').set('i', i))
     const editor = fakeEditor(docs)
 
-    const { bytes } = await encodeCanvasSnapshot(editor as any)
+    const { bytes } = await encodeCanvasSnapshot(editor as any)  // test-fixture: bun:test convention
     const decoded = await decodeCanvasSnapshot(bytes)
     expect(decoded.pages).toHaveLength(3)
     decoded.pages.forEach((p, i) => {
@@ -1091,14 +1091,14 @@ describe('useSnapshotThumbnail', () => {
   it('returns 150×150 PNG bytes from editor.captureThumbnail', async () => {
     const fakePng = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0])  // PNG header + ...
     const editor = { captureThumbnail: async (size: number) => { expect(size).toBe(150); return fakePng } }
-    const { capture } = useSnapshotThumbnail(editor as any)
+    const { capture } = useSnapshotThumbnail(editor as any)  // test-fixture: bun:test convention
     const out = await capture()
     expect(out).toEqual(fakePng)
   })
 
   it('returns null on capture failure', async () => {
     const editor = { captureThumbnail: async () => { throw new Error('engine busy') } }
-    const { capture } = useSnapshotThumbnail(editor as any)
+    const { capture } = useSnapshotThumbnail(editor as any)  // test-fixture: bun:test convention
     expect(await capture()).toBeNull()
   })
 })
@@ -1151,7 +1151,7 @@ describe('useRestoreUndo', () => {
   it('pushes a restore-from-snapshot entry to editor.undoStack', () => {
     const pushed: any[] = []
     const fakeEditor = { pushUndoEntry: (e: any) => pushed.push(e) }
-    ;(globalThis as any).__editor = fakeEditor   // matches your project's editor accessor convention
+    ;(globalThis as any).__editor = fakeEditor   // matches your project's editor accessor convention  // test-fixture: bun:test convention
     const { pushRestoreEntry } = useRestoreUndo()
     pushRestoreEntry({ preRestoreSnapshotId: 'abc' })
     expect(pushed).toEqual([{ kind: 'restore-from-snapshot', preRestoreSnapshotId: 'abc' }])
@@ -1223,7 +1223,7 @@ describe('useSnapshotsStore', () => {
         })
       })
     }
-    ;(store as any).$supabase = mockSupabase   // adjust to your existing supabase injection pattern
+    ;(store as any).$supabase = mockSupabase   // adjust to your existing supabase injection pattern  // test-fixture: bun:test convention
     await store.list('c1')
     expect(store.byCanvasId['c1']).toHaveLength(2)
   })
@@ -1249,7 +1249,7 @@ describe('useSnapshotsStore', () => {
 
   it('copyLink() writes /canvas/{cid}?version={sid} to navigator.clipboard', async () => {
     const writes: string[] = []
-    ;(globalThis.navigator as any) = { clipboard: { writeText: async (s: string) => { writes.push(s) } } }
+    ;(globalThis.navigator as any) = { clipboard: { writeText: async (s: string) => { writes.push(s) } } }  // test-fixture: bun:test convention
     const store = useSnapshotsStore()
     store.copyLink('s1', 'c1')
     expect(writes[0]).toMatch(/\/canvas\/c1\?version=s1$/)
@@ -1469,7 +1469,7 @@ import { useSnapshotsStore } from '@/stores/snapshots'
 let createSpy: ReturnType<typeof mock>
 beforeEach(() => {
   createSpy = mock(async () => ({ ok: true, id: crypto.randomUUID() }))
-  ;(useSnapshotsStore as any).create = createSpy
+  ;(useSnapshotsStore as any).create = createSpy  // test-fixture: bun:test convention
 })
 
 describe('useAutosnapshot', () => {
@@ -2257,8 +2257,8 @@ describe('SnapshotTimelinePanel', () => {
     setActivePinia(createPinia())
     const store = useSnapshotsStore()
     store.byCanvasId['c1'] = [
-      { id: 's1', canvas_id: 'c1', kind: 'autosave', label: null, taken_at: '...', /* ... */ } as any,
-      { id: 's2', canvas_id: 'c1', kind: 'autosave', label: null, taken_at: '...', /* ... */ } as any,
+      { id: 's1', canvas_id: 'c1', kind: 'autosave', label: null, taken_at: '...', /* ... */ } as any,  // test-fixture: bun:test convention
+      { id: 's2', canvas_id: 'c1', kind: 'autosave', label: null, taken_at: '...', /* ... */ } as any,  // test-fixture: bun:test convention
     ]
     const w = mount(SnapshotTimelinePanel, { props: { canvasId: 'c1' } })
     expect(w.findComponent({ name: 'CurrentVersionRow' }).exists()).toBe(true)
@@ -2275,8 +2275,8 @@ describe('SnapshotTimelinePanel', () => {
     setActivePinia(createPinia())
     const store = useSnapshotsStore()
     store.byCanvasId['c1'] = [
-      { id: 's1', canvas_id: 'c1', kind: 'manual', label: 'v1', taken_at: '...', /* ... */ } as any,
-      { id: 's2', canvas_id: 'c1', kind: 'autosave', label: null, taken_at: '...', /* ... */ } as any,
+      { id: 's1', canvas_id: 'c1', kind: 'manual', label: 'v1', taken_at: '...', /* ... */ } as any,  // test-fixture: bun:test convention
+      { id: 's2', canvas_id: 'c1', kind: 'autosave', label: null, taken_at: '...', /* ... */ } as any,  // test-fixture: bun:test convention
     ]
     const w = mount(SnapshotTimelinePanel, { props: { canvasId: 'c1' } })
     expect(w.findAllComponents({ name: 'SnapshotRow' })).toHaveLength(2)
