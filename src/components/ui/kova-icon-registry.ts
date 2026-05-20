@@ -27,12 +27,17 @@ import IconChevronDown from '~icons/lucide/chevron-down'
 import IconChevronRight from '~icons/lucide/chevron-right'
 import IconCloudOff from '~icons/lucide/cloud-off'
 import IconCrop from '~icons/lucide/crop'
+import IconFileQuestion from '~icons/lucide/file-question'
+import IconHome from '~icons/lucide/home'
 import IconInfo from '~icons/lucide/info'
 import IconLoader from '~icons/lucide/loader'
+import IconLogOut from '~icons/lucide/log-out'
 import IconPlus from '~icons/lucide/plus'
+import IconRefreshCw from '~icons/lucide/refresh-cw'
 import IconRuler from '~icons/lucide/ruler'
 import IconSearch from '~icons/lucide/search'
 import IconSparkles from '~icons/lucide/sparkles'
+import IconWifiOff from '~icons/lucide/wifi-off'
 import IconX from '~icons/lucide/x'
 
 export const KOVA_ICON_REGISTRY: ReadonlyMap<string, Component> = new Map<
@@ -47,12 +52,17 @@ export const KOVA_ICON_REGISTRY: ReadonlyMap<string, Component> = new Map<
   ['chevron-right', IconChevronRight],
   ['cloud-off', IconCloudOff],
   ['crop', IconCrop],
+  ['file-question', IconFileQuestion],
+  ['home', IconHome],
   ['info', IconInfo],
   ['loader', IconLoader],
+  ['log-out', IconLogOut],
   ['plus', IconPlus],
+  ['refresh-cw', IconRefreshCw],
   ['ruler', IconRuler],
   ['search', IconSearch],
   ['sparkles', IconSparkles],
+  ['wifi-off', IconWifiOff],
   ['x', IconX],
 ])
 
