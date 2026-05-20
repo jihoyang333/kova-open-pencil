@@ -58,7 +58,24 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function initialize(): Promise<void> {
     try {
-      const { data, error } = await supabase.auth.getSession()
+      // Hard 5s timeout so a paused / unreachable Supabase project (or a
+      // stale refresh-token loop) can't pin app.mount() inside the static
+      // pencil-icon loader forever. If the deadline trips, we proceed
+      // unauthenticated and the user can sign in once the session lands.
+      const sessionPromise = supabase.auth.getSession()
+      const timeoutPromise = new Promise<{ data: { session: null }; error: Error }>(
+        (resolve) => {
+          setTimeout(
+            () =>
+              resolve({
+                data: { session: null },
+                error: new Error('auth.getSession() timed out after 5s'),
+              }),
+            5000,
+          )
+        },
+      )
+      const { data, error } = await Promise.race([sessionPromise, timeoutPromise])
 
       if (error) {
         console.error('Failed to get session:', error.message)
