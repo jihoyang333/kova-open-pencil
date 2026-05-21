@@ -100,6 +100,39 @@ async function showTypedConfirm(): Promise<void> {
 function toggleFieldError(): void {
   fieldErrorText.value = fieldErrorText.value ? '' : 'Not a valid email — must contain @'
 }
+
+// Phase 5c auto-mount — inline canonical primitives need position overrides so
+// they sit in-flow instead of fixed/absolute. Playwright clip-region grabs
+// `.dlg.sm` / `.popover.avatar` / `.menu` / `.tooltip` / `.err-page` from
+// these static instances.
+const dlgInline = {
+  position: 'static',
+  left: 'auto',
+  top: 'auto',
+  transform: 'none',
+} as const
+
+const popoverInline = {
+  position: 'static',
+  display: 'block',
+} as const
+
+const menuInline = {
+  position: 'absolute',
+  top: '0',
+  left: '0',
+} as const
+
+const tooltipInline = {
+  position: 'absolute',
+  top: '0',
+  left: '0',
+} as const
+
+const errPageInline = {
+  position: 'absolute',
+  inset: '0',
+} as const
 </script>
 
 <template>
@@ -368,9 +401,155 @@ function toggleFieldError(): void {
         </div>
       </section>
 
+      <section class="border-t border-[var(--line)] py-7" data-test-region="auto-mount">
+        <h2 class="mt-0 mb-1 text-[15px] font-semibold text-[var(--ink)]">Auto-mount (Playwright baseline targets)</h2>
+        <p class="text-[var(--ink-3)] text-[11.5px] mb-5">
+          Phase 5c — inline canonical markup so visual-diff clip-region selectors find a stable, pre-mounted instance of every primitive. Interactive triggers above remain for founder smoke; these are static.
+        </p>
+
+        <h3 class="mt-4 mb-2 text-[12.5px] font-semibold text-[var(--ink-2)]">.toast (success / error / ai)</h3>
+        <div class="flex flex-col gap-2 mb-6 max-w-[420px]">
+          <div class="toast success" role="status" aria-live="polite">
+            <KovaIcon name="check" size="sm" class="ic-lead" aria-hidden="true" />
+            <div class="body">
+              <div class="msg">Canvas saved</div>
+              <div class="meta">2s ago</div>
+            </div>
+            <button type="button" class="dismiss" aria-label="Dismiss"><KovaIcon name="x" size="sm" class="ic" aria-hidden="true" /></button>
+          </div>
+          <div class="toast error" role="status" aria-live="polite">
+            <KovaIcon name="alert-triangle" size="sm" class="ic-lead" aria-hidden="true" />
+            <div class="body">
+              <div class="msg">Export failed</div>
+              <div class="meta">PNG too large</div>
+            </div>
+            <button type="button" class="dismiss" aria-label="Dismiss"><KovaIcon name="x" size="sm" class="ic" aria-hidden="true" /></button>
+          </div>
+          <div class="toast ai" role="status" aria-live="polite">
+            <KovaIcon name="sparkles" size="sm" class="ic-lead" aria-hidden="true" />
+            <div class="body">
+              <div class="msg">AI generated 5 color combos</div>
+              <div class="meta">Click to apply</div>
+            </div>
+            <button type="button" class="dismiss" aria-label="Dismiss"><KovaIcon name="x" size="sm" class="ic" aria-hidden="true" /></button>
+          </div>
+        </div>
+
+        <h3 class="mt-4 mb-2 text-[12.5px] font-semibold text-[var(--ink-2)]">.dlg (sm / md / lg) — inline (not portaled)</h3>
+        <div class="flex gap-4 flex-wrap items-start mb-6">
+          <div class="dlg sm" :style="dlgInline">
+            <div class="dlg-head">
+              <div>
+                <h3>Take snapshot</h3>
+                <p class="sub">Captures the current canvas state.</p>
+              </div>
+              <button class="x" type="button" aria-label="Close"><KovaIcon name="x" size="sm" aria-hidden="true" /></button>
+            </div>
+            <div class="dlg-body">
+              <KovaField label="Snapshot name" placeholder="Untitled snapshot" />
+            </div>
+            <div class="dlg-foot">
+              <div class="l">·</div>
+              <div class="r">
+                <KovaButton variant="ghost">Cancel</KovaButton>
+                <KovaButton variant="accent">Take snapshot</KovaButton>
+              </div>
+            </div>
+          </div>
+          <div class="dlg md" :style="dlgInline">
+            <div class="dlg-head">
+              <div>
+                <h3>Accessibility preferences</h3>
+                <p class="sub">Tweak how Kova looks and feels.</p>
+              </div>
+              <button class="x" type="button" aria-label="Close"><KovaIcon name="x" size="sm" aria-hidden="true" /></button>
+            </div>
+            <div class="dlg-body">
+              <KovaField label="Text size" />
+              <KovaCheckbox :model-value="true" label="Reduce motion" />
+              <KovaCheckbox :model-value="false" label="High contrast borders only" />
+            </div>
+            <div class="dlg-foot">
+              <div class="l">·</div>
+              <div class="r">
+                <KovaButton variant="ghost">Cancel</KovaButton>
+                <KovaButton variant="accent">Save</KovaButton>
+              </div>
+            </div>
+          </div>
+          <div class="dlg lg" :style="dlgInline">
+            <div class="dlg-head">
+              <div>
+                <h3>Keyboard shortcuts</h3>
+                <p class="sub">Every shortcut in Kova.</p>
+              </div>
+              <button class="x" type="button" aria-label="Close"><KovaIcon name="x" size="sm" aria-hidden="true" /></button>
+            </div>
+            <div class="dlg-body">
+              <div class="grid gap-2 grid-cols-2">
+                <div v-for="i in 4" :key="i" class="flex items-center justify-between gap-3 py-2 border-b border-[var(--line-2)]">
+                  <span class="text-[var(--ink)] text-[12.5px]">Shortcut row {{ i }}</span>
+                  <kbd>⌘{{ String.fromCharCode(64 + i) }}</kbd>
+                </div>
+              </div>
+            </div>
+            <div class="dlg-foot">
+              <div class="l">4 of 120 shortcuts</div>
+              <div class="r"><KovaButton variant="ghost">Close</KovaButton></div>
+            </div>
+          </div>
+        </div>
+
+        <h3 class="mt-4 mb-2 text-[12.5px] font-semibold text-[var(--ink-2)]">.popover.avatar — inline</h3>
+        <div class="mb-6">
+          <div class="popover avatar" :style="popoverInline">
+            <div class="pop-hdr">
+              <div class="row1">
+                <div class="av">JY</div>
+                <div class="who"><b>Jiho Yang</b><span>jiho.yang@kova.app</span></div>
+                <div class="plan">PRO</div>
+              </div>
+            </div>
+            <div class="pop-item">Account settings</div>
+            <div class="pop-item">Brand kit</div>
+            <div class="pop-item">Sign out</div>
+          </div>
+        </div>
+
+        <h3 class="mt-4 mb-2 text-[12.5px] font-semibold text-[var(--ink-2)]">.menu — inline</h3>
+        <div class="mb-6 relative" :style="{ height: '180px' }">
+          <div class="menu" :style="menuInline">
+            <div class="item"><span class="lbl">Duplicate</span><div class="kbd-row"><kbd>⌘D</kbd></div></div>
+            <div class="item"><span class="lbl">Cut</span><div class="kbd-row"><kbd>⌘X</kbd></div></div>
+            <div class="item"><span class="lbl">Paste</span><div class="kbd-row"><kbd>⌘V</kbd></div></div>
+            <div class="item destructive"><span class="lbl">Move to trash</span><div class="kbd-row"><kbd>⌫</kbd></div></div>
+          </div>
+        </div>
+
+        <h3 class="mt-4 mb-2 text-[12.5px] font-semibold text-[var(--ink-2)]">.tooltip — inline</h3>
+        <div class="mb-6 relative" :style="{ height: '60px' }">
+          <div class="tooltip" :style="tooltipInline">Token-driven tooltip body</div>
+        </div>
+
+        <h3 class="mt-4 mb-2 text-[12.5px] font-semibold text-[var(--ink-2)]">.err-page — inline (404 mockup)</h3>
+        <div class="mb-2 relative border border-[var(--line)] rounded-md overflow-hidden" :style="{ height: '320px' }">
+          <div class="err-page" :style="errPageInline">
+            <div class="err-card">
+              <div class="err-card-ic"><KovaIcon name="file-question" size="lg" aria-hidden="true" /></div>
+              <h1 class="err-card-h">Page not found</h1>
+              <p class="err-card-b">The page you're looking for doesn't exist or has moved.</p>
+              <div class="err-cta-stack">
+                <KovaButton variant="primary">Go home</KovaButton>
+                <KovaButton variant="text">Go back</KovaButton>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <footer class="border-t border-[var(--line)] pt-6 mt-6">
         <p class="text-[var(--ink-3)] text-[11.5px]">
-          Phase 3 primitive build complete. Per-property diff docs + visual-diff Playwright specs land in Phase 5.
+          Phase 5c primitive auto-mount complete. Per-property diff docs + visual-diff Playwright specs land in Phase 5.
         </p>
       </footer>
     </div>
