@@ -1,8 +1,21 @@
 import { DROP_HIGHLIGHT_ALPHA, DROP_HIGHLIGHT_STROKE, SECTION_CORNER_RADIUS } from '../constants'
-import type { SceneNode, SceneGraph } from '../scene-graph'
+import type { MaskType, SceneNode, SceneGraph } from '../scene-graph'
 import type { Canvas, EmbindEnumEntity, Path } from 'canvaskit-wasm'
 import type { Color } from '../types'
 import type { SkiaRenderer, RenderOverlays } from './renderer'
+
+/**
+ * Cluster 07a — map MaskType to CanvasKit BlendMode.
+ * ALPHA + VECTOR both use SrcIn (composite child INTO mask shape).
+ * LUMINANCE uses Luminosity (brightness-based reveal).
+ */
+function blendModeForMaskType(r: SkiaRenderer, maskType: MaskType): EmbindEnumEntity {
+  switch (maskType) {
+    case 'ALPHA':     return r.ck.BlendMode.SrcIn
+    case 'VECTOR':    return r.ck.BlendMode.SrcIn
+    case 'LUMINANCE': return r.ck.BlendMode.Luminosity
+  }
+}
 
 function isCulled(
   r: SkiaRenderer,
@@ -93,7 +106,8 @@ function renderChildren(
 ): void {
   const isClippableContainer =
     node.type === 'FRAME' || node.type === 'COMPONENT' || node.type === 'INSTANCE'
-  if (isClippableContainer && node.clipsContent && node.childIds.length > 0) {
+  const needsClip = isClippableContainer && node.clipsContent && node.childIds.length > 0
+  if (needsClip) {
     canvas.save()
     const hasRadius = node.cornerRadius > 0 || (node.independentCorners &&
       (node.topLeftRadius > 0 || node.topRightRadius > 0 || node.bottomRightRadius > 0 || node.bottomLeftRadius > 0))
@@ -102,14 +116,40 @@ function renderChildren(
     } else {
       canvas.clipRect(r.ck.LTRBRect(0, 0, node.width, node.height), r.ck.ClipOp.Intersect, true)
     }
-    for (const childId of node.childIds) {
+  }
+
+  // Cluster 07a — sibling-traversal mask compositing. A child with isMask=true
+  // opens a mask scope: outer save-layer hosts the mask group; composite layer
+  // with maskType-driven BlendMode renders subsequent siblings INTO the mask.
+  // The scope closes at the next mask sibling, the end of childIds, or — when
+  // nested inside a clipsContent container — the container edge clipped above.
+  let maskOpen = false
+  for (const childId of node.childIds) {
+    const child = graph.getNode(childId)
+    if (!child) continue
+
+    if (child.isMask) {
+      if (maskOpen) {
+        canvas.restore() // close prior composite layer
+        canvas.restore() // close prior outer layer
+        maskOpen = false
+      }
+      canvas.saveLayer(r.maskOuterPaint)
+      r.renderNode(canvas, graph, childId, overlays, absX, absY)
+      r.maskCompositePaint.setBlendMode(blendModeForMaskType(r, child.maskType))
+      canvas.saveLayer(r.maskCompositePaint)
+      maskOpen = true
+    } else {
       r.renderNode(canvas, graph, childId, overlays, absX, absY)
     }
+  }
+  if (maskOpen) {
+    canvas.restore() // composite
+    canvas.restore() // outer
+  }
+
+  if (needsClip) {
     canvas.restore()
-  } else {
-    for (const childId of node.childIds) {
-      r.renderNode(canvas, graph, childId, overlays, absX, absY)
-    }
   }
 }
 
