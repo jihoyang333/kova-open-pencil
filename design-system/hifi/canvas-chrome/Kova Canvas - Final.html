@@ -1,0 +1,1016 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Kova Canvas — Final</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ===================================================================
+     KOVA CANVAS — FINAL
+     Base:   V3 pencil-flat layout & aesthetic
+     Color:  V3 accent #3b82f6 throughout (selection, outline, toolbar active)
+     Canvas: #242428 (V3 dark canvas)
+     Font:   Inter everywhere — no monospace anywhere on chrome
+     Toolbar: V1 Kova-loud chrome (rounded 10px, 36px tools, pill style)
+     Right panel: vertically descending property sections (Position →
+                  Layout → Appearance → Fill → Stroke → Effects →
+                  Layout guide → Export). Sub-sections stack with
+                  labels above their inputs. "Design" tab only.
+     =================================================================== */
+  html, body {
+    margin: 0;
+    background: #0a0a09;
+    color: #ededea;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Page-level chrome */
+  .page {
+    padding: 56px 56px 96px;
+    max-width: 1600px;
+    margin: 0 auto;
+  }
+  .doc-head { margin-bottom: 36px; max-width: 980px; }
+  .doc-head .crumb {
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    color: #6e6e69;
+    text-transform: uppercase;
+    font-weight: 500;
+    margin-bottom: 10px;
+  }
+  .doc-head h1 {
+    margin: 0 0 8px;
+    font-size: 32px;
+    font-weight: 600;
+    letter-spacing: -0.012em;
+    color: #ededea;
+  }
+  .doc-head p {
+    margin: 0;
+    font-size: 13px;
+    color: #8a8a85;
+    max-width: 720px;
+  }
+
+  /* Screen frame */
+  .screen {
+    border: 1px solid #1c1c1a;
+    border-radius: 14px;
+    overflow: hidden;
+    height: 900px;
+    margin: 0 auto;
+    width: 100%;
+    max-width: 1440px;
+    box-shadow: 0 30px 80px -20px rgba(0,0,0,0.8);
+  }
+
+  /* ===================================================================
+     KOVA CANVAS
+     =================================================================== */
+  .kc {
+    --bg:    #1a1a1d;        /* side panels */
+    --rail:  #1a1a1d;
+    --canvas:#242428;        /* canvas (per spec) */
+    --fill:  #26262b;
+    --fill2: #303035;
+    --line:  #2c2c30;
+    --line2: #232327;
+    --ink:   #ebebee;
+    --ink2:  #a8a8ad;
+    --ink3:  #6e6e73;
+    --ink4:  #4a4a4f;
+    --select:#3b82f6;
+    --select-soft: rgba(59,130,246,0.16);
+    --accent:#3b82f6;
+    --accent-soft: rgba(59,130,246,0.14);
+    --accent-ink:#a9c4ff;
+    background: var(--bg);
+    color: var(--ink);
+    font-size: 12px;
+    display: grid;
+    grid-template-rows: 44px 1fr;
+  }
+
+  /* TOPBAR ----------------------------------------------------------- */
+  .kc .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--rail);
+    border-bottom: 1px solid var(--line);
+    padding: 0 12px;
+    height: 44px;
+  }
+  .kc .topbar .l, .kc .topbar .r {
+    display:flex; align-items:center; gap: 12px;
+  }
+  .kc .topbar .logo {
+    width: 24px; height: 24px;
+    border-radius: 6px; background: var(--ink); color: var(--bg);
+    display:grid; place-items:center;
+    font-weight: 700; font-size: 11px;
+    letter-spacing: -0.04em;
+  }
+  .kc .topbar .file {
+    display: flex; align-items: center; gap: 8px;
+    color: var(--ink2); font-size: 13px;
+  }
+  .kc .topbar .file .crumb-brand { display: inline-flex; align-items: center; gap: 6px; }
+  .kc .topbar .file .crumb-brand .b {
+    width: 14px; height: 14px; border-radius: 4px; background: #c24a1e;
+  }
+  .kc .topbar .file .sep { color: var(--ink4); }
+  .kc .topbar .file b {
+    color: var(--ink); font-weight: 600; letter-spacing: -0.005em;
+  }
+  .kc .topbar .file .caret { color: var(--ink3); display:grid; place-items:center; }
+  .kc .topbar .icon-btn {
+    width: 28px; height: 28px;
+    display:grid; place-items:center;
+    color: var(--ink2); border-radius: 5px;
+  }
+  .kc .topbar .icon-btn:hover { background: var(--line2); color: var(--ink); }
+  .kc .topbar .avatar {
+    width: 26px; height: 26px;
+    border-radius: 50%; background: #c24a1e; color: #fff;
+    display:grid; place-items:center;
+    font-weight: 600; font-size: 10.5px;
+  }
+
+  /* BODY ------------------------------------------------------------- */
+  .kc .body { display: grid; grid-template-columns: 240px 1fr 264px; min-height: 0; }
+
+  /* LEFT PANEL ------------------------------------------------------- */
+  .kc .left {
+    background: var(--rail);
+    border-right: 1px solid var(--line);
+    display: flex; flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .kc .left .file-row {
+    padding: 14px;
+    border-bottom: 1px solid var(--line2);
+    display:flex; align-items:center; gap: 10px;
+  }
+  .kc .left .file-row .file-icon {
+    width: 30px; height: 30px;
+    border-radius: 7px; background: var(--fill);
+    display: grid; place-items: center;
+    color: var(--ink2);
+  }
+  .kc .left .file-row .name { font-weight: 600; font-size: 13px; color: var(--ink); }
+  .kc .left .file-row .meta { font-size: 11.5px; color: var(--ink3); margin-top: 2px; }
+  .kc .left .sec {
+    padding: 14px 14px 6px;
+    display: flex; align-items:center; justify-content: space-between;
+  }
+  .kc .left .sec h5 {
+    margin: 0; font-size: 11px; font-weight: 500;
+    color: var(--ink3); letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .kc .left .sec .add {
+    width: 20px; height: 20px;
+    display:grid; place-items:center; color: var(--ink3);
+    border-radius: 5px;
+  }
+  .kc .left .pages { padding: 0 8px 6px; }
+  .kc .left .page-row {
+    display:flex; align-items:center; gap: 8px;
+    padding: 7px 10px;
+    border-radius: 7px;
+    color: var(--ink2); font-size: 12.5px;
+  }
+  .kc .left .page-row.active { background: var(--fill); color: var(--ink); }
+  .kc .left .layers { flex: 1; overflow: auto; padding: 0 6px 16px; }
+  .kc .left .layer {
+    display: flex; align-items: center; gap: 7px;
+    padding: 5px 8px;
+    height: 28px;
+    font-size: 12.5px;
+    color: var(--ink2);
+    border-radius: 6px;
+    line-height: 1.3;
+    white-space: nowrap;
+  }
+  .kc .left .layer:hover { background: var(--line2); color: var(--ink); }
+  .kc .left .layer.selected {
+    background: var(--select-soft);
+    color: var(--ink);
+  }
+  .kc .left .layer .caret { width: 10px; color: var(--ink3); display:grid; place-items:center; }
+  .kc .left .layer .ic { color: var(--ink3); display:grid; place-items:center; flex-shrink:0; }
+  .kc .left .layer.selected .ic { color: var(--ink); }
+  .kc .left .layer .name { flex: 1; overflow:hidden; text-overflow:ellipsis; }
+  .kc .left .layer .mask, .kc .left .layer .vis { color: var(--ink3); display:grid; place-items:center; flex-shrink:0; }
+  .kc .left .layer .vis { opacity: 0; }
+  .kc .left .layer:hover .vis, .kc .left .layer.selected .vis { opacity: 1; }
+  .kc .left .layer.dim { color: var(--ink4); }
+  .kc .left .layer.dim .ic { color: var(--ink4); }
+  .kc .left .indent-1 { padding-left: 24px; }
+  .kc .left .indent-2 { padding-left: 40px; }
+
+  /* CENTER (CANVAS) -------------------------------------------------- */
+  .kc .center {
+    background: var(--canvas);
+    position: relative;
+    overflow: hidden;
+  }
+  .kc .center .canvas-grid {
+    position: absolute; inset: 0;
+    background-image:
+      radial-gradient(circle, rgba(255,255,255,0.025) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+  .kc .frames-row {
+    position: absolute; top: 78px; left: 50%;
+    transform: translateX(-50%) scale(0.62);
+    transform-origin: top center;
+    display: flex; gap: 72px;
+  }
+  .kc .frame {
+    width: 600px; height: 900px;
+    background: #fff; color: #111;
+    position: relative; flex-shrink: 0;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .kc .frame-label {
+    position: absolute; top: -24px; left: 0;
+    color: var(--ink2); font-size: 14.5px;
+    white-space: nowrap; letter-spacing: -0.003em;
+  }
+  .kc .frame.selected .frame-label { color: var(--select); font-weight: 500; }
+  .kc .frame.selected {
+    outline: 2px solid var(--select);
+    outline-offset: 0;
+    border-radius: 6px;
+  }
+  .kc .handle {
+    position: absolute; width: 9px; height: 9px;
+    background: #fff;
+    border: 1.5px solid var(--select);
+    border-radius: 2px;
+  }
+  .kc .handle.tl { top:-1px; left:-1px; }
+  .kc .handle.tm { top:-1px; left:50%; transform:translateX(-50%); }
+  .kc .handle.tr { top:-1px; right:-1px; }
+  .kc .handle.lm { top:50%; left:-1px; transform:translateY(-50%); }
+  .kc .handle.rm { top:50%; right:-1px; transform:translateY(-50%); }
+  .kc .handle.bl { bottom:-1px; left:-1px; }
+  .kc .handle.bm { bottom:-1px; left:50%; transform:translateX(-50%); }
+  .kc .handle.br { bottom:-1px; right:-1px; }
+  .kc .size-chip {
+    position: absolute; bottom: -36px; left: 50%; transform: translateX(-50%);
+    background: var(--select); color: #fff;
+    font-size: 15px; padding: 5px 12px; border-radius: 6px;
+    font-weight: 500; letter-spacing: 0.01em;
+  }
+
+  /* TOOLBAR (V1 Kova-Loud chrome, V3 #3b82f6 selection) ------------- */
+  .kc .toolbar {
+    position: absolute;
+    bottom: 22px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1a1a1d;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 6px;
+    display: flex;
+    gap: 2px;
+    box-shadow: 0 8px 24px -6px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.04) inset;
+  }
+  .kc .toolbar .tool {
+    width: 36px; height: 36px;
+    display: grid; place-items:center;
+    color: var(--ink2);
+    border-radius: 6px;
+    cursor: pointer;
+    position: relative;
+  }
+  .kc .toolbar .tool:hover { background: var(--line2); color: var(--ink); }
+  .kc .toolbar .tool.active {
+    background: var(--accent);  /* #3b82f6 — never lilac */
+    color: #fff;
+  }
+  .kc .toolbar .divider {
+    width: 1px; background: var(--line2); margin: 6px 4px;
+  }
+  .kc .toolbar .tool.ai { color: var(--accent-ink); }
+  .kc .toolbar .tool.ai:hover { background: var(--accent-soft); }
+  .kc .toolbar .caret-mini {
+    position: absolute; right: 2px; bottom: 2px;
+    color: var(--ink3); display:grid; place-items:center;
+  }
+
+  /* Zoom HUD --------------------------------------------------------- */
+  .kc .zoom {
+    position: absolute;
+    bottom: 22px;
+    right: 22px;
+    background: #1a1a1d;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 6px 10px;
+    display: flex; align-items:center; gap: 6px;
+    color: var(--ink2);
+    font-size: 12px;
+    letter-spacing: 0.01em;
+  }
+  .kc .zoom .caret { display:grid; place-items:center; color: var(--ink3); }
+
+  /* RIGHT PANEL (vertically descending properties) ------------------ */
+  .kc .right {
+    background: var(--rail);
+    border-left: 1px solid var(--line);
+    display: flex; flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* Tabs row — Design only + zoom on the right */
+  .kc .right .tabs {
+    display: flex; border-bottom: 1px solid var(--line2);
+    padding: 0 14px; height: 44px; align-items: stretch;
+    gap: 4px;
+    justify-content: space-between;
+  }
+  .kc .right .tabs .tabs-l { display: flex; gap: 4px; }
+  .kc .right .tabs .tab {
+    display:flex; align-items:center; padding: 0 4px;
+    font-size: 13px; color: var(--ink3);
+  }
+  .kc .right .tabs .tab.active {
+    color: var(--ink);
+    background: var(--fill);
+    padding: 4px 10px;
+    border-radius: 5px;
+    margin: 8px 0;
+    font-weight: 500;
+  }
+  .kc .right .tabs .zoom-r {
+    display:flex; align-items:center; gap: 4px;
+    color: var(--ink2); font-size: 12px;
+  }
+
+  /* Frame header — title + quick actions */
+  .kc .right .frame-head {
+    padding: 14px 14px 14px;
+    border-bottom: 1px solid var(--line2);
+    display:flex; align-items:center; justify-content: space-between;
+  }
+  .kc .right .frame-head .title {
+    display:flex; align-items:center; gap: 6px;
+    font-size: 15px; font-weight: 600; color: var(--ink);
+    letter-spacing: -0.005em;
+  }
+  .kc .right .frame-head .title .caret { color: var(--ink3); display:grid; place-items:center; }
+  .kc .right .frame-head .actions { display:flex; gap: 2px; color: var(--ink2); }
+  .kc .right .frame-head .actions .a {
+    width: 26px; height: 26px;
+    display: grid; place-items: center; border-radius: 5px;
+  }
+  .kc .right .frame-head .actions .a:hover { background: var(--fill); color: var(--ink); }
+
+  /* Body scroll */
+  .kc .right .pbody { flex: 1; overflow: auto; }
+
+  /* Each property GROUP is a vertically-stacked section */
+  .kc .right .group {
+    padding: 14px 14px 16px;
+    border-bottom: 1px solid var(--line2);
+  }
+  .kc .right .group .ghead {
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom: 12px;
+  }
+  .kc .right .group .ghead h6 {
+    margin: 0; font-size: 13px; font-weight: 600;
+    color: var(--ink); letter-spacing: -0.005em;
+  }
+  .kc .right .group .ghead .actions { display:flex; gap: 2px; color: var(--ink2); }
+  .kc .right .group .ghead .actions .a {
+    width: 24px; height: 24px;
+    display: grid; place-items: center; border-radius: 5px;
+  }
+  .kc .right .group .ghead .actions .a:hover { background: var(--fill); color: var(--ink); }
+
+  /* Sub-section (Alignment, Position, Rotation, Flow, Dimensions...) */
+  .kc .right .sub { margin-bottom: 12px; }
+  .kc .right .sub:last-child { margin-bottom: 0; }
+  .kc .right .sub .lbl-row {
+    color: var(--ink2);
+    font-size: 12px;
+    margin-bottom: 6px;
+    letter-spacing: -0.003em;
+  }
+
+  /* Inputs — Inter everywhere (no monospace) */
+  .kc .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .kc .row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+  .kc .row-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .kc .ipt {
+    background: var(--fill);
+    border: 1px solid transparent;
+    border-radius: 5px;
+    padding: 0 9px;
+    display: flex; align-items: center; gap: 6px;
+    height: 30px; font-size: 12.5px;
+  }
+  .kc .ipt:hover { border-color: var(--line); }
+  .kc .ipt .lbl { color: var(--ink3); font-size: 12px; font-weight: 500; }
+  .kc .ipt .val { color: var(--ink); font-size: 12.5px; flex: 1; }
+  .kc .ipt .unit { color: var(--ink3); font-size: 12px; }
+
+  /* Segmented controls */
+  .kc .seg {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    background: var(--fill);
+    border-radius: 5px;
+    padding: 2px;
+    gap: 1px;
+  }
+  .kc .seg .s {
+    height: 26px; display:grid; place-items:center;
+    color: var(--ink3); border-radius: 4px;
+  }
+  .kc .seg .s.active { background: var(--fill2); color: var(--ink); }
+  .kc .seg .s:hover { color: var(--ink2); }
+  .kc .seg .s.active:hover { color: var(--ink); }
+  .kc .seg .gap { width: 6px; }
+
+  /* Two segments side-by-side */
+  .kc .seg-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+
+  /* Swatch box */
+  .kc .swatch {
+    width: 18px; height: 18px; border-radius: 3px;
+    background: #fff; border: 1px solid var(--line); flex-shrink: 0;
+  }
+
+  /* Empty/collapsed groups (Stroke / Effects / Layout guide) */
+  .kc .empty-row {
+    color: var(--ink3); font-size: 12.5px;
+  }
+
+  /* Checkbox row */
+  .kc .checkbox-row {
+    display:flex; align-items:center; gap: 8px;
+    font-size: 12.5px; color: var(--ink2);
+  }
+  .kc .checkbox-row .cb {
+    width: 14px; height: 14px;
+    border: 1px solid var(--line);
+    border-radius: 3px; background: var(--bg);
+    display:grid; place-items:center;
+  }
+  .kc .checkbox-row.checked .cb {
+    background: var(--select); border-color: var(--select); color: #fff;
+  }
+
+  /* Fill row layout: swatch | hex | opacity | eye | minus */
+  .kc .fill-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto auto auto;
+    gap: 4px;
+    align-items: center;
+    background: var(--fill);
+    border-radius: 5px;
+    padding: 0 6px;
+    height: 30px;
+  }
+  .kc .fill-row .hex { color: var(--ink); font-size: 12.5px; padding-left: 4px; }
+  .kc .fill-row .pct { color: var(--ink); font-size: 12.5px; padding: 0 6px; border-left: 1px solid var(--line2); }
+  .kc .fill-row .ico { width: 20px; height: 20px; display:grid; place-items:center; color: var(--ink3); border-radius: 4px; }
+  .kc .fill-row .ico:hover { background: var(--fill2); color: var(--ink); }
+
+  /* Floating help button */
+  .kc .help-fab {
+    position: absolute; bottom: 14px; right: 14px;
+    width: 28px; height: 28px;
+    border-radius: 50%; background: var(--fill);
+    border: 1px solid var(--line);
+    display:grid; place-items:center;
+    color: var(--ink2); font-size: 13px;
+  }
+
+  /* Email frame internals (re-used from prior file) */
+  .email {
+    width: 100%; height: 100%;
+    display: flex; flex-direction: column;
+  }
+  .email .hero {
+    height: 320px;
+    background: repeating-linear-gradient(135deg, #d4d2cc 0 8px, #dcd9d2 8px 16px);
+    position: relative;
+    display: grid; place-items: center;
+    color: #6e6a60; font-size: 13px;
+    font-family: ui-monospace, monospace;
+    letter-spacing: 0.06em;
+  }
+  .email .body {
+    padding: 36px 48px 40px;
+    display: flex; flex-direction: column;
+    gap: 14px;
+    flex: 1;
+  }
+  .email h1 {
+    margin: 0;
+    font-size: 38px; font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.05;
+    color: #1a1a18;
+  }
+  .email .lede {
+    margin: 0; font-size: 15px;
+    color: #4a4842; line-height: 1.45;
+    letter-spacing: -0.005em;
+  }
+  .email .lines {
+    display:flex; flex-direction: column; gap: 8px;
+    margin-top: 6px;
+  }
+  .email .lines .l {
+    height: 12px;
+    background: #ececea;
+    border-radius: 2px;
+  }
+  .email .lines .l.s40 { width: 40%; }
+  .email .lines .l.s60 { width: 60%; }
+  .email .lines .l.s80 { width: 80%; }
+  .email .lines .l.s90 { width: 90%; }
+  .email .cta {
+    margin-top: 12px;
+    display: inline-flex; align-self: flex-start;
+    background: #1a1a18; color: #fff;
+    padding: 16px 32px;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: -0.005em;
+  }
+  .email .small {
+    font-size: 12px; color: #888; margin-top: auto;
+    padding-top: 16px;
+    border-top: 1px solid #ececea;
+  }
+  .email-2 .hero { height: 220px; background: #1a1a18; color: #c8c8c0; display: grid; place-items: center; }
+  .email-2 .badge {
+    position: absolute; top: 18px; left: 18px;
+    background: rgba(255,255,255,0.12); color: #fff;
+    font-family: ui-monospace, monospace;
+    font-size: 11px; padding: 4px 8px; border-radius: 3px;
+    letter-spacing: 0.06em;
+  }
+  .email-2 h1 { font-size: 44px; }
+  .email-3 .hero { height: 280px; background: repeating-linear-gradient(45deg, #efece4 0 6px, #f5f2eb 6px 12px); }
+  .email-3 h1 { font-size: 32px; }
+  .email-3 .countdown {
+    display: flex; gap: 8px;
+    margin: 8px 0 4px;
+  }
+  .email-3 .countdown .unit {
+    background: #fff; border: 1.5px solid #1a1a18;
+    border-radius: 4px;
+    padding: 10px 14px;
+    text-align: center;
+    flex: 1;
+  }
+  .email-3 .countdown .n {
+    font-size: 26px; font-weight: 700;
+    font-family: ui-monospace, monospace;
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+  .email-3 .countdown .u {
+    font-size: 10px; color: #888; margin-top: 4px;
+    letter-spacing: 0.1em; text-transform: uppercase;
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <div class="doc-head">
+    <div class="crumb">Kova Scope · Hi-fi · Canvas · Final</div>
+    <h1>Canvas page</h1>
+    <p>Pencil-flat panel structure with Kova-loud toolbar chrome. Single accent (#3b82f6) for selection, outlines, and active tool. Properties stack vertically — every section descends below the previous one. Inter throughout the chrome.</p>
+  </div>
+
+  <div class="screen kc" data-screen-label="Kova Canvas Final">
+
+    <!-- TOPBAR -->
+    <div class="topbar">
+      <div class="l">
+        <div class="logo">K</div>
+        <div class="file">
+          <span class="crumb-brand"><span class="b"></span>Wildgrove</span>
+          <span class="sep">/</span>
+          <b>Spring Drop · 04</b>
+          <span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span>
+        </div>
+      </div>
+      <div class="r">
+        <div class="icon-btn" title="Notifications"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/></svg></div>
+        <div class="icon-btn" title="Present"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
+        <div class="icon-btn" title="Comments"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+        <div class="avatar">JM</div>
+      </div>
+    </div>
+
+    <div class="body">
+
+      <!-- LEFT PANEL -->
+      <div class="left">
+        <div class="file-row">
+          <div class="file-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+          <div>
+            <div class="name">Spring Drop · 04</div>
+            <div class="meta">3 emails · edited 2m ago</div>
+          </div>
+        </div>
+
+        <div class="sec">
+          <h5>Pages</h5>
+          <span class="add"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
+        </div>
+        <div class="pages">
+          <div class="page-row active">
+            <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg></span>
+            <span>Spring Drop · 04</span>
+          </div>
+        </div>
+
+        <div class="sec"><h5>Layers</h5></div>
+        <div class="layers">
+          <div class="layer">
+            <span class="caret"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></span>
+            <span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg></span>
+            <span class="name">Teaser #1</span>
+            <span class="vis"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span>
+          </div>
+
+          <div class="layer selected">
+            <span class="caret"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></span>
+            <span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg></span>
+            <span class="name">Teaser #2 (A/B)</span>
+            <span class="vis"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span>
+          </div>
+          <div class="layer indent-1">
+            <span class="ic"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg></span>
+            <span class="name">Hero image</span>
+            <span class="vis"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span>
+          </div>
+          <div class="layer indent-1">
+            <span class="ic"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h14v3M9 4v16M7 20h10"/></svg></span>
+            <span class="name">Headline</span>
+            <span class="vis"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span>
+          </div>
+          <div class="layer indent-1">
+            <span class="ic"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h14v3M9 4v16M7 20h10"/></svg></span>
+            <span class="name">Body copy · welcome</span>
+            <span class="mask"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor"/></svg></span>
+            <span class="vis"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span>
+          </div>
+          <div class="layer indent-1">
+            <span class="ic"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/></svg></span>
+            <span class="name">CTA · Shop the drop</span>
+            <span class="vis"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span>
+          </div>
+          <div class="layer indent-1 dim">
+            <span class="ic"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/></svg></span>
+            <span class="name">Footer · unsubscribe</span>
+          </div>
+
+          <div class="layer">
+            <span class="caret"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></span>
+            <span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg></span>
+            <span class="name">Reminder · 48h</span>
+            <span class="vis"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span>
+          </div>
+          <div class="layer">
+            <span class="caret"></span>
+            <span class="ic"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg></span>
+            <span class="name">Brand color · cinder</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- CENTER (CANVAS) -->
+      <div class="center">
+        <div class="canvas-grid"></div>
+
+        <div class="frames-row">
+          <!-- Teaser #1 -->
+          <div class="frame">
+            <div class="frame-label">Teaser #1</div>
+            <div class="email">
+              <div class="hero">hero · brewer at sunrise</div>
+              <div class="body">
+                <h1>Spring is in the bag.</h1>
+                <p class="lede">Three new lots from Huila, Sidamo, and Sumatra. Limited drops, roasted to order.</p>
+                <div class="lines"><div class="l s90"></div><div class="l s80"></div><div class="l s60"></div></div>
+                <span class="cta">Shop the drop</span>
+                <div class="small">Wildgrove Coffee · Brooklyn, NY · Unsubscribe</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Teaser #2 (selected) -->
+          <div class="frame email-2 selected">
+            <div class="frame-label">Teaser #2 (A/B)</div>
+            <div class="email email-2">
+              <div class="hero">
+                <span class="badge">A/B · variant b</span>
+                <span style="font-family:ui-monospace,monospace;letter-spacing:0.06em;">hero · pour-over close</span>
+              </div>
+              <div class="body">
+                <h1>Cup forward.<br/>Spring forward.</h1>
+                <p class="lede">A brighter take on the drop — citrus, peach, jasmine. Three roasts, one weekend.</p>
+                <div class="lines"><div class="l s90"></div><div class="l s80"></div><div class="l s90"></div><div class="l s40"></div></div>
+                <span class="cta">Reserve a bag</span>
+                <div class="small">Free shipping over $35 · Roasted Tuesday</div>
+              </div>
+            </div>
+            <div class="handle tl"></div><div class="handle tm"></div><div class="handle tr"></div>
+            <div class="handle lm"></div><div class="handle rm"></div>
+            <div class="handle bl"></div><div class="handle bm"></div><div class="handle br"></div>
+            <div class="size-chip">600 × 900</div>
+          </div>
+
+          <!-- Reminder -->
+          <div class="frame email-3">
+            <div class="frame-label">Reminder · 48h</div>
+            <div class="email email-3">
+              <div class="hero" style="font-family:ui-monospace,monospace;letter-spacing:0.06em;">hero · stock running low</div>
+              <div class="body">
+                <h1>48 hours left, then it's gone.</h1>
+                <p class="lede">Spring Drop closes Sunday at 9pm ET. Final bags ship Tuesday morning.</p>
+                <div class="countdown">
+                  <div class="unit"><div class="n">01</div><div class="u">days</div></div>
+                  <div class="unit"><div class="n">23</div><div class="u">hrs</div></div>
+                  <div class="unit"><div class="n">14</div><div class="u">min</div></div>
+                </div>
+                <div class="lines"><div class="l s80"></div><div class="l s60"></div></div>
+                <span class="cta">Don't miss it</span>
+                <div class="small">Wildgrove Coffee · Reply STOP to unsubscribe</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TOOLBAR (V1 Kova-Loud chrome, #3b82f6 active) -->
+        <div class="toolbar">
+          <div class="tool active" title="Move">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 2l7 18 2-7 7-2z"/></svg>
+          </div>
+          <div class="tool" title="Frame">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M9 3v18"/></svg>
+          </div>
+          <div class="tool" title="Rectangle">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+          </div>
+          <div class="tool" title="Ellipse">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/></svg>
+          </div>
+          <div class="tool" title="Pen">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.5 7.5"/></svg>
+          </div>
+          <div class="tool" title="Text">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h14v3M9 4v16M7 20h10"/></svg>
+          </div>
+          <div class="tool" title="Comment">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          </div>
+          <div class="divider"></div>
+          <div class="tool ai" title="Ask Kova">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/><path d="M19 14l.7 2.1L22 17l-2.3.9L19 20l-.7-2.1L16 17l2.3-.9L19 14z"/></svg>
+          </div>
+          <div class="tool" title="Components">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          </div>
+        </div>
+
+        <div class="zoom">
+          100%
+          <span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span>
+        </div>
+      </div>
+
+      <!-- RIGHT PANEL (vertically descending properties) -->
+      <div class="right">
+
+        <!-- Tabs row: Design only + zoom -->
+        <div class="tabs">
+          <div class="tabs-l">
+            <div class="tab active">Design</div>
+          </div>
+          <div class="zoom-r">
+            292%
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+        </div>
+
+        <!-- Frame name + quick actions -->
+        <div class="frame-head">
+          <div class="title">
+            Frame
+            <span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span>
+          </div>
+          <div class="actions">
+            <span class="a" title="Code"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></span>
+            <span class="a" title="Component"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="12 2 22 12 12 22 2 12 12 2"/><polygon points="12 7 17 12 12 17 7 12 12 7"/></svg></span>
+            <span class="a" title="Theme"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+          </div>
+        </div>
+
+        <div class="pbody">
+
+          <!-- POSITION ============================================== -->
+          <div class="group">
+            <div class="ghead">
+              <h6>Position</h6>
+            </div>
+
+            <div class="sub">
+              <div class="lbl-row">Alignment</div>
+              <div class="seg-pair">
+                <div class="seg">
+                  <span class="s active" title="Align left"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="3" x2="3" y2="21"/><rect x="6" y="8" width="14" height="8"/></svg></span>
+                  <span class="s" title="Align center H"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="3" x2="12" y2="21"/><rect x="5" y="8" width="14" height="8"/></svg></span>
+                  <span class="s" title="Align right"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="21" y1="3" x2="21" y2="21"/><rect x="4" y="8" width="14" height="8"/></svg></span>
+                </div>
+                <div class="seg">
+                  <span class="s" title="Align top"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="3" x2="21" y2="3"/><rect x="8" y="6" width="8" height="14"/></svg></span>
+                  <span class="s" title="Align center V"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><rect x="8" y="5" width="8" height="14"/></svg></span>
+                  <span class="s" title="Align bottom"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="21" x2="21" y2="21"/><rect x="8" y="4" width="8" height="14"/></svg></span>
+                </div>
+              </div>
+            </div>
+
+            <div class="sub">
+              <div class="lbl-row">Position</div>
+              <div class="row-2">
+                <div class="ipt"><span class="lbl">X</span><span class="val">856</span></div>
+                <div class="ipt"><span class="lbl">Y</span><span class="val">5166</span></div>
+              </div>
+            </div>
+
+            <div class="sub">
+              <div class="lbl-row">Rotation</div>
+              <div class="row-2">
+                <div class="ipt">
+                  <span class="lbl"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 21V3h18"/></svg></span>
+                  <span class="val">0</span>
+                  <span class="unit">°</span>
+                </div>
+                <div class="seg">
+                  <span class="s" title="Constrain"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
+                  <span class="s" title="Flip H"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="3 7 12 3 12 21 3 17 3 7"/><polyline points="21 7 12 3"/><polyline points="21 17 12 21"/></svg></span>
+                  <span class="s" title="Flip V"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="7 3 3 12 21 12 17 3 7 3"/><polyline points="7 21 3 12"/><polyline points="17 21 21 12"/></svg></span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- LAYOUT ================================================ -->
+          <div class="group">
+            <div class="ghead">
+              <h6>Layout</h6>
+              <div class="actions">
+                <span class="a" title="Auto-layout"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="20 12 14 12 14 18 8 18 8 12 2 12"/><polyline points="2 6 14 6"/></svg></span>
+                <span class="a" title="Add layout"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
+              </div>
+            </div>
+
+            <div class="sub">
+              <div class="lbl-row">Flow</div>
+              <div class="seg-pair">
+                <div class="seg">
+                  <span class="s active" title="Free"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="18" r="2.5"/></svg></span>
+                </div>
+                <div class="seg">
+                  <span class="s" title="Vertical stack"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="6" y="3" width="12" height="6"/><rect x="6" y="15" width="12" height="6"/></svg></span>
+                  <span class="s" title="Horizontal stack"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="6" height="12"/><rect x="15" y="6" width="6" height="12"/></svg></span>
+                  <span class="s" title="Grid"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></span>
+                </div>
+              </div>
+            </div>
+
+            <div class="sub">
+              <div class="lbl-row">Dimensions</div>
+              <div class="row-2">
+                <div class="ipt"><span class="lbl">W</span><span class="val">600</span></div>
+                <div class="ipt"><span class="lbl">H</span><span class="val">900</span></div>
+              </div>
+            </div>
+
+            <div class="sub" style="margin-bottom: 0;">
+              <div class="checkbox-row checked">
+                <span class="cb"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+                Clip content
+              </div>
+            </div>
+          </div>
+
+          <!-- APPEARANCE ============================================ -->
+          <div class="group">
+            <div class="ghead">
+              <h6>Appearance</h6>
+              <div class="actions">
+                <span class="a" title="Visibility"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span>
+                <span class="a" title="Blend mode"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 0 0 20" fill="currentColor"/></svg></span>
+              </div>
+            </div>
+            <div class="row-2">
+              <div class="ipt">
+                <span class="lbl"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 3v18"/></svg></span>
+                <span class="val">100</span>
+                <span class="unit">%</span>
+              </div>
+              <div class="ipt">
+                <span class="lbl"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 21V8a5 5 0 0 1 5-5h13"/></svg></span>
+                <span class="val">0</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- FILL ================================================== -->
+          <div class="group">
+            <div class="ghead">
+              <h6>Fill</h6>
+              <div class="actions">
+                <span class="a" title="Styles"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></svg></span>
+                <span class="a" title="Add fill"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
+              </div>
+            </div>
+            <div class="fill-row">
+              <span class="swatch"></span>
+              <span class="hex">FFFFFF</span>
+              <span class="pct">100%</span>
+              <span class="ico" title="Toggle"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg></span>
+              <span class="ico" title="Remove"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
+            </div>
+          </div>
+
+          <!-- STROKE ================================================ -->
+          <div class="group">
+            <div class="ghead">
+              <h6>Stroke</h6>
+              <div class="actions">
+                <span class="a"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- EFFECTS =============================================== -->
+          <div class="group">
+            <div class="ghead">
+              <h6>Effects</h6>
+              <div class="actions">
+                <span class="a"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- LAYOUT GUIDE ========================================== -->
+          <div class="group">
+            <div class="ghead">
+              <h6>Layout guide</h6>
+              <div class="actions">
+                <span class="a"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- EXPORT ================================================ -->
+          <div class="group" style="border-bottom:none;">
+            <div class="ghead">
+              <h6>Export</h6>
+              <div class="actions">
+                <span class="a"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Floating help -->
+        <div class="help-fab">?</div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

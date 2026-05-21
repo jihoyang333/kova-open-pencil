@@ -3,6 +3,8 @@ import { onMounted } from 'vue'
 import { useHead } from '@unhead/vue'
 
 import AppToast from '@/components/AppToast.vue'
+import ConfirmModal from '@/components/ui/ConfirmModal.vue'
+import ToastStack from '@/components/ui/ToastStack.vue'
 import { APP_NAME } from '@/constants'
 import { toast } from '@/composables/use-toast'
 import { useAuthStore } from '@/stores/auth'
@@ -30,5 +32,7 @@ onMounted(() => {
   <template v-else>
     <RouterView />
     <AppToast />
+    <ToastStack />
+    <ConfirmModal />
   </template>
 </template>

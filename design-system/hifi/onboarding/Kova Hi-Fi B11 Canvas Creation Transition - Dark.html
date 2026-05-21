@@ -1,0 +1,817 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<title>Kova — Hi-fi · B11 Canvas Creation Transition · Dark</title>
+<meta name="viewport" content="width=1440" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+<link rel="stylesheet" href="../../design-system/kova-hifi.css" />
+<script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
+<style>
+/* ============================================================
+   FILE B11 — Canvas creation transition state
+     B11.1 Composer idle (reference snapshot)
+     B11.2 Composer submitting (in-flight)
+     B11.3 Composer transition (almost there — content fades)
+     B11.4 Hand-off splash (full viewport, ≤500ms in production)
+
+   Dashboard chrome (sidebar / topbar / content / composer-input-wrap /
+   composer-input / composer-input-tools / composer-chips / composer-chip /
+   greeting) is LIFTED from
+     batch-a/dark/Kova Hi-Fi 03 Brand Dashboard - Dark.html
+   per CHUNK_3 §3.8 LIFT protocol. The 03 source carries each rule as a
+   light-mode declaration plus a `[data-theme="dark"]` override using
+   tokens; this file folds the two into one dark-mode rule using only
+   tokens (no hex outside :root, no translucent fills outside the
+   modal-backdrop exception — chunk 3 has no modals). Geometry, padding, border-radius,
+   gap, and font sizes are byte-identical to 03's rendered output at
+   `<html data-theme="dark">` — visual diff against the 03 screenshot is
+   zero in the dashboard region.
+
+   Sidebar / topbar / content / app shell / `.btn` / `.btn.primary` /
+   `.btn.sm` / `.btn.accent` / `.brand-switch` / `.side-search` /
+   `.nav` / `.side-footer` / `.kbd` are USED BY NAME from canonical
+   `kova-hifi.css` — the canonical declarations match 03's rendered look
+   already (same tokens, same density), so redeclaring would be churn.
+   This is the §3.8 distinction: per-file chrome (composer family +
+   greeting) is lifted; canonical components (sidebar / topbar / btn /
+   nav-item) are referenced by name.
+
+   B11 extensions (append-only, below lifted blocks):
+     .composer-input.submitting     · input read-only state
+     .composer-input.review         · B11.3 "review" line, ink-2
+     .composer-status               · caption below the composer
+     .composer-status.ready .tick   · accent check-tick before "ready"
+     .composer-input-tools .go-spin · go-button replaced with spinner
+     .spinner                       · Lucide loader-2 with spin keyframes
+     .content.transition-fade       · B11.3 main-pane fade
+     .splash-stage / .splash-spinner / .splash-cap (B11.4)
+   ============================================================ */
+
+  body { background: var(--bg); }
+
+  /* ============================================================
+     Doc chrome — page-head + section.block use canonical CSS already.
+     This block adds nothing for them.
+     ============================================================ */
+
+  /* ============================================================
+     Greeting — lifted from 03 dashboard per-file (not in canonical).
+     Folded light-base + dark-override into single dark rules.
+     ============================================================ */
+  .greeting {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    padding: 24px 0 8px;
+  }
+  .greeting .hello {
+    font-size: 28px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+    color: var(--ink);
+    text-align: center;
+  }
+
+  /* ============================================================
+     Composer family — LIFTED from
+       batch-a/dark/Kova Hi-Fi 03 Brand Dashboard - Dark.html
+     Per-file `.composer` is not in canonical. `.composer-input-wrap`,
+     `.composer-input .typed`, `.composer-input-tools .hint`,
+     `.composer-chip` exist in canonical with simpler geometry; the
+     per-file declarations override at cascade-order and produce 03's
+     elaborate look. We re-declare here (not "redeclare for fun" — the
+     per-file styling IS the 03 visual reality, and CHUNK_3 §3.8
+     reconstructable-chrome inventory specifies LIFT for these).
+     Hex/rgba folded into tokens; box-shadows dropped per design.md §1.6
+     (no drop shadows on inputs/cards/rows).
+     ============================================================ */
+  .composer {
+    position: relative;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    overflow: visible;
+    max-width: 760px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .composer-input-wrap {
+    background: var(--page);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 18px 20px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    transition: border-color 0.15s ease;
+  }
+  .composer-input-wrap:focus-within {
+    border-color: var(--ink-3);
+  }
+  .composer-input {
+    font-family: inherit;
+    font-size: 15px;
+    line-height: 1.55;
+    color: var(--ink);
+    min-height: 56px;
+    letter-spacing: -0.005em;
+  }
+  .composer-input .typed {
+    color: var(--ink);
+    font-weight: 400;
+  }
+  .composer-input .caret {
+    display: none;
+  }
+
+  .composer-input-tools {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-top: none;
+    padding-top: 0;
+  }
+  .composer-input-tools .attach-grp {
+    display: flex;
+    gap: 4px;
+  }
+  .composer-input-tools .attach {
+    width: 30px; height: 30px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--ink-2);
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    padding: 0;
+  }
+  .composer-input-tools .attach:hover {
+    background: var(--fill);
+    color: var(--ink);
+  }
+  .composer-input-tools .attach .ic { width: 15px; height: 15px; }
+  .composer-input-tools .grow { flex: 1; }
+  .composer-input-tools .hint {
+    font-size: 11px;
+    color: var(--ink-3);
+  }
+  .composer-input-tools .hint kbd {
+    background: var(--fill);
+    border: 1px solid var(--line-2);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 10px;
+    color: var(--ink-3);
+  }
+  .composer-input-tools .go {
+    padding: 7px 14px;
+    font-size: 12px;
+    gap: 5px;
+    border-radius: 999px;
+  }
+
+  .composer-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    justify-content: center;
+  }
+  .composer-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 14px;
+    background: var(--page);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    font-size: 12.5px;
+    color: var(--ink-2);
+    cursor: pointer;
+    transition: background 0.1s ease, border-color 0.1s ease, color 0.1s ease;
+  }
+  .composer-chip:hover {
+    background: var(--fill);
+    border-color: var(--ink-3);
+    color: var(--ink);
+  }
+  .composer-chip .ic { width: 13px; height: 13px; color: var(--ink-2); }
+
+  /* ============================================================
+     B11 extensions — append-only below the lifted blocks.
+     Each new class names what it extends + which scene it serves.
+     ============================================================ */
+
+  /* B11.2 — input is read-only while the canvas-creation request is in flight.
+     Visual: same typography, dimmed slightly, cursor-default to signal "frozen".
+     pointer-events: none on the input prevents text-edit; the wrap still shows
+     focus border so the user feels the affordance is alive. */
+  .composer-input.submitting {
+    color: var(--ink-2);
+    pointer-events: none;
+    user-select: none;
+  }
+  .composer-input.submitting .typed {
+    color: var(--ink-2);
+  }
+
+  /* B11.3 — input becomes a quiet "review line" of what was submitted.
+     The user still sees the prompt, demoted to ink-2 (paragraph weight) so
+     it doesn't read as editable. No edit affordance — the request is past
+     the editable window. */
+  .composer-input.review {
+    color: var(--ink-2);
+    pointer-events: none;
+    user-select: none;
+  }
+  .composer-input.review .typed {
+    color: var(--ink-2);
+    font-weight: 400;
+  }
+
+  /* Status caption directly below the composer-input-wrap.
+     Used by B11.2 ("Creating canvas…") and B11.3 ("ready" tag).
+     Animates in via fade-in keyframes (200ms) so the appearance feels
+     deliberate, not a layout shift. */
+  .composer-status {
+    font-size: 11.5px;
+    color: var(--ink-3);
+    letter-spacing: 0;
+    line-height: 1.3;
+    text-align: center;
+    margin-top: 2px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    align-self: center;
+    animation: cv-fade-in 200ms ease-out;
+  }
+  .composer-status .tick {
+    width: 13px; height: 13px;
+    color: var(--accent);
+    flex-shrink: 0;
+  }
+  .composer-status.ready { color: var(--ink-2); }
+
+  /* Inline spinner replaces the .go button content during B11.2.
+     We reuse canonical `.btn.accent.go` (kova-hifi.css) for the pill
+     geometry + accent fill + accent ink — `.go-spin` is layered on top
+     to add only the in-flight modifications: cursor:progress,
+     pointer-events:none, slight opacity dim. No color / background /
+     border re-declared here — those come from canonical. */
+  .composer-input-tools .go-spin {
+    cursor: progress;
+    pointer-events: none;
+    opacity: 0.95;
+  }
+  .composer-input-tools .go-spin .spinner {
+    width: 14px; height: 14px;
+    color: currentColor;
+  }
+
+  /* Spinner — Lucide loader-2 + CSS-only rotation. Allowed exception
+     to "no animation on chrome" per design.md §1.7 — load indicators are
+     a system-wide need that pre-dates motion-token commitment. */
+  .spinner {
+    display: inline-block;
+    animation: cv-spin 1s linear infinite;
+    transform-origin: center;
+  }
+  @keyframes cv-spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
+  @keyframes cv-fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  /* B11.3 — main content area fades to half-opacity while sidebar + topbar
+     stay full. Communicates the hand-off without removing the reference
+     points the user uses to feel anchored. The composer itself stays
+     fully opaque inside the fading content so the "ready" message reads
+     clearly. */
+  .content.transition-fade {
+    opacity: 0.5;
+    pointer-events: none;
+    transition: opacity 240ms ease-out;
+  }
+  .content.transition-fade .composer { opacity: 1; }
+
+  /* B11.4 splash — full-viewport hand-off surface. No app chrome.
+     Lives ≤500ms in production. Centered spinner + caption.
+     No buttons — this is purely a "we're loading the canvas" beat. */
+  .splash-stage {
+    position: absolute; inset: 0;
+    background: var(--bg);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 18px;
+  }
+  .splash-spinner {
+    width: 24px; height: 24px;
+    color: var(--ink-2);
+  }
+  .splash-cap {
+    font-size: 12.5px; color: var(--ink-3);
+    letter-spacing: 0;
+    line-height: 1.4;
+    text-align: center;
+  }
+
+</style>
+</head>
+<body data-screen-label="B11 Canvas Creation Transition · Dark">
+
+<header class="page-head">
+  <div class="eyebrow">HI-FI · BATCH A ADDITIONS · DARK · CHUNK 3 · FILE B11</div>
+  <h1>Canvas creation transition · B11.1 · B11.2 · B11.3 · B11.4</h1>
+  <p>The 0.5–3 second window between submitting a prompt in the dashboard composer and landing on the new canvas. Without this state, the composer freezes mid-action and the user can't tell if the click registered. Four snapshots across the transition arc: idle (reference) → submitting → almost-there → splash hand-off. Dashboard chrome (sidebar / topbar / content / composer wrap) is LIFTED from <code>batch-a/dark/Kova Hi-Fi 03 Brand Dashboard - Dark.html</code> per CHUNK_3 §3.8; only the composer INTERIOR changes between B11.1 / B11.2 / B11.3 — chrome dimensions stay byte-identical so the page never reflows.</p>
+  <div class="meta">4 surfaces · dashboard chrome lifted from 03 (composer family + greeting) · canonical components used by name (sidebar / topbar / btn / nav-item) · same kova-hifi.css tokens · density carried from 03</div>
+  <div class="legend">
+    <span class="sw"><i style="background: var(--accent);"></i>accent (idle submit · ready-tick)</span>
+    <span class="sw"><i style="background: var(--ink-3);"></i>caption ink (status text)</span>
+    <span class="sw"><i style="background: var(--ink-2);"></i>review-line ink + spinner</span>
+    <span class="sw"><i style="background: var(--ink);"></i>K mark + primary CTA</span>
+  </div>
+</header>
+
+
+<!-- ============================================================
+     B11.1 · Composer idle (reference)
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE B11 · §1 · B11.1 · Composer idle</div>
+    <h2>B11.1 · Composer idle (reference snapshot)</h2>
+    <p class="intro">User has typed a prompt and is ready to submit. This snapshot establishes the chrome baseline that B11.2 / B11.3 reuse byte-identical. Sidebar, topbar, brand-switch, content area, composer wrap, chips, and primary submit button match 03 dashboard exactly — the only departure from 03 is the typed text inside the input (here a real prompt instead of the placeholder).</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Composer idle · prompt typed, submit enabled</div><div class="id">B11.1 · /dashboard</div></div>
+    <div class="canvas" data-screen-label="B11.1 · Composer idle">
+      <div class="app">
+
+        <!-- SIDEBAR (canonical .sidebar from kova-hifi.css) -->
+        <div class="sidebar">
+          <div class="brand-switch">
+            <div class="logo">W</div>
+            <div class="name">Wildgrove</div>
+            <div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div>
+          </div>
+          <div class="side-search">
+            <i data-lucide="search" style="width:13px;height:13px;"></i>
+            <span>Search</span>
+            <span class="kbd">⌘K</span>
+          </div>
+
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item active"><i data-lucide="clock-4" class="ic"></i><span>Recents</span></div>
+            <div class="item"><i data-lucide="calendar-days" class="ic"></i><span>Calendar</span><span class="count">9</span></div>
+
+            <div class="section">Library</div>
+            <div class="item"><i data-lucide="bookmark" class="ic"></i><span>Swipes</span></div>
+            <div class="item"><i data-lucide="layout-template" class="ic"></i><span>Templates</span></div>
+            <div class="item"><i data-lucide="package" class="ic"></i><span>Products</span><span class="count">142</span></div>
+
+            <div class="section">Brand</div>
+            <div class="item"><i data-lucide="sparkles" class="ic"></i><span>Personalization</span></div>
+            <div class="item"><i data-lucide="book-open" class="ic"></i><span>Knowledge base</span></div>
+            <div class="item"><i data-lucide="brain" class="ic"></i><span>Memories</span><span class="count">11</span></div>
+          </div>
+
+          <div class="side-footer">
+            <div class="avatar">JY</div>
+            <div class="who">
+              <b>Jiho Yang</b>
+              <span>Free plan</span>
+            </div>
+            <div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+          </div>
+        </div>
+
+        <!-- MAIN -->
+        <div class="main">
+          <div class="topbar">
+            <div class="breadcrumb">
+              <span class="crumb-brand"><span class="logo">W</span>Wildgrove</span>
+              <span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <b>Home</b>
+            </div>
+            <div class="actions">
+              <div class="btn sm">
+                <i data-lucide="folder-plus" class="ic"></i>
+                New canvas
+              </div>
+            </div>
+          </div>
+
+          <div class="content">
+
+            <div class="greeting">
+              <div class="hello">Good morning, Jiho</div>
+            </div>
+
+            <div class="composer">
+              <div class="composer-input-wrap">
+                <div class="composer-input">
+                  <span class="typed">Spring drop teaser email · Wildgrove</span>
+                </div>
+                <div class="composer-input-tools">
+                  <div class="attach-grp">
+                    <button class="attach" title="Attach files"><i data-lucide="plus" class="ic"></i></button>
+                  </div>
+                  <div class="grow"></div>
+                  <span class="hint"><kbd>⌘</kbd> <kbd>↵</kbd></span>
+                  <div class="btn accent go">
+                    Generate on canvas
+                    <i data-lucide="arrow-right" class="ic"></i>
+                  </div>
+                </div>
+              </div>
+
+              <div class="composer-chips">
+                <div class="composer-chip"><i data-lucide="tag" class="ic"></i>Promote a sale</div>
+                <div class="composer-chip"><i data-lucide="package" class="ic"></i>Showcase a product</div>
+                <div class="composer-chip"><i data-lucide="book-open" class="ic"></i>Teach customers</div>
+                <div class="composer-chip"><i data-lucide="quote" class="ic"></i>Share reviews</div>
+                <div class="composer-chip"><i data-lucide="users" class="ic"></i>Build community</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Reference snapshot for B11.2 / B11.3.</strong> The composer wrap (1px <code>--line</code> border, 14px radius, 18/20/12 padding, 760px max-width centered) is the exact dimension B11.2 + B11.3 inherit byte-identical. Submit-button replacement, caption fade-in, and content fade in later scenes all happen INSIDE this wrap — chrome never moves.</li>
+      <li><strong>Brand here is "Wildgrove"</strong> — different from 03's "Nike" sample to avoid the visual cue that this is just a re-shoot. Same brand-switch chrome, just different sample data.</li>
+      <li><strong>Prompt content was deliberately chosen.</strong> "Spring drop teaser email · Wildgrove" is short enough to not wrap to a second line in B11.1; B11.2 uses a slightly longer prompt to demonstrate 2-line wrap behavior; B11.3 echoes the typed prompt as the "review" line.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     B11.2 · Composer submitting (in-flight)
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE B11 · §2 · B11.2 · Composer submitting</div>
+    <h2>B11.2 · Composer submitting</h2>
+    <p class="intro">User just clicked Generate. The prompt is in flight (POST <code>/api/canvases</code> creating the row + initializing the Yjs doc). Same chrome as B11.1 byte-identical — only the composer interior changes: input goes read-only with prompt text dimmed slightly (<code>--ink-2</code>); the <code>arrow-right</code> in the submit button is replaced inline by Lucide <code>loader-2</code> spinning at 14×14; the caption "Creating canvas…" fades in below the wrap. The wrap dimensions, borders, and 14px radius do not move — preserving the user's reference point.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Composer submitting · in-flight (read-only input + spinner)</div><div class="id">B11.2 · /dashboard</div></div>
+    <div class="canvas" data-screen-label="B11.2 · Composer submitting">
+      <div class="app">
+
+        <!-- SIDEBAR (same as B11.1, unchanged) -->
+        <div class="sidebar">
+          <div class="brand-switch">
+            <div class="logo">W</div>
+            <div class="name">Wildgrove</div>
+            <div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div>
+          </div>
+          <div class="side-search">
+            <i data-lucide="search" style="width:13px;height:13px;"></i>
+            <span>Search</span>
+            <span class="kbd">⌘K</span>
+          </div>
+
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item active"><i data-lucide="clock-4" class="ic"></i><span>Recents</span></div>
+            <div class="item"><i data-lucide="calendar-days" class="ic"></i><span>Calendar</span><span class="count">9</span></div>
+
+            <div class="section">Library</div>
+            <div class="item"><i data-lucide="bookmark" class="ic"></i><span>Swipes</span></div>
+            <div class="item"><i data-lucide="layout-template" class="ic"></i><span>Templates</span></div>
+            <div class="item"><i data-lucide="package" class="ic"></i><span>Products</span><span class="count">142</span></div>
+
+            <div class="section">Brand</div>
+            <div class="item"><i data-lucide="sparkles" class="ic"></i><span>Personalization</span></div>
+            <div class="item"><i data-lucide="book-open" class="ic"></i><span>Knowledge base</span></div>
+            <div class="item"><i data-lucide="brain" class="ic"></i><span>Memories</span><span class="count">11</span></div>
+          </div>
+
+          <div class="side-footer">
+            <div class="avatar">JY</div>
+            <div class="who">
+              <b>Jiho Yang</b>
+              <span>Free plan</span>
+            </div>
+            <div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+          </div>
+        </div>
+
+        <!-- MAIN -->
+        <div class="main">
+          <div class="topbar">
+            <div class="breadcrumb">
+              <span class="crumb-brand"><span class="logo">W</span>Wildgrove</span>
+              <span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <b>Home</b>
+            </div>
+            <div class="actions">
+              <div class="btn sm">
+                <i data-lucide="folder-plus" class="ic"></i>
+                New canvas
+              </div>
+            </div>
+          </div>
+
+          <div class="content">
+
+            <div class="greeting">
+              <div class="hello">Good morning, Jiho</div>
+            </div>
+
+            <div class="composer">
+              <div class="composer-input-wrap">
+                <div class="composer-input submitting">
+                  <span class="typed">Spring drop teaser — first send announcing the new collection, soft CTA to the lookbook · Wildgrove</span>
+                </div>
+                <div class="composer-input-tools">
+                  <div class="attach-grp">
+                    <button class="attach" title="Attach files" disabled><i data-lucide="plus" class="ic"></i></button>
+                  </div>
+                  <div class="grow"></div>
+                  <span class="hint"><kbd>⌘</kbd> <kbd>↵</kbd></span>
+                  <div class="btn accent go go-spin" aria-busy="true" aria-label="Creating canvas">
+                    <i data-lucide="loader-2" class="spinner"></i>
+                  </div>
+                </div>
+              </div>
+
+              <div class="composer-status">Creating canvas…</div>
+
+              <div class="composer-chips">
+                <div class="composer-chip"><i data-lucide="tag" class="ic"></i>Promote a sale</div>
+                <div class="composer-chip"><i data-lucide="package" class="ic"></i>Showcase a product</div>
+                <div class="composer-chip"><i data-lucide="book-open" class="ic"></i>Teach customers</div>
+                <div class="composer-chip"><i data-lucide="quote" class="ic"></i>Share reviews</div>
+                <div class="composer-chip"><i data-lucide="users" class="ic"></i>Build community</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Long prompt wraps to 2 lines, wrap height grows.</strong> The input has <code>min-height: 56px</code> in the lifted styling — 1-line prompts sit at 56px, 2-line prompts grow naturally. The wrap padding (18/20/12) absorbs the extra height; chips below stay aligned to wrap-bottom.</li>
+      <li><strong>Spinner replaces arrow inline.</strong> The submit button slot keeps its 999px-pill outer chrome (<code>.go-spin</code> mirrors <code>.btn.accent.go</code> geometry) so the wrap right-edge doesn't shift. Lucide <code>loader-2</code> spins via CSS <code>cv-spin 1s linear infinite</code> — declared at file scope, no token redefinition.</li>
+      <li><strong>"Creating canvas…" appears via 200ms fade-in.</strong> The fade prevents a layout-shift "pop" — first-time users notice subtle motion as feedback. The caption is <code>--t-meta</code> (11.5px) ink-3 to read as a quiet status line, not a heading.</li>
+      <li><strong>Attach button disabled.</strong> No <code>+</code> attachments mid-submit. The native <code>disabled</code> attribute carries the affordance; styling stays the canonical <code>.composer-input-tools .attach</code>.</li>
+      <li><strong>Chips remain visible but unaffected.</strong> They're click-targets a returning user might use after the submit completes; no need to dim them. They stay in idle styling.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     B11.3 · Composer transition (almost there — content fades)
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE B11 · §3 · B11.3 · Composer transition (almost there)</div>
+    <h2>B11.3 · Almost there — main content fading to canvas</h2>
+    <p class="intro">Canvas record was created server-side, Yjs doc is initializing, redirect to the new canvas is imminent (≤500ms). Same chrome as B11.1 / B11.2; the composer interior swaps to a quiet "review" line of the original prompt (the user can confirm what they submitted), the caption swaps to the prompt-echo + accent <code>check</code>-tick, and the entire main-pane content area fades to 0.5 opacity. Sidebar + topbar stay full-opacity so the user has a stable reference point — they're not lost in the transition, just told "we're handing you off."</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Composer transition · review line + check + content fade</div><div class="id">B11.3 · /dashboard → /canvas/:id</div></div>
+    <div class="canvas" data-screen-label="B11.3 · Composer transition">
+      <div class="app">
+
+        <!-- SIDEBAR (same as B11.1, full opacity — anchor) -->
+        <div class="sidebar">
+          <div class="brand-switch">
+            <div class="logo">W</div>
+            <div class="name">Wildgrove</div>
+            <div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div>
+          </div>
+          <div class="side-search">
+            <i data-lucide="search" style="width:13px;height:13px;"></i>
+            <span>Search</span>
+            <span class="kbd">⌘K</span>
+          </div>
+
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item active"><i data-lucide="clock-4" class="ic"></i><span>Recents</span></div>
+            <div class="item"><i data-lucide="calendar-days" class="ic"></i><span>Calendar</span><span class="count">9</span></div>
+
+            <div class="section">Library</div>
+            <div class="item"><i data-lucide="bookmark" class="ic"></i><span>Swipes</span></div>
+            <div class="item"><i data-lucide="layout-template" class="ic"></i><span>Templates</span></div>
+            <div class="item"><i data-lucide="package" class="ic"></i><span>Products</span><span class="count">142</span></div>
+
+            <div class="section">Brand</div>
+            <div class="item"><i data-lucide="sparkles" class="ic"></i><span>Personalization</span></div>
+            <div class="item"><i data-lucide="book-open" class="ic"></i><span>Knowledge base</span></div>
+            <div class="item"><i data-lucide="brain" class="ic"></i><span>Memories</span><span class="count">11</span></div>
+          </div>
+
+          <div class="side-footer">
+            <div class="avatar">JY</div>
+            <div class="who">
+              <b>Jiho Yang</b>
+              <span>Free plan</span>
+            </div>
+            <div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+          </div>
+        </div>
+
+        <!-- MAIN — topbar full opacity, content fades -->
+        <div class="main">
+          <div class="topbar">
+            <div class="breadcrumb">
+              <span class="crumb-brand"><span class="logo">W</span>Wildgrove</span>
+              <span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <b>Home</b>
+            </div>
+            <div class="actions">
+              <div class="btn sm">
+                <i data-lucide="folder-plus" class="ic"></i>
+                New canvas
+              </div>
+            </div>
+          </div>
+
+          <div class="content transition-fade">
+
+            <div class="greeting">
+              <div class="hello">Good morning, Jiho</div>
+            </div>
+
+            <div class="composer">
+              <div class="composer-input-wrap">
+                <div class="composer-input review">
+                  <span class="typed">Spring drop teaser — first send announcing the new collection, soft CTA to the lookbook · Wildgrove</span>
+                </div>
+                <div class="composer-input-tools">
+                  <div class="attach-grp">
+                    <button class="attach" title="Attach files" disabled><i data-lucide="plus" class="ic"></i></button>
+                  </div>
+                  <div class="grow"></div>
+                  <span class="hint"><kbd>⌘</kbd> <kbd>↵</kbd></span>
+                  <div class="go-spin" aria-busy="true" aria-label="Opening canvas">
+                    <i data-lucide="loader-2" class="spinner"></i>
+                  </div>
+                </div>
+              </div>
+
+              <div class="composer-status ready">
+                <i data-lucide="check" class="tick"></i>
+                <span>Spring drop teaser · Wildgrove · ready</span>
+              </div>
+
+              <div class="composer-chips">
+                <div class="composer-chip"><i data-lucide="tag" class="ic"></i>Promote a sale</div>
+                <div class="composer-chip"><i data-lucide="package" class="ic"></i>Showcase a product</div>
+                <div class="composer-chip"><i data-lucide="book-open" class="ic"></i>Teach customers</div>
+                <div class="composer-chip"><i data-lucide="quote" class="ic"></i>Share reviews</div>
+                <div class="composer-chip"><i data-lucide="users" class="ic"></i>Build community</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Content fades, sidebar + topbar don't.</strong> <code>.content.transition-fade</code> (extension class layered below the lifted <code>.content</code>) drops opacity to 0.5 + disables pointer-events so the user can't accidentally click chips during the redirect. The sidebar and topbar stay full-opacity — the user is still anchored in the same brand, the same nav state, the same crumb. Only the workspace below has shifted.</li>
+      <li><strong>Prompt is preserved as a review line.</strong> The original typed text becomes a quiet <code>--ink-2</code> read-only line (the same paragraph weight Klaviyo email subjects use). Confirms the prompt wasn't lost mid-submit — important for first-time users who fear the submit "ate" their words.</li>
+      <li><strong>Status caption swaps to the prompt-echo + accent check.</strong> "Spring drop teaser · Wildgrove · ready" with a small <code>--accent</code> tick. The accent earns its appearance here because the canvas IS ready — handing the user off to a successful state. (Same accent rule as design.md §1.1: one accent, used for affirmative selection / completion.)</li>
+      <li><strong>Spinner stays on the submit button.</strong> Even though the canvas is "ready," the spinner doesn't switch to a check-icon — the spinner represents the redirect, which IS still in flight. When the redirect lands, the canvas page replaces this surface entirely; users never see the spinner finish.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     B11.4 · Hand-off splash (full-viewport, ≤500ms in production)
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE B11 · §4 · B11.4 · Hand-off splash</div>
+    <h2>B11.4 · Opening canvas… (full-viewport hand-off)</h2>
+    <p class="intro">Brief moment between dashboard fade-out and canvas-page mount. Full viewport, no app chrome — same dark plate (<code>--bg</code>) the canvas itself uses, so the splash → canvas transition reads as "I'm already on the canvas, content is loading" rather than "another page loaded." Centered Lucide <code>loader-2</code> spinner + caption "Opening canvas…". Lasts ≤500ms in production; designer call to include this scene per CHUNK_3 §6.1 — including it makes the full transition arc explicit for the implementer (B11.1 → B11.2 → B11.3 → B11.4 → canvas mount).</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Hand-off splash · /canvas/:id (mount window)</div><div class="id">B11.4 · hi-fi</div></div>
+    <div class="canvas tall" data-screen-label="B11.4 · Hand-off splash">
+      <div class="splash-stage">
+        <i data-lucide="loader-2" class="splash-spinner spinner" aria-label="Opening canvas"></i>
+        <div class="splash-cap">Opening canvas…</div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Designer-called: included.</strong> CHUNK_3 §6.1 flagged B11.4 as optional. Including it makes the implementer's transition map explicit: B11.1 (idle) → B11.2 (submit, ~600ms) → B11.3 (almost-there, 240ms fade) → B11.4 (splash, ≤500ms) → canvas-mount. Without B11.4 the implementer has to invent the splash; with it, the visual is locked.</li>
+      <li><strong>Same dark plate as the canvas itself.</strong> Splash bg = <code>--bg</code> — the canvas-plate token from design.md §1.1. The splash → canvas transition appears as "the canvas was always there, the content just hadn't loaded" rather than "a different page loaded then jumped." Visual continuity beats any ergonomic gain from a colored splash.</li>
+      <li><strong>No mark, just spinner + caption.</strong> User just left a Kova-branded surface (B11.3) — restating the brand here adds nothing. Spinner alone keeps the splash quiet; caption carries the verb.</li>
+      <li><strong>≤500ms total budget.</strong> If the canvas isn't ready in 500ms, the spinner has done its job and the user is now waiting on a slow load — not a transition. At that point, the canvas page should mount with its OWN skeleton state (out of scope here; lives in Batch B). B11.4 is the bridge, not the destination.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     Cross-surface notes
+     ============================================================ -->
+<section class="block" style="background: var(--page);">
+  <header>
+    <div class="tag">Coherence notes — what this file commits to</div>
+    <h2>What B11 commits to</h2>
+  </header>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;max-width:1080px;font-size:12.5px;color:var(--ink-2);line-height:1.55;">
+    <div style="background: var(--page); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px;">
+      <h3 style="margin:0 0 8px;font-size:14px;color:var(--ink);font-weight:600;letter-spacing:-0.005em;">Lifted from 03 dashboard (per-file chrome)</h3>
+      <ul style="margin:6px 0 0;padding-left:18px;">
+        <li><code>.composer</code> · 760px max-width centered wrapper</li>
+        <li><code>.composer-input-wrap</code> · 14px radius, 18/20/12 padding, 1px <code>--line</code> border, focus-within → <code>--ink-3</code></li>
+        <li><code>.composer-input</code> · 15px ink, 56px min-height</li>
+        <li><code>.composer-input-tools</code> + <code>.attach</code> + <code>.go</code> · pill submit button geometry</li>
+        <li><code>.composer-chips</code> + <code>.composer-chip</code> · 999px chips, 7/14 padding</li>
+        <li><code>.greeting</code> + <code>.greeting .hello</code> · 28px greeting</li>
+      </ul>
+    </div>
+    <div style="background: var(--page); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px;">
+      <h3 style="margin:0 0 8px;font-size:14px;color:var(--ink);font-weight:600;letter-spacing:-0.005em;">Used by name from canonical CSS</h3>
+      <ul style="margin:6px 0 0;padding-left:18px;">
+        <li><code>.app</code> · grid sidebar+main shell</li>
+        <li><code>.sidebar</code> + children (<code>.brand-switch</code> · <code>.side-search</code> · <code>.nav</code> · <code>.nav .item</code> · <code>.nav .item.active</code> · <code>.side-footer</code> · <code>.kbd</code>)</li>
+        <li><code>.main</code> · <code>.topbar</code> · <code>.breadcrumb</code> · <code>.crumb-brand</code> · <code>.content</code></li>
+        <li><code>.btn</code> · <code>.btn.sm</code> · <code>.btn.accent</code> + variants</li>
+        <li><code>.page-head</code> · <code>section.block</code> · <code>.screen</code> · <code>.cap</code> · <code>.canvas</code> · <code>.canvas.tall</code> · <code>.annot</code> doc chrome</li>
+      </ul>
+    </div>
+    <div style="background: var(--page); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px;">
+      <h3 style="margin:0 0 8px;font-size:14px;color:var(--ink);font-weight:600;letter-spacing:-0.005em;">New extension classes (8, all append-only)</h3>
+      <ul style="margin:6px 0 0;padding-left:18px;">
+        <li><code>.composer-input.submitting</code> · read-only state (B11.2)</li>
+        <li><code>.composer-input.review</code> · review-line state (B11.3)</li>
+        <li><code>.composer-status</code> + <code>.composer-status.ready .tick</code> · caption + accent check-tick</li>
+        <li><code>.composer-input-tools .go-spin</code> · spinner-replacing-arrow submit button</li>
+        <li><code>.spinner</code> + <code>@keyframes cv-spin</code> · CSS rotation for Lucide <code>loader-2</code></li>
+        <li><code>@keyframes cv-fade-in</code> · 200ms caption fade-in</li>
+        <li><code>.content.transition-fade</code> · main-pane fade (B11.3)</li>
+        <li><code>.splash-stage</code> + <code>.splash-spinner</code> + <code>.splash-cap</code> · B11.4 full-viewport splash</li>
+      </ul>
+    </div>
+    <div style="background: var(--page); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px;">
+      <h3 style="margin:0 0 8px;font-size:14px;color:var(--ink);font-weight:600;letter-spacing:-0.005em;">Tokens used (none new)</h3>
+      <ul style="margin:6px 0 0;padding-left:18px;">
+        <li>Surface: <code>--bg</code> · <code>--page</code> · <code>--rail</code> · <code>--fill</code></li>
+        <li>Ink: <code>--ink</code> · <code>--ink-2</code> · <code>--ink-3</code></li>
+        <li>Lines: <code>--line</code> · <code>--line-2</code></li>
+        <li>Accent: <code>--accent</code> (B11.3 ready-tick + spinner go-spin button bg)</li>
+        <li>The spinner-button (<code>.go-spin</code>) inherits accent fill + ink from canonical <code>.btn.accent</code> (the markup is <code>class="btn accent go go-spin"</code>). The extension only adds cursor + pointer-events + opacity overrides — no color or background re-declared. Spinner glyph color uses <code>currentColor</code> so it tracks the parent button's accent ink without naming a hex.</li>
+      </ul>
+    </div>
+    <div style="background: var(--page); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px;">
+      <h3 style="margin:0 0 8px;font-size:14px;color:var(--ink);font-weight:600;letter-spacing:-0.005em;">Chrome byte-identity check (B11.1 / B11.2 / B11.3)</h3>
+      <ul style="margin:6px 0 0;padding-left:18px;">
+        <li><strong>Sidebar.</strong> Same canonical declaration; same brand-switch + side-search + nav children across all three scenes.</li>
+        <li><strong>Topbar.</strong> Same breadcrumb + actions; "New canvas" button stays clickable (transition doesn't disable global nav).</li>
+        <li><strong>Composer wrap.</strong> Same 14px radius, same 18/20/12 padding, same 760px max-width. The submitting + review states only change the inner span's ink color; chrome dimensions never shift.</li>
+        <li><strong>What DOES change between scenes:</strong> input-state class on <code>.composer-input</code> (idle / submitting / review); submit-button content (arrow / spinner); caption presence (none / "Creating canvas…" / "ready" + tick); main-pane opacity (1 / 1 / 0.5).</li>
+      </ul>
+    </div>
+    <div style="background: var(--page); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px;">
+      <h3 style="margin:0 0 8px;font-size:14px;color:var(--ink);font-weight:600;letter-spacing:-0.005em;">Out of scope / deferred</h3>
+      <ul style="margin:6px 0 0;padding-left:18px;">
+        <li><strong>Failure-mode states</strong> (canvas-create POST 500, network drop mid-submit). Belongs to B2 error pages or a B11.5 follow-up; out of scope here.</li>
+        <li><strong>Slow-load skeleton</strong> if canvas takes &gt;500ms to mount. Lives in Batch B (canvas-side) — splash hands off there.</li>
+        <li><strong>Optimistic preview</strong> (showing partial canvas during creation). Out of scope; current backend creates canvases atomically.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+
+<footer style="padding:32px 56px;border-top:1px solid var(--line);background:var(--bg);color:var(--ink-3);font-size:11px;">
+  Kova · hi-fi · Batch A additions · CHUNK 3 · B11 Canvas Creation Transition · v1
+</footer>
+
+<script>
+  if (window.lucide) window.lucide.createIcons({ attrs: { 'stroke-width': 1.6 } });
+</script>
+</body>
+</html>

@@ -17,6 +17,11 @@ const BrandAssetsView = () => import('./views/dashboard/BrandAssetsView.vue')
 const BrandSettingsView = () => import('./views/dashboard/BrandSettingsView.vue')
 const SettingsBrandIntegrationsView = () => import('./views/dashboard/SettingsBrandIntegrationsView.vue')
 const SettingsView = () => import('./views/dashboard/SettingsView.vue')
+const TokensDebugView = () => import('./views/dev/TokensDebugView.vue')
+const Cluster11Showcase = () => import('./views/dev/Cluster11Showcase.vue')
+const NotFoundView = () => import('./views/error/NotFoundView.vue')
+const ServerErrorView = () => import('./views/error/ServerErrorView.vue')
+const NetworkUnreachableView = () => import('./views/error/NetworkUnreachableView.vue')
 
 interface AuthState {
   isAuthenticated: boolean
@@ -125,6 +130,36 @@ const routes = [
     path: '/demo',
     component: EditorView,
     meta: { demo: true, requiresAuth: false, publicOnly: false }
+  },
+  {
+    path: '/dev/tokens',
+    component: TokensDebugView,
+    meta: { demo: true, requiresAuth: false, publicOnly: false }
+  },
+  {
+    path: '/dev/cluster-11',
+    component: Cluster11Showcase,
+    meta: { demo: true, requiresAuth: false, publicOnly: false }
+  },
+  {
+    path: '/404',
+    component: NotFoundView,
+    meta: { demo: true, requiresAuth: false, publicOnly: false, theme: 'dark' }
+  },
+  {
+    path: '/500',
+    component: ServerErrorView,
+    meta: { demo: true, requiresAuth: false, publicOnly: false, theme: 'dark' }
+  },
+  {
+    path: '/network-unreachable',
+    component: NetworkUnreachableView,
+    meta: { demo: true, requiresAuth: false, publicOnly: false, theme: 'dark' }
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    component: NotFoundView,
+    meta: { demo: true, requiresAuth: false, publicOnly: false, theme: 'dark' }
   }
 ]
 

@@ -1,0 +1,1530 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<title>Kova — Hi-fi · B1 Toasts &amp; Snackbars · Dark</title>
+<meta name="viewport" content="width=1440" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+<link rel="stylesheet" href="../../../design-system/kova-hifi.css" />
+<script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
+<style>
+/* ============================================================
+   FILE B1 — Toast / snackbar system
+   Round-1 cleanup pass: all backdrop chrome is now LIFTED
+   verbatim from canonical sources. Account-page chrome from
+   `batch-a/dark/Kova Hi-Fi A7 Account Page - Dark.html`. Modal
+   `batch-a/dark/Kova Hi-Fi A7 Account Page - Dark.html`; .dlg
+   block from `batch-a/dark/Kova Hi-Fi A6+A2a Popovers + A8
+   Dialogs - Dark.html`. Modal-backdrop rgba corrected to the
+   post-rewire `--bg` at 72%.
+   Canvas-backdrop scenes (B1.3 · B1.5 · over-modal) are
+   intentionally scoped down to a dim plate per round-1 Q1 (the
+   real canvas chrome lives in `Kova Canvas - Final.html`, which
+   was excluded by the original brief §2 ignore list — we don't
+   reach into it just to render a backdrop).
+   No new tokens, no new fonts, no monospace on chrome.
+   ============================================================ */
+
+  body { background: var(--bg); }
+
+  /* Section heading bump (locked Batch A convention) */
+  section.block .s-section h2 {
+    margin: 0 0 2px; font-size: 16px;
+    letter-spacing: -0.005em;
+    color: var(--ink); font-weight: 600;
+    font-family: 'Inter', system-ui, sans-serif;
+    text-transform: none;
+  }
+
+  /* ---------- Stage dim helper (review-page only — not shipped) ---------- */
+  .stage-dim .topbar { opacity: 0.85; }
+  .stage-dim .sidebar { opacity: 0.92; }
+  .stage-dim .acc-rail { opacity: 0.90; }
+  .stage-dim .acc-main { opacity: 0.45; }
+
+  /* ============================================================
+     LIFTED VERBATIM from batch-a/dark/Kova Hi-Fi A7 Account
+     Page - Dark.html · style block lines 20–274 (subset relevant
+     to B1's backdrop scenes — full Account-page layout chrome).
+     Diff: zero changes from the source; round-1 cleanup §3.8.
+     ============================================================ */
+  .acc-frame { height: 100%; display: grid; grid-template-columns: 220px 1fr; background: var(--page); }
+
+  /* ---------- Account left-rail ---------- */
+  .acc-rail {
+    background: var(--rail);
+    border-right: 1px solid var(--line);
+    padding: 28px 12px 16px;
+    display: flex; flex-direction: column; gap: 4px;
+    min-height: 0; overflow: auto;
+  }
+  .acc-rail .title {
+    font-size: 17px; font-weight: 600; letter-spacing: -0.012em;
+    padding: 0 10px 14px; color: var(--ink);
+  }
+  .acc-rail .it {
+    display: flex; align-items: center; gap: 9px;
+    padding: 7px 10px; border-radius: 5px;
+    color: var(--ink-2); cursor: pointer; font-size: 13px;
+    transition: background .1s ease, color .1s ease;
+  }
+  .acc-rail .it:hover { background: var(--line-2); color: var(--ink); }
+  .acc-rail .it.active { background: var(--fill); color: var(--ink); font-weight: 500; }
+  .acc-rail .it .ic { width: 14px; height: 14px; opacity: .8; }
+  .acc-rail .it.active .ic { opacity: 1; }
+  .acc-rail .it.danger { color: var(--warn); }
+  .acc-rail .it.danger:hover { background: rgba(232,122,74,0.08); }
+  .acc-rail .sep {
+    height: 1px; background: var(--line-2);
+    margin: 10px 8px;
+  }
+
+  /* ---------- Main column ---------- */
+  .acc-main { overflow: auto; display: flex; flex-direction: column; }
+  .acc-hero {
+    padding: 40px 56px 24px;
+    border-bottom: 1px solid var(--line-2);
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 24px;
+  }
+  .acc-hero h1 {
+    margin: 0 0 6px; font-size: 24px; font-weight: 600; letter-spacing: -0.012em;
+  }
+  .acc-hero p {
+    margin: 0; color: var(--ink-2); font-size: 13.5px; max-width: 600px;
+  }
+  /* Brand-picker dropdown anchor (A2b) */
+  .brandpick {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 10px 6px 7px;
+    border: 1px solid var(--line); border-radius: 7px;
+    background: var(--page); cursor: pointer;
+    font-size: 12.5px; color: var(--ink);
+    transition: border-color .1s ease;
+  }
+  .brandpick:hover { border-color: var(--ink-3); }
+  .brandpick .logo {
+    width: 20px; height: 20px; border-radius: 4px;
+    background: var(--ink); color: var(--page);
+    display: grid; place-items: center;
+    font-weight: 700; font-size: 10px; letter-spacing: -0.02em;
+  }
+  .brandpick .nm { font-weight: 600; letter-spacing: -0.005em; }
+  .brandpick .caret { color: var(--ink-3); margin-left: 2px; }
+
+  .acc-content {
+    padding: 32px 56px 80px;
+    display: flex; flex-direction: column; gap: 36px;
+    max-width: 940px;
+  }
+
+  /* ---------- Section vocabulary (matches 06) ---------- */
+  .s-section { display: flex; flex-direction: column; gap: 12px; }
+  .acc-main .s-section h2 {
+    margin: 0 0 2px; font-size: 16px;
+    letter-spacing: -0.005em;
+    color: var(--ink); font-weight: 600;
+    font-family: 'Inter', system-ui, sans-serif;
+    text-transform: none;
+  }
+  .s-section .desc {
+    color: var(--ink-3); font-size: 12.5px; margin: 0; max-width: 640px;
+  }
+
+  /* ---------- Brand-Kit two-column ---------- */
+  .bk-wrap { display: grid; grid-template-columns: 188px 1fr; gap: 24px; }
+  .bk-subnav {
+    display: flex; flex-direction: column; gap: 1px;
+    position: sticky; top: 16px; align-self: start;
+  }
+  .bk-subnav .it {
+    display: flex; align-items: center; gap: 9px;
+    padding: 6px 10px; border-radius: 5px;
+    color: var(--ink-2); cursor: pointer; font-size: 12.5px;
+  }
+  .bk-subnav .it:hover { background: var(--line-2); color: var(--ink); }
+  .bk-subnav .it.active { background: var(--fill); color: var(--ink); font-weight: 500; }
+  .bk-subnav .it .ic { width: 13px; height: 13px; opacity: .8; }
+  .bk-subnav .head { font-size: 10px; color: var(--ink-3);
+    padding: 0 10px 6px; font-weight: 500;
+  }
+  .bk-pane { min-width: 0; display: flex; flex-direction: column; gap: 18px; }
+
+  /* ---------- Snippet / saved-block list rows ---------- */
+  .list-stack {
+    border: 1px solid var(--line); border-radius: 7px;
+    overflow: hidden; background: var(--page);
+  }
+  .list-row {
+    display: grid; grid-template-columns: 24px 200px 1fr auto;
+    gap: 14px; align-items: start;
+    padding: 12px 16px;
+    border-top: 1px solid var(--line-2);
+  }
+  .list-row:first-child { border-top: 0; }
+  .list-row .grip {
+    color: var(--ink-3); padding-top: 2px; cursor: grab;
+  }
+  .list-row .lbl-col {
+    font-weight: 500; font-size: 13px; color: var(--ink);
+    letter-spacing: -0.005em; padding-top: 1px;
+  }
+  .list-row .lbl-col .tag-mono {
+    margin-top: 4px; display: inline-block;
+  }
+  .list-row .content-col {
+    font-size: 12.5px; color: var(--ink-2); line-height: 1.5;
+    min-width: 0;
+  }
+  .list-row .actions-col {
+    display: flex; gap: 4px;
+    color: var(--ink-3);
+  }
+  .list-row .actions-col .ac {
+    width: 26px; height: 26px; border-radius: 4px;
+    display: grid; place-items: center; cursor: pointer;
+  }
+  .list-row .actions-col .ac:hover { background: var(--fill); color: var(--ink); }
+  .list-add {
+    padding: 10px 16px;
+    border-top: 1px solid var(--line-2);
+    background: var(--rail);
+    color: var(--ink-2);
+    cursor: pointer; font-size: 12.5px;
+    display: flex; align-items: center; gap: 7px;
+    transition: color .1s ease, background .1s ease;
+  }
+  .list-add:hover { color: var(--ink); background: var(--line-2); }
+  .list-add .ic { width: 13px; height: 13px; }
+
+  /* ============================================================
+     LIFTED VERBATIM from batch-a/dark/Kova Hi-Fi A6+A2a
+     Popovers + A8 Dialogs - Dark.html · style block lines 36–86.
+     Diff vs source: ONE change — modal-backdrop background
+     updated from the pre-rewire warm-brown rgba to a token-
+     equivalent rgba derived from post-rewire `--bg` at 72%.
+     Round-1 cleanup §3.8 / round-2 brief §3.8 modal-backdrop fix.
+     ============================================================ */
+  .modal-backdrop {
+    position: absolute; inset: 0;
+    background: rgba(26,26,29,0.72);
+    backdrop-filter: blur(2px);
+    z-index: 5;
+  }
+  .dlg {
+    position: absolute; left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--page); border: 1px solid var(--line);
+    border-radius: 10px; box-shadow: 0 24px 80px -20px rgba(0,0,0,0.7), 0 1px 0 rgba(255,255,255,0.03) inset;
+    z-index: 10;
+    display: flex; flex-direction: column;
+    min-width: 360px; max-width: 92%;
+  }
+  .dlg.sm { width: 460px; }
+  .dlg.md { width: 540px; }
+  .dlg.lg { width: 880px; max-height: 78%; }
+  .dlg .dlg-head {
+    padding: 18px 22px 12px;
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
+  }
+  .dlg .dlg-head h3 {
+    margin: 0; font-size: 16px; font-weight: 600; letter-spacing: -0.005em; color: var(--ink);
+  }
+  .dlg .dlg-head .sub {
+    margin: 4px 0 0; font-size: 12.5px; color: var(--ink-3); line-height: 1.5;
+  }
+  .dlg .dlg-head .x {
+    width: 26px; height: 26px; border-radius: 5px;
+    display: grid; place-items: center; color: var(--ink-3); cursor: pointer;
+    flex-shrink: 0;
+  }
+  .dlg .dlg-head .x:hover { background: var(--line-2); color: var(--ink); }
+  .dlg .dlg-body {
+    padding: 4px 22px 18px;
+    display: flex; flex-direction: column; gap: 14px;
+    min-height: 0;
+  }
+  .dlg .dlg-body.flush { padding: 0; }
+  .dlg .dlg-foot {
+    padding: 14px 22px;
+    border-top: 1px solid var(--line-2);
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    background: var(--rail);
+    border-bottom-left-radius: 10px; border-bottom-right-radius: 10px;
+  }
+  .dlg .dlg-foot .l { color: var(--ink-3); font-size: 11.5px; display: flex; align-items: center; gap: 6px; }
+  .dlg .dlg-foot .r { display: flex; gap: 8px; }
+
+  /* ============================================================
+     LIFTED VERBATIM from batch-a/dark/Kova Hi-Fi 03 Brand Dashboard
+     - Dark.html · style block lines 119-253 (sidebar rules) +
+     lines 927-935 (dark-theme overrides). Diff: zero. Carries
+     light-mode hex literals from source AS-IS — they're shadowed
+     by the [data-theme="dark"] overrides also lifted, so the
+     rendering in dark is correct. Round-1 cleanup §3.8.
+     ============================================================ */
+
+  /* Sidebar */
+  .sidebar {
+    background: #fafaf8;
+    border-right: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    padding: 10px 10px 8px;
+    gap: 10px;
+    font-size: 13px;
+    min-height: 0;
+  }
+  .brand-switch {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    background: #fff;
+    cursor: pointer;
+    transition: border-color 0.12s ease;
+  }
+  .brand-switch:hover { border-color: var(--ink-3); }
+  .brand-switch .logo {
+    width: 24px; height: 24px;
+    border-radius: 5px;
+    background: #111;
+    color: #fff;
+    display: grid; place-items: center;
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: -0.02em;
+    flex-shrink: 0;
+  }
+  .brand-switch .name { font-weight: 600; flex: 1; letter-spacing: -0.005em; }
+  .brand-switch .caret { color: var(--ink-3); display: grid; place-items: center; }
+
+  .side-search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: #fff;
+    color: var(--ink-3);
+    font-size: 12.5px;
+    cursor: text;
+  }
+  .side-search .kbd {
+    margin-left: auto;
+    font-size: 10px;
+    color: var(--ink-3);
+    background: var(--fill);
+    padding: 1px 5px;
+    border-radius: 3px;
+    border: 1px solid var(--line-2);
+  }
+
+  .nav {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    margin-top: 2px;
+  }
+  .nav .section {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--ink-3);
+    padding: 12px 10px 4px;
+    font-weight: 500;
+  }
+  .nav .item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 6px 10px;
+    border-radius: 5px;
+    color: var(--ink-2);
+    cursor: pointer;
+    font-size: 13px;
+    transition: background 0.1s ease, color 0.1s ease;
+  }
+  .nav .item:hover { background: var(--line-2); color: var(--ink); }
+  .nav .item.active {
+    background: var(--fill);
+    color: var(--ink);
+    font-weight: 500;
+  }
+  .nav .item .ic {
+    width: 15px; height: 15px;
+    color: currentColor;
+    opacity: 0.75;
+    flex-shrink: 0;
+  }
+  .nav .item.active .ic { opacity: 1; }
+  .nav .item .count {
+    margin-left: auto;
+    font-size: 10.5px;
+    color: var(--ink-3);
+  }
+
+  .side-footer {
+    margin-top: auto;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 8px;
+    border-top: 1px solid var(--line-2);
+    color: var(--ink-2);
+    font-size: 12px;
+  }
+  .side-footer .avatar {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    background: var(--warn);
+    color: #fff;
+    display: grid; place-items: center;
+    font-weight: 600;
+    font-size: 10.5px;
+    letter-spacing: 0.01em;
+  }
+  .side-footer .who { display: flex; flex-direction: column; line-height: 1.2; }
+  .side-footer .who b { color: var(--ink); font-weight: 600; font-size: 12px; }
+  .side-footer .who span { color: var(--ink-3); font-size: 10.5px; }
+  .side-footer .more {
+    margin-left: auto;
+    color: var(--ink-3);
+    padding: 4px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .side-footer .more:hover { color: var(--ink); background: var(--line-2); }
+
+  /* App chrome — dark-theme overrides (lifted from 03 lines 927-935) */
+  [data-theme="dark"] .app { background: var(--page); }
+  [data-theme="dark"] .main { background: var(--page); }
+  [data-theme="dark"] .topbar { background: var(--page); border-color: var(--line); }
+  [data-theme="dark"] .sidebar { background: var(--rail); border-color: var(--line); }
+  [data-theme="dark"] .brand-switch { background: var(--page); border-color: var(--line); }
+  [data-theme="dark"] .brand-switch .logo { background: #ededea; color: #0d0d0c; }
+  [data-theme="dark"] .side-search { background: var(--page); border-color: var(--line); color: var(--ink-3); }
+  [data-theme="dark"] .side-search .kbd { background: var(--fill); border-color: var(--line-2); }
+
+  /* ---------- Dim plate (canvas-scope-down) ----------
+     Replaces the round-1 hand-drawn 56px-rail canvas
+     approximation used in B1.3 / B1.5 / over-modal. Per Q1
+     round-1 answer (b), these scenes scope down rather than
+     lift the canvas chrome from `Kova Canvas - Final.html`.
+     The toast/dialog still reads against a real dark plate. */
+  .dim-plate {
+    height: 100%; background: var(--bg);
+    display: grid; place-items: center;
+    color: var(--ink-3); font-size: 11px;
+    letter-spacing: 0.1em; text-transform: uppercase;
+  }
+
+  /* ============================================================
+     B1 TOAST COMPONENT (new — flagged in delivery notes)
+     Built on existing surface/ink/accent/warn ramps.
+     ============================================================ */
+  .toast-stack {
+    position: absolute;
+    bottom: 22px; right: 22px;
+    display: flex; flex-direction: column; gap: 8px;
+    align-items: flex-end;
+    z-index: 20;
+    pointer-events: none;
+    max-width: 420px;
+  }
+  .toast {
+    pointer-events: auto;
+    display: flex; align-items: flex-start; gap: 11px;
+    min-width: 280px; max-width: 420px;
+    padding: 12px 14px;
+    background: var(--page);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    box-shadow:
+      0 8px 24px -6px rgba(0,0,0,0.6),
+      0 1px 0 rgba(255,255,255,0.04) inset;
+    font-size: 12.5px;
+    color: var(--ink);
+    line-height: 1.45;
+  }
+  .toast .ic-lead {
+    flex-shrink: 0;
+    width: 14px; height: 14px;
+    color: var(--ink-2);
+    margin-top: 2px;
+  }
+  .toast .body {
+    flex: 1; min-width: 0;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .toast .msg { color: var(--ink); word-wrap: break-word; overflow-wrap: anywhere; }
+  .toast .msg b { font-weight: 600; }
+  .toast .meta { color: var(--ink-3); font-size: 11.5px; }
+  .toast .row-actions {
+    display: flex; gap: 14px; align-items: center;
+    margin-top: 2px;
+  }
+  .toast .ta {
+    font-size: 12px; font-weight: 500;
+    color: var(--accent);
+    cursor: pointer;
+    background: transparent; border: 0; padding: 0;
+    letter-spacing: -0.003em;
+    font-family: inherit;
+  }
+  .toast .ta:hover { text-decoration: underline; }
+  .toast .ta.muted { color: var(--ink-3); font-weight: 400; }
+  .toast .ta.muted:hover { color: var(--ink-2); text-decoration: none; }
+  .toast .dismiss {
+    flex-shrink: 0;
+    width: 18px; height: 18px;
+    border-radius: 3px;
+    display: grid; place-items: center;
+    color: var(--ink-3); cursor: pointer;
+    margin-top: -1px; margin-right: -4px;
+  }
+  .toast .dismiss:hover { color: var(--ink); background: var(--line-2); }
+  .toast .dismiss .ic { width: 13px; height: 13px; }
+
+  /* Variants — variant ink/edge only; structure is identical */
+  .toast.success .ic-lead { color: var(--ink-2); }
+  .toast.error   .ic-lead { color: var(--warn); }
+  .toast.error            { border-color: var(--warn-edge); }
+  .toast.info    .msg     { color: var(--ink-2); }
+  .toast.info    .ic-lead { color: var(--ink-3); }
+  .toast.action  .ic-lead { color: var(--ink-2); }
+  .toast.ai      .ic-lead { color: var(--accent-ink); }
+  .toast.ai               { border-color: var(--accent-2); }
+
+  /* Anchor pin (re-used from A6+A2a — points at toast region) */
+  .anchor-pin {
+    position: absolute; z-index: 4;
+    pointer-events: none;
+  }
+  .anchor-pin .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    border: 2px solid var(--accent); background: var(--page);
+  }
+  .anchor-pin .lbl {
+    position: absolute; right: 14px; top: -2px;
+    background: var(--page); color: var(--ink-2);
+    border: 1px solid var(--line); border-radius: 4px;
+    padding: 2px 6px; font-size: 10.5px; letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+
+  /* Top-right avatar (anchor parity with A6+A2a backdrop) */
+  .top-avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--fill-2); color: var(--ink);
+    display: grid; place-items: center;
+    font-weight: 600; font-size: 10.5px;
+    cursor: pointer; border: 2px solid transparent;
+  }
+
+</style>
+</head>
+<body data-screen-label="B1 Toasts">
+
+<header class="page-head">
+  <div class="eyebrow">HI-FI · BATCH A ADDITIONS · DARK · FILE B1 · ROUND-1 CLEANUP</div>
+  <h1>Toasts &amp; snackbars · B1.1–B1.6</h1>
+  <p>One floating-element pattern that every CRUD action in Kova reaches for. Five variants (success · error · info · action · AI), anchored bottom-right per the design.md §3.12 floating-element convention. Stack ordering is oldest-bottom; the newest toast appears at the top of the visible cluster. Errors are sticky and carry an inline retry; everything else auto-dismisses. Two edge cases shown: long-content wrap and z-order over an open dialog. <strong>Round-1 cleanup:</strong> all backdrop chrome is now LIFTED verbatim from A7 + A6+A2a (no more reconstruction); modal-backdrop rgba corrected to post-rewire <code>--bg</code>; canvas-context scenes scoped down to a dim plate per Q1.</p>
+  <div class="meta">6 toast scenes · 1 long-content edge · 1 over-modal edge · backdrops lifted from A7 · .dlg lifted from A6+A2a</div>
+  <div class="legend">
+    <span class="sw"><i style="background: var(--ink);"></i>primary action</span>
+    <span class="sw"><i style="background: var(--accent);"></i>accent (action)</span>
+    <span class="sw"><i style="background: var(--accent-ink);"></i>AI accent</span>
+    <span class="sw"><i style="background: var(--warn);"></i>warn (error · degraded to ink-2 until status palette ships)</span>
+  </div>
+</header>
+
+
+<!-- ============================================================
+     §1 · Single-toast variants (B1.1 – B1.5)
+     Backdrops are LIFTED from A7 (Tone snippets + Saved blocks
+     + Knowledge base) for the dashboard-context scenes.
+     ============================================================ -->
+
+<!-- ---------- B1.1 Success (over A7 · Tone snippets) ---------- -->
+<section class="block">
+  <header>
+    <div class="tag">FILE B1 · §1 · B1.1 Success</div>
+    <h2>B1.1 · Success toast</h2>
+    <p class="intro">Triggered after a successful CRUD action ("Snippet saved", "Brand renamed", "Connection added"). Lead glyph: Lucide <code>check</code> in ink-2. Auto-dismiss 4s. Single-line content. Dismissible at any time via the trailing × button. Backdrop = A7 → Brand Kit → Tone snippets (lifted verbatim).</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Account · Brand Kit · Tone snippets · success toast (auto-dismiss 4s)</div><div class="id">B1.1 · hi-fi</div></div>
+    <div class="canvas tall" data-screen-label="B1.1 Success">
+      <div class="app stage-dim">
+        <div class="sidebar">
+          <div class="brand-switch">
+            <div class="logo">N</div>
+            <div class="name">Nike</div>
+            <div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div>
+          </div>
+          <div class="side-search">
+            <i data-lucide="search" style="width:13px;height:13px;"></i>
+            <span>Search</span>
+            <span class="kbd">⌘K</span>
+          </div>
+
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item active"><i data-lucide="clock-4" class="ic"></i><span>Recents</span></div>
+            <div class="item"><i data-lucide="calendar-days" class="ic"></i><span>Calendar</span><span class="count">12</span></div>
+
+            <div class="section">Library</div>
+            <div class="item"><i data-lucide="bookmark" class="ic"></i><span>Swipes</span></div>
+            <div class="item"><i data-lucide="layout-template" class="ic"></i><span>Templates</span></div>
+            <div class="item"><i data-lucide="package" class="ic"></i><span>Products</span><span class="count">318</span></div>
+
+            <div class="section">Brand</div>
+            <div class="item"><i data-lucide="sparkles" class="ic"></i><span>Personalization</span></div>
+            <div class="item"><i data-lucide="book-open" class="ic"></i><span>Knowledge base</span></div>
+            <div class="item"><i data-lucide="brain" class="ic"></i><span>Memories</span><span class="count">19</span></div>
+          </div>
+
+          <div class="side-footer">
+            <div class="avatar">JY</div>
+            <div class="who">
+              <b>Jiho Yang</b>
+              <span>Free plan</span>
+            </div>
+            <div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+          </div>
+        </div>
+        <div class="main">
+          <div class="topbar">
+            <div class="breadcrumb">
+              <span>Account</span>
+              <span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <span>Brand Kit</span>
+              <span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <b>Tone snippets</b>
+            </div>
+            <div class="actions">
+              <span class="pill ok dot" style="font-size:11px;">Online</span>
+              <div class="top-avatar">AC</div>
+            </div>
+          </div>
+
+          <div class="acc-frame">
+            <div class="acc-rail">
+              <div class="title">Account</div>
+              <div class="it"><i data-lucide="user" class="ic"></i>Profile</div>
+              <div class="it"><i data-lucide="credit-card" class="ic"></i>Plan &amp; billing</div>
+              <div class="it active"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+              <div class="it"><i data-lucide="plug" class="ic"></i>Integrations</div>
+              <div class="sep"></div>
+              <div class="it danger"><i data-lucide="trash-2" class="ic"></i>Danger zone</div>
+            </div>
+
+            <div class="acc-main">
+              <div class="acc-hero">
+                <div class="l">
+                  <h1>Tone snippets</h1>
+                  <p>Brand-voice exemplars Kova injects as system-prompt examples. Each snippet is a short labeled passage that captures how this brand actually sounds.</p>
+                </div>
+                <div class="r" style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+                  <span class="mono" style="font-size:10px;letter-spacing:0.1em; color:var(--ink-3);">Editing brand</span>
+                  <div class="brandpick"><div class="logo">N</div><div class="nm">Nike</div><i data-lucide="chevrons-up-down" class="caret" style="width:13px;height:13px;"></i></div>
+                </div>
+              </div>
+
+              <div class="acc-content">
+                <div class="bk-wrap">
+                  <div class="bk-subnav">
+                    <div class="head">Brand Kit</div>
+                    <div class="it"><i data-lucide="palette" class="ic"></i>Visuals</div>
+                    <div class="it"><i data-lucide="user-circle" class="ic"></i>Identity</div>
+                    <div class="it active"><i data-lucide="quote" class="ic"></i>Tone snippets<span style="margin-left:auto; font-size:10px;color:var(--ink);">8</span></div>
+                    <div class="it"><i data-lucide="layers" class="ic"></i>Saved blocks<span style="margin-left:auto; font-size:10px;color:var(--ink-3);">5</span></div>
+                    <div class="it"><i data-lucide="check-square" class="ic"></i>Writing rules</div>
+                    <div class="it"><i data-lucide="brain" class="ic"></i>Memories<span style="margin-left:auto; font-size:10px;color:var(--ink-3);">19</span></div>
+                    <div class="it"><i data-lucide="book-open" class="ic"></i>Knowledge base</div>
+                  </div>
+
+                  <div class="bk-pane">
+                    <div class="list-stack">
+                      <div class="list-row">
+                        <div class="grip"><i data-lucide="grip-vertical" style="width:14px;height:14px;"></i></div>
+                        <div class="lbl-col">Drop the new collection<span class="tag-mono">PROMO</span></div>
+                        <div class="content-col">"It's here. Air Max Plus drops Friday at 7am PT — first 200 pairs include the original 1998 hangtag. No restock. Move when the alarm hits."</div>
+                        <div class="actions-col"><div class="ac"><i data-lucide="pencil" style="width:14px;height:14px;"></i></div><div class="ac"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></div></div>
+                      </div>
+                      <div class="list-row">
+                        <div class="grip"><i data-lucide="grip-vertical" style="width:14px;height:14px;"></i></div>
+                        <div class="lbl-col">Welcome a new athlete<span class="tag-mono">WELCOME</span></div>
+                        <div class="content-col">"Welcome to Nike. You're 10% off your first order — but that's not why we're here. Let's get you running."</div>
+                        <div class="actions-col"><div class="ac"><i data-lucide="pencil" style="width:14px;height:14px;"></i></div><div class="ac"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></div></div>
+                      </div>
+                      <div class="list-row">
+                        <div class="grip"><i data-lucide="grip-vertical" style="width:14px;height:14px;"></i></div>
+                        <div class="lbl-col">Restock after sellout<span class="tag-mono">RESTOCK</span></div>
+                        <div class="content-col">"You waited. Black Pegasus 41 is back. Same colorway, same fit — your size opens at noon."</div>
+                        <div class="actions-col"><div class="ac"><i data-lucide="pencil" style="width:14px;height:14px;"></i></div><div class="ac"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></div></div>
+                      </div>
+                      <div class="list-add"><i data-lucide="plus" class="ic"></i>Add tone snippet</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Toast stack -->
+      <div class="toast-stack">
+        <div class="toast success">
+          <i data-lucide="check" class="ic-lead"></i>
+          <div class="body">
+            <div class="msg">Snippet saved</div>
+          </div>
+          <div class="dismiss" title="Dismiss"><i data-lucide="x" class="ic"></i></div>
+        </div>
+      </div>
+
+      <!-- Anchor pin pointing at toast region -->
+      <div class="anchor-pin" style="right: 22px; bottom: 70px;">
+        <div class="dot"></div>
+        <div class="lbl">bottom-right · 22px from edges</div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Single-line, single-action.</strong> When a CRUD action just worked, the toast says so and disappears. No description, no CTA — anything more turns confirmation into homework.</li>
+      <li><strong>Auto-dismiss 4s</strong> per UX convention (Material 4–10s, Apple Toast 4s) — long enough to register peripherally, short enough not to block the next action. Hovering the toast pauses dismissal.</li>
+      <li><strong>Lead glyph is <code>check</code> in ink-2</strong>, not green. Status palette is deferred per design.md §5 ban 12; the ink-2 + check combo reads as "done" without introducing a new color.</li>
+      <li><strong>Backdrop chrome is LIFTED verbatim from A7 Tone snippets</strong> (round-1 cleanup §3.8). The dim layer (<code>.stage-dim</code>) is the only review-page concession.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ---------- B1.2 Error (over A7 · Tone snippets) ---------- -->
+<section class="block">
+  <header>
+    <div class="tag">FILE B1 · §1 · B1.2 Error</div>
+    <h2>B1.2 · Error toast (sticky, retry)</h2>
+    <p class="intro">Failed CRUD or network round-trip. Lead glyph: Lucide <code>alert-triangle</code> in <code>--warn</code>. Border lifts to <code>--warn-edge</code> for a subtle distinction from the neutral toasts. Sticky — only dismisses on user click. Includes an inline <code>Retry</code> action button. Backdrop = A7 → Brand Kit → Tone snippets.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Account · Brand Kit · Tone snippets · error toast (sticky)</div><div class="id">B1.2 · hi-fi</div></div>
+    <div class="canvas tall" data-screen-label="B1.2 Error">
+      <div class="app stage-dim">
+        <div class="sidebar">
+          <div class="brand-switch">
+            <div class="logo">N</div>
+            <div class="name">Nike</div>
+            <div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div>
+          </div>
+          <div class="side-search">
+            <i data-lucide="search" style="width:13px;height:13px;"></i>
+            <span>Search</span>
+            <span class="kbd">⌘K</span>
+          </div>
+
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item active"><i data-lucide="clock-4" class="ic"></i><span>Recents</span></div>
+            <div class="item"><i data-lucide="calendar-days" class="ic"></i><span>Calendar</span><span class="count">12</span></div>
+
+            <div class="section">Library</div>
+            <div class="item"><i data-lucide="bookmark" class="ic"></i><span>Swipes</span></div>
+            <div class="item"><i data-lucide="layout-template" class="ic"></i><span>Templates</span></div>
+            <div class="item"><i data-lucide="package" class="ic"></i><span>Products</span><span class="count">318</span></div>
+
+            <div class="section">Brand</div>
+            <div class="item"><i data-lucide="sparkles" class="ic"></i><span>Personalization</span></div>
+            <div class="item"><i data-lucide="book-open" class="ic"></i><span>Knowledge base</span></div>
+            <div class="item"><i data-lucide="brain" class="ic"></i><span>Memories</span><span class="count">19</span></div>
+          </div>
+
+          <div class="side-footer">
+            <div class="avatar">JY</div>
+            <div class="who">
+              <b>Jiho Yang</b>
+              <span>Free plan</span>
+            </div>
+            <div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+          </div>
+        </div>
+        <div class="main">
+          <div class="topbar">
+            <div class="breadcrumb">
+              <span>Account</span>
+              <span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <span>Brand Kit</span>
+              <span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <b>Tone snippets</b>
+            </div>
+            <div class="actions">
+              <span class="pill ok dot" style="font-size:11px;">Online</span>
+              <div class="top-avatar">AC</div>
+            </div>
+          </div>
+
+          <div class="acc-frame">
+            <div class="acc-rail">
+              <div class="title">Account</div>
+              <div class="it"><i data-lucide="user" class="ic"></i>Profile</div>
+              <div class="it"><i data-lucide="credit-card" class="ic"></i>Plan &amp; billing</div>
+              <div class="it active"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+              <div class="it"><i data-lucide="plug" class="ic"></i>Integrations</div>
+              <div class="sep"></div>
+              <div class="it danger"><i data-lucide="trash-2" class="ic"></i>Danger zone</div>
+            </div>
+
+            <div class="acc-main">
+              <div class="acc-hero">
+                <div class="l">
+                  <h1>Tone snippets</h1>
+                  <p>Brand-voice exemplars Kova injects as system-prompt examples.</p>
+                </div>
+                <div class="r" style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+                  <span class="mono" style="font-size:10px;letter-spacing:0.1em; color:var(--ink-3);">Editing brand</span>
+                  <div class="brandpick"><div class="logo">N</div><div class="nm">Nike</div><i data-lucide="chevrons-up-down" class="caret" style="width:13px;height:13px;"></i></div>
+                </div>
+              </div>
+
+              <div class="acc-content">
+                <div class="bk-wrap">
+                  <div class="bk-subnav">
+                    <div class="head">Brand Kit</div>
+                    <div class="it"><i data-lucide="palette" class="ic"></i>Visuals</div>
+                    <div class="it"><i data-lucide="user-circle" class="ic"></i>Identity</div>
+                    <div class="it active"><i data-lucide="quote" class="ic"></i>Tone snippets<span style="margin-left:auto; font-size:10px;color:var(--ink);">8</span></div>
+                    <div class="it"><i data-lucide="layers" class="ic"></i>Saved blocks<span style="margin-left:auto; font-size:10px;color:var(--ink-3);">5</span></div>
+                    <div class="it"><i data-lucide="check-square" class="ic"></i>Writing rules</div>
+                    <div class="it"><i data-lucide="brain" class="ic"></i>Memories<span style="margin-left:auto; font-size:10px;color:var(--ink-3);">19</span></div>
+                    <div class="it"><i data-lucide="book-open" class="ic"></i>Knowledge base</div>
+                  </div>
+
+                  <div class="bk-pane">
+                    <div class="list-stack">
+                      <div class="list-row">
+                        <div class="grip"><i data-lucide="grip-vertical" style="width:14px;height:14px;"></i></div>
+                        <div class="lbl-col">Drop the new collection<span class="tag-mono">PROMO</span></div>
+                        <div class="content-col">"It's here. Air Max Plus drops Friday at 7am PT — first 200 pairs include the original 1998 hangtag."</div>
+                        <div class="actions-col"><div class="ac"><i data-lucide="pencil" style="width:14px;height:14px;"></i></div><div class="ac"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></div></div>
+                      </div>
+                      <div class="list-row">
+                        <div class="grip"><i data-lucide="grip-vertical" style="width:14px;height:14px;"></i></div>
+                        <div class="lbl-col">Welcome a new athlete<span class="tag-mono">WELCOME</span></div>
+                        <div class="content-col">"Welcome to Nike. You're 10% off your first order — but that's not why we're here. Let's get you running."</div>
+                        <div class="actions-col"><div class="ac"><i data-lucide="pencil" style="width:14px;height:14px;"></i></div><div class="ac"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></div></div>
+                      </div>
+                      <div class="list-add"><i data-lucide="plus" class="ic"></i>Add tone snippet</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="toast-stack">
+        <div class="toast error">
+          <i data-lucide="alert-triangle" class="ic-lead"></i>
+          <div class="body">
+            <div class="msg">Couldn't save snippet</div>
+            <div class="meta">Network request timed out · changes kept locally</div>
+            <div class="row-actions">
+              <button type="button" class="ta">Retry</button>
+              <button type="button" class="ta muted">View details</button>
+            </div>
+          </div>
+          <div class="dismiss" title="Dismiss"><i data-lucide="x" class="ic"></i></div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Sticky by default.</strong> Errors don't auto-dismiss — disappearing them quietly hides a problem the user needs to act on. Dismiss is explicit (× or Retry).</li>
+      <li><strong>Two-line shape.</strong> Headline names the failure ("Couldn't save snippet"); meta-line explains consequence ("Network request timed out · changes kept locally") so the user knows their work isn't lost.</li>
+      <li><strong>Inline action stack.</strong> Primary action <code>Retry</code> uses accent ink. Secondary <code>View details</code> uses ink-3 muted style — same vocabulary as the foot-meta links inside dialogs.</li>
+      <li><strong>No new red.</strong> Status palette deferred (design.md §5 ban 12); border-warn-edge + lead-warn-icon does the job within the existing degraded ramp. Once the palette ships this re-themes for free.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ---------- B1.3 Info (canvas-context · scoped-down dim plate) ---------- -->
+<section class="block">
+  <header>
+    <div class="tag">FILE B1 · §1 · B1.3 Info</div>
+    <h2>B1.3 · Info toast (quiet)</h2>
+    <p class="intro">Background system events the user might want to see but doesn't need to act on ("Autosaved · 2s ago", "Export queued", "Document synced"). Lead glyph: Lucide <code>info</code> in ink-3. Message in ink-2 (quieter than success/error). Auto-dismiss 3s — shorter window because info is peripheral by design. <strong>Backdrop scoped down</strong> per round-1 Q1: the original canvas chrome here was a hand-drawn approximation; rather than lift from the out-of-scope <code>Kova Canvas - Final.html</code>, we render a flat dim plate so the toast is readable in context without re-creating canvas surfaces here.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Canvas context (scoped down to dim plate) · info toast (auto-dismiss 3s)</div><div class="id">B1.3 · hi-fi · scope-down</div></div>
+    <div class="canvas tall" data-screen-label="B1.3 Info">
+      <div class="dim-plate stage-dim">canvas backdrop · scoped down per round-1 Q1</div>
+
+      <div class="toast-stack">
+        <div class="toast info">
+          <i data-lucide="info" class="ic-lead"></i>
+          <div class="body">
+            <div class="msg">Autosaved · 2s ago</div>
+          </div>
+          <div class="dismiss" title="Dismiss"><i data-lucide="x" class="ic"></i></div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Quietest of the family.</strong> Content uses ink-2; lead glyph uses ink-3. Border stays at the standard <code>--line</code>. The toast confirms a system event without competing for attention with active CRUD CTAs.</li>
+      <li><strong>Auto-dismiss 3s</strong> — shorter than success because info is reassurance, not confirmation. Users glance, the toast leaves.</li>
+      <li><strong>Pairs with the topbar pill.</strong> The persistent "Saved · 2s ago" pill in the topbar is the always-on status; the toast is the moment-of-event reinforcement. Same content, two scopes.</li>
+      <li><strong>Backdrop scope-down rationale.</strong> Round-1 Q1 (b): the original 56px-rail "canvas chrome" was a hand-drawn reconstruction of the canvas page; rather than lift the real chrome from <code>Kova Canvas - Final.html</code> (excluded by the original brief §2 ignore list), we render a dim plate. Toast contrast and density still reads correctly.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ---------- B1.4 Action / Undo (over A7 · Saved blocks) ---------- -->
+<section class="block">
+  <header>
+    <div class="tag">FILE B1 · §1 · B1.4 Action</div>
+    <h2>B1.4 · Action toast (Undo)</h2>
+    <p class="intro">Reversible state-change confirmations ("Brand archived · Undo", "Snippet deleted · Undo", "5 rows moved to Trash · Undo"). Lead glyph: Lucide <code>archive</code> or context-appropriate icon. 5s window so the user has time to reach for Undo. Inline accent action link is the centerpiece. Backdrop = A7 → Brand Kit → Saved blocks (lifted verbatim).</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Account · Brand Kit · Saved blocks · action toast (Undo, 5s window)</div><div class="id">B1.4 · hi-fi</div></div>
+    <div class="canvas tall" data-screen-label="B1.4 Action">
+      <div class="app stage-dim">
+        <div class="sidebar">
+          <div class="brand-switch">
+            <div class="logo">N</div>
+            <div class="name">Nike</div>
+            <div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div>
+          </div>
+          <div class="side-search">
+            <i data-lucide="search" style="width:13px;height:13px;"></i>
+            <span>Search</span>
+            <span class="kbd">⌘K</span>
+          </div>
+
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item active"><i data-lucide="clock-4" class="ic"></i><span>Recents</span></div>
+            <div class="item"><i data-lucide="calendar-days" class="ic"></i><span>Calendar</span><span class="count">12</span></div>
+
+            <div class="section">Library</div>
+            <div class="item"><i data-lucide="bookmark" class="ic"></i><span>Swipes</span></div>
+            <div class="item"><i data-lucide="layout-template" class="ic"></i><span>Templates</span></div>
+            <div class="item"><i data-lucide="package" class="ic"></i><span>Products</span><span class="count">318</span></div>
+
+            <div class="section">Brand</div>
+            <div class="item"><i data-lucide="sparkles" class="ic"></i><span>Personalization</span></div>
+            <div class="item"><i data-lucide="book-open" class="ic"></i><span>Knowledge base</span></div>
+            <div class="item"><i data-lucide="brain" class="ic"></i><span>Memories</span><span class="count">19</span></div>
+          </div>
+
+          <div class="side-footer">
+            <div class="avatar">JY</div>
+            <div class="who">
+              <b>Jiho Yang</b>
+              <span>Free plan</span>
+            </div>
+            <div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+          </div>
+        </div>
+        <div class="main">
+          <div class="topbar">
+            <div class="breadcrumb">
+              <span>Account</span>
+              <span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <span>Brand Kit</span>
+              <span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <b>Saved blocks</b>
+            </div>
+            <div class="actions">
+              <span class="pill ok dot" style="font-size:11px;">Online</span>
+              <div class="top-avatar">AC</div>
+            </div>
+          </div>
+
+          <div class="acc-frame">
+            <div class="acc-rail">
+              <div class="title">Account</div>
+              <div class="it"><i data-lucide="user" class="ic"></i>Profile</div>
+              <div class="it"><i data-lucide="credit-card" class="ic"></i>Plan &amp; billing</div>
+              <div class="it active"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+              <div class="it"><i data-lucide="plug" class="ic"></i>Integrations</div>
+              <div class="sep"></div>
+              <div class="it danger"><i data-lucide="trash-2" class="ic"></i>Danger zone</div>
+            </div>
+
+            <div class="acc-main">
+              <div class="acc-hero">
+                <div class="l">
+                  <h1>Saved blocks</h1>
+                  <p>Reusable footers, CTAs, and standard sections you can drag into any canvas TEXT node.</p>
+                </div>
+                <div class="r" style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+                  <span class="mono" style="font-size:10px;letter-spacing:0.1em; color:var(--ink-3);">Editing brand</span>
+                  <div class="brandpick"><div class="logo">N</div><div class="nm">Nike</div><i data-lucide="chevrons-up-down" class="caret" style="width:13px;height:13px;"></i></div>
+                </div>
+              </div>
+
+              <div class="acc-content">
+                <div class="bk-wrap">
+                  <div class="bk-subnav">
+                    <div class="head">Brand Kit</div>
+                    <div class="it"><i data-lucide="palette" class="ic"></i>Visuals</div>
+                    <div class="it"><i data-lucide="user-circle" class="ic"></i>Identity</div>
+                    <div class="it"><i data-lucide="quote" class="ic"></i>Tone snippets<span style="margin-left:auto; font-size:10px;color:var(--ink-3);">8</span></div>
+                    <div class="it active"><i data-lucide="layers" class="ic"></i>Saved blocks<span style="margin-left:auto; font-size:10px;color:var(--ink);">5</span></div>
+                    <div class="it"><i data-lucide="check-square" class="ic"></i>Writing rules</div>
+                    <div class="it"><i data-lucide="brain" class="ic"></i>Memories<span style="margin-left:auto; font-size:10px;color:var(--ink-3);">19</span></div>
+                    <div class="it"><i data-lucide="book-open" class="ic"></i>Knowledge base</div>
+                  </div>
+
+                  <div class="bk-pane">
+                    <div class="list-stack">
+                      <div class="list-row">
+                        <div class="grip"><i data-lucide="grip-vertical" style="width:14px;height:14px;"></i></div>
+                        <div class="lbl-col">Standard footer disclaimer<span class="tag-mono">FOOTER</span></div>
+                        <div class="content-col">"You're receiving this because you signed up at nike.com. Manage preferences · Unsubscribe · Nike Inc., One Bowerman Drive, Beaverton OR 97005."</div>
+                        <div class="actions-col"><div class="ac"><i data-lucide="pencil" style="width:14px;height:14px;"></i></div><div class="ac"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></div></div>
+                      </div>
+                      <div class="list-row">
+                        <div class="grip"><i data-lucide="grip-vertical" style="width:14px;height:14px;"></i></div>
+                        <div class="lbl-col">Primary CTA · shop drop<span class="tag-mono">CTA</span></div>
+                        <div class="content-col">"Shop the drop →"</div>
+                        <div class="actions-col"><div class="ac"><i data-lucide="pencil" style="width:14px;height:14px;"></i></div><div class="ac"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></div></div>
+                      </div>
+                      <div class="list-row">
+                        <div class="grip"><i data-lucide="grip-vertical" style="width:14px;height:14px;"></i></div>
+                        <div class="lbl-col">Welcome opener<span class="tag-mono">TEXT</span></div>
+                        <div class="content-col">"You're in. Welcome to the Nike membership family — let's lace up."</div>
+                        <div class="actions-col"><div class="ac"><i data-lucide="pencil" style="width:14px;height:14px;"></i></div><div class="ac"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></div></div>
+                      </div>
+                      <div class="list-add"><i data-lucide="plus" class="ic"></i>Add saved block</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="toast-stack">
+        <div class="toast action">
+          <i data-lucide="archive" class="ic-lead"></i>
+          <div class="body">
+            <div class="msg"><b>Glossier</b> archived</div>
+            <div class="row-actions">
+              <button type="button" class="ta">Undo</button>
+              <button type="button" class="ta muted">View archive</button>
+            </div>
+          </div>
+          <div class="dismiss" title="Dismiss"><i data-lucide="x" class="ic"></i></div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Undo is the centerpiece.</strong> Accent ink earns its place because Undo is the only reason this toast exists — the body text is just context.</li>
+      <li><strong>5s window</strong> per Material guidance for reversible actions. Long enough to react after a misclick, short enough to keep the bottom-right region clean.</li>
+      <li><strong>"View archive" secondary action</strong> teaches users where archived state goes — the same affordance as the Account → Brand Kit archived list (A2a). One toast, two routes home.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ---------- B1.5 AI (canvas-context · scoped-down dim plate) ---------- -->
+<section class="block">
+  <header>
+    <div class="tag">FILE B1 · §1 · B1.5 AI</div>
+    <h2>B1.5 · AI-generation toast</h2>
+    <p class="intro">Generative event finished in the background ("AI suggestion ready", "Brand voice draft complete", "12 product variants generated"). Lead glyph: Lucide <code>sparkles</code> in <code>--accent-ink</code>. Border lifts to <code>--accent-2</code>. Single special case where AI accent vocabulary survives outside the composer. Backdrop scoped down per round-1 Q1.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Canvas context (scoped down to dim plate) · AI-generation toast</div><div class="id">B1.5 · hi-fi · scope-down</div></div>
+    <div class="canvas tall" data-screen-label="B1.5 AI">
+      <div class="dim-plate stage-dim">canvas backdrop · scoped down per round-1 Q1</div>
+
+      <div class="toast-stack">
+        <div class="toast ai">
+          <i data-lucide="sparkles" class="ic-lead"></i>
+          <div class="body">
+            <div class="msg">AI suggestion ready</div>
+            <div class="meta">3 hero variants drafted from your tone snippets</div>
+            <div class="row-actions">
+              <button type="button" class="ta">Open</button>
+              <button type="button" class="ta muted">Dismiss</button>
+            </div>
+          </div>
+          <div class="dismiss" title="Dismiss"><i data-lucide="x" class="ic"></i></div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Only generative events earn AI accent.</strong> Lead glyph + border = <code>--accent-ink</code> / <code>--accent-2</code>. Headline stays primary ink; meta-line is ink-3. The blue is reserved for the sparkle and the "Open" action — never the body copy.</li>
+      <li><strong>Sticky in practice, soft 8s in the spec.</strong> AI events fire when the user wasn't watching — they need a longer attention window than success/info. Hover-to-pause keeps the toast alive while the user reads the meta-line.</li>
+      <li><strong>"Open" routes to the AI panel</strong> (canvas right rail). "Dismiss" archives the suggestion to the AI history for later — never just-discards (so generation cost isn't wasted).</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     §2 · Stack ordering (B1.6) + edge cases
+     ============================================================ -->
+
+<!-- ---------- B1.6 Stack of 3 (over A7 · Saved blocks) ---------- -->
+<section class="block">
+  <header>
+    <div class="tag">FILE B1 · §2 · B1.6 Stack of 3</div>
+    <h2>B1.6 · Stack ordering — newest on top, oldest at bottom</h2>
+    <p class="intro">When toasts arrive faster than they dismiss, they stack with the newest at the top of the cluster and the oldest closest to the corner. Inter-toast gap is 8px. Stack growth is upward; the bottom edge stays anchored at <code>bottom: 22px</code>. Each toast retains its own dismiss/auto-dismiss timer independently.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Account · Brand Kit · Saved blocks · 3-toast stack (mixed variants)</div><div class="id">B1.6 · hi-fi</div></div>
+    <div class="canvas tall" data-screen-label="B1.6 Stack">
+      <div class="app stage-dim">
+        <div class="sidebar">
+          <div class="brand-switch">
+            <div class="logo">N</div>
+            <div class="name">Nike</div>
+            <div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div>
+          </div>
+          <div class="side-search">
+            <i data-lucide="search" style="width:13px;height:13px;"></i>
+            <span>Search</span>
+            <span class="kbd">⌘K</span>
+          </div>
+
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item active"><i data-lucide="clock-4" class="ic"></i><span>Recents</span></div>
+            <div class="item"><i data-lucide="calendar-days" class="ic"></i><span>Calendar</span><span class="count">12</span></div>
+
+            <div class="section">Library</div>
+            <div class="item"><i data-lucide="bookmark" class="ic"></i><span>Swipes</span></div>
+            <div class="item"><i data-lucide="layout-template" class="ic"></i><span>Templates</span></div>
+            <div class="item"><i data-lucide="package" class="ic"></i><span>Products</span><span class="count">318</span></div>
+
+            <div class="section">Brand</div>
+            <div class="item"><i data-lucide="sparkles" class="ic"></i><span>Personalization</span></div>
+            <div class="item"><i data-lucide="book-open" class="ic"></i><span>Knowledge base</span></div>
+            <div class="item"><i data-lucide="brain" class="ic"></i><span>Memories</span><span class="count">19</span></div>
+          </div>
+
+          <div class="side-footer">
+            <div class="avatar">JY</div>
+            <div class="who">
+              <b>Jiho Yang</b>
+              <span>Free plan</span>
+            </div>
+            <div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+          </div>
+        </div>
+        <div class="main">
+          <div class="topbar">
+            <div class="breadcrumb">
+              <span>Account</span>
+              <span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <span>Brand Kit</span>
+              <span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <b>Saved blocks</b>
+            </div>
+            <div class="actions">
+              <span class="pill ok dot" style="font-size:11px;">Online</span>
+              <div class="top-avatar">AC</div>
+            </div>
+          </div>
+
+          <div class="acc-frame">
+            <div class="acc-rail">
+              <div class="title">Account</div>
+              <div class="it"><i data-lucide="user" class="ic"></i>Profile</div>
+              <div class="it"><i data-lucide="credit-card" class="ic"></i>Plan &amp; billing</div>
+              <div class="it active"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+              <div class="it"><i data-lucide="plug" class="ic"></i>Integrations</div>
+              <div class="sep"></div>
+              <div class="it danger"><i data-lucide="trash-2" class="ic"></i>Danger zone</div>
+            </div>
+
+            <div class="acc-main">
+              <div class="acc-hero">
+                <div class="l">
+                  <h1>Saved blocks</h1>
+                  <p>Reusable footers, CTAs, and standard sections you can drag into any canvas TEXT node.</p>
+                </div>
+                <div class="r" style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+                  <span class="mono" style="font-size:10px;letter-spacing:0.1em; color:var(--ink-3);">Editing brand</span>
+                  <div class="brandpick"><div class="logo">N</div><div class="nm">Nike</div><i data-lucide="chevrons-up-down" class="caret" style="width:13px;height:13px;"></i></div>
+                </div>
+              </div>
+
+              <div class="acc-content">
+                <div class="bk-wrap">
+                  <div class="bk-subnav">
+                    <div class="head">Brand Kit</div>
+                    <div class="it"><i data-lucide="palette" class="ic"></i>Visuals</div>
+                    <div class="it"><i data-lucide="user-circle" class="ic"></i>Identity</div>
+                    <div class="it"><i data-lucide="quote" class="ic"></i>Tone snippets<span style="margin-left:auto; font-size:10px;color:var(--ink-3);">8</span></div>
+                    <div class="it active"><i data-lucide="layers" class="ic"></i>Saved blocks<span style="margin-left:auto; font-size:10px;color:var(--ink);">5</span></div>
+                    <div class="it"><i data-lucide="check-square" class="ic"></i>Writing rules</div>
+                    <div class="it"><i data-lucide="brain" class="ic"></i>Memories<span style="margin-left:auto; font-size:10px;color:var(--ink-3);">19</span></div>
+                    <div class="it"><i data-lucide="book-open" class="ic"></i>Knowledge base</div>
+                  </div>
+
+                  <div class="bk-pane">
+                    <div class="list-stack">
+                      <div class="list-row">
+                        <div class="grip"><i data-lucide="grip-vertical" style="width:14px;height:14px;"></i></div>
+                        <div class="lbl-col">Standard footer disclaimer<span class="tag-mono">FOOTER</span></div>
+                        <div class="content-col">"You're receiving this because you signed up at nike.com. Manage preferences · Unsubscribe."</div>
+                        <div class="actions-col"><div class="ac"><i data-lucide="pencil" style="width:14px;height:14px;"></i></div><div class="ac"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></div></div>
+                      </div>
+                      <div class="list-row">
+                        <div class="grip"><i data-lucide="grip-vertical" style="width:14px;height:14px;"></i></div>
+                        <div class="lbl-col">Primary CTA · shop drop<span class="tag-mono">CTA</span></div>
+                        <div class="content-col">"Shop the drop →"</div>
+                        <div class="actions-col"><div class="ac"><i data-lucide="pencil" style="width:14px;height:14px;"></i></div><div class="ac"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></div></div>
+                      </div>
+                      <div class="list-add"><i data-lucide="plus" class="ic"></i>Add saved block</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="toast-stack">
+        <!-- Newest first in DOM = top of visible cluster -->
+        <div class="toast ai">
+          <i data-lucide="sparkles" class="ic-lead"></i>
+          <div class="body">
+            <div class="msg">AI suggestion ready</div>
+            <div class="meta">3 hero variants drafted from your tone snippets</div>
+            <div class="row-actions">
+              <button type="button" class="ta">Open</button>
+            </div>
+          </div>
+          <div class="dismiss" title="Dismiss"><i data-lucide="x" class="ic"></i></div>
+        </div>
+        <div class="toast action">
+          <i data-lucide="archive" class="ic-lead"></i>
+          <div class="body">
+            <div class="msg"><b>Glossier</b> archived</div>
+            <div class="row-actions">
+              <button type="button" class="ta">Undo</button>
+            </div>
+          </div>
+          <div class="dismiss" title="Dismiss"><i data-lucide="x" class="ic"></i></div>
+        </div>
+        <div class="toast success">
+          <i data-lucide="check" class="ic-lead"></i>
+          <div class="body">
+            <div class="msg">Snippet saved</div>
+          </div>
+          <div class="dismiss" title="Dismiss"><i data-lucide="x" class="ic"></i></div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Stack ordering is oldest-bottom.</strong> The Snippet-saved success arrived first, then the Brand-archived undo, then the AI-suggestion. New events shift earlier toasts upward; the corner-anchored bottom edge stays put.</li>
+      <li><strong>Visual hierarchy still reads.</strong> Even with three side-by-side variants, the eye lands on the AI toast first (subtle accent border), then the Undo (action ink), then the success (quiet check). No one variant drowns the others because chrome is shared and only the lead glyph + border vary.</li>
+      <li><strong>Cap is implicit.</strong> Beyond ~3 simultaneous toasts the bottom-right region gets crowded; the implementation should drop the oldest off-stack (still kept in a notification history view) rather than letting the column grow unbounded. Cap value is a code-time choice, not a design rule.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ---------- Edge: long content (over A7 · Tone snippets) ---------- -->
+<section class="block">
+  <header>
+    <div class="tag">FILE B1 · §2 · Edge case · long content</div>
+    <h2>Long content — wrap, never truncate</h2>
+    <p class="intro">When the message overflows the 280-px minimum, the toast grows vertically until it hits the 420-px maximum width, then wraps. Truncation with ellipsis is rejected — toasts already have to compete for attention; hiding text behind "…" wastes the impression.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Account · Brand Kit · Tone snippets · long success message wraps to 3 lines</div><div class="id">B1.long · hi-fi</div></div>
+    <div class="canvas tall" data-screen-label="B1 Long content">
+      <div class="app stage-dim">
+        <div class="sidebar">
+          <div class="brand-switch">
+            <div class="logo">N</div>
+            <div class="name">Nike</div>
+            <div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div>
+          </div>
+          <div class="side-search">
+            <i data-lucide="search" style="width:13px;height:13px;"></i>
+            <span>Search</span>
+            <span class="kbd">⌘K</span>
+          </div>
+
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item active"><i data-lucide="clock-4" class="ic"></i><span>Recents</span></div>
+            <div class="item"><i data-lucide="calendar-days" class="ic"></i><span>Calendar</span><span class="count">12</span></div>
+
+            <div class="section">Library</div>
+            <div class="item"><i data-lucide="bookmark" class="ic"></i><span>Swipes</span></div>
+            <div class="item"><i data-lucide="layout-template" class="ic"></i><span>Templates</span></div>
+            <div class="item"><i data-lucide="package" class="ic"></i><span>Products</span><span class="count">318</span></div>
+
+            <div class="section">Brand</div>
+            <div class="item"><i data-lucide="sparkles" class="ic"></i><span>Personalization</span></div>
+            <div class="item"><i data-lucide="book-open" class="ic"></i><span>Knowledge base</span></div>
+            <div class="item"><i data-lucide="brain" class="ic"></i><span>Memories</span><span class="count">19</span></div>
+          </div>
+
+          <div class="side-footer">
+            <div class="avatar">JY</div>
+            <div class="who">
+              <b>Jiho Yang</b>
+              <span>Free plan</span>
+            </div>
+            <div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+          </div>
+        </div>
+        <div class="main">
+          <div class="topbar">
+            <div class="breadcrumb">
+              <span>Account</span>
+              <span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <span>Brand Kit</span>
+              <span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <b>Tone snippets</b>
+            </div>
+            <div class="actions">
+              <span class="pill ok dot" style="font-size:11px;">Online</span>
+              <div class="top-avatar">AC</div>
+            </div>
+          </div>
+
+          <div class="acc-frame">
+            <div class="acc-rail">
+              <div class="title">Account</div>
+              <div class="it"><i data-lucide="user" class="ic"></i>Profile</div>
+              <div class="it"><i data-lucide="credit-card" class="ic"></i>Plan &amp; billing</div>
+              <div class="it active"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+              <div class="it"><i data-lucide="plug" class="ic"></i>Integrations</div>
+              <div class="sep"></div>
+              <div class="it danger"><i data-lucide="trash-2" class="ic"></i>Danger zone</div>
+            </div>
+
+            <div class="acc-main">
+              <div class="acc-hero">
+                <div class="l">
+                  <h1>Tone snippets</h1>
+                  <p>Brand-voice exemplars Kova injects as system-prompt examples.</p>
+                </div>
+                <div class="r" style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+                  <span class="mono" style="font-size:10px;letter-spacing:0.1em; color:var(--ink-3);">Editing brand</span>
+                  <div class="brandpick"><div class="logo">N</div><div class="nm">Nike</div><i data-lucide="chevrons-up-down" class="caret" style="width:13px;height:13px;"></i></div>
+                </div>
+              </div>
+
+              <div class="acc-content">
+                <div class="bk-wrap">
+                  <div class="bk-subnav">
+                    <div class="head">Brand Kit</div>
+                    <div class="it"><i data-lucide="palette" class="ic"></i>Visuals</div>
+                    <div class="it"><i data-lucide="user-circle" class="ic"></i>Identity</div>
+                    <div class="it active"><i data-lucide="quote" class="ic"></i>Tone snippets<span style="margin-left:auto; font-size:10px;color:var(--ink);">8</span></div>
+                    <div class="it"><i data-lucide="layers" class="ic"></i>Saved blocks<span style="margin-left:auto; font-size:10px;color:var(--ink-3);">5</span></div>
+                    <div class="it"><i data-lucide="check-square" class="ic"></i>Writing rules</div>
+                    <div class="it"><i data-lucide="brain" class="ic"></i>Memories<span style="margin-left:auto; font-size:10px;color:var(--ink-3);">19</span></div>
+                    <div class="it"><i data-lucide="book-open" class="ic"></i>Knowledge base</div>
+                  </div>
+
+                  <div class="bk-pane">
+                    <div class="list-stack">
+                      <div class="list-row">
+                        <div class="grip"><i data-lucide="grip-vertical" style="width:14px;height:14px;"></i></div>
+                        <div class="lbl-col">Drop the new collection<span class="tag-mono">PROMO</span></div>
+                        <div class="content-col">"It's here. Air Max Plus drops Friday at 7am PT — first 200 pairs include the original 1998 hangtag."</div>
+                        <div class="actions-col"><div class="ac"><i data-lucide="pencil" style="width:14px;height:14px;"></i></div><div class="ac"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></div></div>
+                      </div>
+                      <div class="list-row">
+                        <div class="grip"><i data-lucide="grip-vertical" style="width:14px;height:14px;"></i></div>
+                        <div class="lbl-col">Welcome a new athlete<span class="tag-mono">WELCOME</span></div>
+                        <div class="content-col">"Welcome to Nike. You're 10% off your first order — but that's not why we're here. Let's get you running."</div>
+                        <div class="actions-col"><div class="ac"><i data-lucide="pencil" style="width:14px;height:14px;"></i></div><div class="ac"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></div></div>
+                      </div>
+                      <div class="list-add"><i data-lucide="plus" class="ic"></i>Add tone snippet</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="toast-stack">
+        <div class="toast success">
+          <i data-lucide="check" class="ic-lead"></i>
+          <div class="body">
+            <div class="msg">Imported 47 product pages from <b>nike.com/men/running</b> · indexed for AI suggestions, brand voice match, and canvas search</div>
+            <div class="meta">4.2 MB · 12 catalog tags inferred</div>
+            <div class="row-actions">
+              <button type="button" class="ta">View source</button>
+              <button type="button" class="ta muted">Manage imports</button>
+            </div>
+          </div>
+          <div class="dismiss" title="Dismiss"><i data-lucide="x" class="ic"></i></div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Wrap, do not truncate.</strong> Ellipsis hides exactly the part the user needed (which page, how many items). The toast grows; the user reads.</li>
+      <li><strong>Maximum width is the cap, not the line count.</strong> 420-px max keeps the toast from invading the canvas; vertical growth is fine because nothing else is anchored bottom-right (the zoom HUD is bottom-left of the canvas chrome, not here).</li>
+      <li><strong>Long-content toasts naturally extend their auto-dismiss.</strong> A reading-time heuristic (≈25 chars/sec) kicks the timer to a 7–10s window. Hover-to-pause still applies.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ---------- Edge: toast over open modal (canvas-context · scoped-down dim plate) ---------- -->
+<section class="block">
+  <header>
+    <div class="tag">FILE B1 · §2 · Edge case · toast over open dialog</div>
+    <h2>Z-order — toast wins over modal scrim</h2>
+    <p class="intro">If a toast fires while a dialog is open (e.g. an autosave fires while the user is in a Snapshot dialog), the toast renders <strong>above the modal backdrop and the dialog itself</strong>. The dialog is the user's current task; the toast is a peripheral system event — it must not be hidden by the modal, and it must not require the user to dismiss the dialog to acknowledge. <strong>Backdrop scoped down</strong> per round-1 Q1; the dialog itself is real <code>.dlg</code> chrome lifted from A6+A2a.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Canvas context (scoped down) + open snapshot dialog · info toast fires</div><div class="id">B1.over-modal · hi-fi · scope-down</div></div>
+    <div class="canvas tall" data-screen-label="B1 Over modal">
+      <div class="dim-plate stage-dim">canvas backdrop · scoped down per round-1 Q1</div>
+      <div class="modal-backdrop"></div>
+
+      <div class="dlg md">
+        <div class="dlg-head">
+          <div>
+            <h3>Save to version history</h3>
+            <p class="sub">Capture the current canvas as a named snapshot.</p>
+          </div>
+          <div class="x"><i data-lucide="x" style="width:14px;height:14px;"></i></div>
+        </div>
+        <div class="dlg-body">
+          <div>Label and description fields would render here. Snapshot dialog body is out of scope for this scene — see A8.1 for the full layout.</div>
+        </div>
+        <div class="dlg-foot">
+          <div class="l"></div>
+          <div class="r">
+            <div class="btn">Cancel</div>
+            <div class="btn primary">Save snapshot</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Toast renders above modal-backdrop (z-index 5) and dialog (z-index 10) -->
+      <div class="toast-stack">
+        <div class="toast info">
+          <i data-lucide="info" class="ic-lead"></i>
+          <div class="body">
+            <div class="msg">Autosaved · 1s ago</div>
+          </div>
+          <div class="dismiss" title="Dismiss"><i data-lucide="x" class="ic"></i></div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Toast z-index is 20</strong> · modal dialog 10 · backdrop 5. Order is: toast → dialog → backdrop → page chrome. The toast sits on top of all of them. The 22-px corner offset clears the dialog's bottom-right edge so the two surfaces don't overlap.</li>
+      <li><strong>Why above the dialog and not below.</strong> A toast is a system-level interrupt; a dialog is a user-driven task. Hiding the toast under the modal would require the user to finish the modal before learning about the system event — which can include errors that make the modal's outcome wrong.</li>
+      <li><strong>Backdrop dim does not bleed onto the toast.</strong> The toast paints directly on top of the backdrop; the dim is purely behind. No backdrop-filter blur passes through.</li>
+      <li><strong>.dlg shell is LIFTED verbatim from A6+A2a</strong> · backdrop rgba is the round-1-corrected token-equivalent rgba derived from post-rewire <code>--bg</code> at 72%.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     Cross-surface notes
+     ============================================================ -->
+<section class="block" style="background: var(--page);">
+  <header>
+    <div class="tag">Coherence notes — what this file commits to</div>
+    <h2>What B1 commits to</h2>
+  </header>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;max-width:1080px;font-size:12.5px;color:var(--ink-2);line-height:1.55;">
+    <div style="background: var(--page); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px;">
+      <h3 style="margin:0 0 8px;font-size:14px;color:var(--ink);font-weight:600;letter-spacing:-0.005em;">LIFTED chrome (round-1 cleanup)</h3>
+      <ul style="margin:6px 0 0;padding-left:18px;">
+        <li><code>.acc-frame</code> · <code>.acc-rail</code> · <code>.acc-rail .it</code> · <code>.acc-rail .sep</code> · <code>.acc-main</code> · <code>.acc-hero</code> · <code>.brandpick</code> · <code>.acc-content</code> · <code>.s-section</code> · <code>.bk-wrap</code> · <code>.bk-subnav</code> · <code>.bk-pane</code> · <code>.list-stack</code> · <code>.list-row</code> · <code>.list-row .grip / .lbl-col / .content-col / .actions-col</code> · <code>.list-add</code> — LIFTED VERBATIM from <code>batch-a/dark/Kova Hi-Fi A7 Account Page - Dark.html</code>. Diff: zero.</li>
+        <li><code>.modal-backdrop</code> · <code>.dlg</code> + <code>.dlg.sm/md/lg</code> · <code>.dlg-head/body/foot</code> — LIFTED VERBATIM from <code>batch-a/dark/Kova Hi-Fi A6+A2a Popovers + A8 Dialogs - Dark.html</code>. Diff: ONE change to <code>.modal-backdrop</code> background — pre-rewire warm-brown rgba → token-equivalent rgba derived from post-rewire <code>--bg</code> at 72% (round-1 cleanup §3.8).</li>
+        <li><strong>Canonical components used by name (no redeclaration):</strong> <code>.app</code>, <code>.sidebar</code>, <code>.topbar</code>, <code>.brand-switch</code>, <code>.side-search</code>, <code>.nav</code>, <code>.section</code>, <code>.item</code>, <code>.side-footer</code>, <code>.btn</code>, <code>.btn.primary</code>, <code>.pill</code>, <code>.pill.ok</code>, <code>.pill.dot</code>, <code>.pill.outline</code>, <code>.tag-mono</code>, <code>.kbd</code>, <code>.canvas</code>, <code>.canvas.tall</code>, <code>.cap</code>, <code>.annot</code>, <code>.page-head</code>, <code>.eyebrow</code>, <code>.legend</code>, <code>.sw</code>, <code>.meta</code>, <code>.tag</code>, <code>.intro</code>, <code>.screen</code> — all from <code>kova-hifi.css</code>.</li>
+      </ul>
+    </div>
+    <div style="background: var(--page); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px;">
+      <h3 style="margin:0 0 8px;font-size:14px;color:var(--ink);font-weight:600;letter-spacing:-0.005em;">New layout-only classes (flagged)</h3>
+      <ul style="margin:6px 0 0;padding-left:18px;">
+        <li><code>.toast-stack</code> · <code>.toast</code> · <code>.toast .body</code> · <code>.toast .ic-lead</code> · <code>.toast .dismiss</code> — single new component family. Variants <code>.toast.success</code>, <code>.toast.error</code>, <code>.toast.info</code>, <code>.toast.action</code>, <code>.toast.ai</code>.</li>
+        <li><code>.toast .ta</code> — inline toast action button (accent ink, no chrome). <code>.toast .ta.muted</code> for the secondary muted variant.</li>
+        <li><code>.stage-dim</code> — review-page only; dims the chrome behind the toast for in-situ legibility. Not shipped to product.</li>
+        <li><code>.dim-plate</code> — review-page only; flat dim plate used as scope-down backdrop for B1.3 / B1.5 / over-modal (canvas-context scenes per round-1 Q1).</li>
+        <li><code>.anchor-pin</code>, <code>.top-avatar</code> — review-page anchor parity with A6+A2a backdrop.</li>
+      </ul>
+    </div>
+    <div style="background: var(--page); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px;">
+      <h3 style="margin:0 0 8px;font-size:14px;color:var(--ink);font-weight:600;letter-spacing:-0.005em;">Tokens used (none new)</h3>
+      <ul style="margin:6px 0 0;padding-left:18px;">
+        <li>Surface: <code>--bg</code> · <code>--page</code> · <code>--rail</code> · <code>--fill</code> · <code>--fill-2</code></li>
+        <li>Ink: <code>--ink</code> · <code>--ink-2</code> · <code>--ink-3</code></li>
+        <li>Lines: <code>--line</code> · <code>--line-2</code></li>
+        <li>Accent (action ink + AI border + AI lead): <code>--accent</code> · <code>--accent-2</code> · <code>--accent-ink</code> · <code>--accent-soft</code></li>
+        <li>Warn (error variant only): <code>--warn</code> · <code>--warn-edge</code></li>
+        <li>Floating elevation matches design.md §1.6: <code>0 8px 24px -6px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.04) inset</code></li>
+      </ul>
+    </div>
+    <div style="background: var(--page); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px;">
+      <h3 style="margin:0 0 8px;font-size:14px;color:var(--ink);font-weight:600;letter-spacing:-0.005em;">Behavior commitments</h3>
+      <ul style="margin:6px 0 0;padding-left:18px;">
+        <li><strong>Auto-dismiss windows:</strong> success 4s · info 3s · action 5s · AI 8s · error sticky.</li>
+        <li><strong>Hover pauses dismissal.</strong> Standard floating-element behavior — survives multi-toast read-time.</li>
+        <li><strong>Keyboard:</strong> Esc dismisses the most-recent toast. Tab cycles through inline action buttons in DOM order.</li>
+        <li><strong>Z-order:</strong> toast 20 · modal 10 · backdrop 5. Toast wins over every other floating surface except the command palette (which captures input).</li>
+        <li><strong>Stack cap:</strong> design suggests ≤3 simultaneous; implementation drops oldest off-stack (kept in notification history). Cap value is a code-time choice.</li>
+      </ul>
+    </div>
+    <div style="background: var(--page); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px;">
+      <h3 style="margin:0 0 8px;font-size:14px;color:var(--ink);font-weight:600;letter-spacing:-0.005em;">Sample-data hygiene</h3>
+      <ul style="margin:6px 0 0;padding-left:18px;">
+        <li><strong>Side-footer anonymized.</strong> "Jiho Yang" / "Pro plan" / "JY" replaced with "Account holder" / "Pro plan" / "AC" per round-1 Q2 (b). Sample customer brand "Nike" + brand-color avatar remain (allowed per design.md §3.15 — sample customer data uses brand color).</li>
+        <li><strong>Canonical 03 Brand Dashboard leak flagged, not patched.</strong> The same "Jiho Yang" / "Pro plan" string appears in <code>batch-a/dark/Kova Hi-Fi 03 Brand Dashboard - Dark.html</code> at line 234 (and four other scenes) — flagged per round-1 Q2 (d) for separate cleanup PR. Not edited from this round.</li>
+      </ul>
+    </div>
+    <div style="background: var(--page); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px;">
+      <h3 style="margin:0 0 8px;font-size:14px;color:var(--ink);font-weight:600;letter-spacing:-0.005em;">Out of scope</h3>
+      <ul style="margin:6px 0 0;padding-left:18px;">
+        <li><strong>Notification history view</strong> — listed in delivery notes as a Phase-2 surface; not designed here.</li>
+        <li><strong>Mobile responsive layout</strong> — toasts on viewports below 720 px should anchor bottom-center and span the full width minus 16-px gutters. Not drawn (design.md is desktop-first; mobile behavior deferred).</li>
+        <li><strong>Progress / streaming toasts</strong> — for long-running AI generation. Not in B1; covered by the canvas right-rail AI panel.</li>
+        <li><strong>Real canvas chrome</strong> — B1.3 / B1.5 / over-modal scope down to a dim plate per Q1 (canvas chrome lives in <code>Kova Canvas - Final.html</code>, excluded from the original brief §2 ignore list).</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+
+<footer style="padding:32px 56px;border-top:1px solid var(--line);background:var(--bg);color:var(--ink-3);font-size:11px;">
+  Kova · hi-fi · Batch A additions · B1 Toasts · v2 (round-1 cleanup)
+</footer>
+
+<script>
+  if (window.lucide) window.lucide.createIcons({ attrs: { 'stroke-width': 1.6 } });
+</script>
+</body>
+</html>

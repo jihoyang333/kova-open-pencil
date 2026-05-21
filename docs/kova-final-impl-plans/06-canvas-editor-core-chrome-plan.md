@@ -114,9 +114,19 @@
 
 > **Authoritative method:** `docs/execution-phase/claude-design-files/IMPLEMENTATION_PROMPT.md` (read end-to-end before any UI task). PRD 06 cites **line ranges** inside `Kova Canvas - Final.html` (the canonical reference implementation) — use those line numbers as the authoritative visual source.
 
-**Translation rule:** `Kova Canvas - Final.html` is the canonical reference implementation per `design.md` §7. When in doubt about a component's exact structure, open this file. Port to idiomatic Vue 3 + Cluster 11 primitives. **Mockup wins**; drift protocol (RIDER §2.1).
+**3-rule fidelity contract** (per `docs/execution-phase/claude-design-files/IMPLEMENTATION_PROMPT.md` §0):
 
-**Per-screen diff loop** per IMPLEMENTATION_PROMPT.md Phase 4. Cluster-boundary Playwright gate ≤ 2%. Theme: dark.
+1. **Visual values are copied.** Every color, spacing, type, radius, shadow, gap, padding, line-height, tracking, and proportion in the rendered output MUST match the mockup pixel-for-pixel.
+2. **DOM structure is translated.** Vue 3 SFCs + Reka UI primitives + Cluster 11 primitives + K* component layer (`design.md` §3). NOT the mockup's hand-rolled HTML.
+3. **Behavior is engineered.** State in Pinia / refs / composables. Hover / focus / active / selected / disabled states are dynamic bindings, NEVER hardcoded classes.
+
+**Trap phrase ban:** "copy DOM verbatim" is forbidden. Drift protocol per RIDER §2.1 + IMPLEMENTATION_PROMPT.md §7 on any hi-fi value not in `kova-hifi.css :root` — never silently round. **Theme: dark.**
+
+**Phase 1 audit gate** (per IMPLEMENTATION_PROMPT.md §3): produce `KOVA_AUDIT.md` + `tokens-used.md` BEFORE any Vue code. `tokens-used.md` enumerates every visual value in this cluster's surfaces mapped to either an existing token or ⚠️ MISSING (founder decision via AskUserQuestion). No Vue until founder-approved.
+
+**Per-screen diff loop** (per IMPLEMENTATION_PROMPT.md §6): in-repo mockup + Vue route at 1440px → screenshot both → walk Appendix A per property → list discrepancies in `tests/snapshots/cluster-06/<surface>-diff.md` → fix → re-diff until empty. **Visual-diff thresholds: ≤ 0.1% component / ≤ 0.5% screen** (Playwright `maxDiffPixelRatio: 0.005, threshold: 0.2`, masking volatile regions per IMPLEMENTATION_PROMPT.md §10).
+
+**PR artifact:** every PR touching a UI surface in this cluster MUST include 3-screenshot row (mockup / impl / diff) per surface in the PR description.
 
 ### Cluster 11 primitives — use these
 
@@ -141,18 +151,18 @@ Source: `kova-open-pencil-1/src/components/ui/`:
 
 | Plan surface | Hi-fi file | Line range / Scene |
 |---|---|---|
-| Editor frame (`.kc` root grid) | `main-main-kova-scope/batch-b/Kova Canvas - Final.html` | lines 75–98 (root grid, tokens) |
+| Editor frame (`.kc` root grid) | `design-system/hifi/canvas-chrome/Kova Canvas - Final.html` | lines 75–98 (root grid, tokens) |
 | Topbar (44px, logo + breadcrumb + actions) | same | lines 100–141 (CSS), 611–627 (instance) |
-| Left panel (240px, Pages + Layers) | same + `main-main-kova-scope/batch-b/chunk-b3/Kova Hi-Fi 10 Left Panel - Dark.html` (scenes for layer mask glyph / slice glyph / empty / drag-reorder / search) | Final.html lines 147–215 (CSS), 632–705 (instance); 10 Left Panel scenes 10.1–10.5 |
+| Left panel (240px, Pages + Layers) | same + `design-system/hifi/canvas-engine/Kova Hi-Fi 10 Left Panel - Dark.html` (scenes for layer mask glyph / slice glyph / empty / drag-reorder / search) | Final.html lines 147–215 (CSS), 632–705 (instance); 10 Left Panel scenes 10.1–10.5 |
 | Center canvas | Final.html | lines 218–273 (CSS), 707–768 |
 | Bottom toolbar (floating pill, 9 tools rendered) | Final.html | lines 275–309 (CSS), 770–800 |
 | Zoom HUD (bottom-right) | Final.html | lines 311–325, 802–805 |
-| Right panel (264px, tab strip + frame-head + inspector body) | Final.html + `main-main-kova-scope/batch-b/chunk-b4/Kova Hi-Fi 11 Inspector - Dark.html` (Cluster 07b ships sections) | Final.html lines 327–501 (CSS), 808–1008; 11 Inspector scenes 11.1+ |
+| Right panel (264px, tab strip + frame-head + inspector body) | Final.html + `design-system/hifi/canvas-engine/Kova Hi-Fi 11 Inspector - Dark.html` (Cluster 07b ships sections) | Final.html lines 327–501 (CSS), 808–1008; 11 Inspector scenes 11.1+ |
 | Tab strip (Design + AI) | Final.html | lines 337–359 (CSS), 811–820 |
 | Help FAB | Final.html | lines 494–502 (Phase 2 visible-disabled) |
-| Top-chrome menu host (logo menu / file-caret menu / avatar menu) | `main-main-kova-scope/batch-b/Kova Hi-Fi 08 Top Chrome Menus - Dark.html` | Cluster 08 ships menu content; Cluster 06 wires anchors |
-| Color picker popover host (Cluster 07b mounts inside) | `main-main-kova-scope/batch-b/chunk-b5/Kova Hi-Fi 12 Color Picker - Dark.html` | 8 scenes (12.1–12.8) — 07b owns |
-| Canvas-side toast variant + Missing fonts pill | `main-main-kova-scope/batch-b/chunk-b2/Kova Hi-Fi 16 Toasts + Missing Fonts - Dark.html` | reused from Cluster 11 ToastStack |
+| Top-chrome menu host (logo menu / file-caret menu / avatar menu) | `design-system/hifi/canvas-chrome/Kova Hi-Fi 08 Top Chrome Menus - Dark.html` | Cluster 08 ships menu content; Cluster 06 wires anchors |
+| Color picker popover host (Cluster 07b mounts inside) | `design-system/hifi/canvas-engine/Kova Hi-Fi 12 Color Picker - Dark.html` | 8 scenes (12.1–12.8) — 07b owns |
+| Canvas-side toast variant + Missing fonts pill | `design-system/hifi/states/Kova Hi-Fi 16 Toasts + Missing Fonts - Dark.html` | reused from Cluster 11 ToastStack |
 
 ### Per-property extraction checklist
 

@@ -1,378 +1,282 @@
-# W6 — Cluster 11 (Foundation) Execution Prompt
+# W6 — Cluster 11 (Foundation) Execution Prompt — REDO
 
 **Wave:** W6
 **Cluster:** 11 — Shared UI Infrastructure
-**Status:** ready to dispatch
-**Prerequisites:** W5a polish-pass merged into `feat/m9-shopify`; re-audit green
-**Dependencies (must exist):** Supabase project provisioned + `.env.local` populated; `bun install` succeeds in `kova-open-pencil-1/`
+**Status:** REDO required (2026-05-20). Prior W6 freestyled UI primitives — output looked nothing like the hi-fi. Fidelity contract has been inverted. Re-dispatch with new contract.
+**Prerequisites:** W5a polish-pass merged into `feat/m9-shopify`. Founder reads + agrees with the redo scope below before launching.
+
+---
+
+## Why a redo (read this first)
+
+The previous W6 agent (commit range on `app/cluster-11-foundation`) built the backend / infra correctly:
+- `audit_log` migration runner + DDL
+- `requireEnv()` helper + CI gate
+- Idempotency keys
+- Sentry / Resend / Vercel Cron stub guards
+- EmailShell primitive
+
+**But the UI primitives + `/dev/cluster-11` showcase route freestyled the visuals.** Buttons, modals, popovers, toasts all looked like generic Tailwind defaults — not the dense, refined Figma-modeled Kova aesthetic from the hi-fi mockups.
+
+Root cause: the default claude.ai/design handoff README told the agent "don't render 1:1, compose from existing components." Agent took that as license to freestyle visual VALUES, not just markup. The contract has been inverted per `docs/execution-phase/claude-design-files/IMPLEMENTATION_PROMPT.md` (rewritten 2026-05-20). The 3-rule formulation is now:
+
+> 1. **Visual values are copied** — pixel-for-pixel from the mockup.
+> 2. **DOM structure is translated** — Vue 3 + Reka UI + `K*` component layer. NOT mockup HTML.
+> 3. **Behavior is engineered** — Pinia / refs / composables. NOT static classes.
+
+The trap phrase "copy DOM verbatim" is forbidden.
+
+## Two redo paths (founder picks)
+
+**Path A (recommended) — Full reset + redo:**
+```sh
+git checkout app/cluster-11-foundation
+git reset --hard feat/m9-shopify   # discards 20 commits
+git push --force-with-lease origin app/cluster-11-foundation
+```
+Pros: clean git history. The new agent doesn't inherit any freestyle code. Phase 1 audit gate works as designed.
+Cons: re-does the backend / infra work (~30% of prior W6 time).
+
+**Path B — Keep infra, redo UI:**
+```sh
+git checkout app/cluster-11-foundation
+# Inspect commits, cherry-pick infra-only commits onto a fresh branch
+git log --oneline feat/m9-shopify..HEAD
+# Identify which commits are UI primitives + showcase, revert those
+git revert <ui-primitive-commits>
+```
+Pros: preserves working backend / infra.
+Cons: messy git history. Cherry-pick risks missing dependencies. Slower to set up.
+
+**Founder must pick BEFORE launching the agent below.** Default = Path A.
 
 ---
 
 ## Founder pre-flight (do this BEFORE launching the agent)
 
-1. Ensure Supabase project exists for dev environment
-2. `.env.local` in `kova-open-pencil-1/` has these populated:
+1. Pick redo path (A or B above). For Path A, run the reset commands.
+2. Ensure Supabase project exists for dev environment.
+3. `.env.local` in `kova-open-pencil-1/` has these populated:
    ```
    VITE_SUPABASE_URL=https://<project>.supabase.co
    VITE_SUPABASE_ANON_KEY=<public anon key>
    SUPABASE_SERVICE_ROLE_KEY=<server-only role key>
    ANTHROPIC_API_KEY=<server-only — for AI features but read by edge fns only>
    ```
-3. Supabase CLI installed: `supabase --version` → returns a version
-4. `cd kova-open-pencil-1 && bun install` succeeds
-5. `bun run dev` starts dev server at localhost:1420
-6. `feat/m9-shopify` is the current HEAD of `origin` and includes W5a polish-pass merge
+4. Supabase CLI installed: `supabase --version` → returns a version.
+5. `cd kova-open-pencil-1 && bun install` succeeds.
+6. `bun run dev` starts dev server at localhost:1420.
+7. Verify in-repo hi-fi mockups are present: `ls design-system/hifi/` shows 13 cluster subdirs + index-batch-a.html.
+8. Verify Playwright visual-diff infra is present: `ls tests/visual-diff/` shows `fixtures/`, `playwright.config.ts`, `example.visual.spec.ts`.
+9. Verify `bun run test:visual` is a defined script in `package.json` (it should be, set 2026-05-20).
+10. `feat/m9-shopify` is the current HEAD of `origin`.
 
 ---
 
 ## Launch the agent
 
-Open a fresh Claude Code session. Set working directory to `/Users/jihoyang/kova-main/kova-open-pencil-1`. Use Opus 4.7 model. Paste the prompt below verbatim.
+Open a fresh Claude Code session. Set working directory to `/Users/jihoyang/kova-main/kova-open-pencil-1`. Use **Opus 4.7** model. Paste the prompt below VERBATIM.
 
 ---
 
 ## PROMPT (paste verbatim — agent reads this fresh, no prior context)
 
 ```
-You are the W6 execution-phase agent for Kova. Your job: build Cluster 11
-(Shared UI Infrastructure) — the foundation layer that every other cluster
-depends on.
+You are the W6 REDO execution-phase agent for Kova. Your job: build Cluster 11
+(Shared UI Infrastructure) — the foundation layer every other cluster depends on.
 
-This is execution, not planning. Plans are written, audit-passed, and
-founder-locked. You execute.
+PREVIOUS W6 ATTEMPT FAILED. The prior agent freestyled the UI primitives —
+buttons, modals, popovers, toasts looked like generic Tailwind defaults, not
+the dense Figma-modeled Kova aesthetic from the hi-fi mockups. The fidelity
+contract has been INVERTED. Read it before doing ANYTHING.
+
+## Canonical fidelity contract (read end-to-end first)
+
+docs/execution-phase/claude-design-files/IMPLEMENTATION_PROMPT.md
+
+The 3-rule formulation in §0 is the most important paragraph in this codebase:
+  1. Visual values are copied — pixel-for-pixel from the mockup.
+  2. DOM structure is translated — Vue 3 + Reka UI + K* component layer. NOT mockup HTML.
+  3. Behavior is engineered — Pinia / refs / composables. NOT static classes.
+
+"Copy DOM verbatim" is FORBIDDEN. It is a trap phrase that destroys fidelity.
 
 ## Mandatory reading (in this order)
 
-1. Master execution guide:
-   docs/execution-phase/MASTER-EXECUTION-GUIDE.md
-   → understand the wave order, per-cluster pipeline, branch strategy,
-     quality gates, founder responsibilities
+1. docs/execution-phase/claude-design-files/IMPLEMENTATION_PROMPT.md
+   → THE canonical fidelity contract. Read §0–§16 + Appendix A. Memorize §0
+     (3-rule formulation) + §6 (per-screen diff loop + thresholds) + §7 (drift
+     protocol) + §9 (lint rule) + §10 (CI-determinism prereq) + §12 (DoD).
+
+2. docs/execution-phase/MASTER-EXECUTION-GUIDE.md
+   → wave order, per-cluster pipeline, quality gates.
+
+3. docs/execution-phase/DESIGN-SYSTEM-COMPLIANCE-RIDER.md
+   → hard rules + drift protocol + 3-rule contract restated.
 
-2. Design-system compliance rider (HARD-RULE — every UI line you write
-   must comply):
-   docs/execution-phase/DESIGN-SYSTEM-COMPLIANCE-RIDER.md
-   → memorize §2 hard rules; never invent tokens, components, colors
+4. docs/kova-final-prds/11-shared-ui-infrastructure.md
+   → Cluster 11 WHY + acceptance criteria.
+
+5. docs/kova-final-impl-plans/11-shared-ui-infrastructure-plan.md
+   → Cluster 11 HOW + task-by-task TDD. THIS PLAN IS THE README (Mandate 8) —
+     it supersedes any auto-generated bundle README. Ignore conflicts with
+     docs/execution-phase/claude-design-files/README.md (reference only).
 
-3. Cluster 11 PRD (the WHY + acceptance criteria):
-   docs/kova-final-prds/11-shared-ui-infrastructure.md
-
-4. Cluster 11 implementation plan (the HOW + task-by-task TDD):
-   docs/kova-final-impl-plans/11-shared-ui-infrastructure-plan.md
-
-5. Hi-fi handoff bundle overview (authority chain + fidelity rule +
-   screen inventory + hard bans):
-   docs/execution-phase/claude-design-files/README.md
-
-6. Hi-fi → Vue translation method (Audit → Tokens → Components →
-   Screens; per-screen diff loop; failure modes; Appendix A per-property
-   extraction checklist):
-   docs/execution-phase/claude-design-files/IMPLEMENTATION_PROMPT.md
-   → Cluster 11 IS Phases 2+3 (token bridge + component layer) of this
-     method. Every downstream cluster (01-10, 12) is Phase 4 (screens).
-
-7. Project-wide rules:
-   CLAUDE.md (root of kova-open-pencil-1/) — hard constraints, code
-   conventions, Supabase env discipline
-
-8. Design system canonical (read design.md cover-to-cover):
-   /Users/jihoyang/kova-main/main-main-kova-scope/design-system/design.md
-
-DO NOT skim these. READ them.
-
-## Mandatory skill invocations
-
-Invoke in this order before any code:
-
-1. superpowers:using-superpowers — orient to the skill system
-2. superpowers:executing-plans — drive the cluster's plan-task loop
-3. superpowers:test-driven-development — TDD discipline per task
-
-After scaffolding, optionally invoke:
-- superpowers:writing-plans — if you need to author a brief execution
-  plan doc at docs/superpowers/plans/<date>-cluster-11-execution.md
-
-After EVERY Plan task commit:
-- The next task starts a fresh TDD cycle (do not batch)
-
-At cluster end (mandatory):
-- superpowers:code-reviewer (subagent) — self-review the entire cluster
-- e2e-runner (subagent) — Playwright golden-path test
-
-Subagent triggers during the cluster:
-- vue-expert — if Reka UI integration is non-trivial
-- typescript-pro — if a primitive needs advanced generics
-- context7 MCP — to verify Reka UI / Pinia / Vue 3 / Supabase API usage
-  per current docs (don't rely on training data; check current API)
-
-## Cluster 11 scope (per Plan §6 phases)
-
-Phase 1: Cross-cut backend
-- Initial migration: audit_log DDL + RLS
-- Sentry STUB + Resend STUB + idempotency helper + Vercel cron STUB
-  (all env-guarded per `project_external_accounts_deferred` memory)
-
-Phase 2: Composables
-- theme composable
-- online-status composable
-- Realtime-channel composable
-- idempotency-key composable
-
-Phase 3-6: Pinia stores + Vue 3 components in Composition API
-- KovaModal (Reka Dialog wrapper)
-- KovaPopover (Reka Popover wrapper)
-- KovaMenu (Reka DropdownMenu wrapper) — Plan T4.3a per W5a split
-- KovaTooltip (Reka Tooltip wrapper) — Plan T4.3b per W5a split
-- KovaIcon (Lucide via unplugin-icons)
-- KovaSkeleton (shimmer loader)
-- KovaToast (toast notifications)
-- Other primitives per Plan §6
-
-Phase 7: Error-page routes + Vue global errorHandler
-
-Phase 8: <MarketingShell> + <EmailShell> for marketing + transactional
-emails
-
-Phase 9: Global app shell (<App> + main.ts) + /dev/cluster-11 showcase
-route for visual smoke-testing
-
-Phase 10: E2E + manual smoke
-
-Phase 11: CI grep + coverage gates
-
-Every primitive consumes kova-hifi.css tokens via Tailwind @theme
-translation. No hex literals anywhere.
-
-## Branch + commit discipline
-
-Branch name: app/cluster-11-foundation
-Base: feat/m9-shopify @ current HEAD
-Worktree: NO worktree needed (W6 is sequential, no parallel cluster running)
-
-Pre-flight commands (run exactly in this order):
-
-  cd /Users/jihoyang/kova-main/kova-open-pencil-1
-  git checkout feat/m9-shopify
-  git pull origin feat/m9-shopify
-  git status                                  # must be clean
-  git branch app/cluster-11-foundation feat/m9-shopify
-  git checkout app/cluster-11-foundation
-  git branch --show-current                   # must print app/cluster-11-foundation
-
-Commit message format:
-
-  feat(c11-tNN): <task description>
-  fix(c11-review): <issue found by code-reviewer>
-  test(c11): <test addition>
-  chore(c11): <housekeeping>
-
-ONE COMMIT PER PLAN TASK. No squashing. The W2 Cluster 03 squash taught
-us why. Per-task commits = bisect-friendly + revert-safe + audit-log.
-
-Push every 5-8 commits so progress is visible:
-
-  git push origin app/cluster-11-foundation
-
-## Per-task execution flow (TDD discipline)
-
-For each Plan task in §6 order:
-
-1. Read the task's "Why" + "Step-by-step" sections in the Plan
-2. RED:
-   - Write the test file first (per Plan's test path)
-   - Run `bun test <test-file>` — must FAIL (no impl yet)
-3. GREEN:
-   - Write minimal impl to make the test pass
-   - Run `bun test <test-file>` — must PASS
-4. REFACTOR (if needed):
-   - Clean up the impl, extract helpers, etc.
-   - Re-run `bun test <test-file>` — must still PASS
-5. Quality gates per CLAUDE.md:
-   - `bun run check` (oxlint type-aware) — zero new violations
-   - `bun run format` — clean
-   - `bun run test:dupes` — ≤ 3%
-6. Commit:
-   - `git add <files>`
-   - `git commit -m "feat(c11-tNN): <description>"`
-7. Push every 5-8 commits
-
-## Design-system compliance (re-read DESIGN-SYSTEM-COMPLIANCE-RIDER.md)
-
-Every Vue component you write MUST:
-- Use kova-hifi.css class names verbatim (.btn, .input, .dlg, .pill, etc.)
-- Use Tailwind utilities ONLY for layout positioning (flex, grid, gap)
-- Reference design tokens via var(--accent), var(--bg), etc.
-- Use <KovaIcon name="..."> for icons (NEVER raw <icon-lucide-*>)
-- Use Reka UI primitive wrappers (KovaModal, KovaPopover, KovaMenu,
-  KovaTooltip, KovaSelect) you yourself are building
-- Have NO <style> / <style scoped> blocks
-- Have NO inline hex / px values not on the canonical scale
-- Have NO new tokens (use the existing token set in kova-hifi.css)
-- Match the hi-fi HTML rendering for each surface (visual diff via
-  Playwright at cluster end)
-
-If a primitive needs something genuinely new (e.g., a token role not
-in design.md §1) — STOP. Use AskUserQuestion to ask the founder.
-DO NOT silently invent.
-
-## Hi-fi reference
-
-For each visual primitive, reference the corresponding hi-fi HTML at:
-
-  /Users/jihoyang/kova-main/main-main-kova-scope/batch-a/dark/
-
-For toasts, errors, modals specifically:
-
-  /Users/jihoyang/kova-main/main-main-kova-scope/batch-a-additions/dark/
-
-Plan 11 §6.x sections cite specific hi-fi files for each primitive.
-
-## Cluster-end gates (mandatory before declaring done)
-
-1. All Plan tasks have commits — verify via `git log --oneline | wc -l`
-2. `bun run build` succeeds (zero errors)
-3. `bun run check` — zero new violations
-4. `bun run test:unit` — all green
-5. `bun run test:dupes` — ≤ 3%
-6. /dev/cluster-11 showcase route renders every primitive
-7. Founder browser smoke-test of /dev/cluster-11 (founder triggers this
-   — agent posts route URL + screenshots in done report)
-8. Invoke superpowers:code-reviewer agent — must report PASS (zero
-   CRITICAL/HIGH design-system violations)
-9. Invoke e2e-runner agent — golden path: load /dev/cluster-11, every
-   primitive renders, every interaction works
-10. Playwright visual-diff for each primitive vs hi-fi HTML — ≤ 2% pixel
-    diff (per master guide §8.2)
-
-## Done report (write to file before exiting)
-
-Path: docs/execution-phase/cluster-reports/W6-cluster-11-DONE.md
-
-Format:
-
-```
-# W6 — Cluster 11 (Foundation) — DONE
-
-**Date:** <YYYY-MM-DD>
-**Branch:** app/cluster-11-foundation @ <final commit hash>
-**Commits:** <N> per-task commits + <M> review commits
-**Diff:** +<add> / -<del> across <count> files
-**Token spend:** ~$<amount>
-
-## Per-task closure
-
-| Task | Status | Commit | Notes |
-|------|--------|--------|-------|
-| T1.1 audit_log DDL | ✅ | abc123 | RLS verified |
-| T1.2 idempotency helper | ✅ | def456 | |
-| ... | ... | ... | ... |
-
-## Quality gates
-
-- bun run build: ✅
-- bun run check: ✅ (0 new violations)
-- bun run test:unit: ✅ (<N> tests pass)
-- bun run test:dupes: ✅ (<x>% < 3%)
-- code-reviewer: ✅ PASS (or list issues fixed)
-- e2e-runner: ✅ PASS (golden path)
-- Playwright visual diff: ✅ all primitives within 2% threshold
-
-## Hi-fi parity (screenshots)
-
-- Primitive 1 (KovaModal): /tests/snapshots/cluster-11/kova-modal-{vue,hifi}.png
-  diff: 0.4%
-- Primitive 2 (KovaPopover): /tests/snapshots/cluster-11/kova-popover-{vue,hifi}.png
-  diff: 0.8%
-- ... (one row per primitive)
-
-## Founder review checklist
-
-- [ ] Visit http://localhost:1420/dev/cluster-11
-- [ ] Verify every primitive renders + interacts as expected
-- [ ] Approve merge into feat/m9-shopify
-
-## Blockers / open questions
-
-- (none, or list)
-
-## Next wave
-
-W7 — Cluster 07a (canvas engine extensions). Founder triggers next.
-```
-
-## Discipline reminders
-
-- READ-ONLY for packages/core/ (engine, tools, figma-api, renderer,
-  scene graph, codec) per CLAUDE.md
-- READ-ONLY for SYSTEM_PROMPT constant in use-chat.ts
-- READ-ONLY for Yjs / y-indexeddb local persistence layer
-- READ-ONLY for editor UI canvas/toolbar/layers/properties (those exist
-  already; you're adding NEW primitives in src/components/ui/)
-- valibot only (no Zod) per CLAUDE.md
-- crypto.getRandomValues() only (no Math.random())
-- e.code only (no e.key) for keyboard handlers
-- No React, no Next.js, no PixiJS, no Tailwind v3 / UnoCSS
-- Server-only env vars (no VITE_ prefix): SUPABASE_SERVICE_ROLE_KEY,
-  ANTHROPIC_API_KEY, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
-- NEVER --force, NEVER --no-verify
-- NEVER expose server-only env vars to the browser
-- Use AskUserQuestion when blocked. Don't guess.
+6. design-system/canonical/design.md (in-repo canonical, cover-to-cover)
+   → spec doc. Token rules + bans + extension protocol.
+
+7. design-system/canonical/TOKEN_CANONICAL.md
+   → three token vocabularies + positional offsets section (added 2026-05-20).
+
+8. design-system/canonical/kova-hifi.css
+   → :root token block + component primitive class definitions.
+
+9. design-system/hifi/README.md
+   → cluster → file mapping + PRIMITIVE-SPEC-EXTRACTION map for Cluster 11.
+
+10. CLAUDE.md (root of kova-open-pencil-1/) — hard constraints, code
+    conventions, Supabase env discipline.
+
+## CRITICAL — Cluster 11 has NO own hi-fi mockup
+
+Cluster 11 ships PRIMITIVES (KovaIcon, KovaToast, KovaModal, KovaPopover,
+KovaMenu, KovaTooltip, KovaSkeleton, KovaSelect, EmailShell). No dedicated
+hi-fi shows them as a "primitives gallery."
+
+INSTEAD: every primitive's pixel-exact spec must be EXTRACTED from the screen
+hi-fi mockups that USE that primitive. The PRIOR agent skipped this step and
+freestyled. YOU MUST NOT.
+
+Per design-system/hifi/README.md primitive-spec map:
+
+| Primitive | Extract spec from |
+|---|---|
+| KovaIcon | every hi-fi (Lucide icons used throughout) |
+| KovaToast | states/Kova Hi-Fi 16 Toasts + Missing Fonts - Dark.html + states/Kova Hi-Fi B1 Toasts - Dark.html + onboarding/Kova Hi-Fi B11 Canvas Creation Transition - Dark.html (toast row) |
+| KovaModal | brand-kit/Kova Hi-Fi A4+A9+A10 Modals - Dark.html (typed-confirm patterns) + auth/Kova Hi-Fi B4 Session Expired - Dark.html (sm dialog) + brand-mgmt/Kova Hi-Fi A2+A3 Brand picker & New brand - Dark.html (md modal) |
+| KovaPopover | canvas-menus/Kova Hi-Fi A6+A2a Popovers + A8 Dialogs - Dark.html + canvas-menus/Kova Hi-Fi 13 Canvas Popovers - Dark.html |
+| KovaMenu | canvas-menus/Kova Hi-Fi A5 Command-K - Dark.html + dashboard/Kova Hi-Fi A11+A12+A13+A_canvas_nav - Dark.html (brand switcher dropdown) |
+| KovaTooltip | canvas-chrome/Kova Canvas - Final.html (toolbar tool tooltips) |
+| KovaSkeleton | states/Kova Hi-Fi B7 Loading Skeletons - Dark.html |
+| KovaSelect | brand-kit/Kova Hi-Fi A4+A9+A10 Modals - Dark.html (form selects) |
+| EmailShell | (no hi-fi — Plan 11 already defined; verify against the spec doc) |
+
+For each primitive, walk Appendix A of IMPLEMENTATION_PROMPT.md per the
+referenced screen hi-fi(s). Record extracted values in
+docs/execution-phase/cluster-audits/cluster-11-tokens-used.md.
+
+## Phase 1 audit gate (MANDATORY — no Vue code until this is green)
+
+Produce two markdown documents BEFORE writing any Vue / TypeScript code:
+
+1. docs/execution-phase/cluster-audits/cluster-11-audit.md
+   - §1.1 Token map (every short token in kova-hifi.css :root mapped to
+     src/app.css @theme).
+   - §1.2 Existing-component inventory (src/components/ui/* — there are
+     EXISTING files: KovaIcon.vue, button.ts, input.ts, menu.ts, select.ts,
+     surface.ts, toast.ts. Document what each does + whether it matches the
+     hi-fi spec OR needs rebuilding.).
+   - §1.3 Reuse decisions per primitive.
+   - §1.4 New tokens needed (route via drift protocol §7).
+   - §1.5 New components needed.
+   - §1.6 Open questions for founder (route via AskUserQuestion).
+
+2. docs/execution-phase/cluster-audits/cluster-11-tokens-used.md
+   - For every primitive Cluster 11 ships, enumerate every visual value
+     extracted from the referenced screen hi-fi(s). Categories: colors,
+     spacing, typography, radii, shadows, motion, z-index, sizing, density.
+   - Map each value to either an existing token OR ⚠️ MISSING with proposed
+     resolution.
+   - Route every ⚠️ MISSING row to founder via AskUserQuestion before Phase 2.
+
+STOP after these two docs. Wait for founder approval before Phase 2.
+
+## Phase 2 — Token + foundation setup
+
+Per IMPLEMENTATION_PROMPT.md §4. Most of this is already done in src/app.css
+(positional-offset tokens added 2026-05-20). Verify + extend per Phase 1
+output.
+
+## Phase 3 — Component layer (the primitives)
+
+Build each primitive in src/components/ui/ as a Vue SFC. Per IMPLEMENTATION_PROMPT.md §5.
+
+**EACH primitive must pass:**
+1. Per-property extraction walk (Appendix A) against the referenced screen hi-fi.
+2. Visual-diff in /dev/components gallery ≤ 0.1% against an isolated screenshot
+   of the primitive as it appears in the screen hi-fi.
+3. Per-property written diff at tests/snapshots/cluster-11/<primitive>-diff.md
+   showing zero discrepancies.
+
+NEVER skip this loop. NEVER freestyle. If the primitive doesn't match, fix it
+before moving to the next.
+
+## Phase 4 — Showcase route
+
+Build /dev/cluster-11 that renders every primitive in every variant + state.
+This route is FOR FOUNDER SMOKE TEST. It must look as polished as a real
+product surface — not a generic Storybook gallery. Use the dense Figma
+aesthetic from design.md §4 (density rhythm) and §3 (component patterns).
+
+## Quality gates (per IMPLEMENTATION_PROMPT.md §12 + MASTER §8.2)
+
+For every primitive shipped:
+- [ ] Per-property written diff is empty.
+- [ ] Per-component visual-diff ≤ 0.1% (Playwright `bun run test:visual`).
+- [ ] No raw hex / raw px (lint per `bun run check`).
+- [ ] All tokens used exist in kova-hifi.css :root + TOKEN_CANONICAL.md.
+- [ ] bun run check green.
+- [ ] bun run test:unit green for new tests.
+- [ ] bun run build succeeds.
+
+PR description includes 3-screenshot row (mockup region / primitive impl / diff)
+per primitive.
+
+## What to do FIRST
+
+1. Read IMPLEMENTATION_PROMPT.md end-to-end. Memorize §0 (3-rule formulation).
+2. Invoke superpowers:using-superpowers.
+3. Invoke superpowers:executing-plans with plan = docs/kova-final-impl-plans/11-shared-ui-infrastructure-plan.md.
+4. Read design-system/canonical/design.md cover-to-cover.
+5. Read design-system/hifi/README.md (primitive-spec extraction map).
+6. Audit src/components/ui/* — what exists, what's salvageable, what needs
+   rebuilding per the hi-fi specs.
+7. Open EACH referenced screen hi-fi at /dev/hifi/<cluster>/<file>.html?ci=1 in
+   a browser (dev server must be running). Screenshot the primitive region.
+8. Build docs/execution-phase/cluster-audits/cluster-11-audit.md +
+   docs/execution-phase/cluster-audits/cluster-11-tokens-used.md.
+9. STOP. Use AskUserQuestion to surface every ⚠️ MISSING + every open decision.
+
+DO NOT write any Vue / TS code until both audit docs exist + founder has
+approved.
+
+DO NOT use the phrase "copy DOM verbatim" anywhere. Trap phrase. Forbidden.
+
+DO NOT silently round any mockup value to the nearest existing token. Drift
+protocol §7 is the only way to resolve a missing value.
+
+DO NOT skip the per-component visual-diff. 0.1% threshold. If it fails,
+investigate the 0.1% drift, do NOT loosen the gate.
+
+## Branch + worktree
+
+Continue on app/cluster-11-foundation (after the redo reset per founder's
+choice of Path A or B above). One commit per primitive task per the executing-plans
+discipline. NO squashing. Per-task atomic commits.
 
 ## When done
 
-1. All gates green
-2. Done report written
-3. Final push to origin/app/cluster-11-foundation
-4. Print to console:
+Produce docs/execution-phase/cluster-reports/W6-cluster-11-REDO-DONE.md with:
+- Per-primitive closure table (primitive name | spec source | visual-diff %).
+- 3-screenshot artifact per primitive (committed under
+  tests/snapshots/cluster-11/<primitive>-{mockup,impl,diff}.png).
+- Token diff: every new token added (with hex + mockup origin).
+- Component diff: every new variant or new component built.
+- Open issues (if any) for founder review.
+- Founder checklist: routes to smoke-test at /dev/cluster-11.
 
-    W6 CLUSTER 11 DONE. <N> commits pushed to app/cluster-11-foundation.
-    Founder: review done report at docs/execution-phase/cluster-reports/W6-cluster-11-DONE.md
-    Then merge into feat/m9-shopify with --no-ff.
+Then notify founder. DO NOT merge — founder merges with --no-ff after browser
+smoke + code-reviewer agent pass + e2e-runner golden-path.
 
-Do NOT merge yourself. Founder does the merge.
-
-Begin. Read the mandatory docs first.
+Go.
 ```
-
----
-
-## After agent runs
-
-**Founder steps after agent prints "W6 CLUSTER 11 DONE":**
-
-1. Read `docs/execution-phase/cluster-reports/W6-cluster-11-DONE.md`
-2. Browser smoke-test http://localhost:1420/dev/cluster-11
-3. Review Playwright diff screenshots in `tests/snapshots/cluster-11/`
-4. If issues found, paste back to the agent: "Issues found: <list>. Fix and re-report."
-5. If clean, merge:
-
-   ```sh
-   cd /Users/jihoyang/kova-main/kova-open-pencil-1
-   git checkout feat/m9-shopify
-   git pull origin feat/m9-shopify
-   git merge --no-ff app/cluster-11-foundation -m "Merge W6 Cluster 11 (foundation) into feat/m9-shopify
-
-   Cluster 11 ships:
-   - audit_log DDL + RLS (cross-cluster contract per CT-001)
-   - <N> Reka UI wrappers: KovaModal, KovaPopover, KovaMenu, KovaTooltip,
-     KovaSelect, KovaSkeleton, KovaToast, KovaIcon
-   - Theme + online-status + Realtime-channel + idempotency composables
-   - requireEnv() helper + CI grep gate
-   - Sentry + Resend + Vercel Cron STUBs (env-guarded)
-   - <MarketingShell> + <EmailShell>
-   - Global app shell + errorHandler
-
-   Hi-fi parity verified via Playwright visual diff (all ≤ 2%).
-   Code-reviewer agent: PASS.
-   E2E golden path: PASS.
-
-   See docs/execution-phase/cluster-reports/W6-cluster-11-DONE.md for full
-   report."
-
-   git push origin feat/m9-shopify
-   ```
-
-6. Tell central agent (this session) to draft W7 (Cluster 07a) prompt.
-
----
-
-**Estimated wall-clock: 6-10 hours (Opus 4.7, single agent). Estimated token spend: $200-400.**

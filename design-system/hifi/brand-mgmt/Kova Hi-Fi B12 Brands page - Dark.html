@@ -1,0 +1,1251 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<title>Kova — Hi-fi · B12 Brands page · Dark</title>
+<meta name="viewport" content="width=1440" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+<link rel="stylesheet" href="../../design-system/kova-hifi.css" />
+<script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
+<style>
+/* ============================================================
+   B12 BRANDS PAGE — full-page management surface at /account/brands
+   Reached from avatar dropdown (A6) Manage brands, or from
+   Account-page (A7) left-rail Brands.
+   Built on top of A7 outer chrome byte-for-byte (acc-frame + rail
+   + main + hero + content + s-section vocabulary). Brand-card grid
+   lifted from A2 byte-for-byte (bp-grid + bp-card vocabulary). Modal
+   shell lifted from A8 with corrected backdrop rgba per design lock.
+   ============================================================ */
+
+  body { background: var(--bg); }
+  .acc-frame { height: 100%; display: grid; grid-template-columns: 220px 1fr; background: var(--page); }
+
+  /* ---------- Account left-rail ---------- */
+  .acc-rail {
+    background: var(--rail);
+    border-right: 1px solid var(--line);
+    padding: 28px 12px 16px;
+    display: flex; flex-direction: column; gap: 4px;
+    min-height: 0; overflow: auto;
+  }
+  .acc-rail .title {
+    font-size: 17px; font-weight: 600; letter-spacing: -0.012em;
+    padding: 0 10px 14px; color: var(--ink);
+  }
+  .acc-rail .it {
+    display: flex; align-items: center; gap: 9px;
+    padding: 7px 10px; border-radius: 5px;
+    color: var(--ink-2); cursor: pointer; font-size: 13px;
+    transition: background .1s ease, color .1s ease;
+  }
+  .acc-rail .it:hover { background: var(--line-2); color: var(--ink); }
+  .acc-rail .it.active { background: var(--fill); color: var(--ink); font-weight: 500; }
+  .acc-rail .it .ic { width: 14px; height: 14px; opacity: .8; }
+  .acc-rail .it.active .ic { opacity: 1; }
+  .acc-rail .it.danger { color: var(--warn); }
+  .acc-rail .it.danger:hover { background: rgba(232,122,74,0.08); }
+  .acc-rail .sep {
+    height: 1px; background: var(--line-2);
+    margin: 10px 8px;
+  }
+
+  /* ---------- Main column ---------- */
+  .acc-main { overflow: auto; display: flex; flex-direction: column; }
+  .acc-hero {
+    padding: 40px 56px 24px;
+    border-bottom: 1px solid var(--line-2);
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 24px;
+  }
+  .acc-hero h1 {
+    margin: 0 0 6px; font-size: 24px; font-weight: 600; letter-spacing: -0.012em;
+  }
+  .acc-hero p {
+    margin: 0; color: var(--ink-2); font-size: 13.5px; max-width: 600px;
+  }
+  /* Brand-picker dropdown anchor (A2b) */
+  .brandpick {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 10px 6px 7px;
+    border: 1px solid var(--line); border-radius: 7px;
+    background: var(--page); cursor: pointer;
+    font-size: 12.5px; color: var(--ink);
+    transition: border-color .1s ease;
+  }
+  .brandpick:hover { border-color: var(--ink-3); }
+  .brandpick .logo {
+    width: 20px; height: 20px; border-radius: 4px;
+    background: #ededea; color: #0d0d0c;
+    display: grid; place-items: center;
+    font-weight: 700; font-size: 10px; letter-spacing: -0.02em;
+  }
+  .brandpick .nm { font-weight: 600; letter-spacing: -0.005em; }
+  .brandpick .caret { color: var(--ink-3); margin-left: 2px; }
+
+  .acc-content {
+    padding: 32px 56px 80px;
+    display: flex; flex-direction: column; gap: 36px;
+    max-width: 940px;
+  }
+
+  /* ---------- Section vocabulary (matches 06) ---------- */
+  .s-section { display: flex; flex-direction: column; gap: 12px; }
+  /* specificity bump — beats `section.block h2` from kova-hifi.css */
+  .acc-main .s-section h2,
+  section.block .s-section h2 {
+    margin: 0 0 2px; font-size: 16px;
+    letter-spacing: -0.005em;
+    color: var(--ink); font-weight: 600;
+    font-family: 'Inter', system-ui, sans-serif;
+    text-transform: none;
+  }
+  .s-section .desc {
+    color: var(--ink-3); font-size: 12.5px; margin: 0; max-width: 640px;
+  }
+
+  .row {
+    display: grid;
+    grid-template-columns: 200px 1fr auto;
+    align-items: center;
+    gap: 20px;
+    padding: 14px 18px;
+    background: var(--page);
+    border: 1px solid var(--line);
+  }
+  .row-stack { display: flex; flex-direction: column; gap: 0; }
+  .row-stack .row { border-radius: 0; border-top-width: 0; }
+  .row-stack .row:first-child {
+    border-top-width: 1px;
+    border-top-left-radius: 7px; border-top-right-radius: 7px;
+  }
+  .row-stack .row:last-child {
+    border-bottom-left-radius: 7px; border-bottom-right-radius: 7px;
+  }
+  .row .lbl { font-size: 13px; font-weight: 500; color: var(--ink); letter-spacing: -0.005em; }
+  .row .lbl .sub { display: block; color: var(--ink-3); font-size: 11.5px; font-weight: 400; margin-top: 2px; line-height: 1.4; }
+  .row .ctrl-input {
+    width: 100%; border: 1px solid var(--line); border-radius: 5px;
+    padding: 6px 10px; font: inherit; font-size: 13px;
+    background: var(--page); color: var(--ink);
+  }
+  .row .ctrl-input:focus { outline: none; border-color: var(--ink-2); box-shadow: 0 0 0 3px rgba(237,237,234,0.05); }
+  .row .ctrl-input[readonly] { color: var(--ink-3); background: var(--bg); }
+
+  /* Toggle (carried from 06) */
+  .toggle {
+    width: 34px; height: 20px;
+    border-radius: 999px; background: var(--line); position: relative;
+    flex-shrink: 0; cursor: pointer; transition: background .15s;
+  }
+  .toggle::after {
+    content: ""; position: absolute;
+    width: 16px; height: 16px; border-radius: 50%;
+    background: #ededea; top: 2px; left: 2px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.4); transition: left .15s;
+  }
+  .toggle.on { background: #ededea; }
+  .toggle.on::after { left: 16px; background: #0d0d0c; }
+
+  /* Segmented (carried from 06) */
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--page); }
+  .seg .o { padding: 6px 12px; font-size: 12px; color: var(--ink-3); cursor: pointer; border-right: 1px solid var(--line-2); background: var(--page); }
+  .seg .o:last-child { border-right: 0; }
+  .seg .o.on { background: var(--fill); color: var(--ink); }
+
+  /* ---------- Brand-Kit two-column ---------- */
+
+  /* === A7 .empty-pane (canonical empty-state — lifted byte-for-byte from A7 lines 451-464) === */
+  .empty-pane {
+    border: 1px dashed var(--line); border-radius: 8px;
+    padding: 32px 22px; text-align: center;
+    background: var(--rail);
+    display: flex; flex-direction: column; gap: 6px; align-items: center;
+  }
+  .empty-pane .ic-wrap {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: var(--page); border: 1px solid var(--line);
+    display: grid; place-items: center; color: var(--ink-3); margin-bottom: 4px;
+  }
+  .empty-pane h5 { margin: 0; font-size: 13px; color: var(--ink); font-weight: 600; }
+  .empty-pane p { margin: 0; font-size: 12px; color: var(--ink-3); max-width: 340px; }
+
+  /* === A7 .a2b-dim (background dim under modal — lifted from A7 line 535) === */
+  .a2b-dim { opacity: .35; pointer-events: none; }
+
+  /* ============================================================
+     LIFT 2 — A2 brand-card grid vocabulary
+     (verbatim from `Kova Hi-Fi A2+A3 Brand picker & New brand - Dark.html`
+      lines 169-261; see DELIVERY_NOTES_B12.md for the diff anchors)
+     ============================================================ */
+  .bp-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+  }
+
+  /* Brand card — logo + name + meta + last-edited row + actions */
+  .bp-card {
+    border: 1px solid var(--line);
+    background: var(--page);
+    border-radius: 10px;
+    padding: 18px 18px 14px;
+    display: flex; flex-direction: column; gap: 14px;
+    cursor: pointer;
+    transition: border-color .12s ease, transform .12s ease, background .12s ease;
+    position: relative;
+  }
+  .bp-card:hover {
+    border-color: var(--ink-3);
+    background: #181816;
+  }
+  .bp-card .top {
+    display: flex; align-items: flex-start; gap: 12px;
+  }
+  .bp-card .logo {
+    width: 44px; height: 44px; border-radius: 8px;
+    background: #ededea; color: #0d0d0c;
+    display: grid; place-items: center;
+    font-weight: 800; font-size: 20px;
+    letter-spacing: -0.04em;
+    flex-shrink: 0;
+  }
+  /* Tinted brand glyphs to differentiate cards on the grid.
+     Hex chosen to read at-a-glance against --page (#141412). */
+  .bp-card .logo.k-coral { background: #d8643c; color: #0d0d0c; }
+  .bp-card .logo.k-violet { background: #7d6df0; color: #ededea; }
+  .bp-card .logo.k-sage { background: #94a888; color: #0d0d0c; }
+  .bp-card .logo.k-sand { background: #c8b48b; color: #0d0d0c; }
+  .bp-card .logo.k-graphite { background: #2d2d29; color: #ededea; border: 1px solid var(--line); }
+  .bp-card .heads {
+    display: flex; flex-direction: column; gap: 3px;
+    min-width: 0; flex: 1;
+  }
+  .bp-card .nm {
+    font-size: 14.5px; font-weight: 600;
+    color: var(--ink); letter-spacing: -0.008em;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .bp-card .url { font-size: 10.5px; color: var(--ink-3);
+    letter-spacing: 0.02em;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .bp-card .kebab {
+    width: 26px; height: 26px;
+    display: grid; place-items: center;
+    border-radius: 5px;
+    color: var(--ink-3); cursor: pointer;
+    flex-shrink: 0;
+  }
+  .bp-card .kebab:hover { background: var(--line-2); color: var(--ink); }
+
+  /* Status pills row inside card */
+  .bp-card .pills {
+    display: flex; flex-wrap: wrap; gap: 6px;
+  }
+  .bp-card .pills .pill {
+    font-size: 10.5px; padding: 3px 8px;
+  }
+  .bp-card .pills .pill .ic { width: 11px; height: 11px; }
+  .bp-card .pills .shopify-glyph {
+    width: 11px; height: 11px; border-radius: 2px;
+    background: #95bf47; color: #0d0d0c;
+    display: grid; place-items: center;
+    font-weight: 800; font-size: 7px;
+    letter-spacing: -0.04em;
+    flex-shrink: 0;
+  }
+
+  /* Stats row — canvases + last-edited + tiny avatar */
+  .bp-card .meta {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--line-2);
+    font-size: 11.5px; color: var(--ink-3);
+  }
+  .bp-card .meta .cell {
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .bp-card .meta .lbl { font-size: 9.5px; letter-spacing: 0.1em; color: var(--ink-3);
+  }
+  .bp-card .meta .val { color: var(--ink); font-weight: 500; font-size: 12px; }
+
+  /* === A2 .bp-newcard "+New brand" tile (lifted byte-for-byte from A2 lines 266-295) === */
+  .bp-newcard {
+    border: 1px dashed var(--line);
+    background: transparent;
+    border-radius: 10px;
+    padding: 18px;
+    display: flex; flex-direction: column; gap: 10px;
+    align-items: center; justify-content: center;
+    text-align: center;
+    cursor: pointer;
+    color: var(--ink-2);
+    min-height: 188px;
+    transition: border-color .12s ease, color .12s ease, background .12s ease;
+  }
+  .bp-newcard:hover {
+    border-color: var(--ink-3); color: var(--ink);
+    background: #181816;
+  }
+  .bp-newcard .plus {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: var(--fill); color: var(--ink);
+    display: grid; place-items: center;
+  }
+  .bp-newcard .h {
+    font-size: 13.5px; font-weight: 600; color: var(--ink);
+    letter-spacing: -0.005em;
+  }
+  .bp-newcard .sub {
+    font-size: 11.5px; color: var(--ink-3);
+    max-width: 200px;
+  }
+
+  /* === Extension: .bp-card.archived modifier ===
+     A2 has no .archived modifier on .bp-card. B12 has multiple
+     archived cards so we promote the muted treatment to a class.
+     78% opacity + rail background + neutral border on hover. */
+  .bp-card.archived { opacity: 0.78; background: var(--rail); }
+  .bp-card.archived:hover { background: var(--rail); border-color: var(--line); }
+  .bp-card.archived .nm { color: var(--ink-2); }
+
+  /* ============================================================
+     LIFT 3 — A8 modal shell + dialog field block
+     (lifted byte-for-byte from `Kova Hi-Fi A6+A2a Popovers + A8 Dialogs - Dark.html`
+      lines 36-95; see DELIVERY_NOTES_B12.md for the diff anchors)
+
+     ONE-LINE DOCUMENTED CORRECTION DELTA: A8 source line 38 carries
+     a stale rgba on the modal-backdrop rule from the pre-rewire
+     palette (when --bg was the warm-brown). The current locked --bg
+     is #1a1a1d, so the correct backdrop is rgba(26,26,29,0.72) per
+     the design lock. The rest of the block is byte-identical.
+     Documented in DELIVERY_NOTES_B12.md.
+     ============================================================ */
+  /* ---------- Backdrop / dim ---------- */
+  .modal-backdrop {
+    position: absolute; inset: 0;
+    background: rgba(26,26,29,0.72);
+    backdrop-filter: blur(2px);
+    z-index: 5;
+  }
+
+  /* ---------- Generic dialog shell ---------- */
+  .dlg {
+    position: absolute; left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--page); border: 1px solid var(--line);
+    border-radius: 10px; box-shadow: 0 24px 80px -20px rgba(0,0,0,0.7), 0 1px 0 rgba(255,255,255,0.03) inset;
+    z-index: 10;
+    display: flex; flex-direction: column;
+    min-width: 360px; max-width: 92%;
+  }
+  .dlg.sm { width: 460px; }
+  .dlg.md { width: 540px; }
+  .dlg.lg { width: 880px; max-height: 78%; }
+  .dlg .dlg-head {
+    padding: 18px 22px 12px;
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
+  }
+  .dlg .dlg-head h3 {
+    margin: 0; font-size: 16px; font-weight: 600; letter-spacing: -0.005em; color: var(--ink);
+  }
+  .dlg .dlg-head .sub {
+    margin: 4px 0 0; font-size: 12.5px; color: var(--ink-3); line-height: 1.5;
+  }
+  .dlg .dlg-head .x {
+    width: 26px; height: 26px; border-radius: 5px;
+    display: grid; place-items: center; color: var(--ink-3); cursor: pointer;
+    flex-shrink: 0;
+  }
+  .dlg .dlg-head .x:hover { background: var(--line-2); color: var(--ink); }
+  .dlg .dlg-body {
+    padding: 4px 22px 18px;
+    display: flex; flex-direction: column; gap: 14px;
+    min-height: 0;
+  }
+  .dlg .dlg-body.flush { padding: 0; }
+  .dlg .dlg-foot {
+    padding: 14px 22px;
+    border-top: 1px solid var(--line-2);
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    background: var(--rail);
+    border-bottom-left-radius: 10px; border-bottom-right-radius: 10px;
+  }
+  .dlg .dlg-foot .l { color: var(--ink-3); font-size: 11.5px; display: flex; align-items: center; gap: 6px; }
+  .dlg .dlg-foot .r { display: flex; gap: 8px; }
+
+  /* ---------- Form fields inside dialogs ---------- */
+  .fld { display: flex; flex-direction: column; gap: 6px; }
+  .fld > label {
+    font-size: 12px; font-weight: 500; color: var(--ink); letter-spacing: -0.003em;
+  }
+  .fld > label .opt { color: var(--ink-3); font-weight: 400; margin-left: 6px; font-size: 11px; }
+  .fld .help { color: var(--ink-3); font-size: 11.5px; }
+  .fld input.input, .fld textarea.input {
+    background: var(--page); border: 1px solid var(--line); color: var(--ink);
+    border-radius: 6px; padding: 8px 11px; font: inherit; font-size: 13px;
+    transition: border-color .1s ease, box-shadow .1s ease;
+    width: 100%;
+  }
+  .fld textarea.input { resize: vertical; min-height: 76px; line-height: 1.5; }
+  .fld input.input:focus, .fld textarea.input:focus {
+    outline: none; border-color: var(--ink-2);
+    box-shadow: 0 0 0 3px rgba(237,237,234,0.05);
+  }
+  .fld input.input.confirm-typed { font-size: 13px;
+    letter-spacing: 0.04em;
+  }
+  .fld input.input.confirm-typed.partial { border-color: var(--ink-3); }
+
+  /* ============================================================
+     A4 info-card / brand-summary / loss-list (clean blocks
+     lifted byte-for-byte from `Kova Hi-Fi A4+A9+A10 Modals - Dark.html`
+     lines 138-199 — these rules carry no banned rgba; A4's modal
+     backdrop rule is the contaminated one, and we are using A8's
+     corrected backdrop above instead).
+     ============================================================ */
+  /* Archive explainer block — quiet info card inside dialog body */
+  .info-card {
+    border: 1px solid var(--line-2);
+    background: var(--rail);
+    border-radius: 7px;
+    padding: 12px 14px;
+    display: flex; gap: 11px; align-items: flex-start;
+    font-size: 12.5px; color: var(--ink-2); line-height: 1.55;
+  }
+  .info-card .ic {
+    flex-shrink: 0; width: 28px; height: 28px;
+    background: var(--fill); border-radius: 6px;
+    display: grid; place-items: center; color: var(--ink-2);
+  }
+  .info-card b { color: var(--ink); font-weight: 600; display: block; margin-bottom: 2px; font-size: 12.5px; }
+  .info-card .row {
+    display: flex; align-items: center; gap: 6px;
+    color: var(--ink-2); font-size: 12px; padding: 2px 0;
+  }
+  .info-card .row i.dot {
+    width: 4px; height: 4px; border-radius: 50%;
+    background: var(--ink-3); flex-shrink: 0;
+    display: inline-block;
+  }
+  .info-card .stack { display: flex; flex-direction: column; gap: 1px; margin-top: 2px; }
+
+  /* Brand-summary pill row in delete dialog */
+  .brand-summary {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    background: var(--rail);
+  }
+  .brand-summary .logo {
+    width: 28px; height: 28px; border-radius: 6px;
+    background: #ededea; color: #0d0d0c;
+    display: grid; place-items: center;
+    font-weight: 700; font-size: 12px; letter-spacing: -0.02em;
+    flex-shrink: 0;
+  }
+  .brand-summary .nm { font-weight: 600; font-size: 13px; color: var(--ink); letter-spacing: -0.005em; }
+  .brand-summary .meta { font-size: 11px; color: var(--ink-3); margin-top: 1px; }
+  .brand-summary .right { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; }
+
+  /* Loss-list (what gets deleted) */
+  .loss-list {
+    border: 1px solid var(--warn-edge);
+    background: var(--warn-soft);
+    border-radius: 7px;
+    padding: 11px 13px;
+    display: flex; flex-direction: column; gap: 5px;
+  }
+  .loss-list .hdr {
+    font-size: 11px; letter-spacing: 0.1em; color: var(--warn); font-weight: 600; margin-bottom: 4px;
+  }
+  .loss-list .ll {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12.5px; color: var(--ink);
+  }
+  .loss-list .ll .ic { width: 13px; height: 13px; color: var(--warn); }
+  .loss-list .ll .qty { margin-left: auto; font-size: 11px; color: var(--ink-2); }
+
+  /* ============================================================
+     Extension: .btn.danger — small extension class
+     `--warn` token resolves to `--ink-2` per design.md §1.1 status-
+     deferred policy, so the visual currently degrades to a neutral
+     button. When status colors are formally added to the system, this
+     rule will gain its destructive treatment without code change.
+     ============================================================ */
+  .btn.danger { color: var(--warn); border-color: var(--warn-edge); background: transparent; }
+  .btn.danger:hover { border-color: var(--warn); background: var(--warn-soft); color: var(--warn); }
+
+</style>
+</head>
+<body data-screen-label="B12 Brands page">
+
+<header class="page-head">
+  <div class="eyebrow">HI-FI · BATCH A ADDITIONS · DARK · B12 · REWASH</div>
+  <h1>Brands page · /account/brands</h1>
+  <p>Full-page brand-management surface reached from avatar dropdown "Manage brands" (A6) or Account-page (A7) left-rail → Brands. Built byte-for-byte on top of A7 outer chrome, A2 brand-card grid, and A8 dialog shell. Distinct from <code>/brands</code> (A2 picker, chromeless, between-brands) — here the user is already scoped into a brand and is reviewing the full inventory including Archived.</p>
+  <div class="meta">4 scenes · sample brand = "Nike" · same kova-hifi.css tokens · density carried from A7</div>
+</header>
+
+<!-- ============================================================
+     B12.1 — Brands page populated (4 active + 2 archived)
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">B12.1 · /account/brands · default state</div>
+    <h2>Brands page · populated</h2>
+    <p class="intro">Default state on land. Active brands grid first (4 brands + new-brand tile), Archived grid below (2 brands) in a calmer treatment via .archived modifier (78% opacity + rail bg). Filter bar uses canonical .field + .seg + .btn.ghost — no per-file filter shell.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">B12.1 · Brands page populated</div><div class="id">B12.1 · /account/brands</div></div>
+    <div class="canvas tall" data-screen-label="B12.1 Brands page populated">
+      <div class="app">
+        <!-- App sidebar (carries from 03/06 — note: Settings nav-item is REMOVED per A7 superseding it; user reaches /account via avatar dropdown) -->
+        <div class="sidebar">
+          <div class="brand-switch">
+            <div class="logo">N</div><div class="name">Nike</div>
+            <div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div>
+          </div>
+          <div class="side-search">
+            <i data-lucide="search" style="width:13px;height:13px;"></i><span>Search</span>
+            <span class="kbd">⌘K</span>
+          </div>
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item"><i data-lucide="clock-4" class="ic"></i>Recents</div>
+            <div class="item"><i data-lucide="calendar-days" class="ic"></i>Calendar<span class="pill" style="margin-left:auto;font-size:9px;padding:1px 5px;">SOON</span></div>
+            <div class="section">Library</div>
+            <div class="item"><i data-lucide="bookmark" class="ic"></i>Swipes<span class="pill" style="margin-left:auto;font-size:9px;padding:1px 5px;">SOON</span></div>
+            <div class="item"><i data-lucide="layout-template" class="ic"></i>Templates<span class="pill" style="margin-left:auto;font-size:9px;padding:1px 5px;">SOON</span></div>
+            <div class="item"><i data-lucide="package" class="ic"></i>Products<span class="count">318</span></div>
+            <div class="section">Brand</div>
+            <div class="item"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+            <div class="item"><i data-lucide="book-open" class="ic"></i>Knowledge base</div>
+          </div>
+          <div class="side-footer">
+            <div class="avatar">JY</div>
+            <div class="who"><b>Jiho Yang</b><span>Pro plan</span></div>
+            <div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+          </div>
+        </div>
+
+        <div class="main">
+          <div class="topbar">
+            <div class="breadcrumb">
+              <span class="back" title="Back"><i data-lucide="chevron-left" style="width:14px;height:14px;"></i></span>
+              <span>Account</span>
+              <span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <b>Brands</b>
+            </div>
+            <div class="actions">
+            </div>
+          </div>
+
+          <div class="acc-frame">
+            <!-- Account left rail -->
+            <div class="acc-rail">
+              <div class="title">Account</div>
+              <div class="it"><i data-lucide="user" class="ic"></i>Profile</div>
+              <div class="it active"><i data-lucide="layers" class="ic"></i>Brands</div>
+              <div class="it"><i data-lucide="credit-card" class="ic"></i>Plan &amp; billing</div>
+              <div class="it"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+              <div class="it"><i data-lucide="plug" class="ic"></i>Integrations</div>
+              <div class="sep"></div>
+              <div class="it danger"><i data-lucide="trash-2" class="ic"></i>Danger zone</div>
+            </div>
+
+            <div class="acc-main">
+              <div class="acc-hero">
+                <div class="l">
+                  <h1>Brands</h1>
+                  <p>Manage every brand you own. Active brands appear in the picker and brand-switcher. Archived brands are hidden but preserved.</p>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;">
+                  <div class="btn"><i data-lucide="upload" class="ic"></i>Import</div>
+                  <div class="btn primary"><i data-lucide="plus" class="ic"></i>New brand</div>
+                </div>
+              </div>
+
+              <div class="acc-content">
+
+                <!-- Filter bar — canonical .field + .seg + .btn.ghost -->
+                <div class="s-section">
+                  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+                    <div class="field" style="flex:1;min-width:280px;display:flex;align-items:center;gap:8px;padding:7px 10px;">
+                      <i data-lucide="search" style="width:13px;height:13px;color:var(--ink-3);flex-shrink:0;"></i>
+                      <input class="input" placeholder="Search brands by name or domain…" style="border:0;background:transparent;padding:0;height:auto;" />
+                    </div>
+                    <div class="seg">
+                      <div class="o on">All <span style="color:var(--ink-3);margin-left:4px;font-weight:400;">6</span></div>
+                      <div class="o">Active <span style="color:var(--ink-3);margin-left:4px;font-weight:400;">4</span></div>
+                      <div class="o">Archived <span style="color:var(--ink-3);margin-left:4px;font-weight:400;">2</span></div>
+                    </div>
+                    <div class="btn sm ghost"><i data-lucide="arrow-up-down" class="ic"></i>Sort: Last edited</div>
+                  </div>
+                </div>
+
+                <!-- Active grid -->
+                <div class="s-section">
+                  <div style="display:flex;align-items:baseline;justify-content:space-between;gap:16px;">
+                    <h2>Active</h2>
+                    <p class="desc" style="margin:0;text-align:right;">4 brands · 2 connected to Shopify</p>
+                  </div>
+                  <div class="bp-grid">
+
+                    <!-- Card 1 — Nike (current) -->
+                    <div class="bp-card">
+                      <div class="top">
+                        <div class="logo k-coral">N</div>
+                        <div class="heads">
+                          <div class="nm">Nike <span class="pill outline" style="font-size:9.5px;padding:1px 6px;margin-left:4px;vertical-align:1px;">Current</span></div>
+                          <div class="url">nike.com</div>
+                        </div>
+                        <div class="kebab"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+                      </div>
+                      <div class="pills">
+                        <span class="pill ok dot"><span class="shopify-glyph">S</span>Shopify</span>
+                        <span class="pill outline"><i data-lucide="palette" class="ic"></i>Brand kit</span>
+                      </div>
+                      <div class="meta">
+                        <div class="cell"><span class="lbl">Canvases</span><span class="val">12</span></div>
+                        <div class="cell"><span class="lbl">Last edited</span><span class="val">2 hours ago</span></div>
+                      </div>
+                    </div>
+
+                    <!-- Card 2 — Allbirds -->
+                    <div class="bp-card">
+                      <div class="top">
+                        <div class="logo k-sage">A</div>
+                        <div class="heads">
+                          <div class="nm">Allbirds</div>
+                          <div class="url">allbirds.com</div>
+                        </div>
+                        <div class="kebab"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+                      </div>
+                      <div class="pills">
+                        <span class="pill ok dot"><span class="shopify-glyph">S</span>Shopify</span>
+                        <span class="pill outline"><i data-lucide="palette" class="ic"></i>Brand kit</span>
+                      </div>
+                      <div class="meta">
+                        <div class="cell"><span class="lbl">Canvases</span><span class="val">7</span></div>
+                        <div class="cell"><span class="lbl">Last edited</span><span class="val">Yesterday</span></div>
+                      </div>
+                    </div>
+
+                    <!-- Card 3 — Glossier (token expired) -->
+                    <div class="bp-card">
+                      <div class="top">
+                        <div class="logo k-sand">G</div>
+                        <div class="heads">
+                          <div class="nm">Glossier</div>
+                          <div class="url">glossier.com</div>
+                        </div>
+                        <div class="kebab"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+                      </div>
+                      <div class="pills">
+                        <span class="pill warn dot">Shopify expired</span>
+                        <span class="pill outline"><i data-lucide="palette" class="ic"></i>Brand kit</span>
+                      </div>
+                      <div class="meta">
+                        <div class="cell"><span class="lbl">Canvases</span><span class="val">4</span></div>
+                        <div class="cell"><span class="lbl">Last edited</span><span class="val">Apr 19, 2026</span></div>
+                      </div>
+                    </div>
+
+                    <!-- Card 4 — Studio (no Shopify) -->
+                    <div class="bp-card">
+                      <div class="top">
+                        <div class="logo k-violet">S</div>
+                        <div class="heads">
+                          <div class="nm">Studio</div>
+                          <div class="url">studio.local</div>
+                        </div>
+                        <div class="kebab"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+                      </div>
+                      <div class="pills">
+                        <span class="pill outline"><i data-lucide="link-2" class="ic"></i>No store</span>
+                        <span class="pill outline"><i data-lucide="palette" class="ic"></i>Brand kit</span>
+                      </div>
+                      <div class="meta">
+                        <div class="cell"><span class="lbl">Canvases</span><span class="val">3</span></div>
+                        <div class="cell"><span class="lbl">Last edited</span><span class="val">Last week</span></div>
+                      </div>
+                    </div>
+
+                    <!-- "+New brand" tile (A2's .bp-newcard) -->
+                    <div class="bp-newcard">
+                      <div class="plus"><i data-lucide="plus" style="width:16px;height:16px;"></i></div>
+                      <div class="h">New brand</div>
+                      <div class="sub">Add a Shopify store or start blank</div>
+                    </div>
+
+                  </div>
+                </div>
+
+                <!-- Archived grid -->
+                <div class="s-section">
+                  <div style="display:flex;align-items:baseline;justify-content:space-between;gap:16px;">
+                    <h2>Archived</h2>
+                    <p class="desc" style="margin:0;text-align:right;">2 brands · hidden from picker · fully restorable</p>
+                  </div>
+                  <div class="bp-grid">
+
+                    <!-- Card 5 — Field Notes (archived) -->
+                    <div class="bp-card archived">
+                      <div class="top">
+                        <div class="logo k-graphite">F</div>
+                        <div class="heads">
+                          <div class="nm">Field Notes</div>
+                          <div class="url">fieldnotesbrand.com</div>
+                        </div>
+                        <div class="kebab"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+                      </div>
+                      <div class="pills">
+                        <span class="pill outline"><i data-lucide="archive" class="ic"></i>Archived</span>
+                        <span class="pill outline"><span class="shopify-glyph" style="opacity:.7;">S</span>Shopify kept</span>
+                      </div>
+                      <div class="meta">
+                        <div class="cell"><span class="lbl">Canvases</span><span class="val">9</span></div>
+                        <div class="cell"><span class="lbl">Archived</span><span class="val">Mar 11, 2026</span></div>
+                      </div>
+                    </div>
+
+                    <!-- Card 6 — Warby Parker (archived, sample-brand navy logo) -->
+                    <div class="bp-card archived">
+                      <div class="top">
+                        <div class="logo" style="background:#0a3a73;color:#fff;">W</div>
+                        <div class="heads">
+                          <div class="nm">Warby Parker</div>
+                          <div class="url">warbyparker.com</div>
+                        </div>
+                        <div class="kebab"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+                      </div>
+                      <div class="pills">
+                        <span class="pill outline"><i data-lucide="archive" class="ic"></i>Archived</span>
+                        <span class="pill outline"><span class="shopify-glyph" style="opacity:.7;">S</span>Shopify kept</span>
+                      </div>
+                      <div class="meta">
+                        <div class="cell"><span class="lbl">Canvases</span><span class="val">8</span></div>
+                        <div class="cell"><span class="lbl">Archived</span><span class="val">Feb 28, 2026</span></div>
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Outer chrome lifted byte-for-byte from A7.</strong> .acc-frame + .acc-rail + .acc-main + .acc-hero + .acc-content + .s-section + .seg + .empty-pane all carry zero-line diffs against A7 source. The acc-rail Profile/Brands/Plan&amp;billing/Brand Kit/Integrations/Danger zone item set extends A7's set with one new "Brands" item (layers icon) between Profile and Plan &amp; billing.</li>
+      <li><strong>Brand-card grid lifted byte-for-byte from A2.</strong> bp-grid + bp-card (with k-coral / k-sage / k-violet / k-sand / k-graphite logo palette) + bp-newcard ("+New brand" tile) all carry zero-line diffs against A2 source. The archived modifier is a small extension below the lifted block (A2 has no archived modifier).</li>
+      <li><strong>Filter bar uses canonical components.</strong> .field + .seg + .btn.sm.ghost — no per-file filter-shell selector. The visual "filter bar" appearance comes from a flex row of these primitives inside an .s-section.</li>
+      <li><strong>"+New brand" lives both in the topbar action AND as the 5th grid tile</strong> — same dual placement A2 uses. The tile reads as part of inventory; the topbar action covers the empty-state path.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     B12.2 — Brands page · Archived empty
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">B12.2 · /account/brands · zero archived</div>
+    <h2>Brands page · archived empty</h2>
+    <p class="intro">Common state — most users never archive a brand. Archived section shows canonical .empty-pane (lifted from A7) explaining the affordance is here when needed. Section header still renders even with 0 archived, so users learn archive exists.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">B12.2 · Brands page · archived empty</div><div class="id">B12.2 · /account/brands</div></div>
+    <div class="canvas tall" data-screen-label="B12.2 Brands page archived empty">
+      <div class="app">
+        <div class="sidebar">
+          <div class="brand-switch">
+            <div class="logo">N</div><div class="name">Nike</div>
+            <div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div>
+          </div>
+          <div class="side-search">
+            <i data-lucide="search" style="width:13px;height:13px;"></i><span>Search</span>
+            <span class="kbd">⌘K</span>
+          </div>
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item"><i data-lucide="clock-4" class="ic"></i>Recents</div>
+            <div class="item"><i data-lucide="calendar-days" class="ic"></i>Calendar<span class="pill" style="margin-left:auto;font-size:9px;padding:1px 5px;">SOON</span></div>
+            <div class="section">Library</div>
+            <div class="item"><i data-lucide="bookmark" class="ic"></i>Swipes<span class="pill" style="margin-left:auto;font-size:9px;padding:1px 5px;">SOON</span></div>
+            <div class="item"><i data-lucide="layout-template" class="ic"></i>Templates<span class="pill" style="margin-left:auto;font-size:9px;padding:1px 5px;">SOON</span></div>
+            <div class="item"><i data-lucide="package" class="ic"></i>Products<span class="count">318</span></div>
+            <div class="section">Brand</div>
+            <div class="item"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+            <div class="item"><i data-lucide="book-open" class="ic"></i>Knowledge base</div>
+          </div>
+          <div class="side-footer">
+            <div class="avatar">JY</div>
+            <div class="who"><b>Jiho Yang</b><span>Pro plan</span></div>
+            <div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+          </div>
+        </div>
+
+        <div class="main">
+          <div class="topbar">
+            <div class="breadcrumb">
+              <span class="back" title="Back"><i data-lucide="chevron-left" style="width:14px;height:14px;"></i></span>
+              <span>Account</span>
+              <span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <b>Brands</b>
+            </div>
+            <div class="actions">
+            </div>
+          </div>
+
+          <div class="acc-frame">
+            <div class="acc-rail">
+              <div class="title">Account</div>
+              <div class="it"><i data-lucide="user" class="ic"></i>Profile</div>
+              <div class="it active"><i data-lucide="layers" class="ic"></i>Brands</div>
+              <div class="it"><i data-lucide="credit-card" class="ic"></i>Plan &amp; billing</div>
+              <div class="it"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+              <div class="it"><i data-lucide="plug" class="ic"></i>Integrations</div>
+              <div class="sep"></div>
+              <div class="it danger"><i data-lucide="trash-2" class="ic"></i>Danger zone</div>
+            </div>
+
+            <div class="acc-main">
+              <div class="acc-hero">
+                <div class="l">
+                  <h1>Brands</h1>
+                  <p>Manage every brand you own. Active brands appear in the picker and brand-switcher. Archived brands are hidden but preserved.</p>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;">
+                  <div class="btn"><i data-lucide="upload" class="ic"></i>Import</div>
+                  <div class="btn primary"><i data-lucide="plus" class="ic"></i>New brand</div>
+                </div>
+              </div>
+
+              <div class="acc-content">
+
+                <div class="s-section">
+                  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+                    <div class="field" style="flex:1;min-width:280px;display:flex;align-items:center;gap:8px;padding:7px 10px;">
+                      <i data-lucide="search" style="width:13px;height:13px;color:var(--ink-3);flex-shrink:0;"></i>
+                      <input class="input" placeholder="Search brands by name or domain…" style="border:0;background:transparent;padding:0;height:auto;" />
+                    </div>
+                    <div class="seg">
+                      <div class="o">All <span style="color:var(--ink-3);margin-left:4px;font-weight:400;">4</span></div>
+                      <div class="o">Active <span style="color:var(--ink-3);margin-left:4px;font-weight:400;">4</span></div>
+                      <div class="o on">Archived <span style="color:var(--ink-3);margin-left:4px;font-weight:400;">0</span></div>
+                    </div>
+                    <div class="btn sm ghost"><i data-lucide="arrow-up-down" class="ic"></i>Sort: Last edited</div>
+                  </div>
+                </div>
+
+                <div class="s-section">
+                  <div style="display:flex;align-items:baseline;justify-content:space-between;gap:16px;">
+                    <h2>Active</h2>
+                    <p class="desc" style="margin:0;text-align:right;">4 brands</p>
+                  </div>
+                  <div class="bp-grid">
+                    <div class="bp-card">
+                      <div class="top">
+                        <div class="logo k-coral">N</div>
+                        <div class="heads"><div class="nm">Nike</div><div class="url">nike.com</div></div>
+                        <div class="kebab"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+                      </div>
+                      <div class="pills"><span class="pill ok dot"><span class="shopify-glyph">S</span>Shopify</span></div>
+                      <div class="meta"><div class="cell"><span class="lbl">Canvases</span><span class="val">12</span></div><div class="cell"><span class="lbl">Last edited</span><span class="val">2 hours ago</span></div></div>
+                    </div>
+                    <div class="bp-card">
+                      <div class="top">
+                        <div class="logo k-sage">A</div>
+                        <div class="heads"><div class="nm">Allbirds</div><div class="url">allbirds.com</div></div>
+                        <div class="kebab"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+                      </div>
+                      <div class="pills"><span class="pill ok dot"><span class="shopify-glyph">S</span>Shopify</span></div>
+                      <div class="meta"><div class="cell"><span class="lbl">Canvases</span><span class="val">7</span></div><div class="cell"><span class="lbl">Last edited</span><span class="val">Yesterday</span></div></div>
+                    </div>
+                    <div class="bp-card">
+                      <div class="top">
+                        <div class="logo k-sand">G</div>
+                        <div class="heads"><div class="nm">Glossier</div><div class="url">glossier.com</div></div>
+                        <div class="kebab"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+                      </div>
+                      <div class="pills"><span class="pill warn dot">Shopify expired</span></div>
+                      <div class="meta"><div class="cell"><span class="lbl">Canvases</span><span class="val">4</span></div><div class="cell"><span class="lbl">Last edited</span><span class="val">Apr 19, 2026</span></div></div>
+                    </div>
+                    <div class="bp-card">
+                      <div class="top">
+                        <div class="logo k-violet">S</div>
+                        <div class="heads"><div class="nm">Studio</div><div class="url">studio.local</div></div>
+                        <div class="kebab"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+                      </div>
+                      <div class="pills"><span class="pill outline"><i data-lucide="link-2" class="ic"></i>No store</span></div>
+                      <div class="meta"><div class="cell"><span class="lbl">Canvases</span><span class="val">3</span></div><div class="cell"><span class="lbl">Last edited</span><span class="val">Last week</span></div></div>
+                    </div>
+                    <div class="bp-newcard">
+                      <div class="plus"><i data-lucide="plus" style="width:16px;height:16px;"></i></div>
+                      <div class="h">New brand</div>
+                      <div class="sub">Add a Shopify store or start blank</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="s-section">
+                  <div style="display:flex;align-items:baseline;justify-content:space-between;gap:16px;">
+                    <h2>Archived</h2>
+                    <p class="desc" style="margin:0;text-align:right;">Nothing here yet</p>
+                  </div>
+                  <div class="empty-pane">
+                    <div class="ic-wrap"><i data-lucide="archive" style="width:18px;height:18px;"></i></div>
+                    <h5>No archived brands</h5>
+                    <p>When you archive a brand, it moves here. Archived brands are hidden from the brand-switcher but their canvases, Shopify connection, and Brand Kit are preserved.</p>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Empty-pane lifted byte-for-byte from A7.</strong> Same dashed border, same icon-tile, same h5+p pair.</li>
+      <li><strong>Section header still renders even with 0 archived</strong> — telegraphs the affordance and matches B12.1 vocabulary.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     B12.3 — Restore confirm modal
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">B12.3 · Dialog · restore from archived</div>
+    <h2>Restore confirm</h2>
+    <p class="intro">Triggered from kebab on archived .bp-card. Mirror-image of A4.2 archive dialog — same .info-card explainer pattern, same .brand-summary row, neutral-primary CTA (not danger) because restore is a positive recoverable action.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">B12.3 · Restore confirm</div><div class="id">B12.3 · /account/brands</div></div>
+    <div class="canvas tall" data-screen-label="B12.3 Restore confirm">
+      <div class="app a2b-dim">
+        <div class="sidebar">
+          <div class="brand-switch">
+            <div class="logo">N</div><div class="name">Nike</div>
+            <div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div>
+          </div>
+          <div class="side-search">
+            <i data-lucide="search" style="width:13px;height:13px;"></i><span>Search</span>
+            <span class="kbd">⌘K</span>
+          </div>
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item"><i data-lucide="clock-4" class="ic"></i>Recents</div>
+            <div class="item"><i data-lucide="calendar-days" class="ic"></i>Calendar<span class="pill" style="margin-left:auto;font-size:9px;padding:1px 5px;">SOON</span></div>
+            <div class="section">Library</div>
+            <div class="item"><i data-lucide="bookmark" class="ic"></i>Swipes<span class="pill" style="margin-left:auto;font-size:9px;padding:1px 5px;">SOON</span></div>
+            <div class="item"><i data-lucide="layout-template" class="ic"></i>Templates<span class="pill" style="margin-left:auto;font-size:9px;padding:1px 5px;">SOON</span></div>
+            <div class="item"><i data-lucide="package" class="ic"></i>Products<span class="count">318</span></div>
+            <div class="section">Brand</div>
+            <div class="item"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+            <div class="item"><i data-lucide="book-open" class="ic"></i>Knowledge base</div>
+          </div>
+          <div class="side-footer">
+            <div class="avatar">JY</div>
+            <div class="who"><b>Jiho Yang</b><span>Pro plan</span></div>
+            <div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+          </div>
+        </div>
+
+        <div class="main">
+          <div class="topbar">
+            <div class="breadcrumb">
+              <span class="back" title="Back"><i data-lucide="chevron-left" style="width:14px;height:14px;"></i></span>
+              <span>Account</span>
+              <span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <b>Brands</b>
+            </div>
+            <div class="actions">
+            </div>
+          </div>
+
+          <div class="acc-frame">
+            <div class="acc-rail">
+              <div class="title">Account</div>
+              <div class="it"><i data-lucide="user" class="ic"></i>Profile</div>
+              <div class="it active"><i data-lucide="layers" class="ic"></i>Brands</div>
+              <div class="it"><i data-lucide="credit-card" class="ic"></i>Plan &amp; billing</div>
+              <div class="it"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+              <div class="it"><i data-lucide="plug" class="ic"></i>Integrations</div>
+              <div class="sep"></div>
+              <div class="it danger"><i data-lucide="trash-2" class="ic"></i>Danger zone</div>
+            </div>
+
+            <div class="acc-main">
+              <div class="acc-hero">
+                <div class="l">
+                  <h1>Brands</h1>
+                  <p>Manage every brand you own. Active brands appear in the picker and brand-switcher. Archived brands are hidden but preserved.</p>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;">
+                  <div class="btn"><i data-lucide="upload" class="ic"></i>Import</div>
+                  <div class="btn primary"><i data-lucide="plus" class="ic"></i>New brand</div>
+                </div>
+              </div>
+
+              <div class="acc-content">
+                <div class="s-section">
+                  <div style="display:flex;align-items:baseline;justify-content:space-between;gap:16px;">
+                    <h2>Archived</h2>
+                    <p class="desc" style="margin:0;text-align:right;">2 brands</p>
+                  </div>
+                  <div class="bp-grid">
+                    <div class="bp-card archived">
+                      <div class="top">
+                        <div class="logo k-graphite">F</div>
+                        <div class="heads"><div class="nm">Field Notes</div><div class="url">fieldnotesbrand.com</div></div>
+                        <div class="kebab"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+                      </div>
+                      <div class="pills"><span class="pill outline"><i data-lucide="archive" class="ic"></i>Archived</span></div>
+                      <div class="meta"><div class="cell"><span class="lbl">Canvases</span><span class="val">9</span></div><div class="cell"><span class="lbl">Archived</span><span class="val">Mar 11, 2026</span></div></div>
+                    </div>
+                    <div class="bp-card archived">
+                      <div class="top">
+                        <div class="logo" style="background:#0a3a73;color:#fff;">W</div>
+                        <div class="heads"><div class="nm">Warby Parker</div><div class="url">warbyparker.com</div></div>
+                        <div class="kebab"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+                      </div>
+                      <div class="pills"><span class="pill outline"><i data-lucide="archive" class="ic"></i>Archived</span></div>
+                      <div class="meta"><div class="cell"><span class="lbl">Canvases</span><span class="val">8</span></div><div class="cell"><span class="lbl">Archived</span><span class="val">Feb 28, 2026</span></div></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Modal layer -->
+      <div class="modal-backdrop"></div>
+      <div class="dlg sm">
+        <div class="dlg-head">
+          <div>
+            <h3>Restore brand?</h3>
+            <p class="sub">This will move <em>Field Notes</em> back to your active brands and re-enable it in the brand-switcher and picker.</p>
+          </div>
+          <div class="x"><i data-lucide="x" style="width:14px;height:14px;"></i></div>
+        </div>
+        <div class="dlg-body">
+          <div class="brand-summary">
+            <div class="logo" style="background:#2d2d29;color:#ededea;border:1px solid var(--line);">F</div>
+            <div>
+              <div class="nm">Field Notes</div>
+              <div class="meta">fieldnotesbrand.com · 9 canvases · archived Mar 11, 2026</div>
+            </div>
+          </div>
+        </div>
+        <div class="dlg-foot">
+          <div class="l"><i data-lucide="info" style="width:12px;height:12px;"></i>Reversible. No data is changed.</div>
+          <div class="r">
+            <div class="btn">Cancel</div>
+            <div class="btn primary">Restore</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Modal shell lifted byte-for-byte from A8.</strong> dlg.sm + dlg-head + dlg-body + dlg-foot. The modal-backdrop rgba is the corrected `(26,26,29,0.72)` — see DELIVERY_NOTES_B12.md for the documented one-line correction delta.</li>
+      <li><strong>Background scene is B12.1's .acc-content with archived grid showing</strong> — dimmed via .a2b-dim (lifted from A7 line 535). Sidebar + topbar + acc-rail still render through the dim layer so the user never loses spatial context.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     B12.4 — Delete-archived confirm modal (typed-confirm friction)
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">B12.4 · Dialog · delete from archived</div>
+    <h2>Delete-archived confirm · typed</h2>
+    <p class="intro">Triggered from kebab → "Delete permanently" on archived .bp-card. Destructive — brand + canvases gone. Uses .loss-list (warn-soft surface) + .brand-summary + typed-confirm pattern (case-sensitive). Disabled .btn.danger CTA until input matches exactly.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">B12.4 · Delete brand · typed-confirm</div><div class="id">B12.4 · /account/brands</div></div>
+    <div class="canvas tall" data-screen-label="B12.4 Delete-archived confirm">
+      <div class="app a2b-dim">
+        <div class="sidebar">
+          <div class="brand-switch">
+            <div class="logo">N</div><div class="name">Nike</div>
+            <div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div>
+          </div>
+          <div class="side-search">
+            <i data-lucide="search" style="width:13px;height:13px;"></i><span>Search</span>
+            <span class="kbd">⌘K</span>
+          </div>
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item"><i data-lucide="clock-4" class="ic"></i>Recents</div>
+            <div class="item"><i data-lucide="calendar-days" class="ic"></i>Calendar<span class="pill" style="margin-left:auto;font-size:9px;padding:1px 5px;">SOON</span></div>
+            <div class="section">Library</div>
+            <div class="item"><i data-lucide="bookmark" class="ic"></i>Swipes<span class="pill" style="margin-left:auto;font-size:9px;padding:1px 5px;">SOON</span></div>
+            <div class="item"><i data-lucide="layout-template" class="ic"></i>Templates<span class="pill" style="margin-left:auto;font-size:9px;padding:1px 5px;">SOON</span></div>
+            <div class="item"><i data-lucide="package" class="ic"></i>Products<span class="count">318</span></div>
+            <div class="section">Brand</div>
+            <div class="item"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+            <div class="item"><i data-lucide="book-open" class="ic"></i>Knowledge base</div>
+          </div>
+          <div class="side-footer">
+            <div class="avatar">JY</div>
+            <div class="who"><b>Jiho Yang</b><span>Pro plan</span></div>
+            <div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+          </div>
+        </div>
+
+        <div class="main">
+          <div class="topbar">
+            <div class="breadcrumb">
+              <span class="back" title="Back"><i data-lucide="chevron-left" style="width:14px;height:14px;"></i></span>
+              <span>Account</span>
+              <span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <b>Brands</b>
+            </div>
+            <div class="actions">
+            </div>
+          </div>
+
+          <div class="acc-frame">
+            <div class="acc-rail">
+              <div class="title">Account</div>
+              <div class="it"><i data-lucide="user" class="ic"></i>Profile</div>
+              <div class="it active"><i data-lucide="layers" class="ic"></i>Brands</div>
+              <div class="it"><i data-lucide="credit-card" class="ic"></i>Plan &amp; billing</div>
+              <div class="it"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+              <div class="it"><i data-lucide="plug" class="ic"></i>Integrations</div>
+              <div class="sep"></div>
+              <div class="it danger"><i data-lucide="trash-2" class="ic"></i>Danger zone</div>
+            </div>
+
+            <div class="acc-main">
+              <div class="acc-hero">
+                <div class="l">
+                  <h1>Brands</h1>
+                  <p>Manage every brand you own. Active brands appear in the picker and brand-switcher. Archived brands are hidden but preserved.</p>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;">
+                  <div class="btn"><i data-lucide="upload" class="ic"></i>Import</div>
+                  <div class="btn primary"><i data-lucide="plus" class="ic"></i>New brand</div>
+                </div>
+              </div>
+
+              <div class="acc-content">
+                <div class="s-section">
+                  <div style="display:flex;align-items:baseline;justify-content:space-between;gap:16px;">
+                    <h2>Archived</h2>
+                    <p class="desc" style="margin:0;text-align:right;">2 brands</p>
+                  </div>
+                  <div class="bp-grid">
+                    <div class="bp-card archived">
+                      <div class="top">
+                        <div class="logo k-graphite">F</div>
+                        <div class="heads"><div class="nm">Field Notes</div><div class="url">fieldnotesbrand.com</div></div>
+                        <div class="kebab"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+                      </div>
+                      <div class="pills"><span class="pill outline"><i data-lucide="archive" class="ic"></i>Archived</span></div>
+                      <div class="meta"><div class="cell"><span class="lbl">Canvases</span><span class="val">9</span></div><div class="cell"><span class="lbl">Archived</span><span class="val">Mar 11, 2026</span></div></div>
+                    </div>
+                    <div class="bp-card archived">
+                      <div class="top">
+                        <div class="logo" style="background:#0a3a73;color:#fff;">W</div>
+                        <div class="heads"><div class="nm">Warby Parker</div><div class="url">warbyparker.com</div></div>
+                        <div class="kebab"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+                      </div>
+                      <div class="pills"><span class="pill outline"><i data-lucide="archive" class="ic"></i>Archived</span></div>
+                      <div class="meta"><div class="cell"><span class="lbl">Canvases</span><span class="val">8</span></div><div class="cell"><span class="lbl">Archived</span><span class="val">Feb 28, 2026</span></div></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Modal layer -->
+      <div class="modal-backdrop"></div>
+      <div class="dlg md">
+        <div class="dlg-head">
+          <div>
+            <h3>Delete this brand permanently?</h3>
+            <p class="sub">This deletes <em>Warby Parker</em> and everything inside it. <strong style="color:var(--ink);">It cannot be undone.</strong></p>
+          </div>
+          <div class="x"><i data-lucide="x" style="width:14px;height:14px;"></i></div>
+        </div>
+        <div class="dlg-body">
+
+          <div class="brand-summary">
+            <div class="logo" style="background:#0a3a73;color:#fff;">W</div>
+            <div>
+              <div class="nm">Warby Parker</div>
+              <div class="meta">warbyparker.com · archived Feb 28, 2026</div>
+            </div>
+            <div class="right">
+              <span class="pill outline" style="font-size:11px;"><i data-lucide="archive" class="ic" style="width:11px;height:11px;"></i>Archived</span>
+            </div>
+          </div>
+
+          <div class="loss-list">
+            <div class="hdr"><i data-lucide="alert-triangle" style="width:11px;height:11px;display:inline-block;vertical-align:-1px;margin-right:4px;"></i>WHAT WILL BE DELETED</div>
+            <div class="ll"><i data-lucide="layout-template" class="ic"></i>Canvases<span class="qty">8</span></div>
+            <div class="ll"><i data-lucide="palette" class="ic"></i>Brand Kit colors / fonts / logo<span class="qty">all</span></div>
+            <div class="ll"><i data-lucide="shopping-bag" class="ic"></i>Shopify connection token<span class="qty">1</span></div>
+            <div class="ll"><i data-lucide="book-open" class="ic"></i>Saved memories + knowledge base<span class="qty">all</span></div>
+          </div>
+
+          <div class="fld">
+            <label>Type the brand name to confirm</label>
+            <input class="input confirm-typed partial" value="Warby" />
+            <span class="help">Type <strong style="color:var(--ink);">Warby Parker</strong> exactly to enable the delete button.</span>
+          </div>
+
+        </div>
+        <div class="dlg-foot">
+          <div class="l"><i data-lucide="info" style="width:12px;height:12px;"></i>GDPR Art. 17 cascade · 30-day soft-delete + daily hard-delete cron</div>
+          <div class="r">
+            <div class="btn">Cancel</div>
+            <div class="btn danger disabled">Delete brand</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Same modal shell, larger size.</strong> .dlg.md (540px) carries .brand-summary + .loss-list + .fld typed-confirm — same vocabulary as A4.3 delete dialog.</li>
+      <li><strong>Disabled state shown intentionally.</strong> Input shows "Warby" (partial typing) → .confirm-typed.partial border + .btn.danger.disabled. The CTA enables only when input matches "Warby Parker" exactly (case-sensitive).</li>
+      <li><strong>Loss-list quantifies even for archived brands.</strong> Same friction as live-brand delete — the data is still there, deletion is still permanent.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<script>
+  if (window.lucide) { lucide.createIcons(); }
+</script>
+</body>
+</html>

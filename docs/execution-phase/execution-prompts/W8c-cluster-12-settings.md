@@ -31,8 +31,8 @@ Parallel-3 wave. Siblings: 01 (auth), 04 (Stripe). Stay in your worktree.
 2. docs/execution-phase/DESIGN-SYSTEM-COMPLIANCE-RIDER.md
 3. docs/kova-final-prds/12-settings-and-user-preferences.md
 4. docs/kova-final-impl-plans/12-settings-and-user-preferences-plan.md
-5. docs/execution-phase/claude-design-files/README.md  (hi-fi bundle overview, authority chain, fidelity rule, screen inventory)
-6. docs/execution-phase/claude-design-files/IMPLEMENTATION_PROMPT.md  (authoritative HTML → Vue translation method + Appendix A per-property extraction checklist; mockup wins; per-screen diff loop)
+5. docs/execution-phase/claude-design-files/README.md  (REFERENCE ONLY — plan supersedes per Mandate 8; ignore conflicts between this README and the plan)
+6. docs/execution-phase/claude-design-files/IMPLEMENTATION_PROMPT.md  (CANONICAL FIDELITY CONTRACT — read end-to-end. §0 is the 3-rule formulation: (1) visual values are copied, (2) DOM structure is translated, (3) behavior is engineered. "Copy DOM verbatim" is FORBIDDEN. Phase 1 gate = KOVA_AUDIT.md + tokens-used.md before any Vue. Visual-diff thresholds 0.1% component / 0.5% screen. 3-screenshot PR artifact per surface.)
 7. CLAUDE.md
 8. /Users/jihoyang/kova-main/main-main-kova-scope/design-system/design.md
 9. Hi-fi: /Users/jihoyang/kova-main/main-main-kova-scope/batch-a/dark/Kova Hi-Fi A7 Account Page - Dark.html (Accessibility subsection A7.1 §3) + /Users/jihoyang/kova-main/main-main-kova-scope/batch-a/dark/Kova Hi-Fi A6+A2a Popovers + A8 Dialogs - Dark.html (A8.3 modal)

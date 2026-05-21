@@ -88,10 +88,10 @@
 
 | Engine surface (07a ships) | Visual evidence (07b ships) | Hi-fi file | Scene |
 |---|---|---|---|
-| SLICE NodeType | Dashed-line bbox + layers entry + Export entry | `main-main-kova-scope/batch-b/Kova Hi-Fi 09 Canvas Overlays - Dark.html` + `batch-b/chunk-b4/Kova Hi-Fi 11 Inspector - Dark.html` | B8.x slice region + B8 export-preview |
-| Measurement system | Dashed line + auto-distance label + broken-anchor state | `main-main-kova-scope/batch-b/Kova Hi-Fi 09 Canvas Overlays - Dark.html` | B8.9 |
+| SLICE NodeType | Dashed-line bbox + layers entry + Export entry | `design-system/hifi/canvas-chrome/Kova Hi-Fi 09 Canvas Overlays - Dark.html` + `design-system/hifi/canvas-engine/Kova Hi-Fi 11 Inspector - Dark.html` | B8.x slice region + B8 export-preview |
+| Measurement system | Dashed line + auto-distance label + broken-anchor state | `design-system/hifi/canvas-chrome/Kova Hi-Fi 09 Canvas Overlays - Dark.html` | B8.9 |
 | Mask compositing (all 3 maskType branches) | Mask outlines + corner glyph + masked child pixels | same | B8.4 |
-| aspectRatio field | Lock icon in Position/Layout section | `batch-b/chunk-b4/Kova Hi-Fi 11 Inspector - Dark.html` | Layout section |
+| aspectRatio field | Lock icon in Position/Layout section | `design-system/hifi/canvas-engine/Kova Hi-Fi 11 Inspector - Dark.html` | Layout section |
 | includeInExports + pageBackgroundVisible | Page-row toggle in no-selection Pages section | same | Pages section |
 
 No Playwright visual-diff gate for this cluster (no UI). Integration tests at Task 12 + E2E smoke at Task 13 verify engine state survives load/save/persistence round-trip.

@@ -1,0 +1,1164 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<title>Kova — Hi-fi · A11 Empty · A12 Coming-soon · A13 Network · A_canvas_nav · Dark</title>
+<meta name="viewport" content="width=1440" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+<link rel="stylesheet" href="../../design-system/kova-hifi.css" />
+<script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
+<style>
+/* ============================================================
+   File 7 — A11 Empty states + A12 Coming-soon + A13 Network indicator
+   + A_canvas_nav annotation notes.
+   Inherits kova-hifi.css verbatim. Adds layout-only classes.
+   No new tokens, no new fonts, no new color values.
+   ============================================================ */
+
+  body { background: var(--bg); }
+
+  /* Section heading bump (per A7 + 06 — Inter 16/600/sentence-case;
+     specificity beats `section.block h2 { font-size: 22px }`) */
+  section.block .s-section h2 {
+    margin: 0 0 2px; font-size: 16px;
+    letter-spacing: -0.005em;
+    color: var(--ink); font-weight: 600;
+    font-family: 'Inter', system-ui, sans-serif;
+    text-transform: none;
+  }
+
+  /* ---------- Empty-pane (canonical, lifted from A7) ----------
+     Inherit verbatim across A11 catalog. Don't restyle per surface. */
+  .empty-pane {
+    border: 1px dashed var(--line); border-radius: 8px;
+    padding: 36px 24px; text-align: center;
+    background: var(--page);
+    display: flex; flex-direction: column; gap: 6px; align-items: center;
+  }
+  .empty-pane .ic-wrap {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: var(--rail); border: 1px solid var(--line);
+    display: grid; place-items: center; color: var(--ink-3);
+    margin-bottom: 4px;
+  }
+  .empty-pane h5 { margin: 0; font-size: 13px; color: var(--ink); font-weight: 600; letter-spacing: -0.005em; }
+  .empty-pane p { margin: 0; font-size: 12px; color: var(--ink-3); max-width: 360px; line-height: 1.5; }
+  .empty-pane .cta-row { display: flex; gap: 8px; margin-top: 10px; }
+
+  /* ---------- A11 catalog — 4-up grid of empty-pane variants ---------- */
+  .empty-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 16px; padding: 24px;
+    background: var(--bg);
+  }
+  .empty-card {
+    background: var(--page); border: 1px solid var(--line);
+    border-radius: 8px; overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+  .empty-card .ec-head {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--line-2);
+    background: var(--rail);
+    display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  }
+  .empty-card .ec-head .nm { font-size: 12px; font-weight: 600; color: var(--ink); }
+  .empty-card .ec-head .id { font-size: 10px; color: var(--ink-3);
+  }
+  .empty-card .ec-body {
+    padding: 24px;
+    display: flex; flex-direction: column;
+    min-height: 260px; justify-content: center;
+  }
+  .empty-card .ec-body > .empty-pane { flex: 1; }
+
+  /* Highest-fidelity: dashboard-zero & layer-panel-empty rendered in real chrome */
+  .empty-card.tall .ec-body { padding: 0; min-height: 480px; }
+  .empty-card.tall .frame {
+    height: 480px; display: flex; flex-direction: column;
+    background: var(--page);
+  }
+  .empty-card.tall .frame .head-strip {
+    height: 44px; border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; padding: 0 16px; gap: 10px;
+    background: var(--page);
+  }
+  .empty-card.tall .frame .head-strip .crumb {
+    display: inline-flex; align-items: center; gap: 6px;
+    color: var(--ink-2); font-size: 12.5px;
+  }
+  .empty-card.tall .frame .head-strip .crumb .logo {
+    width: 16px; height: 16px; border-radius: 3px;
+    background: #ededea; color: #0d0d0c;
+    display: grid; place-items: center;
+    font-weight: 700; font-size: 9px;
+  }
+  .empty-card.tall .frame .head-strip .crumb b { color: var(--ink); font-weight: 600; }
+  .empty-card.tall .frame .head-strip .crumb .sep { color: var(--ink-3); opacity: 0.6; display: grid; place-items: center; }
+  .empty-card.tall .frame .head-strip .grow { flex: 1; }
+  .empty-card.tall .frame .body { flex: 1; display: grid; place-items: center; padding: 24px; }
+  .empty-card.tall .frame .body > .empty-pane { width: 100%; max-width: 460px; padding: 44px 24px; }
+
+  /* Layer-panel mock — narrow column inside an empty-card */
+  .empty-card.layer-mock .ec-body { padding: 0; background: var(--rail); min-height: 320px; }
+  .empty-card.layer-mock .lpanel {
+    width: 240px; height: 320px;
+    background: var(--rail); border-right: 1px solid var(--line);
+    display: flex; flex-direction: column;
+  }
+  .empty-card.layer-mock .lpanel .lhead {
+    padding: 10px 12px; border-bottom: 1px solid var(--line-2);
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 11px; font-weight: 600; color: var(--ink-2); }
+  .empty-card.layer-mock .lpanel .lhead .ic { width: 12px; height: 12px; color: var(--ink-3); }
+  .empty-card.layer-mock .lpanel .lbody {
+    flex: 1; padding: 16px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .empty-card.layer-mock .lpanel .lbody .empty-pane {
+    border: none; padding: 12px 8px;
+  }
+  .empty-card.layer-mock .lpanel .lbody .empty-pane h5 { font-size: 12px; }
+  .empty-card.layer-mock .lpanel .lbody .empty-pane p { font-size: 11px; }
+  .empty-card.layer-mock .row-context {
+    flex: 1; display: grid; place-items: center;
+    color: var(--ink-3); font-size: 11px; }
+
+  /* ---------- Coming-soon hero (A12) ---------- */
+  .cs-pane {
+    padding: 56px 48px;
+    display: flex; flex-direction: column;
+    align-items: flex-start; gap: 18px;
+    max-width: 720px; margin: 0 auto;
+    min-height: 480px; justify-content: center;
+  }
+  .cs-pane .ic-tile {
+    width: 52px; height: 52px; border-radius: 10px;
+    background: var(--rail); border: 1px solid var(--line);
+    display: grid; place-items: center; color: var(--ink-2);
+  }
+  .cs-pane .eyebrow { font-size: 10.5px; color: var(--ink-3);
+  }
+  .cs-pane h1 {
+    margin: 0; font-size: 26px; font-weight: 600;
+    letter-spacing: -0.012em; color: var(--ink);
+  }
+  .cs-pane p {
+    margin: 0; color: var(--ink-2); font-size: 14px;
+    max-width: 540px; line-height: 1.55;
+  }
+  .cs-pane .roadmap {
+    display: flex; flex-direction: column; gap: 8px;
+    width: 100%; max-width: 520px;
+    margin-top: 8px;
+  }
+  .cs-pane .roadmap .item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--line-2); border-radius: 6px;
+    background: var(--page);
+    font-size: 12.5px; color: var(--ink-2);
+  }
+  .cs-pane .roadmap .item .ic { width: 14px; height: 14px; color: var(--ink-3); }
+  .cs-pane .roadmap .item .label { flex: 1; color: var(--ink); font-weight: 500; }
+  .cs-pane .cta-row { display: flex; gap: 10px; margin-top: 6px; }
+
+  /* Coming-soon "tab strip" used on Templates so we show 2 tabs sharing one screen */
+  .cs-tabs {
+    display: flex; gap: 4px; padding: 0 24px;
+    border-bottom: 1px solid var(--line);
+    background: var(--page);
+  }
+  .cs-tabs .tab {
+    padding: 12px 14px; font-size: 12.5px;
+    color: var(--ink-3); cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+  }
+  .cs-tabs .tab.on { color: var(--ink); border-bottom-color: var(--ink); }
+
+  /* ---------- A13 Network indicator placements ---------- */
+  /* Online (default) — quiet pill in topbar actions OR none in sidebar */
+  /* Offline — sidebar-footer pill + breadcrumb chip */
+  .net-strip {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 10px; margin-top: 4px;
+    border-radius: 6px;
+    background: var(--warn-soft); border: 1px solid var(--warn-edge);
+    color: var(--warn);
+    font-size: 11.5px; font-weight: 500;
+  }
+  .net-strip .ic { width: 13px; height: 13px; flex-shrink: 0; }
+  .net-strip .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--warn); flex-shrink: 0;
+  }
+
+  /* Offline-banner across topbar (alternative placement) */
+  .offline-banner {
+    height: 28px; background: var(--warn-soft);
+    border-bottom: 1px solid var(--warn-edge);
+    color: var(--warn); font-size: 11.5px; font-weight: 500;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .offline-banner .ic { width: 13px; height: 13px; }
+
+  /* ---------- A_canvas_nav annotated reference ---------- */
+  .nav-ref {
+    display: grid; grid-template-columns: 1fr 320px;
+    gap: 16px; padding: 24px;
+    background: var(--bg);
+    border-top: 1px solid var(--line);
+  }
+  .nav-ref .ref-shot {
+    background: var(--page); border: 1px solid var(--line);
+    border-radius: 8px; overflow: hidden;
+    position: relative;
+  }
+  .nav-ref .ref-shot .shot-cap {
+    padding: 10px 14px; border-bottom: 1px solid var(--line-2);
+    background: var(--rail);
+    display: flex; align-items: baseline; justify-content: space-between;
+  }
+  .nav-ref .ref-shot .shot-cap .nm { font-size: 12px; font-weight: 600; }
+  .nav-ref .ref-shot .shot-cap .id { font-size: 10px; color: var(--ink-3); }
+  .nav-ref .ref-shot .shot-body { padding: 0; }
+
+  /* Mock canvas-topbar (matches 04 vocabulary) */
+  .mock-canvas-top {
+    height: 52px;
+    border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 18px; background: var(--page);
+    position: relative;
+  }
+  .mock-canvas-top .crumbs {
+    display: flex; align-items: center; gap: 8px;
+    color: var(--ink-3); font-size: 13px;
+  }
+  .mock-canvas-top .back-arrow {
+    color: var(--ink-3); cursor: pointer;
+    display: grid; place-items: center;
+    padding: 4px; border-radius: 4px;
+  }
+  .mock-canvas-top .back-arrow:hover { color: var(--ink); background: var(--line-2); }
+  .mock-canvas-top .crumb-brand {
+    display: inline-flex; align-items: center; gap: 6px;
+    color: var(--ink-2);
+  }
+  .mock-canvas-top .crumb-brand .logo {
+    width: 16px; height: 16px; border-radius: 3px;
+    background: #ededea; color: #0d0d0c;
+    display: grid; place-items: center;
+    font-weight: 700; font-size: 9px;
+  }
+  .mock-canvas-top .crumbs .sep {
+    color: var(--ink-3); opacity: 0.6; display: grid; place-items: center;
+  }
+  .mock-canvas-top .crumbs b { color: var(--ink); font-weight: 600; }
+  .mock-canvas-top .file-meta {
+    margin-left: 8px; font-size: 11px; color: var(--ink-3);
+  }
+  .mock-canvas-top .center-stack {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .mock-canvas-top .logo-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 8px; border: 1px solid var(--line);
+    border-radius: 6px; background: var(--page);
+    font-size: 12px; color: var(--ink); cursor: pointer;
+  }
+  .mock-canvas-top .logo-btn .k {
+    width: 18px; height: 18px; border-radius: 4px;
+    background: #ededea; color: #0d0d0c;
+    display: grid; place-items: center;
+    font-weight: 700; font-size: 10px; letter-spacing: -0.02em;
+  }
+  .mock-canvas-top .logo-btn .caret { color: var(--ink-3); }
+
+  .mock-canvas-body {
+    height: 260px;
+    background:
+      radial-gradient(circle at 1px 1px, rgba(255,255,255,0.04) 1px, transparent 0) 0 0 / 16px 16px,
+      var(--bg);
+    position: relative;
+    display: grid; place-items: center;
+    color: var(--ink-3); font-size: 11px;
+  }
+
+  /* Logo dropdown (mock) — anchored under the logo button */
+  .logo-dd {
+    position: absolute; top: 44px; left: 18px;
+    width: 240px;
+    background: var(--page); border: 1px solid var(--line);
+    border-radius: 8px;
+    box-shadow: 0 16px 40px rgba(0,0,0,0.55), 0 1px 0 rgba(255,255,255,0.02);
+    overflow: hidden;
+    z-index: 5;
+  }
+  .logo-dd .dd-item {
+    display: flex; align-items: center; gap: 9px;
+    padding: 8px 12px; font-size: 13px; color: var(--ink);
+    cursor: pointer;
+  }
+  .logo-dd .dd-item:hover { background: var(--line-2); }
+  .logo-dd .dd-item.muted { color: var(--ink-2); }
+  .logo-dd .dd-item .ic { width: 14px; height: 14px; opacity: .8; color: var(--ink-2); }
+  .logo-dd .dd-item .kbd {
+    margin-left: auto; font-size: 10px; color: var(--ink-3);
+    background: var(--fill); padding: 1px 5px; border-radius: 3px;
+    border: 1px solid var(--line-2);
+  }
+  .logo-dd .dd-sep { height: 1px; background: var(--line-2); margin: 4px 0; }
+  .logo-dd .dd-item.top {
+    background: var(--fill); /* highlight the new "Back to dashboard" entry */
+  }
+
+  /* Annotation pin overlays */
+  .pin {
+    position: absolute;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--accent); color: #fff;
+    display: grid; place-items: center;
+    font-weight: 600; font-size: 11px;
+    box-shadow: 0 0 0 3px rgba(90,125,255,0.18);
+    z-index: 10; }
+
+  .nav-ref .legend-card {
+    background: var(--page); border: 1px solid var(--line);
+    border-radius: 8px; padding: 16px;
+    display: flex; flex-direction: column; gap: 12px;
+    align-self: start;
+    font-size: 12.5px; color: var(--ink-2);
+  }
+  .nav-ref .legend-card h4 {
+    margin: 0; font-size: 13px; color: var(--ink); font-weight: 600;
+    letter-spacing: -0.005em;
+  }
+  .nav-ref .legend-card .lg-item {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding-bottom: 12px; border-bottom: 1px solid var(--line-2);
+  }
+  .nav-ref .legend-card .lg-item:last-child { border-bottom: none; padding-bottom: 0; }
+  .nav-ref .legend-card .lg-item .pn {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--accent); color: #fff; font-size: 11px; font-weight: 600;
+    display: grid; place-items: center; flex-shrink: 0;
+  }
+  .nav-ref .legend-card .lg-item .ttl { color: var(--ink); font-weight: 600; font-size: 12.5px; margin-bottom: 2px; }
+  .nav-ref .legend-card .lg-item .desc { color: var(--ink-3); font-size: 11.5px; line-height: 1.45; }
+
+  /* Notes block style for A_canvas_nav (no design redraw — annotation only) */
+  .notes-block {
+    background: var(--page); border: 1px solid var(--line);
+    border-radius: 8px; padding: 18px 20px;
+    color: var(--ink-2); font-size: 13px; line-height: 1.55;
+  }
+  .notes-block h3 {
+    margin: 0 0 8px; font-size: 14px; color: var(--ink); font-weight: 600;
+    letter-spacing: -0.005em;
+  }
+  .notes-block ul { margin: 6px 0 0; padding-left: 18px; }
+  .notes-block li { margin-bottom: 6px; }
+  .notes-block code { font-size: 11.5px; padding: 1px 5px;
+    border-radius: 3px;
+    background: var(--fill); color: var(--ink);
+  }
+
+  /* Helper — dimmed sidebar/topbar context */
+  .ctx-strip {
+    padding: 12px 16px; background: var(--rail);
+    border-bottom: 1px solid var(--line-2);
+    color: var(--ink-3); font-size: 11px; }
+
+</style>
+</head>
+<body data-screen-label="A11+A12+A13+A_canvas_nav">
+
+<header class="page-head">
+  <div class="eyebrow">HI-FI · BATCH A · DARK · A11 · A12 · A13 · A_CANVAS_NAV</div>
+  <h1>Empty states · Coming-soon · Network indicator · Canvas nav</h1>
+  <p>Four small but pervasive surfaces. A11 is a catalog of empty-pane variants — same component (icon → headline → sub → CTA), different copy. A12 is three coming-soon screens (Calendar / Swipes / Templates) with identical layout, only copy + leading icon differ. A13 documents the offline state placement. A_canvas_nav is annotation-only — points at the existing 04 Canvas Editor without redrawing it.</p>
+  <div class="meta">8 empty variants · 3 coming-soon screens · 2 network states · 2 canvas-nav annotation refs · same kova-hifi.css tokens</div>
+  <div class="legend">
+    <span class="sw"><i style="background:#ededea"></i>primary action</span>
+    <span class="sw"><i style="background:#5a7dff"></i>AI / generative</span>
+    <span class="sw"><i style="background:#5ec27d"></i>online / ok</span>
+    <span class="sw"><i style="background:#e87a4a"></i>offline / warn</span>
+  </div>
+</header>
+
+
+<!-- ============================================================
+     A11 — EMPTY STATES CATALOG
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">A11 · Empty-state catalog</div>
+    <h2>Empty-pane variants</h2>
+    <p class="intro">All eight variants share the same <code>.empty-pane</code> structure: 40px icon-in-circle → 13px ink headline → 12px ink-3 sub-copy → CTA row. Only icon, copy, and CTA differ. Two of them — dashboard zero canvases and layer-panel empty — are also rendered in their host chrome to confirm the component reads correctly at full size.</p>
+  </header>
+
+  <!-- Two "in-situ" big cards first, so reviewers see the component working at full scale -->
+  <div class="screen">
+    <div class="cap"><div class="name">A11 · in-situ — Dashboard zero canvases &amp; Layer-panel empty</div><div class="id">A11.full · hi-fi</div></div>
+    <div class="canvas" data-screen-label="A11 in-situ">
+      <div class="empty-grid">
+
+        <!-- Dashboard zero canvases (in dashboard chrome) -->
+        <div class="empty-card tall">
+          <div class="ec-head">
+            <div class="nm">Dashboard · zero canvases (new brand)</div>
+            <div class="id">A11.1</div>
+          </div>
+          <div class="ec-body">
+            <div class="frame">
+              <div class="head-strip">
+                <div class="crumb">
+                  <span class="logo">N</span>
+                  <span>Nike</span>
+                  <span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+                  <b>All canvases</b>
+                </div>
+                <div class="grow"></div>
+                <span class="pill ok dot" style="font-size:11px;">Online</span>
+                <div class="btn primary sm"><i data-lucide="plus" class="ic"></i>New canvas</div>
+              </div>
+              <div class="body">
+                <div class="empty-pane">
+                  <div class="ic-wrap"><i data-lucide="layout-grid" style="width:18px;height:18px;"></i></div>
+                  <h5>No canvases yet</h5>
+                  <p>Start a canvas to design emails, landings, or product pages with Kova. Your brand kit is wired up — you can use it from the first frame.</p>
+                  <div class="cta-row">
+                    <div class="btn primary sm"><i data-lucide="plus" class="ic"></i>New canvas</div>
+                    <div class="btn sm"><i data-lucide="sparkles" class="ic" style="color:var(--accent);"></i>Start with AI</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Layer panel empty (Batch B reuses) — narrow column in canvas chrome -->
+        <div class="empty-card tall">
+          <div class="ec-head">
+            <div class="nm">Canvas · layer panel empty</div>
+            <div class="id">A11.2</div>
+          </div>
+          <div class="ec-body">
+            <div style="display:flex;height:480px;background:var(--bg);">
+              <div style="width:240px;background:var(--rail);border-right:1px solid var(--line);display:flex;flex-direction:column;">
+                <div style="padding:10px 12px;border-bottom:1px solid var(--line-2);display:flex;align-items:center;justify-content:space-between; font-size:10px;font-weight:500;color:var(--ink-3); ">
+                  <span>Layers</span>
+                  <i data-lucide="chevrons-up-down" style="width:12px;height:12px;"></i>
+                </div>
+                <div style="flex:1;padding:18px 12px;display:flex;align-items:center;justify-content:center;">
+                  <div class="empty-pane" style="border:none;padding:8px 4px;background:transparent;">
+                    <div class="ic-wrap" style="width:32px;height:32px;background:var(--page);"><i data-lucide="layers" style="width:14px;height:14px;"></i></div>
+                    <h5 style="font-size:12px;">No layers yet</h5>
+                    <p style="font-size:11px;max-width:180px;">Add a frame or drag an asset onto the canvas to start.</p>
+                  </div>
+                </div>
+              </div>
+              <div style="flex:1;display:grid;place-items:center;background:radial-gradient(circle at 1px 1px, rgba(255,255,255,0.04) 1px, transparent 0) 0 0 / 16px 16px, var(--bg);color:var(--ink-3); font-size:11px; ">
+                blank canvas
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>The same <code>.empty-pane</code> component scales</strong> — full-page (A11.1) and panel-confined (A11.2). Inside the layer panel we drop the dashed border and shrink the icon tile to 32px so it doesn't fight the panel's existing border.</li>
+      <li><strong>Dashboard primary CTA is "New canvas"</strong>; the secondary AI-accent CTA "Start with AI" reserves the AI vocabulary for generative actions only (per coherence rule 12).</li>
+      <li><strong>Layer-panel state is shared with Batch B.</strong> Same markup, so when the layer panel ships there's no second design pass.</li>
+    </ul></div>
+  </div>
+
+  <!-- The 6 smaller variants in a 2x3 grid -->
+  <div class="screen">
+    <div class="cap"><div class="name">A11 · catalog — Brand-Kit + first-login + generic variants</div><div class="id">A11.3–A11.8 · hi-fi</div></div>
+    <div class="canvas" data-screen-label="A11 catalog">
+      <div class="empty-grid">
+
+        <div class="empty-card">
+          <div class="ec-head"><div class="nm">Brand Kit · zero memories</div><div class="id">A11.3</div></div>
+          <div class="ec-body">
+            <div class="empty-pane">
+              <div class="ic-wrap"><i data-lucide="brain" style="width:17px;height:17px;"></i></div>
+              <h5>Kova hasn't learned anything yet</h5>
+              <p>Memories are facts, rules, and preferences Kova should remember about your brand. Add one manually, or capture from a canvas.</p>
+              <div class="cta-row">
+                <div class="btn primary sm"><i data-lucide="plus" class="ic"></i>Add memory</div>
+                <div class="btn sm">Learn from a canvas</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="empty-card">
+          <div class="ec-head"><div class="nm">Brand Kit · zero KB sources</div><div class="id">A11.4</div></div>
+          <div class="ec-body">
+            <div class="empty-pane">
+              <div class="ic-wrap"><i data-lucide="book-open" style="width:17px;height:17px;"></i></div>
+              <h5>No knowledge sources</h5>
+              <p>Drop in PDFs, paste URLs, or write notes. Kova indexes them so it can answer in your brand's voice with your facts.</p>
+              <div class="cta-row">
+                <div class="btn primary sm"><i data-lucide="upload" class="ic"></i>Upload</div>
+                <div class="btn sm"><i data-lucide="link" class="ic"></i>Add URL</div>
+                <div class="btn sm"><i data-lucide="file-text" class="ic"></i>New note</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="empty-card">
+          <div class="ec-head"><div class="nm">Brand Kit · zero tone snippets</div><div class="id">A11.5</div></div>
+          <div class="ec-body">
+            <div class="empty-pane">
+              <div class="ic-wrap"><i data-lucide="quote" style="width:17px;height:17px;"></i></div>
+              <h5>No tone snippets</h5>
+              <p>Paste 3–5 short examples of copy that sound like your brand (a hero line, a promo CTA, a restock email). Kova matches the patterns.</p>
+              <div class="cta-row">
+                <div class="btn primary sm"><i data-lucide="plus" class="ic"></i>Add snippet</div>
+                <div class="btn sm"><i data-lucide="sparkles" class="ic" style="color:var(--accent);"></i>Draft via interview</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="empty-card">
+          <div class="ec-head"><div class="nm">Brand Kit · zero saved blocks</div><div class="id">A11.6</div></div>
+          <div class="ec-body">
+            <div class="empty-pane">
+              <div class="ic-wrap"><i data-lucide="bookmark" style="width:17px;height:17px;"></i></div>
+              <h5>No saved blocks</h5>
+              <p>Save a footer, a CTA, or any reusable section from a canvas — then drag it onto a new canvas to drop it in.</p>
+              <div class="cta-row">
+                <div class="btn sm"><i data-lucide="info" class="ic"></i>How saving works</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="empty-card">
+          <div class="ec-head"><div class="nm">First login · zero brands</div><div class="id">A11.7</div></div>
+          <div class="ec-body">
+            <div class="empty-pane">
+              <div class="ic-wrap"><i data-lucide="store" style="width:17px;height:17px;"></i></div>
+              <h5>Add your first brand</h5>
+              <p>A brand is your store: its name, URL, kit, and Shopify connection. You'll set up the kit in a guided 2-minute flow.</p>
+              <div class="cta-row">
+                <div class="btn primary sm"><i data-lucide="plus" class="ic"></i>New brand</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="empty-card">
+          <div class="ec-head"><div class="nm">Generic · no data (zero-result)</div><div class="id">A11.8</div></div>
+          <div class="ec-body">
+            <div class="empty-pane">
+              <div class="ic-wrap"><i data-lucide="search-x" style="width:17px;height:17px;"></i></div>
+              <h5>Nothing to show here yet</h5>
+              <p>This view is empty. If you expected results, try clearing filters or check back after you've created some content.</p>
+              <div class="cta-row">
+                <div class="btn sm">Clear filters</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Same component, eight contexts.</strong> Icon glyph rotates with the surface (brain / book / quote / bookmark / store / search-x). Headline is single-sentence ink; sub-copy is single-paragraph ink-3 capped at ~360px. CTA row is optional but always uses existing <code>.btn</code> variants.</li>
+      <li><strong>AI accent is reserved.</strong> Tone snippets' "Draft via interview" carries the same accent treatment as A7 Identity — only generative actions earn the blue.</li>
+      <li><strong>Saved-blocks empty has no primary CTA</strong> — saving a block happens from a canvas's right-click menu, not from this panel. The pane points the user back to the doc instead of pretending it can do something here.</li>
+      <li><strong>Generic zero-data (A11.8)</strong> covers the long tail — list filters, empty search results, archived views — so nothing in Batch A or B ever falls through to an unstyled blank pane.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     A12 — COMING SOON (Calendar · Swipes · Templates)
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">A12 · Coming-soon — Calendar · Swipes · Templates</div>
+    <h2>Coming soon</h2>
+    <p class="intro">Three Phase-2 nav destinations route to the same coming-soon shell. Identical structure (icon-tile → eyebrow → headline → paragraph → roadmap chips → notify CTA), only the icon, eyebrow, headline, and paragraph copy differ. Templates also has a 2-tab strip ("Templates" / "Examples") to show the pattern handles a sub-route surface as well.</p>
+  </header>
+
+  <!-- Calendar -->
+  <div class="screen">
+    <div class="cap"><div class="name">Calendar — coming soon</div><div class="id">A12.1 · /calendar</div></div>
+    <div class="canvas tall" data-screen-label="A12.1 Calendar">
+      <div class="app">
+        <!-- Sidebar (verbatim from A7) -->
+        <div class="sidebar">
+          <div class="brand-switch">
+            <div class="logo">N</div><div class="name">Nike</div>
+            <div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div>
+          </div>
+          <div class="side-search">
+            <i data-lucide="search" style="width:13px;height:13px;"></i><span>Search</span>
+            <span class="kbd">⌘K</span>
+          </div>
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item"><i data-lucide="clock-4" class="ic"></i>Recents</div>
+            <div class="item active"><i data-lucide="calendar-days" class="ic"></i>Calendar<span class="pill" style="margin-left:auto;font-size:9px;padding:1px 5px;">SOON</span></div>
+            <div class="section">Library</div>
+            <div class="item"><i data-lucide="bookmark" class="ic"></i>Swipes<span class="pill" style="margin-left:auto;font-size:9px;padding:1px 5px;">SOON</span></div>
+            <div class="item"><i data-lucide="layout-template" class="ic"></i>Templates<span class="pill" style="margin-left:auto;font-size:9px;padding:1px 5px;">SOON</span></div>
+            <div class="item"><i data-lucide="package" class="ic"></i>Products<span class="count">318</span></div>
+            <div class="section">Brand</div>
+            <div class="item"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+            <div class="item"><i data-lucide="book-open" class="ic"></i>Knowledge base</div>
+          </div>
+          <div class="side-footer">
+            <div class="avatar">JY</div>
+            <div class="who"><b>Jiho Yang</b><span>Pro plan</span></div>
+            <div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+          </div>
+        </div>
+
+        <div class="main">
+          <div class="topbar">
+            <div class="breadcrumb">
+              <span class="crumb-brand"><span class="logo">N</span>Nike</span>
+              <span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <b>Calendar</b>
+              <span class="pill" style="margin-left:8px;font-size:10px;padding:1px 6px;">Coming soon</span>
+            </div>
+            <div class="actions">
+              <span class="pill ok dot" style="font-size:11px;">Online</span>
+            </div>
+          </div>
+
+          <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:24px;overflow:auto;">
+            <div class="cs-pane">
+              <div class="ic-tile"><i data-lucide="calendar-days" style="width:22px;height:22px;"></i></div>
+              <div class="eyebrow">Phase 2 · planning surface</div>
+              <h1>A calendar for everything you ship</h1>
+              <p>See campaigns, drops, and one-off sends in one timeline. Drag a canvas onto a date to schedule it; pull from your Shopify product calendar to plan around drops.</p>
+              <div class="roadmap">
+                <div class="item"><i data-lucide="check" class="ic" style="color:var(--ok);"></i><span class="label">Month + week views</span><span class="tag-mono">PLANNED</span></div>
+                <div class="item"><i data-lucide="check" class="ic" style="color:var(--ok);"></i><span class="label">Drag canvases onto dates</span><span class="tag-mono">PLANNED</span></div>
+                <div class="item"><i data-lucide="check" class="ic" style="color:var(--ok);"></i><span class="label">Shopify product drop overlay</span><span class="tag-mono">PLANNED</span></div>
+              </div>
+              <div class="cta-row">
+                <div class="btn primary sm"><i data-lucide="bell" class="ic"></i>Notify me when it's ready</div>
+                <div class="btn sm"><i data-lucide="external-link" class="ic"></i>Read the roadmap</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>This is the canonical coming-soon shell.</strong> The icon-tile + eyebrow + headline + body paragraph + 3-item roadmap + 2-CTA row pattern is identical for Swipes and Templates — only copy and the leading icon change.</li>
+      <li><strong>The "SOON" sidebar pill</strong> is the same tiny grey pill from 03 Dashboard — kept consistent so users don't get a different signal on the nav vs. on the destination.</li>
+      <li><strong>The breadcrumb adds a "Coming soon" pill</strong> next to the page name. Reinforces that landing here was deliberate (not an error) without needing a banner.</li>
+    </ul></div>
+  </div>
+
+  <!-- Swipes -->
+  <div class="screen">
+    <div class="cap"><div class="name">Swipes — coming soon</div><div class="id">A12.2 · /swipes</div></div>
+    <div class="canvas tall" data-screen-label="A12.2 Swipes">
+      <div class="app">
+        <div class="sidebar">
+          <div class="brand-switch">
+            <div class="logo">N</div><div class="name">Nike</div>
+            <div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div>
+          </div>
+          <div class="side-search">
+            <i data-lucide="search" style="width:13px;height:13px;"></i><span>Search</span>
+            <span class="kbd">⌘K</span>
+          </div>
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item"><i data-lucide="clock-4" class="ic"></i>Recents</div>
+            <div class="item"><i data-lucide="calendar-days" class="ic"></i>Calendar<span class="pill" style="margin-left:auto;font-size:9px;padding:1px 5px;">SOON</span></div>
+            <div class="section">Library</div>
+            <div class="item active"><i data-lucide="bookmark" class="ic"></i>Swipes<span class="pill" style="margin-left:auto;font-size:9px;padding:1px 5px;">SOON</span></div>
+            <div class="item"><i data-lucide="layout-template" class="ic"></i>Templates<span class="pill" style="margin-left:auto;font-size:9px;padding:1px 5px;">SOON</span></div>
+            <div class="item"><i data-lucide="package" class="ic"></i>Products<span class="count">318</span></div>
+            <div class="section">Brand</div>
+            <div class="item"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+            <div class="item"><i data-lucide="book-open" class="ic"></i>Knowledge base</div>
+          </div>
+          <div class="side-footer">
+            <div class="avatar">JY</div>
+            <div class="who"><b>Jiho Yang</b><span>Pro plan</span></div>
+            <div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+          </div>
+        </div>
+
+        <div class="main">
+          <div class="topbar">
+            <div class="breadcrumb">
+              <span class="crumb-brand"><span class="logo">N</span>Nike</span>
+              <span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <b>Swipes</b>
+              <span class="pill" style="margin-left:8px;font-size:10px;padding:1px 6px;">Coming soon</span>
+            </div>
+            <div class="actions">
+              <span class="pill ok dot" style="font-size:11px;">Online</span>
+            </div>
+          </div>
+
+          <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:24px;overflow:auto;">
+            <div class="cs-pane">
+              <div class="ic-tile"><i data-lucide="bookmark" style="width:22px;height:22px;"></i></div>
+              <div class="eyebrow">Phase 2 · inspiration library</div>
+              <h1>Save anything that catches your eye</h1>
+              <p>Capture screenshots, URLs, and references into one searchable library. Tag by category, paste into a canvas, or use a swipe as a starting point for AI generation.</p>
+              <div class="roadmap">
+                <div class="item"><i data-lucide="check" class="ic" style="color:var(--ok);"></i><span class="label">Browser extension capture</span><span class="tag-mono">PLANNED</span></div>
+                <div class="item"><i data-lucide="check" class="ic" style="color:var(--ok);"></i><span class="label">Tagging + smart search</span><span class="tag-mono">PLANNED</span></div>
+                <div class="item"><i data-lucide="check" class="ic" style="color:var(--ok);"></i><span class="label">Drag swipe → canvas</span><span class="tag-mono">PLANNED</span></div>
+              </div>
+              <div class="cta-row">
+                <div class="btn primary sm"><i data-lucide="bell" class="ic"></i>Notify me when it's ready</div>
+                <div class="btn sm"><i data-lucide="external-link" class="ic"></i>Read the roadmap</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Identical layout to Calendar.</strong> Diff is icon (<code>bookmark</code>), eyebrow ("inspiration library"), headline, paragraph, and the three roadmap items. Visual rhythm is locked.</li>
+    </ul></div>
+  </div>
+
+  <!-- Templates (with sub-tab strip) -->
+  <div class="screen">
+    <div class="cap"><div class="name">Templates — coming soon (with 2-tab strip)</div><div class="id">A12.3 · /templates</div></div>
+    <div class="canvas tall" data-screen-label="A12.3 Templates">
+      <div class="app">
+        <div class="sidebar">
+          <div class="brand-switch">
+            <div class="logo">N</div><div class="name">Nike</div>
+            <div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div>
+          </div>
+          <div class="side-search">
+            <i data-lucide="search" style="width:13px;height:13px;"></i><span>Search</span>
+            <span class="kbd">⌘K</span>
+          </div>
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item"><i data-lucide="clock-4" class="ic"></i>Recents</div>
+            <div class="item"><i data-lucide="calendar-days" class="ic"></i>Calendar<span class="pill" style="margin-left:auto;font-size:9px;padding:1px 5px;">SOON</span></div>
+            <div class="section">Library</div>
+            <div class="item"><i data-lucide="bookmark" class="ic"></i>Swipes<span class="pill" style="margin-left:auto;font-size:9px;padding:1px 5px;">SOON</span></div>
+            <div class="item active"><i data-lucide="layout-template" class="ic"></i>Templates<span class="pill" style="margin-left:auto;font-size:9px;padding:1px 5px;">SOON</span></div>
+            <div class="item"><i data-lucide="package" class="ic"></i>Products<span class="count">318</span></div>
+            <div class="section">Brand</div>
+            <div class="item"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+            <div class="item"><i data-lucide="book-open" class="ic"></i>Knowledge base</div>
+          </div>
+          <div class="side-footer">
+            <div class="avatar">JY</div>
+            <div class="who"><b>Jiho Yang</b><span>Pro plan</span></div>
+            <div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+          </div>
+        </div>
+
+        <div class="main">
+          <div class="topbar">
+            <div class="breadcrumb">
+              <span class="crumb-brand"><span class="logo">N</span>Nike</span>
+              <span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <b>Templates</b>
+              <span class="pill" style="margin-left:8px;font-size:10px;padding:1px 6px;">Coming soon</span>
+            </div>
+            <div class="actions">
+              <span class="pill ok dot" style="font-size:11px;">Online</span>
+            </div>
+          </div>
+
+          <div class="cs-tabs">
+            <div class="tab on">My templates</div>
+            <div class="tab">Kova templates</div>
+          </div>
+
+          <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:24px;overflow:auto;">
+            <div class="cs-pane">
+              <div class="ic-tile"><i data-lucide="layout-template" style="width:22px;height:22px;"></i></div>
+              <div class="eyebrow">Phase 2 · starter layouts</div>
+              <h1>Open a canvas with a head start</h1>
+              <p>A growing library of email, landing, and product layouts to start from — pre-wired to your brand kit so the typography, palette, and copy voice are right on first paste.</p>
+              <div class="roadmap">
+                <div class="item"><i data-lucide="check" class="ic" style="color:var(--ok);"></i><span class="label">Email · welcome / promo / restock</span><span class="tag-mono">PLANNED</span></div>
+                <div class="item"><i data-lucide="check" class="ic" style="color:var(--ok);"></i><span class="label">Landing · drop / waitlist / story</span><span class="tag-mono">PLANNED</span></div>
+                <div class="item"><i data-lucide="check" class="ic" style="color:var(--ok);"></i><span class="label">Auto-applied brand kit</span><span class="tag-mono">PLANNED</span></div>
+              </div>
+              <div class="cta-row">
+                <div class="btn primary sm"><i data-lucide="bell" class="ic"></i>Notify me when it's ready</div>
+                <div class="btn sm"><i data-lucide="external-link" class="ic"></i>Read the roadmap</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Tab strip pattern</strong> for surfaces with sub-routes. Even though both tabs land on the same coming-soon body, the strip exists so the surface doesn't lie about its eventual shape.</li>
+      <li><strong>"Kova templates" tab is non-active</strong> — no separate empty for it. The shell is one component. Sidebar nav item stays "Templates" (singular destination); the tabs scope inside.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     A13 — NETWORK INDICATOR
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">A13 · Network indicator</div>
+    <h2>Online · Offline</h2>
+    <p class="intro">Two states. Online is intentionally quiet — a green dotted "Online" pill in the topbar actions cluster (the same one already shown across A7, A12, and dashboard). Offline raises the volume just enough to be unmistakable: a warn pill in the sidebar footer (next to the avatar) so peripheral vision catches it, plus a thin warn banner at the top of the topbar so any new action hits a visible reason for failure. <strong>Placement decision: sidebar footer (primary) + topbar banner (secondary).</strong> Document this choice in delivery notes.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">A13.1 — Online (default, quiet)</div><div class="id">A13.1 · hi-fi</div></div>
+    <div class="canvas" data-screen-label="A13.1 Online">
+      <div class="app">
+        <div class="sidebar">
+          <div class="brand-switch">
+            <div class="logo">N</div><div class="name">Nike</div>
+            <div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div>
+          </div>
+          <div class="side-search">
+            <i data-lucide="search" style="width:13px;height:13px;"></i><span>Search</span>
+            <span class="kbd">⌘K</span>
+          </div>
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item active"><i data-lucide="clock-4" class="ic"></i>Recents</div>
+            <div class="item"><i data-lucide="calendar-days" class="ic"></i>Calendar<span class="pill" style="margin-left:auto;font-size:9px;padding:1px 5px;">SOON</span></div>
+            <div class="section">Library</div>
+            <div class="item"><i data-lucide="bookmark" class="ic"></i>Swipes<span class="pill" style="margin-left:auto;font-size:9px;padding:1px 5px;">SOON</span></div>
+            <div class="item"><i data-lucide="package" class="ic"></i>Products<span class="count">318</span></div>
+            <div class="section">Brand</div>
+            <div class="item"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+            <div class="item"><i data-lucide="book-open" class="ic"></i>Knowledge base</div>
+          </div>
+          <div class="side-footer">
+            <div class="avatar">JY</div>
+            <div class="who"><b>Jiho Yang</b><span>Pro plan</span></div>
+            <div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+          </div>
+        </div>
+
+        <div class="main">
+          <div class="topbar">
+            <div class="breadcrumb">
+              <span class="crumb-brand"><span class="logo">N</span>Nike</span>
+              <span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <b>Recents</b>
+            </div>
+            <div class="actions">
+              <span class="pill ok dot" style="font-size:11px;">Online</span>
+              <div class="btn primary sm"><i data-lucide="plus" class="ic"></i>New canvas</div>
+            </div>
+          </div>
+          <div style="flex:1;display:grid;place-items:center;color:var(--ink-3); font-size:11px; background:var(--page);">
+            recents content (out of scope for A13)
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Online is a single quiet pill</strong> in the topbar actions cluster. It uses the existing <code>.pill.ok.dot</code> from kova-hifi.css — the same component already on A7 and A12, so it doesn't read as a status banner.</li>
+      <li><strong>The sidebar footer is silent in this state.</strong> No badge, no indicator. We only spend pixels when something is wrong.</li>
+    </ul></div>
+  </div>
+
+  <div class="screen">
+    <div class="cap"><div class="name">A13.2 — Offline (sidebar pill + topbar banner)</div><div class="id">A13.2 · hi-fi</div></div>
+    <div class="canvas" data-screen-label="A13.2 Offline">
+      <div class="app">
+        <div class="sidebar">
+          <div class="brand-switch">
+            <div class="logo">N</div><div class="name">Nike</div>
+            <div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div>
+          </div>
+          <div class="side-search">
+            <i data-lucide="search" style="width:13px;height:13px;"></i><span>Search</span>
+            <span class="kbd">⌘K</span>
+          </div>
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item active"><i data-lucide="clock-4" class="ic"></i>Recents</div>
+            <div class="item"><i data-lucide="calendar-days" class="ic"></i>Calendar<span class="pill" style="margin-left:auto;font-size:9px;padding:1px 5px;">SOON</span></div>
+            <div class="section">Library</div>
+            <div class="item"><i data-lucide="bookmark" class="ic"></i>Swipes<span class="pill" style="margin-left:auto;font-size:9px;padding:1px 5px;">SOON</span></div>
+            <div class="item"><i data-lucide="package" class="ic"></i>Products<span class="count">318</span></div>
+            <div class="section">Brand</div>
+            <div class="item"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+            <div class="item"><i data-lucide="book-open" class="ic"></i>Knowledge base</div>
+          </div>
+          <div class="side-footer" style="flex-direction:column;align-items:stretch;gap:8px;">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div class="avatar">JY</div>
+              <div class="who"><b>Jiho Yang</b><span>Pro plan</span></div>
+              <div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+            </div>
+            <div class="net-strip">
+              <span class="dot"></span>
+              <span style="flex:1;">Working offline</span>
+              <i data-lucide="cloud-off" class="ic"></i>
+            </div>
+          </div>
+        </div>
+
+        <div class="main">
+          <div class="offline-banner">
+            <i data-lucide="cloud-off" class="ic"></i>
+            <span>You're offline. Changes are saved locally and will sync when you reconnect.</span>
+          </div>
+          <div class="topbar">
+            <div class="breadcrumb">
+              <span class="crumb-brand"><span class="logo">N</span>Nike</span>
+              <span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <b>Recents</b>
+            </div>
+            <div class="actions">
+              <span class="pill warn dot" style="font-size:11px;">Offline</span>
+              <div class="btn sm" style="opacity:0.85;"><i data-lucide="plus" class="ic"></i>New canvas</div>
+            </div>
+          </div>
+          <div style="flex:1;display:grid;place-items:center;color:var(--ink-3); font-size:11px; background:var(--page);">
+            recents content (out of scope for A13)
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Three reinforcing signals.</strong> Sidebar footer pill (peripheral / always visible while working) · top-of-pane warn banner (every action passes through this) · topbar pill swap from "Online" → "Offline" (single source of truth in the actions cluster). All three use the same warn token — no new colors.</li>
+      <li><strong>The banner explains consequences,</strong> not just status. "Changes are saved locally and will sync when you reconnect" answers the implicit "is my work safe?" question without needing a modal.</li>
+      <li><strong>Why sidebar footer over topbar-only:</strong> the topbar can scroll out of view in modal-overlay states (A8, A5 ⌘K) and during canvas-editor focus modes. The sidebar footer stays. Choosing both gives belt-and-braces with low pixel cost.</li>
+      <li><strong>No new component.</strong> <code>.net-strip</code> is one layout-only utility on top of existing <code>--warn-soft</code> / <code>--warn-edge</code> / <code>--warn</code> tokens.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     A_canvas_nav — annotation only (do not redesign 04)
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">A_canvas_nav · annotation only — refers to existing 04 Canvas Editor</div>
+    <h2>Canvas navigation back to dashboard</h2>
+    <p class="intro">Inside a canvas, there is no brand-switcher (per locked decision). Two affordances bring the user back to the dashboard: (1) the breadcrumb "<code>← {Brand}</code>" click destination, (2) a "Back to dashboard" item inserted as the <strong>top</strong> entry in the existing logo dropdown. This section annotates both — it does not redraw 04. The mocks below mirror 04's chrome at low fidelity for pin placement only.</p>
+  </header>
+
+  <!-- Note 1: breadcrumb destination -->
+  <div class="screen">
+    <div class="cap"><div class="name">Note 1 — breadcrumb "← Nike" → /brand/{slug}</div><div class="id">A_canvas_nav.1 · annotation</div></div>
+    <div class="canvas" data-screen-label="A_canvas_nav.1 breadcrumb">
+      <div class="ctx-strip">04 Canvas Editor — annotation only · no design change</div>
+      <div class="nav-ref">
+        <div class="ref-shot">
+          <div class="shot-cap">
+            <div class="nm">04 Canvas Editor · canvas-topbar (excerpt)</div>
+            <div class="id">04.canvas-topbar</div>
+          </div>
+          <div class="shot-body">
+            <div class="mock-canvas-top">
+              <div class="crumbs">
+                <span class="back-arrow"><i data-lucide="arrow-left" style="width:14px;height:14px;"></i></span>
+                <span class="crumb-brand"><span class="logo">N</span>Nike</span>
+                <span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+                <span>Files</span>
+                <span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+                <b>Spring drop</b>
+                <span class="file-meta">· edited 2m ago</span>
+              </div>
+              <div class="center-stack">
+                <span class="pill ok" style="font-size:10.5px;"><i data-lucide="cloud" style="width:11px;height:11px;"></i>Saved</span>
+                <div class="btn sm">Share</div>
+              </div>
+              <div class="pin" style="left:36px; top:14px;">1</div>
+              <div class="pin" style="left:78px; top:14px;">2</div>
+            </div>
+            <div class="mock-canvas-body">canvas (illustrative)</div>
+          </div>
+        </div>
+
+        <div class="legend-card">
+          <h4>Annotation</h4>
+          <div class="lg-item">
+            <div class="pn">1</div>
+            <div>
+              <div class="ttl">Back arrow</div>
+              <div class="desc">Pre-existing in 04. On click → <code>/brand/{slug}</code> (dashboard root for the current brand). No popover, no menu.</div>
+            </div>
+          </div>
+          <div class="lg-item">
+            <div class="pn">2</div>
+            <div>
+              <div class="ttl">Brand crumb "Nike"</div>
+              <div class="desc">Click target. Same destination as the back arrow — <code>/brand/{slug}</code>. Inside a canvas this <em>is</em> the brand switcher: leave the canvas, switch brand from the dashboard sidebar.</div>
+            </div>
+          </div>
+          <div class="lg-item">
+            <div class="pn"><i data-lucide="info" style="width:11px;height:11px;color:#fff;"></i></div>
+            <div>
+              <div class="ttl">Why no in-canvas brand switcher</div>
+              <div class="desc">Switching brand mid-canvas would force a "save / discard" dialog or risk an unintended cross-brand paste. Leaving canvas first is the simpler model.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>No visual change to 04.</strong> The back-arrow and brand crumb already exist in the canvas-topbar — this note documents their click destination so it doesn't drift in implementation.</li>
+    </ul></div>
+  </div>
+
+  <!-- Note 2: logo dropdown insertion -->
+  <div class="screen">
+    <div class="cap"><div class="name">Note 2 — logo dropdown gets "Back to dashboard" as TOP item</div><div class="id">A_canvas_nav.2 · annotation</div></div>
+    <div class="canvas" data-screen-label="A_canvas_nav.2 logo dropdown">
+      <div class="ctx-strip">04 Canvas Editor — annotation only · single-item insertion</div>
+      <div class="nav-ref">
+        <div class="ref-shot">
+          <div class="shot-cap">
+            <div class="nm">04 Canvas Editor · logo dropdown (open)</div>
+            <div class="id">04.logo-dropdown</div>
+          </div>
+          <div class="shot-body">
+            <div class="mock-canvas-top">
+              <div class="crumbs">
+                <span class="back-arrow"><i data-lucide="arrow-left" style="width:14px;height:14px;"></i></span>
+                <div class="logo-btn">
+                  <span class="k">K</span>
+                  <span>Kova</span>
+                  <i data-lucide="chevron-down" class="caret" style="width:12px;height:12px;"></i>
+                </div>
+                <span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+                <span class="crumb-brand"><span class="logo">N</span>Nike</span>
+                <span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+                <b>Spring drop</b>
+              </div>
+              <div class="center-stack">
+                <div class="btn sm">Share</div>
+              </div>
+
+              <!-- Logo dropdown popover -->
+              <div class="logo-dd">
+                <div class="dd-item top">
+                  <i data-lucide="arrow-left" class="ic"></i>
+                  <span>Back to dashboard</span>
+                </div>
+                <div class="dd-sep"></div>
+                <div class="dd-item muted"><i data-lucide="folder-open" class="ic"></i>Open file…<span class="kbd">⌘O</span></div>
+                <div class="dd-item muted"><i data-lucide="file-plus" class="ic"></i>New file<span class="kbd">⌘N</span></div>
+                <div class="dd-item muted"><i data-lucide="history" class="ic"></i>Version history</div>
+                <div class="dd-sep"></div>
+                <div class="dd-item muted"><i data-lucide="download" class="ic"></i>Export…</div>
+                <div class="dd-item muted"><i data-lucide="settings-2" class="ic"></i>File settings</div>
+              </div>
+
+              <div class="pin" style="left:108px; top:62px;">1</div>
+            </div>
+            <div class="mock-canvas-body" style="height:300px;">canvas (illustrative)</div>
+          </div>
+        </div>
+
+        <div class="legend-card">
+          <h4>Annotation</h4>
+          <div class="lg-item">
+            <div class="pn">1</div>
+            <div>
+              <div class="ttl">"Back to dashboard" — TOP entry</div>
+              <div class="desc">Inserted as the first item in the existing logo dropdown, above the divider. Icon: <code>arrow-left</code>. On click → <code>/brand/{slug}</code> — same destination as the breadcrumb back arrow + brand crumb. Highlighted on hover; no kbd shortcut (kept simple).</div>
+            </div>
+          </div>
+          <div class="lg-item">
+            <div class="pn"><i data-lucide="info" style="width:11px;height:11px;color:#fff;"></i></div>
+            <div>
+              <div class="ttl">Existing items unchanged</div>
+              <div class="desc">Open file / New file / Version history / Export / File settings retain order, separators, and shortcuts as drawn in 04. This is a single-item insertion.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Three paths, one destination.</strong> Back arrow, brand crumb, and the new "Back to dashboard" dropdown item all route to <code>/brand/{slug}</code>. Redundancy is intentional — different users discover the affordance through different chrome.</li>
+      <li><strong>No popover for brand switching</strong> from inside the canvas — by design. The dropdown is the file menu, not a navigator.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     Cross-surface notes
+     ============================================================ -->
+<section class="block" style="background:var(--page);">
+  <header>
+    <div class="tag">Coherence notes — what this file commits to</div>
+    <h2>What survives Batch B</h2>
+  </header>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;max-width:1080px;">
+    <div class="notes-block">
+      <h3>New layout-only classes</h3>
+      <ul>
+        <li><code>.empty-grid</code> · <code>.empty-card</code> — review-page catalog only; <strong>not</strong> shipped to product.</li>
+        <li><code>.cs-pane</code> · <code>.cs-tabs</code> — Coming-soon shell. Reused identically across Calendar / Swipes / Templates.</li>
+        <li><code>.net-strip</code> · <code>.offline-banner</code> — A13 indicator placements. Both built on existing warn tokens.</li>
+        <li><code>.empty-pane</code> already existed (A7); this file just consumes it 8 ways.</li>
+      </ul>
+    </div>
+    <div class="notes-block">
+      <h3>Tokens used (none new)</h3>
+      <ul>
+        <li>Surface: <code>--bg</code> · <code>--page</code> · <code>--rail</code> · <code>--fill</code></li>
+        <li>Ink: <code>--ink</code> · <code>--ink-2</code> · <code>--ink-3</code></li>
+        <li>Lines: <code>--line</code> · <code>--line-2</code></li>
+        <li>State (offline only): <code>--warn</code> · <code>--warn-soft</code> · <code>--warn-edge</code></li>
+        <li>State (online + roadmap checks): <code>--ok</code></li>
+        <li>Accent (AI only): used once on tone-snippets "Draft via interview" and once on "Start with AI".</li>
+      </ul>
+    </div>
+    <div class="notes-block">
+      <h3>A13 placement decision (for delivery notes)</h3>
+      <ul>
+        <li><strong>Primary signal:</strong> sidebar footer <code>.net-strip</code> warn pill, always visible while working.</li>
+        <li><strong>Secondary signal:</strong> topbar <code>.offline-banner</code>, explains consequences ("changes saved locally").</li>
+        <li><strong>Tertiary signal:</strong> the existing topbar online/offline pill swaps from <code>.pill.ok</code> → <code>.pill.warn</code>.</li>
+        <li>Online state shows only the topbar pill (quiet). Sidebar + banner stay silent.</li>
+      </ul>
+    </div>
+    <div class="notes-block">
+      <h3>Out of scope</h3>
+      <ul>
+        <li>Phase-2 tab strip on Templates (My templates / Kova templates) is decorative — both tabs land on the same coming-soon body.</li>
+        <li>Layer-panel empty (A11.2) is shared with Batch B; do not redesign there.</li>
+        <li>A_canvas_nav does <strong>not</strong> redesign 04. It documents two single-line additions — a click destination on the breadcrumb, and one item inserted into an existing dropdown.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<footer style="padding:32px 56px;border-top:1px solid var(--line);background:var(--bg);color:var(--ink-3);font-size:11px; ">
+  Kova · hi-fi · Batch A · A11 Empty + A12 Coming-soon + A13 Network + A_canvas_nav · v1
+</footer>
+
+<script>
+  if (window.lucide) window.lucide.createIcons({ attrs: { 'stroke-width': 1.6 } });
+</script>
+</body>
+</html>

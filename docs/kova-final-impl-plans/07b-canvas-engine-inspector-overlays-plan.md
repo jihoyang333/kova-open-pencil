@@ -11,9 +11,9 @@
 **PRD source:** `kova-open-pencil-1/docs/kova-final-prds/07b-canvas-engine-inspector-overlays.md`
 
 **Source-of-truth references for every task below:**
-- Hi-fi 11 Inspector — `main-main-kova-scope/batch-b/chunk-b4/Kova Hi-Fi 11 Inspector - Dark.html`
-- Hi-fi 12 Color Picker — `main-main-kova-scope/batch-b/chunk-b5/Kova Hi-Fi 12 Color Picker - Dark.html`
-- Hi-fi 09 Canvas Overlays — `main-main-kova-scope/batch-b/Kova Hi-Fi 09 Canvas Overlays - Dark.html`
+- Hi-fi 11 Inspector — `design-system/hifi/canvas-engine/Kova Hi-Fi 11 Inspector - Dark.html`
+- Hi-fi 12 Color Picker — `design-system/hifi/canvas-engine/Kova Hi-Fi 12 Color Picker - Dark.html`
+- Hi-fi 09 Canvas Overlays — `design-system/hifi/canvas-chrome/Kova Hi-Fi 09 Canvas Overlays - Dark.html`
 - Design system — `main-main-kova-scope/design-system/{design.md, kova-hifi.css, TOKEN_CANONICAL.md}`
 
 ---
@@ -146,9 +146,19 @@ kova-open-pencil-1/src/
 
 > **Authoritative method:** `docs/execution-phase/claude-design-files/IMPLEMENTATION_PROMPT.md` (read end-to-end before any UI task). Maps PRD 07b §3 hi-fi citations to Plan tasks + actual Kova source paths.
 
-**Translation rule:** hi-fi HTML = visual source of truth; idiomatic Vue 3 + Cluster 11 primitives. **Mockup wins**; drift protocol (RIDER §2.1). Theme: dark.
+**3-rule fidelity contract** (per `docs/execution-phase/claude-design-files/IMPLEMENTATION_PROMPT.md` §0):
 
-**Per-screen diff loop** per IMPLEMENTATION_PROMPT.md Phase 4. Cluster-boundary Playwright gate ≤ 2%.
+1. **Visual values are copied.** Every color, spacing, type, radius, shadow, gap, padding, line-height, tracking, and proportion in the rendered output MUST match the mockup pixel-for-pixel.
+2. **DOM structure is translated.** Vue 3 SFCs + Reka UI primitives + Cluster 11 primitives + K* component layer (`design.md` §3). NOT the mockup's hand-rolled HTML.
+3. **Behavior is engineered.** State in Pinia / refs / composables. Hover / focus / active / selected / disabled states are dynamic bindings, NEVER hardcoded classes.
+
+**Trap phrase ban:** "copy DOM verbatim" is forbidden. Drift protocol per RIDER §2.1 + IMPLEMENTATION_PROMPT.md §7 on any hi-fi value not in `kova-hifi.css :root` — never silently round. **Theme: dark.**
+
+**Phase 1 audit gate** (per IMPLEMENTATION_PROMPT.md §3): produce `KOVA_AUDIT.md` + `tokens-used.md` BEFORE any Vue code. `tokens-used.md` enumerates every visual value in this cluster's surfaces mapped to either an existing token or ⚠️ MISSING (founder decision via AskUserQuestion). No Vue until founder-approved.
+
+**Per-screen diff loop** (per IMPLEMENTATION_PROMPT.md §6): in-repo mockup + Vue route at 1440px → screenshot both → walk Appendix A per property → list discrepancies in `tests/snapshots/cluster-07b/<surface>-diff.md` → fix → re-diff until empty. **Visual-diff thresholds: ≤ 0.1% component / ≤ 0.5% screen** (Playwright `maxDiffPixelRatio: 0.005, threshold: 0.2`, masking volatile regions per IMPLEMENTATION_PROMPT.md §10).
+
+**PR artifact:** every PR touching a UI surface in this cluster MUST include 3-screenshot row (mockup / impl / diff) per surface in the PR description.
 
 ### Cluster 11 primitives — use these
 
@@ -171,9 +181,9 @@ Source: `kova-open-pencil-1/src/components/ui/`:
 
 | Plan surface | Hi-fi file | Scene IDs |
 |---|---|---|
-| Boolean ops row (multi-select ≥2 layers) | `main-main-kova-scope/batch-b/chunk-b4/Kova Hi-Fi 11 Inspector - Dark.html` | 11.9 |
+| Boolean ops row (multi-select ≥2 layers) | `design-system/hifi/canvas-engine/Kova Hi-Fi 11 Inspector - Dark.html` | 11.9 |
 | Solid fill row (FillSection chrome) | same | 11.10 |
-| Linear-gradient editor popover (cross-cuts hi-fi 12.6) | same + `main-main-kova-scope/batch-b/chunk-b5/Kova Hi-Fi 12 Color Picker - Dark.html` | 11.11, 12.6 |
+| Linear-gradient editor popover (cross-cuts hi-fi 12.6) | same + `design-system/hifi/canvas-engine/Kova Hi-Fi 12 Color Picker - Dark.html` | 11.11, 12.6 |
 | Image-fill mode Crop (4 corner handles) | same + 12 Color Picker | 11.12, 12.10 |
 | Multiple fills (3 stacked, drag-handle) | 11 Inspector | 11.13 |
 | Effects empty state | 11 Inspector | 11.14 |
@@ -184,7 +194,7 @@ Source: `kova-open-pencil-1/src/components/ui/`:
 | Linear-gradient editor (2 stops / 4 stops) | 12 Color Picker | 12.6, 12.7 |
 | Radial gradient (2 stops, center handle) | same | 12.8 |
 | Image fill modes (Fill / Crop / Tile) | same | 12.9, 12.10, 12.11 |
-| Eyedropper trigger active + canvas magnifier | same + `main-main-kova-scope/batch-b/Kova Hi-Fi 09 Canvas Overlays - Dark.html` | 12.5, B8.7 |
+| Eyedropper trigger active + canvas magnifier | same + `design-system/hifi/canvas-chrome/Kova Hi-Fi 09 Canvas Overlays - Dark.html` | 12.5, B8.7 |
 | Single-mode pickers (page bg / stroke / drop-shadow) | 12 Color Picker | 12.12, 12.13, 12.14 |
 | Snap indicators | 09 Canvas Overlays | B8.1 |
 | Hover contour | same | B8.2 |
