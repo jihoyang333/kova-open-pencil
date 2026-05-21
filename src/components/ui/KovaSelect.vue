@@ -52,8 +52,8 @@ const triggerStyle = computed(() => ({
   color: 'var(--ink)',
   fontSize: 'var(--t-input-fz)',
   cursor: props.disabled ? 'not-allowed' : 'pointer',
-  opacity: props.disabled ? 0.5 : 1,
-  minWidth: '160px',
+  opacity: props.disabled ? '0.5' : '1',
+  minWidth: 'var(--select-min-w)',
   width: '100%',
 }))
 

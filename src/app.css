@@ -85,6 +85,17 @@
   --color-accent-hover: #2563eb;
   --color-modal-backdrop: rgba(0, 0, 0, 0.72);
 
+  /* Phase 5b — primitive sizing tokens promoted to canonical (W6 REDO
+     post-code-review). */
+  --checkbox-size: 14px;
+  --checkbox-row-gap: 8px;
+  --seg-pad: 2px;
+  --seg-gap: 1px;
+  --seg-pair-gap: 6px;
+  --select-min-w: 160px;
+  --btn-primary-ink: #111;
+  --btn-primary-hover-bg: #fff;
+
   /* Positional offsets — design.md §3.11–§3.14, mirrored from
      main-main-kova-scope/design-system/kova-hifi.css. Pre-populated
      2026-05-20 ahead of the no-raw-visual-values lint (Mandate 6).

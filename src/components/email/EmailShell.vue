@@ -26,7 +26,10 @@ export interface EmailShellProps {
 
 const props = defineProps<EmailShellProps>()
 
-// Concrete hex flattening (Resend tokens aren't supported in inline CSS at runtime).
+/* token-exempt: HTML email medium constraint. Many email clients
+   (Gmail, Outlook) strip <style> blocks AND CSS variables. Tokens MUST
+   be flattened to concrete hex/px at render time. Per PRD 11 §3.8 +
+   §5.5 + IMPLEMENTATION_PROMPT.md §9 escape valve. */
 const PAGE = '#ffffff'
 const INK = '#0d0d0c'
 const INK_2 = '#4f5060'

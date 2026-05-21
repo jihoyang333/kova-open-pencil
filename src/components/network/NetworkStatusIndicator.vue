@@ -20,6 +20,7 @@ const TOOLTIP = "You're offline. Changes saved locally and sync when you reconne
 
 <template>
   <KovaTooltip v-if="status === 'offline'" :content="TOOLTIP" side="bottom">
+    <!-- token-exempt: 20px wrapper sizing is offline-indicator-specific (between --h-icon-btn 28px and icon-tile sub-scale). Centered Lucide icon target. -->
     <span
       aria-label="Offline"
       role="status"
