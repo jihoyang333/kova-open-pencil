@@ -4,6 +4,10 @@ import KovaTooltip from '@/components/ui/KovaTooltip.vue'
 
 import { useOnlineStatus } from '@/composables/use-online-status'
 
+// token-exempt-file: offline-indicator chrome. The 20px wrapper sizing sits
+// between --h-icon-btn (28px) and the icon target (14px) — Figma-specific
+// hit-target tuning. Two lines (width + height) in a multi-line :style
+// binding; line-level exemption breaks Vue parser. Founder approved 2026-05-21.
 /**
  * Figma-style offline indicator — PRD 11 §3.7 (W5a decision).
  *   - Online → renders nothing (no chrome consumed).

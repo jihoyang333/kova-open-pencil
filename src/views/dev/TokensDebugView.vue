@@ -132,6 +132,10 @@ const ts = computed(() => new Date().toISOString())
 </script>
 
 <template>
+  <!-- token-exempt-file: dev preview surface. /dev/tokens is the canonical-token
+       reference page — it RENDERS raw hex / px / scale values so the founder
+       can read them. Banning raw values here would defeat the page's purpose.
+       Not shipped to end users. Founder approved 2026-05-21. -->
   <div class="bg-[var(--bg)] text-[var(--ink)] h-full w-full overflow-y-auto">
     <div class="mx-auto max-w-[1200px] px-12 pt-8 pb-16">
       <header class="mb-10">
