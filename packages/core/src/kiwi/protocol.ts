@@ -224,6 +224,30 @@ export function skipFigWireHeader(data: Uint8Array): Uint8Array {
 export const PROTOCOL_VERSION = 151
 
 /**
+ * Cluster 07a — Kova-side serialization FORMAT_VERSION.
+ *
+ * Tracks the shape of Kova's SceneGraph + extension fields (SLICE NodeType,
+ * page-level Measurement records, aspectRatio / includeInExports /
+ * pageBackgroundVisible, CharacterStyleOverride OpenType + list + link
+ * metadata).
+ *
+ * Bumped to '2.0.0' on Cluster 07a ship. Must move in lockstep with
+ * KIWI_SCHEMA_VERSION below (C-LOW07a.3 — Cluster 09 snapshot-migration
+ * coordination).
+ */
+export const FORMAT_VERSION = '2.0.0' as const
+
+/**
+ * Cluster 07a — Kova Kiwi schema version. Bumped alongside every
+ * additive/breaking change to `kiwi/schema.ts` SceneNode shape.
+ *
+ * Must equal FORMAT_VERSION exactly. Cluster 09 snapshot-migration registry
+ * keys by previous FORMAT_VERSION; bumps without a registered migration are a
+ * lint failure.
+ */
+export const KIWI_SCHEMA_VERSION = '2.0.0' as const
+
+/**
  * Build WebSocket URL for Figma multiplayer
  */
 export function buildMultiplayerUrl(fileKey: string, trackingId?: string): string {
