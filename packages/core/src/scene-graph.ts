@@ -81,6 +81,7 @@ export type NodeType =
   | 'INSTANCE'
   | 'CONNECTOR'
   | 'SHAPE_WITH_TEXT'
+  | 'SLICE'
 
 
 export type FillType =
@@ -682,6 +683,12 @@ export class SceneGraph {
     return node ? CONTAINER_TYPES.has(node.type) : false
   }
 
+  /** Cluster 07a — check whether a NodeType (by type string, not node id) is
+   *  a container. Adds a public read of the existing CONTAINER_TYPES set. */
+  isContainerType(type: NodeType): boolean {
+    return CONTAINER_TYPES.has(type)
+  }
+
   isDescendant(childId: string, ancestorId: string): boolean {
     let current = this.nodes.get(childId)
     while (current) {
@@ -783,6 +790,9 @@ export class SceneGraph {
     const oldParent = node.parentId ? this.nodes.get(node.parentId) : undefined
     const newParent = this.nodes.get(newParentId)
     if (!newParent) return
+    if (newParent.type === 'SLICE') {
+      throw new Error('Slice nodes cannot have children')
+    }
     if (node.parentId === newParentId) return
 
     const oldParentId = node.parentId
