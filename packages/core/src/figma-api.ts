@@ -154,6 +154,11 @@ export class FigmaAPI implements NodeProxyHost {
     return this.wrapNode(page.id)
   }
 
+  // Cluster 07a — slice export region
+  createSlice(): FigmaNodeProxy {
+    return this._createNode('SLICE')
+  }
+
   // --- Grouping ---
 
   group(nodes: FigmaNodeProxy[], parent: FigmaNodeProxy): FigmaNodeProxy {

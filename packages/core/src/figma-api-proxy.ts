@@ -7,7 +7,11 @@ import type {
   Stroke,
   Effect,
   LayoutMode,
+  Measurement,
+  MeasurementOffset,
+  MeasurementSide,
 } from './scene-graph'
+import { scaleNodeRecursive } from './tools/modify'
 import { normalizeColor } from './color'
 import type { Rect } from './types'
 import { copyFills, copyStrokes, copyEffects } from './copy'
@@ -899,6 +903,75 @@ export class FigmaNodeProxy {
 
   remove(): void {
     this[INTERNAL_GRAPH].deleteNode(this[INTERNAL_ID])
+  }
+
+  // --- Cluster 07a — new SceneNode property accessors ---
+
+  get aspectRatio(): number | null {
+    return this._raw().aspectRatio
+  }
+  set aspectRatio(v: number | null) {
+    this[INTERNAL_GRAPH].updateNode(this[INTERNAL_ID], { aspectRatio: v })
+  }
+
+  get includeInExports(): boolean {
+    return this._raw().includeInExports
+  }
+  set includeInExports(v: boolean) {
+    this[INTERNAL_GRAPH].updateNode(this[INTERNAL_ID], { includeInExports: v })
+  }
+
+  get pageBackgroundVisible(): boolean {
+    return this._raw().pageBackgroundVisible
+  }
+  set pageBackgroundVisible(v: boolean) {
+    this[INTERNAL_GRAPH].updateNode(this[INTERNAL_ID], { pageBackgroundVisible: v })
+  }
+
+  // --- Cluster 07a — scale + measurement methods (measurement methods only
+  // meaningful on CANVAS-typed nodes; SceneGraph methods validate). ---
+
+  scale(factor: number): void {
+    // Cast through unknown — FigmaAPI is the canonical figma host; the proxy
+    // delegates back through it for tool-side helpers.
+    const api = this[INTERNAL_API] as unknown as { graph: SceneGraph }
+    scaleNodeRecursive(
+      api as unknown as Parameters<typeof scaleNodeRecursive>[0],
+      this[INTERNAL_ID],
+      factor
+    )
+  }
+
+  addMeasurement(
+    start: { node: FigmaNodeProxy; side: MeasurementSide },
+    end: { node: FigmaNodeProxy; side: MeasurementSide },
+    options?: { offset?: MeasurementOffset; freeText?: string }
+  ): Measurement {
+    return this[INTERNAL_GRAPH].addMeasurement(
+      this[INTERNAL_ID],
+      { nodeId: start.node[INTERNAL_ID], side: start.side },
+      { nodeId: end.node[INTERNAL_ID], side: end.side },
+      options
+    )
+  }
+
+  getMeasurements(): Measurement[] {
+    return this[INTERNAL_GRAPH].getMeasurements(this[INTERNAL_ID])
+  }
+
+  getMeasurementsForNode(node: FigmaNodeProxy): Measurement[] {
+    return this[INTERNAL_GRAPH].getMeasurementsForNode(node[INTERNAL_ID])
+  }
+
+  editMeasurement(
+    id: string,
+    newValue: { offset?: MeasurementOffset; freeText?: string }
+  ): Measurement {
+    return this[INTERNAL_GRAPH].editMeasurement(this[INTERNAL_ID], id, newValue)
+  }
+
+  deleteMeasurement(id: string): void {
+    this[INTERNAL_GRAPH].deleteMeasurement(this[INTERNAL_ID], id)
   }
 
   findAll(callback?: (node: FigmaNodeProxy) => boolean): FigmaNodeProxy[] {
