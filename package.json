@@ -43,6 +43,8 @@
     "@open-pencil/cli": "workspace:*",
     "@open-pencil/core": "workspace:*",
     "@openrouter/ai-sdk-provider": "^2.2.3",
+    "@sentry/node": "^10.53.1",
+    "@sentry/vue": "^10.53.1",
     "@supabase/supabase-js": "^2.99.2",
     "@tailwindcss/vite": "^4.2.1",
     "@tanstack/vue-table": "^8.21.3",
