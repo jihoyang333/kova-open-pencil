@@ -57,17 +57,8 @@ const triggerStyle = computed(() => ({
   width: '100%',
 }))
 
-const itemBaseStyle = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: '9px',
-  padding: 'var(--popover-row-pad-y) var(--popover-row-pad-x)',
-  borderRadius: 'var(--r-md)',
-  fontSize: 'var(--t-body-fz)',
-  color: 'var(--ink)',
-  cursor: 'pointer',
-  outline: 'none',
-}
+// Items consume canonical `.popover .pop-row` chrome (hover via
+// :hover + Reka keyboard via [data-highlighted]). No inline style.
 </script>
 
 <template>
@@ -89,13 +80,12 @@ const itemBaseStyle = {
               :key="opt.value"
               :value="opt.value"
               :disabled="opt.disabled"
-              :style="itemBaseStyle"
-              class="popover"
+              class="pop-row"
             >
               <SelectItemIndicator>
-                <KovaIcon name="check" size="xs" aria-hidden="true" />
+                <KovaIcon name="check" size="xs" class="ck" aria-hidden="true" />
               </SelectItemIndicator>
-              <SelectItemText>{{ opt.label }}</SelectItemText>
+              <SelectItemText class="nm">{{ opt.label }}</SelectItemText>
             </SelectItem>
           </SelectGroup>
         </SelectViewport>

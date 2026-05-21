@@ -2,16 +2,19 @@
 import { computed } from 'vue'
 
 /**
- * Avatar — design.md §3.15.
+ * Avatar — design.md §3.15 + canonical `.avatar` block in kova-hifi.css.
  *
- * Default 26×26 pill. Sample customer data uses a brand color
- * (passed via `bg` prop). Our own avatars use `--fill-2` + ink.
+ * Default 26×26 pill, --fill bg + --ink text (per design.md §3.15
+ * "Our own avatars use --color-surface-input + ink").
+ *
+ * Sample customer data uses a brand color (e.g. `#c24a1e`) via the
+ * `bg` prop — "Customer brand colors are data, not part of our system."
  *
  * Sizes:
- *   - sm (24)  inline icon
- *   - md (26)  topbar (default per design.md)
- *   - lg (28)  popover header + side-footer
- *   - xl (36)  account page
+ *   - sm 24
+ *   - md 26 (default per design.md)
+ *   - lg 28 (popover header, side-footer)
+ *   - xl 36 (account page)
  */
 
 export interface KovaAvatarProps {
@@ -21,9 +24,9 @@ export interface KovaAvatarProps {
   /** Optional image src. */
   src?: string
   alt?: string
-  /** Brand background override (customer-data color). Falls back to --fill-2. */
+  /** Brand background override (customer data only — opt-in). */
   bg?: string
-  /** Text/ink color (when initials shown). */
+  /** Text/ink color override. */
   ink?: string
 }
 
@@ -31,32 +34,19 @@ const props = withDefaults(defineProps<KovaAvatarProps>(), {
   size: 'md',
 })
 
-const sizePx = computed<number>(() => {
-  switch (props.size) {
-    case 'sm':
-      return 24
-    case 'lg':
-      return 28
-    case 'xl':
-      return 36
-    case 'md':
-    default:
-      return 26
-  }
-})
+const klass = computed(() => `avatar ${props.size}`)
 
-const style = computed(() => ({
-  width: `${sizePx.value}px`,
-  height: `${sizePx.value}px`,
-  background: props.bg ?? 'var(--fill-2)',
-  color: props.ink ?? 'var(--ink)',
-  fontSize: sizePx.value < 28 ? '10.5px' : '11.5px',
-}))
+const style = computed(() => {
+  const s: Record<string, string> = {}
+  if (props.bg) s.background = props.bg
+  if (props.ink) s.color = props.ink
+  return Object.keys(s).length > 0 ? s : undefined
+})
 </script>
 
 <template>
-  <div class="avatar" :style="style" role="img" :aria-label="alt ?? initials ?? 'avatar'">
-    <img v-if="src" :src="src" :alt="alt ?? ''" :style="{ width: '100%', height: '100%', borderRadius: '50%' }" />
+  <div :class="klass" :style="style" role="img" :aria-label="alt ?? initials ?? 'avatar'">
+    <img v-if="src" :src="src" :alt="alt ?? ''" />
     <span v-else>{{ initials }}</span>
   </div>
 </template>
