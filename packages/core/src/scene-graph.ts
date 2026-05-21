@@ -366,6 +366,13 @@ export interface SceneNode {
 
   textPicture: Uint8Array | null
 
+  // Cluster 07a — interactive-resize lock (null = free resize).
+  aspectRatio: number | null
+  // Cluster 07a — CANVAS-only semantic; per-page Slice-batch export inclusion.
+  includeInExports: boolean
+  // Cluster 07a — CANVAS-only semantic; editor-view page background toggle.
+  pageBackgroundVisible: boolean
+
   // Cluster 07a — page-level Measurement collection. Populated only on
   // CANVAS-typed nodes; absent (undefined) on every other type.
   measurements?: Measurement[]
@@ -500,6 +507,11 @@ function createDefaultNode(type: NodeType, overrides: Partial<SceneNode> = {}): 
     flipX: false,
     flipY: false,
     textPicture: null,
+    // Cluster 07a defaults
+    aspectRatio: null,
+    includeInExports: true,
+    pageBackgroundVisible: true,
+    measurements: type === 'CANVAS' ? [] : undefined,
     ...overrides
   }
 }
