@@ -136,6 +136,10 @@ const errPageInline = {
 </script>
 
 <template>
+  <!-- token-exempt-file: dev preview surface. /dev/cluster-11 is the canonical
+       primitive showcase — debug-chrome headings + grid widths intentionally
+       use raw px / arbitrary Tailwind values rather than production tokens.
+       Not shipped to end users. Founder approved 2026-05-21. -->
   <div class="bg-[var(--bg)] text-[var(--ink)] h-full w-full overflow-y-auto">
     <div class="mx-auto max-w-[1200px] px-12 pt-8 pb-16">
       <header class="mb-10">

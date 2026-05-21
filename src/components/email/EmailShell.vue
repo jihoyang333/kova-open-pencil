@@ -1,4 +1,7 @@
 <script setup lang="ts">
+// token-exempt-file: HTML email medium. Many email clients (Gmail, Outlook)
+// strip <style> blocks and reject CSS custom-properties. Tokens MUST be
+// flattened to concrete hex / px at render time. Founder approved 2026-05-21.
 /**
  * Email shell — transactional HTML template per PRD 11 §3.8 + §5.5.
  *

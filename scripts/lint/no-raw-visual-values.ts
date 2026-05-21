@@ -33,9 +33,15 @@
  *   - Z-index numerics (semantic z-scale; covered by separate rule).
  *   - Files under `design-system/` (source of tokens themselves).
  *
- * Override comment (escape valve):
- *   `<!-- token-exempt: <justification> -->` or `/* token-exempt: ... *​/` on
- *   the same line. Requires founder approval (recorded in `tokens-used.md`).
+ * Override comments (escape valves):
+ *   - Line-level: `<!-- token-exempt: <justification> -->` or
+ *     `/* token-exempt: ... *​/` on the SAME line. Suppresses every violation
+ *     on that one line.
+ *   - File-level: `<!-- token-exempt-file: <justification> -->` on any line of
+ *     the file. Suppresses every violation in the whole file. Use sparingly —
+ *     intended for debug / preview surfaces (e.g. `src/views/dev/*`) that
+ *     intentionally render raw tokens for documentation, not production
+ *     chrome. Founder approval required (recorded in `tokens-used.md`).
  *
  * Rollout (per IMPLEMENTATION_PROMPT.md §9):
  *   Warn-mode for the first week, then error. Controlled via env var:
@@ -90,7 +96,8 @@ const SVG_ATTR_PREFIXES = [
 ]
 const TRANSFORM_FN_RE = /\b(translate|rotate|scale|skew|matrix|perspective)[XYZ3d]?\(/
 
-// Override comment
+// Override comments — file-level directive trumps line-level.
+const TOKEN_EXEMPT_FILE_RE = /token-exempt-file:/
 const TOKEN_EXEMPT_RE = /token-exempt:/
 
 interface Violation {
@@ -151,6 +158,11 @@ function hasTokenExempt(line: string): boolean {
 function scanFile(filePath: string, content: string): Violation[] {
   const rel = relative(REPO_ROOT, filePath)
   const violations: Violation[] = []
+  // File-level exemption — if any line declares `token-exempt-file:` the whole
+  // file is skipped. Intended for debug / preview surfaces.
+  if (TOKEN_EXEMPT_FILE_RE.test(content)) {
+    return violations
+  }
   const lines = content.split('\n')
 
   for (let i = 0; i < lines.length; i += 1) {
