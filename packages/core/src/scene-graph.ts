@@ -200,6 +200,9 @@ export type TextAlignVertical = 'TOP' | 'CENTER' | 'BOTTOM'
 export type TextCase = 'ORIGINAL' | 'UPPER' | 'LOWER' | 'TITLE'
 export type TextDecoration = 'NONE' | 'UNDERLINE' | 'STRIKETHROUGH'
 
+// Cluster 07a — list-marker variants for per-text-run style metadata
+export type ListType = 'NONE' | 'BULLETED' | 'NUMBERED'
+
 export interface CharacterStyleOverride {
   fontWeight?: number
   italic?: boolean
@@ -209,6 +212,11 @@ export interface CharacterStyleOverride {
   letterSpacing?: number
   lineHeight?: number | null
   fills?: Fill[]
+  // Cluster 07a — OpenType + list + link metadata
+  openTypeFeatures?: string[]
+  linkHref?: string
+  listType?: ListType
+  listIndent?: number
 }
 
 export interface StyleRun {
