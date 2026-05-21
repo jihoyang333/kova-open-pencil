@@ -9,28 +9,49 @@ const PING_INTERVAL_MS = 3000
 const ACK_TIMEOUT_MS = 10000
 const DEBOUNCE_OFFLINE_MS = 1000
 
+export interface UseOnlineStatusReturn {
+  status: Ref<OnlineStatus>
+  /**
+   * Consumer-cluster hook — Realtime / fetch ACK reporter.
+   * Called by every Realtime channel + fetch wrapper that successfully
+   * round-trips to Supabase. Resets the ACK timeout; if status is
+   * offline and `navigator.onLine` is back, flips to online.
+   */
+  noteAck: () => void
+}
+
 /**
  * Reactive online/offline status — PRD 11 §3.7 + KD-3.
  *
  * Primary: `navigator.onLine` reactive ref (instant on flip-to-offline).
- * Secondary: Supabase Realtime presence ping every 3 s; 10 s no-ack → offline.
- * Transition back to online: instant.
+ * Secondary: consumer clusters report ACKs into this composable's
+ * `noteAck()` (Realtime presence ping, fetch success). If no ACK within
+ * `ACK_TIMEOUT_MS` (10 s), debounce 1 s then flip to offline. Covers
+ * DNS/firewall edge cases where browser thinks online but backend is
+ * unreachable.
  *
- * **Cluster 11 owns the surface;** Cluster 10 / 04 / etc. plug their own
- * Realtime channels and report ACKs into this composable via the optional
- * `pingCallback` (see Plan 11 Task 2.4 contract — wired in §3.4 once
- * Supabase Realtime is initialized).
+ * Transition back to online is instant on `window.online`.
+ *
+ * Stateless: each call returns a fresh closure pair (no shared singleton).
+ * Suitable for per-component scoping. If a single source of truth is
+ * needed across the app, wrap in a Pinia store.
  */
-export function useOnlineStatus(): Ref<OnlineStatus> {
+export function useOnlineStatus(): UseOnlineStatusReturn {
   const status = ref<OnlineStatus>(
     typeof navigator !== 'undefined' && navigator.onLine ? 'online' : 'offline'
   )
+
+  let lastAck: number = Date.now()
+  let pingTimer: ReturnType<typeof setInterval> | null = null
 
   const flipOfflineDebounced = useDebounceFn(() => {
     status.value = 'offline'
   }, DEBOUNCE_OFFLINE_MS)
 
   useEventListener(typeof window === 'undefined' ? null : window, 'online', () => {
+    // Cancel any pending offline-flip from the debounce window.
+    flipOfflineDebounced.cancel?.()
+    lastAck = Date.now()
     status.value = 'online'
   })
 
@@ -38,12 +59,10 @@ export function useOnlineStatus(): Ref<OnlineStatus> {
     status.value = 'offline'
   })
 
-  let pingTimer: ReturnType<typeof setInterval> | null = null
-  let lastAck: number = Date.now()
-
   function noteAck(): void {
     lastAck = Date.now()
     if (status.value === 'offline' && typeof navigator !== 'undefined' && navigator.onLine) {
+      flipOfflineDebounced.cancel?.()
       status.value = 'online'
     }
   }
@@ -59,9 +78,8 @@ export function useOnlineStatus(): Ref<OnlineStatus> {
   })
   onUnmounted(() => {
     if (pingTimer) clearInterval(pingTimer)
+    flipOfflineDebounced.cancel?.()
   })
 
-  ;(useOnlineStatus as unknown as { noteAck?: () => void }).noteAck = noteAck
-
-  return status
+  return { status, noteAck }
 }

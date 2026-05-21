@@ -143,7 +143,7 @@ Every primitive maps to hi-fi files. Engineers cite file + scene ID when impleme
 | `info` | `info` | 5 s | no | Neutral notice |
 | `action` | (none — text-led) | (sticky) | **yes** | Action with Undo or other CTA |
 | `progress` | `loader` (spinner) | (until status changes) | n/a | In-progress operation |
-| `ai-gen` | `sparkles` (in `--accent-ink`) | 5 s | no | AI-generated content notice |
+| `ai` | `sparkles` (in `--accent-ink`) | 5 s | no | AI-generated content notice (canonical CSS class `.toast.ai`; renamed from `ai-gen` 2026-05-20 per W6 REDO code-reviewer MEDIUM-8) |
 
 ### 3.2 Error pages (route-driven, full-page; dark)
 

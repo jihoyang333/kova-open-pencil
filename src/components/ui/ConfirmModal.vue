@@ -24,9 +24,8 @@ const current = computed<ConfirmRequest | null>(() => {
 
 const typed = ref('')
 
-watch(current, (req) => {
+watch(current, () => {
   typed.value = ''
-  if (!req) return
 })
 
 const canConfirm = computed(() => {

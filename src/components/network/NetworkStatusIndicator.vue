@@ -14,7 +14,7 @@ import { useOnlineStatus } from '@/composables/use-online-status'
  * pattern retired.
  */
 
-const status = useOnlineStatus()
+const { status } = useOnlineStatus()
 const TOOLTIP = "You're offline. Changes saved locally and sync when you reconnect."
 </script>
 
