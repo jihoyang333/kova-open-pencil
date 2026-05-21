@@ -57,3 +57,7 @@ tsconfig.node.tsbuildinfo
 tests/e2e/.auth/
 .vercel
 .superpowers/
+
+# Supabase local CLI workdir caches — not source of truth.
+supabase/.branches/
+supabase/.temp/
