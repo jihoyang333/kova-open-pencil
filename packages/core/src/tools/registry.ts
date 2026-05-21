@@ -7,13 +7,15 @@ import {
 } from './read'
 import {
   createShape, render, createComponent, createInstance,
-  createPage, createVector, createSlice, fetchIconsTool, insertIcon, searchIconsTool
+  createPage, createVector, createSlice, arrowStub,
+  fetchIconsTool, insertIcon, searchIconsTool
 } from './create'
+import { addMeasurement } from './measurement'
 import {
   setFill, setStroke, setEffects, updateNode, setLayout, setConstraints,
   setRotation, setOpacity, setRadius, setMinMax, setText, setFont, setFontRange,
   setTextResize, setVisible, setBlend, setLocked, setStrokeAlign,
-  setTextProperties, setLayoutChild, setImageFill
+  setTextProperties, setLayoutChild, setImageFill, scaleNode
 } from './modify'
 import {
   deleteNode, cloneNode, renameNode, reparentNode, groupNodes, ungroupNode,
@@ -167,6 +169,10 @@ export const EXTENDED_TOOLS: ToolDef[] = [
   // Codegen
   designToTokens,
   designToComponentMap,
+  // Cluster 07a — Slice + Measurement + scale + arrow stub
+  addMeasurement,
+  scaleNode,
+  arrowStub,
 ]
 
 /** All tools combined — used by MCP server and CLI. */
