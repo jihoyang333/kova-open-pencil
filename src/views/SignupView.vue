@@ -1,205 +1,210 @@
+<!-- token-exempt-file: Auth-shell view. Px values match A15.01 + A15.04 hi-fi (cluster-01-tokens-used.md §3-§5). -->
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 
-import GoogleIcon from '@/components/icons/GoogleIcon.vue'
-import { APP_NAME } from '@/constants'
-import { useAuthStore } from '@/stores/auth'
+import AuthCard from '@/components/auth/AuthCard.vue'
+import AuthCta from '@/components/auth/AuthCta.vue'
+import AuthDivider from '@/components/auth/AuthDivider.vue'
+import AuthField from '@/components/auth/AuthField.vue'
+import AuthFootnote from '@/components/auth/AuthFootnote.vue'
+import AuthHeader from '@/components/auth/AuthHeader.vue'
+import GoogleSignInButton from '@/components/auth/GoogleSignInButton.vue'
+import OtpInput from '@/components/auth/OtpInput.vue'
+import { useMagicLink } from '@/composables/auth/use-magic-link'
+import { toast } from '@/composables/use-toast'
+import { supabase } from '@/lib/supabase'
 
-const router = useRouter()
-const auth = useAuthStore()
-
-const email = ref('')
-const password = ref('')
-const confirmPassword = ref('')
-const error = ref('')
-const googleError = ref('')
-const isSubmitting = ref(false)
-const emailSent = ref(false)
+// W8a Cluster 01 — SignupView (Plan 01 Task 17 / amendment §3.1).
+// Notion-pattern 2-state machine:
+//   email-entry (A15.01)  → code-entry (A15.04 — OTP cells + email shown +
+//                                       resend timer; user can ALSO click
+//                                       the magic link in the email)
+// Supabase signInWithOtp sends a single email with both the magic link
+// and the 6-digit code; either path completes account creation.
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const MAX_OTP_ATTEMPTS = 5
 
-function validateForm(): string | null {
-  if (!EMAIL_PATTERN.test(email.value)) return 'Please enter a valid email address.'
-  if (password.value.length < 6) return 'Password must be at least 6 characters.'
-  if (password.value !== confirmPassword.value) return 'Passwords do not match.'
-  return null
-}
+type State = 'email-entry' | 'code-entry' | 'otp-locked'
 
-async function handleSubmit() {
-  error.value = ''
-  const validationError = validateForm()
-  if (validationError) {
-    error.value = validationError
+const state = ref<State>('email-entry')
+const email = ref('')
+const emailError = ref('')
+const isSubmitting = ref(false)
+const otpCode = ref('')
+const otpError = ref('')
+const otpAttempts = ref(0)
+
+const { send, cooldown } = useMagicLink()
+const router = useRouter()
+
+async function onEmailSubmit(): Promise<void> {
+  emailError.value = ''
+  if (!EMAIL_PATTERN.test(email.value)) {
+    emailError.value = 'Enter your email'
     return
   }
-
   isSubmitting.value = true
   try {
-    const { data, error: authError } = await auth.signUp(email.value, password.value)
-    if (authError) {
-      error.value = authError.message
-      return
+    const result = await send(email.value)
+    if (result.ok) {
+      state.value = 'code-entry'
+      otpCode.value = ''
+      otpError.value = ''
+      otpAttempts.value = 0
+    } else if (result.reason === 'rate_limited') {
+      emailError.value = 'Too many requests. Try again soon.'
+    } else if (result.reason === 'invalid_email') {
+      emailError.value = 'Please enter a valid email address.'
+    } else {
+      emailError.value = 'Could not send. Try again.'
     }
-
-    // Repeated signup — user already exists (e.g., via Google OAuth)
-    if (data?.user && (!data.user.identities || data.user.identities.length === 0)) {
-      error.value = 'An account with this email already exists. Try logging in instead.'
-      return
-    }
-
-    // If session exists (email confirmation disabled), navigate directly
-    if (auth.isAuthenticated) {
-      void router.push('/onboarding')
-      return
-    }
-
-    // Email confirmation required — show confirmation screen
-    emailSent.value = true
   } finally {
     isSubmitting.value = false
   }
 }
 
-async function handleGoogleSignIn() {
-  googleError.value = ''
-  const { error: authError } = await auth.signInWithGoogle()
-  if (authError) {
-    googleError.value = authError.message
+function onResend(): void {
+  if (cooldown.value === 0) void onEmailSubmit()
+}
+
+function onTryDifferentEmail(): void {
+  state.value = 'email-entry'
+  otpCode.value = ''
+  otpError.value = ''
+  otpAttempts.value = 0
+}
+
+function onSendNewCode(): void {
+  state.value = 'email-entry'
+  otpAttempts.value = 0
+}
+
+async function onOtpComplete(code: string): Promise<void> {
+  if (otpAttempts.value >= MAX_OTP_ATTEMPTS) {
+    state.value = 'otp-locked'
+    return
   }
+  otpError.value = ''
+  const { error } = await supabase.auth.verifyOtp({
+    email: email.value,
+    token: code,
+    type: 'email'
+  })
+  if (error) {
+    otpAttempts.value += 1
+    if (otpAttempts.value >= MAX_OTP_ATTEMPTS) {
+      state.value = 'otp-locked'
+    } else {
+      const attemptsLeft = MAX_OTP_ATTEMPTS - otpAttempts.value
+      otpError.value = `Wrong code. ${attemptsLeft} attempts left.`
+    }
+    return
+  }
+  // New user lands at /onboarding; AuthCallbackView handles that branch on
+  // the magic-link path. Inline OTP completion takes the same route.
+  void router.push('/onboarding')
+}
+
+function onOAuthError(reason: string): void {
+  toast.show(`Google sign-in failed: ${reason}`, 'error')
 }
 </script>
 
 <template>
   <div
+    data-theme="light"
     data-test-id="signup-view"
-    class="flex min-h-screen items-center justify-center bg-white px-4"
+    class="grid min-h-screen grid-rows-[auto_1fr_auto] bg-bg text-ink"
   >
-    <!-- Email confirmation screen -->
-    <div v-if="emailSent" class="w-full max-w-sm text-center">
-      <div class="mb-6 flex flex-col items-center gap-3">
-        <div class="flex size-14 items-center justify-center rounded-full bg-blue-50">
-          <icon-lucide-mail class="size-7 text-blue-600" />
-        </div>
-        <h1 class="text-2xl font-semibold tracking-tight text-gray-900">Check your email</h1>
-      </div>
+    <AuthHeader mode="signup" />
+    <main class="grid min-h-0 place-items-center overflow-auto px-6 py-6 pb-14">
+      <AuthCard>
+        <template v-if="state === 'email-entry'">
+          <header class="flex flex-col gap-[6px] text-left">
+            <span class="text-[10px] text-ink-3">Create your account</span>
+            <h1 class="m-0 text-[24px] leading-[1.18] font-semibold tracking-tight text-ink">
+              Get started with Kova
+            </h1>
+            <p class="m-0 text-[13px] leading-[1.55] text-ink-2">
+              We'll email you a sign-up code. No password required.
+            </p>
+          </header>
 
-      <p class="mb-2 text-sm text-gray-600">We sent a confirmation link to</p>
-      <p class="mb-6 text-sm font-medium text-gray-900">
-        {{ email }}
-      </p>
-      <p class="mb-8 text-sm text-gray-500">
-        Click the link in the email to verify your account, then come back here to log in.
-      </p>
+          <GoogleSignInButton mode="signup" @oauth-error="onOAuthError" />
+          <AuthDivider />
 
-      <RouterLink
-        to="/login"
-        data-test-id="signup-back-to-login"
-        class="inline-block w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-700"
-      >
-        Back to log in
-      </RouterLink>
-    </div>
+          <form class="flex flex-col gap-[14px]" @submit.prevent="onEmailSubmit">
+            <AuthField
+              v-model="email"
+              type="email"
+              label="Email"
+              autocomplete="email"
+              placeholder="you@example.com"
+              :error="emailError"
+            />
+            <AuthCta label="Continue with email" :loading="isSubmitting" :disabled="!email" />
+          </form>
 
-    <!-- Signup form -->
-    <div v-else class="w-full max-w-sm">
-      <!-- Logo + wordmark -->
-      <div class="mb-8 flex flex-col items-center gap-3">
-        <img src="/favicon-128.png" class="size-12 rounded-xl" :alt="APP_NAME" />
-        <h1 class="text-2xl font-semibold tracking-tight text-gray-900">Create your account</h1>
-      </div>
+          <AuthFootnote mode="signup" />
+        </template>
 
-      <!-- Google OAuth -->
-      <button
-        data-test-id="signup-google-button"
-        class="flex w-full items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
-        @click="handleGoogleSignIn"
-      >
-        <GoogleIcon class="size-5" />
-        Continue with Google
-      </button>
-      <p
-        v-if="googleError"
-        data-test-id="signup-google-error"
-        class="mt-2 text-center text-xs text-red-600"
-      >
-        {{ googleError }}
-      </p>
+        <template v-else-if="state === 'code-entry'">
+          <header class="flex flex-col gap-[6px] text-left">
+            <span class="text-[10px] text-ink-3">Enter code</span>
+            <h1 class="m-0 text-[24px] leading-[1.18] font-semibold tracking-tight text-ink">
+              Check your email for a 6-digit code
+            </h1>
+            <p class="m-0 text-[13px] leading-[1.55] text-ink-2">
+              Enter it here for instant sign-up, or click the link in the email.
+            </p>
+          </header>
 
-      <!-- Divider -->
-      <div class="my-6 flex items-center gap-3">
-        <div class="h-px flex-1 bg-gray-200" />
-        <span class="text-xs text-gray-400">or</span>
-        <div class="h-px flex-1 bg-gray-200" />
-      </div>
+          <div class="flex flex-col gap-[6px]">
+            <span class="text-[11.5px] font-medium tracking-[-0.005em] text-ink-2">
+              Verification code
+            </span>
+            <OtpInput v-model="otpCode" @complete="onOtpComplete" />
+            <span class="text-[11.5px] text-ink-3">
+              Sent to <b class="font-medium text-ink">{{ email }}</b>
+            </span>
+          </div>
 
-      <!-- Email/password form -->
-      <form class="flex flex-col gap-3" @submit.prevent="handleSubmit">
-        <div>
-          <label for="signup-email" class="mb-1 block text-xs font-medium text-gray-700">
-            Email
-          </label>
-          <input
-            id="signup-email"
-            v-model="email"
-            type="email"
-            data-test-id="signup-email-input"
-            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 transition-colors outline-none placeholder:text-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            placeholder="you@example.com"
-          />
-        </div>
-        <div>
-          <label for="signup-password" class="mb-1 block text-xs font-medium text-gray-700">
-            Password
-          </label>
-          <input
-            id="signup-password"
-            v-model="password"
-            type="password"
-            data-test-id="signup-password-input"
-            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 transition-colors outline-none placeholder:text-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            placeholder="••••••••"
-          />
-        </div>
-        <div>
-          <label for="signup-confirm" class="mb-1 block text-xs font-medium text-gray-700">
-            Confirm password
-          </label>
-          <input
-            id="signup-confirm"
-            v-model="confirmPassword"
-            type="password"
-            data-test-id="signup-confirm-input"
-            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 transition-colors outline-none placeholder:text-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            placeholder="••••••••"
-          />
-        </div>
+          <p v-if="otpError" class="text-[12px] text-warn">{{ otpError }}</p>
 
-        <p v-if="error" data-test-id="signup-error" class="text-xs text-red-600">
-          {{ error }}
-        </p>
+          <div class="flex items-center justify-between text-[12px]">
+            <button
+              type="button"
+              class="text-ink-2 hover:text-ink hover:underline"
+              @click="onTryDifferentEmail"
+            >
+              Try a different email
+            </button>
+            <button
+              type="button"
+              :disabled="cooldown > 0"
+              class="text-ink-2 hover:text-ink hover:underline disabled:cursor-not-allowed disabled:text-ink-3 disabled:no-underline"
+              @click="onResend"
+            >
+              {{ cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend code' }}
+            </button>
+          </div>
+        </template>
 
-        <button
-          type="submit"
-          data-test-id="signup-submit-button"
-          class="mt-1 w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
-          :disabled="isSubmitting"
-        >
-          {{ isSubmitting ? 'Creating account...' : 'Create Account' }}
-        </button>
-      </form>
-
-      <!-- Login link -->
-      <p class="mt-6 text-center text-sm text-gray-500">
-        Already have an account?
-        <RouterLink
-          to="/login"
-          data-test-id="signup-login-link"
-          class="font-medium text-blue-600 hover:text-blue-700"
-        >
-          Log in
-        </RouterLink>
-      </p>
-    </div>
+        <template v-else-if="state === 'otp-locked'">
+          <header class="flex flex-col gap-[6px] text-left">
+            <h1 class="m-0 text-[22px] leading-[1.22] font-semibold tracking-tight text-ink">
+              Too many wrong attempts
+            </h1>
+            <p class="m-0 text-[13px] leading-[1.55] text-ink-2">
+              For your security, we've locked code entry for this email. Request a new code to
+              continue.
+            </p>
+          </header>
+          <AuthCta label="Send a new code" type="button" @click="onSendNewCode" />
+        </template>
+      </AuthCard>
+    </main>
   </div>
 </template>

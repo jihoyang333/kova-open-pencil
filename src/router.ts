@@ -1,12 +1,22 @@
 import { watch } from 'vue'
 import { createRouter } from 'vue-router'
 
+import { IS_BROWSER } from '@/constants'
 import { useAuthStore } from '@/stores/auth'
+
+const DESKTOP_MIN_WIDTH = 1024
 
 import type { Router, RouterHistory, RouteMeta } from 'vue-router'
 
 const LoginView = () => import('./views/LoginView.vue')
 const SignupView = () => import('./views/SignupView.vue')
+const AuthCallbackView = () => import('./views/auth/AuthCallbackView.vue')
+const MagicLinkErrorView = () => import('./views/auth/MagicLinkErrorView.vue')
+const EmailVerifiedView = () => import('./views/auth/EmailVerifiedView.vue')
+const ForgotPasswordView = () => import('./views/auth/ForgotPasswordView.vue')
+const MobileFallbackView = () => import('./views/auth/MobileFallbackView.vue')
+const AccountPendingDeletionView = () => import('./views/auth/AccountPendingDeletionView.vue')
+const AccountDeletedView = () => import('./views/auth/AccountDeletedView.vue')
 const DashboardView = () => import('./views/DashboardView.vue')
 const OnboardingView = () => import('./views/OnboardingView.vue')
 const StoreTypeStep = () => import('./components/onboarding/StoreTypeStep.vue')
@@ -15,7 +25,8 @@ const CanvasGrid = () => import('./views/dashboard/CanvasGrid.vue')
 const TrashView = () => import('./views/dashboard/TrashView.vue')
 const BrandAssetsView = () => import('./views/dashboard/BrandAssetsView.vue')
 const BrandSettingsView = () => import('./views/dashboard/BrandSettingsView.vue')
-const SettingsBrandIntegrationsView = () => import('./views/dashboard/SettingsBrandIntegrationsView.vue')
+const SettingsBrandIntegrationsView = () =>
+  import('./views/dashboard/SettingsBrandIntegrationsView.vue')
 const SettingsView = () => import('./views/dashboard/SettingsView.vue')
 const TokensDebugView = () => import('./views/dev/TokensDebugView.vue')
 const Cluster11Showcase = () => import('./views/dev/Cluster11Showcase.vue')
@@ -28,12 +39,18 @@ interface AuthState {
   isOnboarded: boolean
 }
 
+interface ViewportState {
+  isDesktop: boolean
+}
+
 /** Pure guard logic — returns redirect path or true to allow navigation */
 export function resolveGuard(
   to: { meta: RouteMeta; path: string },
-  auth: AuthState
+  auth: AuthState,
+  viewport?: ViewportState
 ): string | true {
   if (to.meta.demo) return true
+  if (to.meta.desktopOnly && viewport && !viewport.isDesktop) return '/mobile-fallback'
   if (to.meta.publicOnly && auth.isAuthenticated) return '/dashboard'
   if (to.meta.requiresAuth && !auth.isAuthenticated) return '/login'
   if (to.meta.requiresOnboarding && !auth.isOnboarded) return '/onboarding'
@@ -63,12 +80,47 @@ const routes = [
   {
     path: '/login',
     component: LoginView,
-    meta: { requiresAuth: false, publicOnly: true }
+    meta: { requiresAuth: false, publicOnly: true, desktopOnly: true, theme: 'light' }
   },
   {
     path: '/signup',
     component: SignupView,
-    meta: { requiresAuth: false, publicOnly: true }
+    meta: { requiresAuth: false, publicOnly: true, desktopOnly: true, theme: 'light' }
+  },
+  {
+    path: '/auth/callback',
+    component: AuthCallbackView,
+    meta: { requiresAuth: false, publicOnly: false, theme: 'light' }
+  },
+  {
+    path: '/auth/magic',
+    component: MagicLinkErrorView,
+    meta: { requiresAuth: false, publicOnly: false, theme: 'light' }
+  },
+  {
+    path: '/auth/email-verified',
+    component: EmailVerifiedView,
+    meta: { requiresAuth: true, publicOnly: false, theme: 'light' }
+  },
+  {
+    path: '/forgot-password',
+    component: ForgotPasswordView,
+    meta: { requiresAuth: false, publicOnly: true, desktopOnly: true, theme: 'light' }
+  },
+  {
+    path: '/mobile-fallback',
+    component: MobileFallbackView,
+    meta: { requiresAuth: false, publicOnly: false, theme: 'light' }
+  },
+  {
+    path: '/account-pending-deletion',
+    component: AccountPendingDeletionView,
+    meta: { requiresAuth: true, requiresOnboarding: false, theme: 'dark' }
+  },
+  {
+    path: '/account-deleted',
+    component: AccountDeletedView,
+    meta: { requiresAuth: false, publicOnly: false, theme: 'light' }
   },
   {
     path: '/onboarding',
@@ -190,7 +242,10 @@ export function createAppRouter(history: RouterHistory): Router {
         )
       })
     }
-    return resolveGuard(to, auth)
+    const viewport = {
+      isDesktop: IS_BROWSER ? window.innerWidth >= DESKTOP_MIN_WIDTH : true
+    }
+    return resolveGuard(to, auth, viewport)
   })
 
   return _router

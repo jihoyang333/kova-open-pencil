@@ -148,6 +148,11 @@ export const ACP_PERMISSION_TIMEOUT_MS = 60_000
 export const APP_NAME = 'Kova'
 export const SHOW_DEV_FEATURES = false
 
+// W8a Cluster 01 — magic-link / OTP is the only auth method in MVP. The
+// /forgot-password route exists for the Phase 2 email+password upgrade but
+// stays gated until that ships. PRD 01 §2.3 + Plan 01 §10.
+export const FORGOT_PASSWORD_ENABLED = false
+
 export const ACP_DESIGN_CONTEXT = `You are inside Kova, an AI-powered email design editor built on OpenPencil. \
 Use the open-pencil MCP tools to create and modify designs on the live canvas. \
 Key tools: render (JSX to design), create_shape, set_fill, set_layout, find_nodes, get_page_tree, export_image. \
