@@ -191,3 +191,41 @@ All 10 review areas PASS:
 ---
 
 **Next:** founder runs W8a AUDIT per the wave-audit doc, then merge to `feat/m9-shopify` (or whichever base is current at merge time). Founder also completes the two pre-launch ops steps (Supabase template paste + Google Cloud Console setup) before promoting to production.
+
+---
+
+## Post-audit fix application (2026-05-22)
+
+Both wave audits (v1 backend + v2 amendment) completed 2026-05-21 with PASS WITH WARNINGS verdicts:
+- v1 backend: 1 HIGH + 3 MEDIUM + 3 LOW (7 findings)
+- v2 amendment: 0 HIGH + 5 MEDIUM + 5 LOW (10 findings) + 1 bonus discovery (missing SignupView/LoginView test siblings)
+
+All 17 findings + the bonus were addressed in a follow-up fix pass. Per-finding fix logs live in:
+- `docs/execution-phase/wave-audits/reports/W8a-cluster-01-AUDIT-REPORT.md` "§ Post-audit fix log"
+- `docs/execution-phase/wave-audits/reports/W8a-amendment-google-oauth-AUDIT-REPORT.md` "§ Post-audit fix log"
+
+### Notable changes from fixes
+
+- **`stripe@22.1.1`** added to dependencies (Cluster 04 Stripe handoff is now safe regardless of when STRIPE_SECRET_KEY lands in production env).
+- **Sentry tag shape** flat `{ cluster, step, user_id }` instead of nested `{ tags, extra }` envelope. GDPR cron terminal-failure observability restored.
+- **Edge Function error envelopes** now stamp `request_id` on every status code (was 500-only).
+- **`PUBLIC_APP_URL` env-guarded** — outbound mail skipped (stub mode) when the env is absent; no more silent `https://app.kova.io` hardcoded fallback.
+- **Google G mark inlined at 48×48** in `KovaGoogleSignInButton.vue`. `GoogleIcon.vue` deleted. Four brand hex literals now appear ONLY in the button primitive.
+- **LoginView state machine expanded to 5 states** per audit rubric `('email-entry' / 'magic-link-sent' / 'otp-entry' / 'otp-wrong' / 'otp-locked')`. OtpInput gained an `error` prop for the wrong-OTP visual.
+- **AuthCallbackView** now calls `supabase.auth.getSession()` directly + surfaces error reasons via `console.error` + query-param `reason=session_error|timeout`.
+- **Keyboard handlers** in `OtpInput.vue` + `AuthField.vue` switched to `event.code` per CLAUDE.md convention.
+- **Test pollution eliminated**: composable test files no longer replace `globalThis.window` outright. `bun run test:unit` is now 1909 pass / 0 fail (was 1876 pass / 24 fail).
+- **`supabase-auth-config.md`** is now pure-append (existing bullets restored; W8a clarifications live in an appended blockquote).
+- **v2 execution plan** materialized at `docs/execution-phase/execution-prompts/W8a-v2-amendment-google-oauth-impl.md`.
+- **Missing tests created**: `tests/unit/views/LoginView.test.ts` + `tests/unit/views/SignupView.test.ts`.
+
+### Final post-fix quality gates
+
+| Gate | Result |
+|---|---|
+| `bun run test:unit` (full) | ✅ 1909 pass / 0 fail / 99 skip across 166 files |
+| Scoped lint across 43 c01 v1 + v2 files | ✅ 0 warnings, 0 errors |
+| `bunx vite build` | ✅ 1.58s |
+| `bun run test:dupes` | ✅ 1.21% (cap 3%) |
+
+**Both audit verdicts upgraded to ✅ PASS. Slice clear for merge.**
