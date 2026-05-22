@@ -1,6 +1,6 @@
-<!-- token-exempt-file: Auth-shell view. Px values match A15.02-A15.04 + B4.3-B4.4 hi-fi (cluster-01-tokens-used.md §3-§5). -->
+<!-- token-exempt-file: Auth-shell view. Px values match A15.02 + A15.04 + B4.4 hi-fi (cluster-01-tokens-used.md §3-§5). -->
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import AuthCard from '@/components/auth/AuthCard.vue'
@@ -10,24 +10,24 @@ import AuthField from '@/components/auth/AuthField.vue'
 import AuthFootnote from '@/components/auth/AuthFootnote.vue'
 import AuthHeader from '@/components/auth/AuthHeader.vue'
 import GoogleSignInButton from '@/components/auth/GoogleSignInButton.vue'
-import MagicLinkSentBlock from '@/components/auth/MagicLinkSentBlock.vue'
 import OtpInput from '@/components/auth/OtpInput.vue'
 import { useMagicLink } from '@/composables/auth/use-magic-link'
 import { toast } from '@/composables/use-toast'
 import { supabase } from '@/lib/supabase'
 
 // W8a Cluster 01 — LoginView (Plan 01 Task 17 / amendment §3.1).
-// 5-state machine per Plan 01 §6.4:
-//   email-entry (A15.02) → magic-link-sent (A15.03) → otp-entry (A15.04)
-//                                                  ↘ otp-wrong (B4.3 inline)
-//                                                  ↘ otp-locked (B4.4)
-// Google button only on email-entry. Auto-submit on 6th OTP digit per
-// Plan 01 §12.6.
+// Notion-pattern 2-state machine:
+//   email-entry (A15.02)  → code-entry (A15.04 — OTP cells + email shown
+//                                       + resend timer; user can ALSO click
+//                                       the magic link in the email)
+//                         → otp-locked (B4.4 — after 5 wrong attempts)
+// Supabase signInWithOtp sends one email containing BOTH the magic link
+// and the 6-digit code; either path completes auth.
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const MAX_OTP_ATTEMPTS = 5
 
-type State = 'email-entry' | 'magic-link-sent' | 'otp-entry' | 'otp-wrong' | 'otp-locked'
+type State = 'email-entry' | 'code-entry' | 'otp-locked'
 
 const route = useRoute()
 const router = useRouter()
@@ -41,13 +41,13 @@ const otpCode = ref('')
 const otpError = ref('')
 const otpAttempts = ref(0)
 
-const otpAttemptsLeft = computed(() => Math.max(0, MAX_OTP_ATTEMPTS - otpAttempts.value))
-
 onMounted(() => {
-  const stateParam = route.query.state
   const emailParam = route.query.email
+  const stateParam = route.query.state
   if (typeof emailParam === 'string') email.value = emailParam
-  if (stateParam === 'otp-entry') state.value = 'otp-entry'
+  if (stateParam === 'code-entry' || stateParam === 'otp-entry') {
+    state.value = 'code-entry'
+  }
 })
 
 async function onEmailSubmit(): Promise<void> {
@@ -60,7 +60,10 @@ async function onEmailSubmit(): Promise<void> {
   try {
     const result = await send(email.value)
     if (result.ok) {
-      state.value = 'magic-link-sent'
+      state.value = 'code-entry'
+      otpCode.value = ''
+      otpError.value = ''
+      otpAttempts.value = 0
     } else if (result.reason === 'rate_limited') {
       emailError.value = 'Too many requests. Try again soon.'
     } else if (result.reason === 'invalid_email') {
@@ -73,9 +76,19 @@ async function onEmailSubmit(): Promise<void> {
   }
 }
 
-function onEnterCodeInstead(): void {
-  state.value = 'otp-entry'
+function onResend(): void {
+  if (cooldown.value === 0) void onEmailSubmit()
+}
+
+function onTryDifferentEmail(): void {
+  state.value = 'email-entry'
   otpCode.value = ''
+  otpError.value = ''
+  otpAttempts.value = 0
+}
+
+function onSendNewLink(): void {
+  state.value = 'email-entry'
   otpAttempts.value = 0
 }
 
@@ -95,8 +108,8 @@ async function onOtpComplete(code: string): Promise<void> {
     if (otpAttempts.value >= MAX_OTP_ATTEMPTS) {
       state.value = 'otp-locked'
     } else {
-      state.value = 'otp-wrong'
-      otpError.value = `Wrong code. ${otpAttemptsLeft.value} attempts left.`
+      const attemptsLeft = MAX_OTP_ATTEMPTS - otpAttempts.value
+      otpError.value = `Wrong code. ${attemptsLeft} attempts left.`
     }
     return
   }
@@ -112,10 +125,10 @@ function onOAuthError(reason: string): void {
   <div
     data-theme="light"
     data-test-id="login-view"
-    class="grid min-h-screen grid-rows-[auto_1fr] bg-page text-ink"
+    class="grid min-h-screen grid-rows-[auto_1fr_auto] bg-bg text-ink"
   >
     <AuthHeader mode="signin" />
-    <main class="flex items-start justify-center px-6 py-6 pb-14">
+    <main class="grid min-h-0 place-items-center overflow-auto px-6 py-6 pb-14">
       <AuthCard>
         <template v-if="state === 'email-entry'">
           <header class="flex flex-col gap-[6px] text-left">
@@ -123,7 +136,7 @@ function onOAuthError(reason: string): void {
               Sign in to Kova
             </h1>
             <p class="m-0 text-[13px] leading-[1.55] text-ink-2">
-              Continue with Google or enter your email for a magic link.
+              Continue with Google or enter your email for a sign-in code.
             </p>
           </header>
 
@@ -145,33 +158,38 @@ function onOAuthError(reason: string): void {
           <AuthFootnote mode="signin" />
         </template>
 
-        <MagicLinkSentBlock
-          v-else-if="state === 'magic-link-sent'"
-          :email="email"
-          :resend-cooldown="cooldown"
-          @resend="onEmailSubmit"
-          @enter-code-instead="onEnterCodeInstead"
-        />
-
-        <template v-else-if="state === 'otp-entry' || state === 'otp-wrong'">
+        <template v-else-if="state === 'code-entry'">
           <header class="flex flex-col gap-[6px] text-left">
             <h1 class="m-0 text-[22px] leading-[1.22] font-semibold tracking-tight text-ink">
-              Enter your 6-digit code
+              Check your email
             </h1>
             <p class="m-0 text-[13px] leading-[1.55] text-ink-2">
-              We sent it to <b class="font-medium text-ink">{{ email }}</b
-              >.
+              We sent a code to <b class="font-medium text-ink">{{ email }}</b
+              >. Enter it here, or click the link in the email.
             </p>
           </header>
+
           <OtpInput v-model="otpCode" @complete="onOtpComplete" />
+
           <p v-if="otpError" class="text-[12px] text-warn">{{ otpError }}</p>
-          <button
-            type="button"
-            class="self-start text-[12px] text-ink-2 hover:text-ink hover:underline"
-            @click="state = 'email-entry'"
-          >
-            Try a different email
-          </button>
+
+          <div class="flex items-center justify-between text-[12px]">
+            <button
+              type="button"
+              class="text-ink-2 hover:text-ink hover:underline"
+              @click="onTryDifferentEmail"
+            >
+              Try a different email
+            </button>
+            <button
+              type="button"
+              :disabled="cooldown > 0"
+              class="text-ink-2 hover:text-ink hover:underline disabled:cursor-not-allowed disabled:text-ink-3 disabled:no-underline"
+              @click="onResend"
+            >
+              {{ cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend code' }}
+            </button>
+          </div>
         </template>
 
         <template v-else-if="state === 'otp-locked'">
@@ -180,18 +198,11 @@ function onOAuthError(reason: string): void {
               Too many wrong attempts
             </h1>
             <p class="m-0 text-[13px] leading-[1.55] text-ink-2">
-              For your security, we've locked code entry for this email. Request a new magic link to
+              For your security, we've locked code entry for this email. Request a new code to
               continue.
             </p>
           </header>
-          <AuthCta
-            label="Send a new magic link"
-            type="button"
-            @click="
-              state = 'email-entry'
-              otpAttempts = 0
-            "
-          />
+          <AuthCta label="Send a new code" type="button" @click="onSendNewLink" />
         </template>
       </AuthCard>
     </main>
