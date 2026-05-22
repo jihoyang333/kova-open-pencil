@@ -132,11 +132,12 @@ function onOAuthError(reason: string): void {
       <AuthCard>
         <template v-if="state === 'email-entry'">
           <header class="flex flex-col gap-[6px] text-left">
-            <h1 class="m-0 text-[22px] leading-[1.22] font-semibold tracking-tight text-ink">
+            <span class="text-[10px] text-ink-3">Welcome back</span>
+            <h1 class="m-0 text-[24px] leading-[1.18] font-semibold tracking-tight text-ink">
               Sign in to Kova
             </h1>
             <p class="m-0 text-[13px] leading-[1.55] text-ink-2">
-              Continue with Google or enter your email for a sign-in code.
+              Enter your email and we'll send a sign-in code.
             </p>
           </header>
 
@@ -160,16 +161,24 @@ function onOAuthError(reason: string): void {
 
         <template v-else-if="state === 'code-entry'">
           <header class="flex flex-col gap-[6px] text-left">
-            <h1 class="m-0 text-[22px] leading-[1.22] font-semibold tracking-tight text-ink">
-              Check your email
+            <span class="text-[10px] text-ink-3">Enter code</span>
+            <h1 class="m-0 text-[24px] leading-[1.18] font-semibold tracking-tight text-ink">
+              Check your email for a 6-digit code
             </h1>
             <p class="m-0 text-[13px] leading-[1.55] text-ink-2">
-              We sent a code to <b class="font-medium text-ink">{{ email }}</b
-              >. Enter it here, or click the link in the email.
+              Enter it here for instant sign-in, or click the link in the email.
             </p>
           </header>
 
-          <OtpInput v-model="otpCode" @complete="onOtpComplete" />
+          <div class="flex flex-col gap-[6px]">
+            <span class="text-[11.5px] font-medium tracking-[-0.005em] text-ink-2">
+              Verification code
+            </span>
+            <OtpInput v-model="otpCode" @complete="onOtpComplete" />
+            <span class="text-[11.5px] text-ink-3">
+              Sent to <b class="font-medium text-ink">{{ email }}</b>
+            </span>
+          </div>
 
           <p v-if="otpError" class="text-[12px] text-warn">{{ otpError }}</p>
 
