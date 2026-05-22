@@ -28,13 +28,15 @@ Apply each setting via Supabase Studio → Authentication → Providers / Settin
 
 ## Email templates
 
-Customize via Supabase Studio → Authentication → Email Templates. Default Supabase templates are too generic AND only include the magic link — Kova surfaces the 6-digit code on the same page where the user submitted their email (Notion pattern), so the email MUST include `{{ .Token }}`.
+Customize via Supabase Studio → Authentication → Email Templates. Default Supabase templates are too generic.
 
-- [ ] **Magic Link** template (used by `signInWithOtp` — both signup AND login) — Inter font, Kova branding, BOTH `{{ .Token }}` (6-digit code) AND `{{ .ConfirmationURL }}` (link), plain-text fallback
-- [ ] **Confirm signup** template — same dual code + link content as Magic Link
-- [ ] **Change Email Address** verify template (to NEW address)
+- [ ] Magic link sign-in template — Inter font, Kova branding, plain-text fallback
+- [ ] Magic link signup confirmation template
+- [ ] Email change verify template (to NEW address)
 - [ ] Email change confirmation token expiry: **86400 seconds** (24 hours) — matches `EMAIL_CHANGE_LINK_TTL_HOURS=24` env var consumed by `api/auth/email-change-request.ts` and surfaced in B5.2 "expired link" copy
 - [ ] Reset password template — for Phase 2 (email+password upgrade); ship as draft now, activate later
+
+> **W8a v2 amendment (2026-05-22):** the bullets above use generic labels; the actual Supabase Studio field names are **"Magic Link"** (used by `signInWithOtp` — both signup AND login), **"Confirm signup"**, and **"Change Email Address"**. The Magic Link + Confirm signup templates MUST include `{{ .Token }}` in addition to `{{ .ConfirmationURL }}` so the 6-digit code reaches the user (Kova's Notion-pattern auth surfaces the code on the same page where the user submitted their email; see appended "Magic Link + Confirm signup template HTML" section below).
 
 ### Magic Link + Confirm signup template HTML (W8a Cluster 01)
 
