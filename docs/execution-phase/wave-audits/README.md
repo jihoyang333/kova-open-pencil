@@ -61,6 +61,7 @@ Findings are categorized:
 |---|---|---|---|
 | W7 | 07a — Canvas engine core + renderer | [W7-cluster-07a-AUDIT.md](./W7-cluster-07a-AUDIT.md) | `reports/W7-cluster-07a-AUDIT-REPORT.md` |
 | W8a | 01 — Auth + identity | [W8a-cluster-01-AUDIT.md](./W8a-cluster-01-AUDIT.md) | `reports/W8a-cluster-01-AUDIT-REPORT.md` |
+| W8a v2 | 01 — Vue auth shell + Google OAuth amendment | [W8a-v2-amendment-google-oauth-AUDIT.md](./W8a-v2-amendment-google-oauth-AUDIT.md) | `reports/W8a-v2-amendment-google-oauth-AUDIT-REPORT.md` |
 | W8b | 04 — Stripe + account billing | [W8b-cluster-04-AUDIT.md](./W8b-cluster-04-AUDIT.md) | `reports/W8b-cluster-04-AUDIT-REPORT.md` |
 | W8c | 12 — Settings + preferences | [W8c-cluster-12-AUDIT.md](./W8c-cluster-12-AUDIT.md) | `reports/W8c-cluster-12-AUDIT-REPORT.md` |
 | W9a | 02 — Onboarding + dashboard | [W9a-cluster-02-AUDIT.md](./W9a-cluster-02-AUDIT.md) | `reports/W9a-cluster-02-AUDIT-REPORT.md` |
