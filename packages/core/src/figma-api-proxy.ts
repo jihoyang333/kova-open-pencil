@@ -932,14 +932,7 @@ export class FigmaNodeProxy {
   // meaningful on CANVAS-typed nodes; SceneGraph methods validate). ---
 
   scale(factor: number): void {
-    // Cast through unknown — FigmaAPI is the canonical figma host; the proxy
-    // delegates back through it for tool-side helpers.
-    const api = this[INTERNAL_API] as unknown as { graph: SceneGraph }
-    scaleNodeRecursive(
-      api as unknown as Parameters<typeof scaleNodeRecursive>[0],
-      this[INTERNAL_ID],
-      factor
-    )
+    scaleNodeRecursive(this[INTERNAL_GRAPH], this[INTERNAL_ID], factor)
   }
 
   addMeasurement(

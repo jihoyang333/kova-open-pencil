@@ -51,6 +51,10 @@ export const addMeasurement = defineTool({
           : args.offset_type === 'OUTER'
             ? { type: 'OUTER', fixed: args.offset_value ?? 8 }
             : undefined
+      // Trust boundary: tool-args arrive as `string` from the AI-adapter layer
+      // but the schema above declares an `enum` constraint on each side. The
+      // adapter enforces enum membership before reaching here, so the cast to
+      // MeasurementSide is safe at this layer.
       const m = figma.graph.addMeasurement(
         args.canvas_id,
         { nodeId: args.start_node_id, side: args.start_side as MeasurementSide },

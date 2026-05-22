@@ -37,4 +37,16 @@ describe('Cluster 07a Task 1 — SLICE NodeType', () => {
     expect(graph.isContainerType('FRAME')).toBe(true)
     expect(graph.isContainerType('GROUP')).toBe(true)
   })
+
+  // Audit HIGH-3: createNode must reject SLICE as parent (leaf-only invariant).
+  test('createNode rejects SLICE parent (leaf invariant defended at create time)', () => {
+    const graph = new SceneGraph()
+    const page = graph.getPages()[0]!
+    const slice = graph.createNode('SLICE', page.id)
+    expect(() => {
+      graph.createNode('RECTANGLE', slice.id)
+    }).toThrow(/Slice nodes cannot have children/i)
+    // Ensure no orphan node was inserted into nodes map after the throw
+    expect(slice.childIds).toEqual([])
+  })
 })

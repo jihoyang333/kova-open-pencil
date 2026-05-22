@@ -7,7 +7,7 @@ import {
 } from './read'
 import {
   createShape, render, createComponent, createInstance,
-  createPage, createVector, createSlice, arrowStub,
+  createPage, createVector, createSlice,
   fetchIconsTool, insertIcon, searchIconsTool
 } from './create'
 import { addMeasurement } from './measurement'
@@ -169,11 +169,20 @@ export const EXTENDED_TOOLS: ToolDef[] = [
   // Codegen
   designToTokens,
   designToComponentMap,
-  // Cluster 07a — Slice + Measurement + scale + arrow stub
+  // Cluster 07a — Slice + Measurement + scale
   addMeasurement,
   scaleNode,
-  arrowStub,
+  // NOTE: arrowStub is intentionally NOT registered here. It is Phase-2-held
+  // (returns a stub error) and must not appear in any registered tool list
+  // until the arrow primitive ships — otherwise the AI may pick it and
+  // surface "Arrow primitive deferred to Phase 2" to the user. Tracked in
+  // packages/core/CHANGELOG-KOVA.md.
 ]
+
+// `arrowStub` is still imported above to keep the export reachable for tests
+// and the future Phase-2 registration path. Reference it to prevent
+// dead-import lint errors without enrolling it in any active tool list.
+export { arrowStub } from './create'
 
 /** All tools combined — used by MCP server and CLI. */
 export const ALL_TOOLS: ToolDef[] = [...CORE_TOOLS, ...EXTENDED_TOOLS]

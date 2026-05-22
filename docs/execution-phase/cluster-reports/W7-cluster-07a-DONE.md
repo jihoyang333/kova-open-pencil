@@ -43,8 +43,10 @@ benchmark + `node:errored` event surface) — tracked in CHANGELOG-KOVA.md.
 | 12 — Engine-host integration tests | `441d6de5` | 7 |
 | 13 — Programmatic engine smoke | `448d069e` | 1 |
 
-Total new tests: **90 across 12 files** (all green).
-Full suite: **1669 pass / 99 skip / 0 fail / 1768 tests across 129 files**.
+Total new tests: **90 across 13 files** (all green). After W7 audit
+hardening (2026-05-21): **98 across 13 files** (+8 audit-fix tests).
+Full suite: **1677 pass / 99 skip / 0 fail / 1776 tests across 129 files**
+(post-hardening; pre-hardening: 1669 / 99 / 0 / 1768).
 
 ### Engine surface changes (`packages/core/src/`)
 

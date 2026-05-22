@@ -14,8 +14,10 @@ describe('Cluster 07a Task 6 — tools registry additions', () => {
     expect(EXTENDED_TOOLS.some((t) => t.name === 'add_measurement')).toBe(true)
   })
 
-  test('EXTENDED_TOOLS contains arrow_stub', () => {
-    expect(EXTENDED_TOOLS.some((t) => t.name === 'arrow_stub')).toBe(true)
+  // Audit LOW-9: held Phase-2 tools must NOT appear in EXTENDED_TOOLS
+  // (otherwise AI may pick them and surface a stub error to the user).
+  test('EXTENDED_TOOLS does NOT contain arrow_stub (Phase-2 held)', () => {
+    expect(EXTENDED_TOOLS.some((t) => t.name === 'arrow_stub')).toBe(false)
   })
 
   test('EXTENDED_TOOLS does NOT contain legacy create_measurement', () => {
@@ -26,6 +28,12 @@ describe('Cluster 07a Task 6 — tools registry additions', () => {
     expect(CORE_TOOLS.some((t) => t.name === 'scale_node')).toBe(false)
     expect(CORE_TOOLS.some((t) => t.name === 'add_measurement')).toBe(false)
     expect(CORE_TOOLS.some((t) => t.name === 'arrow_stub')).toBe(false)
+  })
+
+  test('arrowStub export still defined (registered to a feature flag, not deleted)', async () => {
+    const mod = await import('../../../packages/core/src/tools/create')
+    expect(typeof mod.arrowStub).toBe('object')
+    expect(mod.arrowStub.name).toBe('arrow_stub')
   })
 
   test('ALL_TOOLS is union of CORE_TOOLS and EXTENDED_TOOLS', () => {

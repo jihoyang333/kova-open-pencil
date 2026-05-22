@@ -755,10 +755,30 @@ export class SceneGraph {
   // Cluster 07a — page-level Measurement system (Figma-aligned)
   // -----------------------------------------------------------------
 
+  // Measurement IDs occupy a distinct namespace from SceneNode IDs:
+  // node IDs follow the editor's `0:<localId>` Figma-parity convention
+  // (see `generateId`), measurements are CANVAS-scoped records (not nodes)
+  // so they use a 16-hex random ID to avoid colliding with node-id parsers
+  // (e.g. Cluster 09 snapshot codec regex match on `^\d+:\d+$`).
   private generateMeasurementId(): string {
     const bytes = new Uint8Array(8)
     crypto.getRandomValues(bytes)
     return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('')
+  }
+
+  /** Cluster 07a — collect node + all descendants into a Set in one DFS pass. */
+  private collectSubtreeIds(rootId: string): Set<string> {
+    const ids = new Set<string>()
+    const stack: string[] = [rootId]
+    while (stack.length > 0) {
+      const id = stack.pop()
+      if (id === undefined || ids.has(id)) continue
+      const n = this.nodes.get(id)
+      if (!n) continue
+      ids.add(id)
+      for (const cid of n.childIds) stack.push(cid)
+    }
+    return ids
   }
 
   private findAncestorCanvasId(nodeId: string): string | undefined {
@@ -785,6 +805,17 @@ export class SceneGraph {
     }
     if (!this.isDescendant(end.nodeId, canvasId)) {
       throw new Error(`Measurement anchor node not on target canvas: ${end.nodeId}`)
+    }
+    // Figma same-axis pair constraint: a Measurement annotates one axis only,
+    // so start.side and end.side must both be horizontal (LEFT/RIGHT) or both
+    // vertical (TOP/BOTTOM). Verified against developers.figma.com/docs/plugins/api/Measurement.
+    const startHorizontal = start.side === 'LEFT' || start.side === 'RIGHT'
+    const endHorizontal = end.side === 'LEFT' || end.side === 'RIGHT'
+    if (startHorizontal !== endHorizontal) {
+      throw new Error(
+        `Measurement start.side and end.side must be on the same axis ` +
+        `(both LEFT/RIGHT or both TOP/BOTTOM); got ${start.side} and ${end.side}`
+      )
     }
     const m: Measurement = {
       id: this.generateMeasurementId(),
@@ -828,7 +859,7 @@ export class SceneGraph {
     }
     const idx = canvas.measurements.findIndex((m) => m.id === id)
     if (idx < 0) throw new Error(`Measurement ${id} not found`)
-    const existing = canvas.measurements[idx]!
+    const existing = canvas.measurements[idx]
     const updated: Measurement = {
       ...existing,
       offset: newValue.offset ?? existing.offset,
@@ -893,11 +924,18 @@ export class SceneGraph {
   }
 
   createNode(type: NodeType, parentId: string, overrides: Partial<SceneNode> = {}): SceneNode {
+    // Cluster 07a — defend SLICE leaf invariant on the create path too
+    // (reparentNode also blocks this; symmetric guard prevents corruption
+    // when tools bypass reparent and pass parentId directly).
+    const parent = this.nodes.get(parentId)
+    if (parent && parent.type === 'SLICE') {
+      throw new Error('Slice nodes cannot have children')
+    }
+
     const node = createDefaultNode(type, overrides)
     node.parentId = parentId
     this.nodes.set(node.id, node)
 
-    const parent = this.nodes.get(parentId)
     if (parent) {
       parent.childIds.push(node.id)
     }
@@ -958,15 +996,18 @@ export class SceneGraph {
     if (node.parentId === newParentId) return
 
     // Cluster 07a — cross-canvas move drops source-canvas measurements
-    // anchored to nodeId (or any of its descendants).
+    // anchored to nodeId or any of its descendants. Collect the full
+    // subtree once and filter on Set.has so a moved GROUP/FRAME/SECTION
+    // does not leave dangling refs anchored to a now-cross-canvas child.
     const oldCanvasId = node.parentId ? this.findAncestorCanvasId(node.parentId) : undefined
     const newCanvasId = this.findAncestorCanvasId(newParentId)
     if (oldCanvasId && newCanvasId && oldCanvasId !== newCanvasId) {
       const sourceCanvas = this.nodes.get(oldCanvasId)
       if (sourceCanvas?.type === 'CANVAS' && sourceCanvas.measurements) {
+        const subtreeIds = this.collectSubtreeIds(nodeId)
         const droppedIds: string[] = []
         sourceCanvas.measurements = sourceCanvas.measurements.filter((m) => {
-          if (m.start.nodeId === nodeId || m.end.nodeId === nodeId) {
+          if (subtreeIds.has(m.start.nodeId) || subtreeIds.has(m.end.nodeId)) {
             droppedIds.push(m.id)
             return false
           }

@@ -176,8 +176,8 @@ export class SkiaRenderer {
   opacityPaint: Paint
   effectLayerPaint: Paint
   // Cluster 07a — sibling-traversal mask compositing
-  maskOuterPaint!: Paint
-  maskCompositePaint!: Paint
+  maskOuterPaint: Paint
+  maskCompositePaint: Paint
   imageFilterCache = new Map<string, ImageFilter | null>()
   maskFilterCache = new Map<number, MaskFilter | null>()
   _tmpColor = new Float32Array(4)

@@ -196,4 +196,87 @@ describe('Cluster 07a Task 1b — page-level Measurement system', () => {
     expect(events[0]!.measurementIds).toHaveLength(2)
     expect(events[0]!.sourceCanvasId).toBe(canvasId)
   })
+
+  // ---------------------------------------------------------------
+  // Audit HIGH-1: cross-canvas reparent must drop measurements
+  // anchored to ANY descendant of the moved node, not only the
+  // moved node itself.
+  // ---------------------------------------------------------------
+  test('drop-on-cross-canvas-move drops measurements anchored to a DESCENDANT of the moved node', () => {
+    const group = graph.createNode('FRAME', canvasId)
+    const child = graph.createNode('RECTANGLE', group.id)
+    const m = graph.addMeasurement(
+      canvasId,
+      { nodeId: child.id, side: 'TOP' },
+      { nodeId: nodeB, side: 'BOTTOM' }
+    )
+    const otherCanvas = graph.addPage('Other')
+    const events: MeasurementDroppedEvent[] = []
+    graph.emitter.on('measurement:dropped', (e) => events.push(e))
+    graph.reparentNode(group.id, otherCanvas.id)
+    expect(graph.getMeasurements(canvasId)).toHaveLength(0)
+    expect(events).toHaveLength(1)
+    expect(events[0]!.measurementIds).toEqual([m.id])
+    expect(events[0]!.sourceCanvasId).toBe(canvasId)
+    expect(events[0]!.movedNodeId).toBe(group.id)
+  })
+
+  test('drop-on-cross-canvas-move drops measurements anchored to a DEEP descendant', () => {
+    const group = graph.createNode('FRAME', canvasId)
+    const inner = graph.createNode('FRAME', group.id)
+    const leaf = graph.createNode('RECTANGLE', inner.id)
+    const m1 = graph.addMeasurement(canvasId, { nodeId: leaf.id, side: 'LEFT' }, { nodeId: nodeB, side: 'RIGHT' })
+    const m2 = graph.addMeasurement(canvasId, { nodeId: nodeA, side: 'TOP' }, { nodeId: inner.id, side: 'BOTTOM' })
+    const m3 = graph.addMeasurement(canvasId, { nodeId: nodeA, side: 'LEFT' }, { nodeId: nodeB, side: 'RIGHT' })
+    const otherCanvas = graph.addPage('Other')
+    graph.reparentNode(group.id, otherCanvas.id)
+    const remaining = graph.getMeasurements(canvasId)
+    expect(remaining).toHaveLength(1)
+    expect(remaining[0]!.id).toBe(m3.id)
+    // m1 (leaf-anchored) + m2 (inner-anchored) both dropped
+    expect([m1.id, m2.id].sort()).not.toContain(remaining[0]!.id)
+  })
+
+  // ---------------------------------------------------------------
+  // Audit HIGH-2: Figma same-axis pair constraint on addMeasurement.
+  // ---------------------------------------------------------------
+  test('addMeasurement rejects mixed-axis side pair (LEFT/TOP)', () => {
+    expect(() => {
+      graph.addMeasurement(
+        canvasId,
+        { nodeId: nodeA, side: 'LEFT' },
+        { nodeId: nodeB, side: 'TOP' }
+      )
+    }).toThrow(/same axis/i)
+  })
+
+  test('addMeasurement rejects mixed-axis side pair (RIGHT/BOTTOM)', () => {
+    expect(() => {
+      graph.addMeasurement(
+        canvasId,
+        { nodeId: nodeA, side: 'RIGHT' },
+        { nodeId: nodeB, side: 'BOTTOM' }
+      )
+    }).toThrow(/same axis/i)
+  })
+
+  test('addMeasurement accepts horizontal-axis pair LEFT/RIGHT', () => {
+    const m = graph.addMeasurement(
+      canvasId,
+      { nodeId: nodeA, side: 'LEFT' },
+      { nodeId: nodeB, side: 'RIGHT' }
+    )
+    expect(m.start.side).toBe('LEFT')
+    expect(m.end.side).toBe('RIGHT')
+  })
+
+  test('addMeasurement accepts vertical-axis pair TOP/BOTTOM', () => {
+    const m = graph.addMeasurement(
+      canvasId,
+      { nodeId: nodeA, side: 'TOP' },
+      { nodeId: nodeB, side: 'BOTTOM' }
+    )
+    expect(m.start.side).toBe('TOP')
+    expect(m.end.side).toBe('BOTTOM')
+  })
 })

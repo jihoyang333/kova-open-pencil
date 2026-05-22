@@ -1,18 +1,18 @@
 /* eslint-disable max-lines -- property setters share common patterns, splitting would scatter related tools */
 import { parseColor } from '../color'
 import { DEFAULT_SHADOW_COLOR } from '../constants'
-import type { CharacterStyleOverride, Effect, SceneNode, StyleRun } from '../scene-graph'
+import type { CharacterStyleOverride, Effect, SceneGraph, SceneNode, StyleRun } from '../scene-graph'
 import type { Matrix } from '../types'
-import type { FigmaAPI } from '../figma-api'
 
 import { defineTool } from './schema'
 
 /**
  * Cluster 07a — recursive geometry scale matching Figma's "K"-key scale tool.
- * Exported for reuse on FigmaNodeProxy.scale (Task 7).
+ * Takes a SceneGraph directly (not the wider FigmaAPI host) so FigmaNodeProxy.scale
+ * can call it without casting through the proxy host interface.
  */
-export function scaleNodeRecursive(figma: FigmaAPI, id: string, factor: number): void {
-  const node = figma.graph.getNode(id)
+export function scaleNodeRecursive(graph: SceneGraph, id: string, factor: number): void {
+  const node = graph.getNode(id)
   if (!node) return
   const changes: Partial<SceneNode> = {
     width: node.width * factor,
@@ -35,9 +35,9 @@ export function scaleNodeRecursive(figma: FigmaAPI, id: string, factor: number):
     }))
   }
   if (node.type === 'TEXT') changes.fontSize = node.fontSize * factor
-  figma.graph.updateNode(id, changes)
+  graph.updateNode(id, changes)
   for (const cid of node.childIds) {
-    scaleNodeRecursive(figma, cid, factor)
+    scaleNodeRecursive(graph, cid, factor)
   }
 }
 
@@ -61,7 +61,7 @@ export const scaleNode = defineTool({
   execute: (figma, { id, factor }) => {
     const node = figma.graph.getNode(id)
     if (!node) return { error: `Node "${id}" not found` }
-    scaleNodeRecursive(figma, id, factor)
+    scaleNodeRecursive(figma.graph, id, factor)
     return { id, factor }
   }
 })
