@@ -28,8 +28,12 @@ mock.module('@/stores/auth', () => ({
 
 const push = mock(async () => undefined)
 mock.module('vue-router', () => ({
+  useRoute: () => ({ query: {} }),
   useRouter: () => ({ push }),
-  RouterLink: RouterLinkStub
+  RouterLink: RouterLinkStub,
+  createRouter: () => ({}),
+  createWebHistory: () => ({}),
+  createMemoryHistory: () => ({})
 }))
 
 const { default: AccountPendingDeletionView } =

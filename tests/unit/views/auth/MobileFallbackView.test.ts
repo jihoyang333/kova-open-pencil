@@ -24,7 +24,12 @@ mock.module('@/composables/auth/use-viewport-guard', () => ({
 }))
 
 mock.module('vue-router', () => ({
-  RouterLink: RouterLinkStub
+  useRoute: () => ({ query: {} }),
+  useRouter: () => ({ push: mock(async () => undefined) }),
+  RouterLink: RouterLinkStub,
+  createRouter: () => ({}),
+  createWebHistory: () => ({}),
+  createMemoryHistory: () => ({})
 }))
 
 const { default: MobileFallbackView } =

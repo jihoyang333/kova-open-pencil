@@ -22,8 +22,12 @@ mock.module('@/lib/supabase', () => ({
 }))
 
 mock.module('vue-router', () => ({
+  useRoute: () => ({ query: {} }),
   useRouter: () => ({ push: mock(async () => undefined) }),
-  RouterLink: RouterLinkStub
+  RouterLink: RouterLinkStub,
+  createRouter: () => ({}),
+  createWebHistory: () => ({}),
+  createMemoryHistory: () => ({})
 }))
 
 const { default: ForgotPasswordView } =

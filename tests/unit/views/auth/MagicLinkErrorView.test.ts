@@ -17,7 +17,10 @@ mock.module('vue-router', () => ({
     }
   }),
   useRouter: () => ({ push }),
-  RouterLink: RouterLinkStub
+  RouterLink: RouterLinkStub,
+  createRouter: () => ({}),
+  createWebHistory: () => ({}),
+  createMemoryHistory: () => ({})
 }))
 
 const { default: MagicLinkErrorView } =

@@ -6,8 +6,15 @@ import { mount, RouterLinkStub } from '@vue/test-utils'
 
 const push = mock(async () => undefined)
 mock.module('vue-router', () => ({
+  useRoute: () => ({ query: {} }),
   useRouter: () => ({ push }),
-  RouterLink: RouterLinkStub
+  RouterLink: RouterLinkStub,
+  // Keep `@/router` static imports alive when this file leaks across the
+  // bun:test process — guards.test.ts re-imports `createRouter` from
+  // vue-router.
+  createRouter: () => ({}),
+  createWebHistory: () => ({}),
+  createMemoryHistory: () => ({})
 }))
 
 const { default: AccountDeletedView } =
