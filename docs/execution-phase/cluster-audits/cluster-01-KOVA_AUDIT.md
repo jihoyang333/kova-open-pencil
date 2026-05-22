@@ -145,7 +145,7 @@ Cluster 11 (W6 REDO) shipped 2026-05-20 with all primitives. Auth-domain invento
 |---|---|
 | `src/views/LoginView.vue` | ❌ **REPLACE.** Built for M5-era email+password (now deprecated per HANDOFF §4.5). Plan 01 Task 17 rewrites the file end-to-end around `useMagicLink` + `useOtp` composables + 5-state machine + Google button. |
 | `src/views/SignupView.vue` | ❌ **REPLACE.** Same as LoginView — M5-era. Plan 01 Task 17 rewrites. |
-| `src/components/icons/GoogleIcon.vue` | ✅ **REUSE (verbatim).** Already ships Google's official 4-color G logo SVG (`#4285F4` / `#34A853` / `#FBBC05` / `#EA4335` per Google branding guidelines). `<KovaGoogleSignInButton>` consumes this primitive verbatim. **Token-exempt per Google brand requirement.** |
+| (inlined into `KovaGoogleSignInButton.vue` post-Phase-1) | ✅ **INLINED 2026-05-22.** The pre-existing `src/components/icons/GoogleIcon.vue` shipped a 24×24 G mark from M1; W8a v2 inlined the official 48×48 viewBox G logo directly into `src/components/ui/KovaGoogleSignInButton.vue` and deleted `GoogleIcon.vue` (sole consumer was this primitive). Brand hex literals (`#4285F4` / `#34A853` / `#FBBC05` / `#EA4335`) now appear ONLY inside the button primitive. **Token-exempt per Google brand requirement.** |
 | `src/components/dashboard/AccountMenu.vue` | Out of scope for Phase 1 — touched by Task 16 (DangerZoneCard mount), no visual change. |
 | `src/components/onboarding/NameStep.vue` + others | Out of scope — Cluster 03 surface. |
 

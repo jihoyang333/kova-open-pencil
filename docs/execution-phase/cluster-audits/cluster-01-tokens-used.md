@@ -19,7 +19,7 @@ Google's [official branding guidelines](https://developers.google.com/identity/b
 | (none — token-exempt) | `#131314` | Google branding guidelines (dark theme bg) | **Token-exempt per Google brand requirement.** Annotated inline at `KovaGoogleSignInButton.vue` with `/* token-exempt: Google brand requirement */` |
 | (none — token-exempt) | `#8e918f` | Google branding guidelines (dark theme border) | Same as above |
 | (none — token-exempt) | `#ffffff` | Google branding guidelines (dark theme text) | Same as above |
-| (none — token-exempt) | `#4285F4` | Google G logo brand color (blue arc) | Same as above (already in `src/components/icons/GoogleIcon.vue`) |
+| (none — token-exempt) | `#4285F4` | Google G logo brand color (blue arc) | Same as above (inlined SVG inside `src/components/ui/KovaGoogleSignInButton.vue` per post-Phase-1 fix 2026-05-22 — the pre-existing `GoogleIcon.vue` was deleted to consolidate brand-hex into one file) |
 | (none — token-exempt) | `#34A853` | Google G logo brand color (green arc) | Same as above |
 | (none — token-exempt) | `#FBBC05` | Google G logo brand color (yellow arc) | Same as above |
 | (none — token-exempt) | `#EA4335` | Google G logo brand color (red arc) | Same as above |
@@ -149,7 +149,7 @@ Google's [official branding guidelines](https://developers.google.com/identity/b
 | **Google sign-in button (dark) bg** | same — dark variant | `#131314` | TOKEN-EXEMPT | ✅ §0 exemption |
 | **Google sign-in button (dark) text** | same — dark variant | `#ffffff` | TOKEN-EXEMPT | ✅ §0 exemption |
 | **Google sign-in button (dark) border** | same — dark variant | `1px solid #8e918f` | TOKEN-EXEMPT | ✅ §0 exemption |
-| **Google G logo (4 colors)** | `src/components/icons/GoogleIcon.vue` | `#4285F4 / #34A853 / #FBBC05 / #EA4335` | TOKEN-EXEMPT | ✅ §0 exemption |
+| **Google G logo (4 colors)** | `src/components/ui/KovaGoogleSignInButton.vue` (inlined 48×48 SVG) | `#4285F4 / #34A853 / #FBBC05 / #EA4335` | TOKEN-EXEMPT | ✅ §0 exemption |
 
 ---
 
