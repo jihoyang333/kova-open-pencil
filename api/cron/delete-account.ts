@@ -107,7 +107,7 @@ export default async function handler(req: Request): Promise<Response> {
           counts.terminal++
           captureServerException(
             new Error(`GDPR cron terminal failure: ${userId}/${step}: ${result.error}`),
-            { tags: { cluster: '01', step }, extra: { userId } }
+            { cluster: '01', step, user_id: userId }
           )
         } else {
           counts.failed++
