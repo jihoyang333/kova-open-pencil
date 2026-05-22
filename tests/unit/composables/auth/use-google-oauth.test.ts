@@ -11,10 +11,14 @@ mock.module('@/lib/supabase', () => ({ supabase: { auth: { signInWithOAuth } } }
 
 const { useGoogleOAuth } = await import('../../../../src/composables/auth/use-google-oauth')
 
-// Provide a window stub for redirectTo composition in tests.
-;(globalThis as { window?: { location: { origin: string } } }).window = {
-  location: { origin: 'http://localhost:1420' }
-}
+// Provide window.location.origin for redirectTo composition in tests.
+// Mutate the existing happy-dom window in place — replacing `globalThis.window`
+// wholesale wipes Event / MouseEvent / Document constructors and pollutes
+// every later test file that mounts a Vue component (W8a v2 AUDIT L5).
+Object.defineProperty(globalThis.window, 'location', {
+  configurable: true,
+  value: { origin: 'http://localhost:1420' }
+})
 
 describe('useGoogleOAuth', () => {
   beforeEach(() => {

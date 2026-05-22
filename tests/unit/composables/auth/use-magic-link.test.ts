@@ -7,10 +7,14 @@ mock.module('@/lib/supabase', () => ({ supabase: { auth: { signInWithOtp } } }))
 
 const { useMagicLink } = await import('../../../../src/composables/auth/use-magic-link')
 
-// Provide a window stub for emailRedirectTo composition in tests
-;(globalThis as { window?: { location: { origin: string } } }).window = {
-  location: { origin: 'http://localhost:1420' },
-}
+// Provide window.location.origin for emailRedirectTo composition in tests.
+// Mutate the existing happy-dom window in place — replacing `globalThis.window`
+// wholesale wipes Event / MouseEvent / Document constructors and pollutes
+// every later test file that mounts a Vue component (W8a v2 AUDIT L5).
+Object.defineProperty(globalThis.window, 'location', {
+  configurable: true,
+  value: { origin: 'http://localhost:1420' },
+})
 
 describe('useMagicLink', () => {
   beforeEach(() => {
