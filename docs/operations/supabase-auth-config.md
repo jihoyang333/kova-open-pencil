@@ -28,13 +28,35 @@ Apply each setting via Supabase Studio → Authentication → Providers / Settin
 
 ## Email templates
 
-Customize via Supabase Studio → Authentication → Email Templates. Default Supabase templates are too generic.
+Customize via Supabase Studio → Authentication → Email Templates. Default Supabase templates are too generic AND only include the magic link — Kova surfaces the 6-digit code on the same page where the user submitted their email (Notion pattern), so the email MUST include `{{ .Token }}`.
 
-- [ ] Magic link sign-in template — Inter font, Kova branding, plain-text fallback
-- [ ] Magic link signup confirmation template
-- [ ] Email change verify template (to NEW address)
+- [ ] **Magic Link** template (used by `signInWithOtp` — both signup AND login) — Inter font, Kova branding, BOTH `{{ .Token }}` (6-digit code) AND `{{ .ConfirmationURL }}` (link), plain-text fallback
+- [ ] **Confirm signup** template — same dual code + link content as Magic Link
+- [ ] **Change Email Address** verify template (to NEW address)
 - [ ] Email change confirmation token expiry: **86400 seconds** (24 hours) — matches `EMAIL_CHANGE_LINK_TTL_HOURS=24` env var consumed by `api/auth/email-change-request.ts` and surfaced in B5.2 "expired link" copy
 - [ ] Reset password template — for Phase 2 (email+password upgrade); ship as draft now, activate later
+
+### Magic Link + Confirm signup template HTML (W8a Cluster 01)
+
+Paste the following into BOTH "Magic Link" and "Confirm signup" email-template fields in Supabase Studio. The token-box styling matches A15 hi-fi auth chrome (light theme tokens: `--ink #18181b`, `--ink-2 #5a5a60`, `--ink-3 #8a8a8f`, `--fill #f4f4f3`, `--line #e4e4e1`).
+
+```html
+<h2>Sign in to Kova</h2>
+
+<p>Your 6-digit code:</p>
+
+<p style="font-size: 28px; font-weight: 600; letter-spacing: 6px; font-family: 'SF Mono', Menlo, monospace; background: #f4f4f3; padding: 12px 16px; border-radius: 6px; display: inline-block;">{{ .Token }}</p>
+
+<p style="color: #5a5a60;">This code expires in 5 minutes.</p>
+
+<p>Or click the link to sign in:</p>
+
+<p><a href="{{ .ConfirmationURL }}" style="display: inline-block; padding: 10px 16px; background: #18181b; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 500;">Sign in to Kova</a></p>
+
+<hr style="border: 0; border-top: 1px solid #e4e4e1; margin: 24px 0;">
+
+<p style="color: #8a8a8f; font-size: 12px;">If you didn't request this, you can safely ignore this email. Your account stays secure.</p>
+```
 
 ## Redirect URLs
 
