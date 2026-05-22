@@ -36,7 +36,8 @@ function onInput(event: Event): void {
 }
 
 function onKeydown(event: KeyboardEvent): void {
-  if (event.key === 'Enter') emit('submit')
+  // Use e.code per CLAUDE.md keyboard-handler convention.
+  if (event.code === 'Enter' || event.code === 'NumpadEnter') emit('submit')
 }
 
 const inputId = id ?? `auth-field-${label.toLowerCase().replace(/\s+/g, '-')}`

@@ -9,9 +9,10 @@ import { ref, watch } from 'vue'
 interface Props {
   modelValue?: string
   disabled?: boolean
+  error?: boolean
 }
 
-const { modelValue = '', disabled = false } = defineProps<Props>()
+const { modelValue = '', disabled = false, error = false } = defineProps<Props>()
 
 const emit = defineEmits<{
   'update:modelValue': [value: string]
@@ -54,16 +55,17 @@ function onInput(index: number, event: Event): void {
 }
 
 function onKeydown(index: number, event: KeyboardEvent): void {
-  if (event.key === 'Backspace' && !digits.value[index] && index > 0) {
+  // Use e.code for special keys per CLAUDE.md keyboard-handler convention.
+  if (event.code === 'Backspace' && !digits.value[index] && index > 0) {
     focusCell(index - 1)
     event.preventDefault()
     return
   }
-  if (event.key === 'ArrowLeft' && index > 0) {
+  if (event.code === 'ArrowLeft' && index > 0) {
     focusCell(index - 1)
     event.preventDefault()
   }
-  if (event.key === 'ArrowRight' && index < CELL_COUNT - 1) {
+  if (event.code === 'ArrowRight' && index < CELL_COUNT - 1) {
     focusCell(index + 1)
     event.preventDefault()
   }
@@ -100,7 +102,10 @@ function onPaste(event: ClipboardEvent): void {
       autocomplete="one-time-code"
       :disabled="disabled"
       :value="digits[i]"
-      class="h-[52px] w-[44px] rounded-md border border-line bg-page text-center text-[18px] font-medium text-ink focus:border-ink-2 focus:shadow-[0_0_0_3px_rgba(17,17,17,0.06)] focus:outline-none"
+      :class="[
+        'h-[52px] w-[44px] rounded-md border bg-page text-center text-[18px] font-medium text-ink focus:shadow-[0_0_0_3px_rgba(17,17,17,0.06)] focus:outline-none',
+        error ? 'border-warn focus:border-warn' : 'border-line focus:border-ink-2',
+      ]"
       :aria-label="`Digit ${i + 1} of ${digits.length}`"
       @input="(e) => onInput(i, e)"
       @keydown="(e) => onKeydown(i, e)"

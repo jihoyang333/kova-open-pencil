@@ -1,6 +1,6 @@
 <!-- token-exempt-file: Auth-shell view. Px values match A15.02 + A15.04 + B4.4 hi-fi (cluster-01-tokens-used.md §3-§5). -->
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import AuthCard from '@/components/auth/AuthCard.vue'
@@ -16,18 +16,28 @@ import { toast } from '@/composables/use-toast'
 import { supabase } from '@/lib/supabase'
 
 // W8a Cluster 01 — LoginView (Plan 01 Task 17 / amendment §3.1).
-// Notion-pattern 2-state machine:
-//   email-entry (A15.02)  → code-entry (A15.04 — OTP cells + email shown
-//                                       + resend timer; user can ALSO click
-//                                       the magic link in the email)
-//                         → otp-locked (B4.4 — after 5 wrong attempts)
+// 5-state machine per audit rubric:
+//   email-entry      (A15.02) — initial; user enters email
+//   magic-link-sent  (A15.03) — after successful send, awaiting code or link click
+//   otp-entry        (A15.04) — user is actively entering the 6-digit code
+//   otp-wrong        (B4.3)   — last verifyOtp attempt failed (attempts < 5)
+//   otp-locked       (B4.4)   — 5 wrong attempts; only path is to request new code
 // Supabase signInWithOtp sends one email containing BOTH the magic link
-// and the 6-digit code; either path completes auth.
+// and the 6-digit code; either path completes auth. The three middle states
+// (magic-link-sent / otp-entry / otp-wrong) all render on the A15.04 surface;
+// the distinction is internal logic for behavior + analytics.
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const MAX_OTP_ATTEMPTS = 5
 
-type State = 'email-entry' | 'code-entry' | 'otp-locked'
+type State =
+  | 'email-entry'
+  | 'magic-link-sent'
+  | 'otp-entry'
+  | 'otp-wrong'
+  | 'otp-locked'
+
+const CODE_STATES: readonly State[] = ['magic-link-sent', 'otp-entry', 'otp-wrong'] as const
 
 const route = useRoute()
 const router = useRouter()
@@ -41,12 +51,18 @@ const otpCode = ref('')
 const otpError = ref('')
 const otpAttempts = ref(0)
 
+watch(otpCode, (value) => {
+  if (value.length > 0 && state.value === 'magic-link-sent') {
+    state.value = 'otp-entry'
+  }
+})
+
 onMounted(() => {
   const emailParam = route.query.email
   const stateParam = route.query.state
   if (typeof emailParam === 'string') email.value = emailParam
   if (stateParam === 'code-entry' || stateParam === 'otp-entry') {
-    state.value = 'code-entry'
+    state.value = 'magic-link-sent'
   }
 })
 
@@ -60,7 +76,7 @@ async function onEmailSubmit(): Promise<void> {
   try {
     const result = await send(email.value)
     if (result.ok) {
-      state.value = 'code-entry'
+      state.value = 'magic-link-sent'
       otpCode.value = ''
       otpError.value = ''
       otpAttempts.value = 0
@@ -110,6 +126,7 @@ async function onOtpComplete(code: string): Promise<void> {
     } else {
       const attemptsLeft = MAX_OTP_ATTEMPTS - otpAttempts.value
       otpError.value = `Wrong code. ${attemptsLeft} attempts left.`
+      state.value = 'otp-wrong'
     }
     return
   }
@@ -125,6 +142,7 @@ function onOAuthError(reason: string): void {
   <div
     data-theme="light"
     data-test-id="login-view"
+    :data-state="state"
     class="grid min-h-screen grid-rows-[auto_1fr_auto] bg-bg text-ink"
   >
     <AuthHeader mode="signin" />
@@ -159,7 +177,7 @@ function onOAuthError(reason: string): void {
           <AuthFootnote mode="signin" />
         </template>
 
-        <template v-else-if="state === 'code-entry'">
+        <template v-else-if="CODE_STATES.includes(state)">
           <header class="flex flex-col gap-[6px] text-left">
             <span class="text-[10px] text-ink-3">Enter code</span>
             <h1 class="m-0 text-[24px] leading-[1.18] font-semibold tracking-tight text-ink">
@@ -174,7 +192,7 @@ function onOAuthError(reason: string): void {
             <span class="text-[11.5px] font-medium tracking-[-0.005em] text-ink-2">
               Verification code
             </span>
-            <OtpInput v-model="otpCode" @complete="onOtpComplete" />
+            <OtpInput v-model="otpCode" :error="state === 'otp-wrong'" @complete="onOtpComplete" />
             <span class="text-[11.5px] text-ink-3">
               Sent to <b class="font-medium text-ink">{{ email }}</b>
             </span>

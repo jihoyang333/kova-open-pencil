@@ -43,13 +43,19 @@ describe('<AuthField>', () => {
 
   test('emits submit on Enter keydown', async () => {
     const wrapper = mountField()
-    await wrapper.find('input').trigger('keydown', { key: 'Enter' })
+    await wrapper.find('input').trigger('keydown', { code: 'Enter', key: 'Enter' })
+    expect(wrapper.emitted('submit')).toBeDefined()
+  })
+
+  test('emits submit on NumpadEnter keydown', async () => {
+    const wrapper = mountField()
+    await wrapper.find('input').trigger('keydown', { code: 'NumpadEnter', key: 'Enter' })
     expect(wrapper.emitted('submit')).toBeDefined()
   })
 
   test('does NOT emit submit on non-Enter keys', async () => {
     const wrapper = mountField()
-    await wrapper.find('input').trigger('keydown', { key: 'a' })
+    await wrapper.find('input').trigger('keydown', { code: 'KeyA', key: 'a' })
     expect(wrapper.emitted('submit')).toBeUndefined()
   })
 
