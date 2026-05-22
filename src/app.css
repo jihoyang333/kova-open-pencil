@@ -123,6 +123,80 @@
   --floating-help-size: 28px;
 }
 
+/* W8a Cluster 01 — light-theme overrides per audit Q-1 (1A) + L-1.
+   Auth surfaces wrap their root in <... data-theme="light">; Tailwind
+   utilities (bg-page / text-ink / border-line / ...) keep the dark
+   global defaults but resolve to light values inside the subtree via
+   CSS cascade. Mirrors the canonical light file's
+   `:root, [data-theme="light"]` selector pattern
+   (main-main-kova-scope/design-system/kova-hifi-light.css). */
+[data-theme='light'] {
+  /* Surface */
+  --color-page: #ffffff;
+  --color-bg: #ffffff;
+  --color-rail: #fafaf9;
+  --color-fill: #f4f4f3;
+  --color-fill-2: #ececea;
+  --color-line: #e4e4e1;
+  --color-line-2: #efefed;
+
+  /* Ink */
+  --color-ink: #18181b;
+  --color-ink-2: #5a5a60;
+  --color-ink-3: #8a8a8f;
+
+  /* Accent — same blue as dark per canonical */
+  --color-accent: #3b82f6;
+  --color-accent-soft: #e8f0fe;
+  --color-accent-2: #c5dafd;
+  --color-accent-ai: #1d4ed8;
+
+  /* Status degraded to neutral (canonical light §status deferred) */
+  --color-warn: #5a5a60;
+  --color-warn-soft: #f4f4f3;
+  --color-warn-edge: #e4e4e1;
+  --color-ok: #5a5a60;
+  --color-ok-soft: #f4f4f3;
+  --color-review: #5a5a60;
+  --color-review-soft: #f4f4f3;
+
+  /* Misc */
+  --color-ink-on-primary: #ffffff;
+  --color-accent-hover: #1d4ed8;
+  --color-modal-backdrop: rgba(0, 0, 0, 0.18);
+  --color-input-hi: #ececea;
+
+  /* L-2 — light-mode primary-button hover (canonical light L209) */
+  --btn-primary-hover-bg: #000000;
+  --btn-primary-ink: #ffffff;
+
+  /* Mirror short-name tokens for components that consume var(--page) etc.
+     directly (canonical class styles in kova-hifi.css). */
+  --page: #ffffff;
+  --bg: #ffffff;
+  --rail: #fafaf9;
+  --fill: #f4f4f3;
+  --fill-2: #ececea;
+  --line: #e4e4e1;
+  --line-2: #efefed;
+  --ink: #18181b;
+  --ink-2: #5a5a60;
+  --ink-3: #8a8a8f;
+  --accent-soft: #e8f0fe;
+  --accent-2: #c5dafd;
+  --accent-ink: #1d4ed8;
+  --warn: var(--ink-2);
+  --warn-soft: var(--fill);
+  --warn-edge: var(--line);
+  --ok: var(--ink-2);
+  --ok-soft: var(--fill);
+  --review: var(--ink-2);
+  --review-soft: var(--fill);
+
+  /* L-3 — focus-ring rgba (light variant; ink-tinted 6% alpha per A15 §) */
+  --ring-focus-ink: 0 0 0 3px rgba(17, 17, 17, 0.06);
+}
+
 html,
 body,
 #app {
