@@ -7,6 +7,7 @@ import type { Router, RouterHistory, RouteMeta } from 'vue-router'
 
 const LoginView = () => import('./views/LoginView.vue')
 const SignupView = () => import('./views/SignupView.vue')
+const AuthCallbackView = () => import('./views/auth/AuthCallbackView.vue')
 const DashboardView = () => import('./views/DashboardView.vue')
 const OnboardingView = () => import('./views/OnboardingView.vue')
 const StoreTypeStep = () => import('./components/onboarding/StoreTypeStep.vue')
@@ -15,7 +16,8 @@ const CanvasGrid = () => import('./views/dashboard/CanvasGrid.vue')
 const TrashView = () => import('./views/dashboard/TrashView.vue')
 const BrandAssetsView = () => import('./views/dashboard/BrandAssetsView.vue')
 const BrandSettingsView = () => import('./views/dashboard/BrandSettingsView.vue')
-const SettingsBrandIntegrationsView = () => import('./views/dashboard/SettingsBrandIntegrationsView.vue')
+const SettingsBrandIntegrationsView = () =>
+  import('./views/dashboard/SettingsBrandIntegrationsView.vue')
 const SettingsView = () => import('./views/dashboard/SettingsView.vue')
 const TokensDebugView = () => import('./views/dev/TokensDebugView.vue')
 const Cluster11Showcase = () => import('./views/dev/Cluster11Showcase.vue')
@@ -69,6 +71,11 @@ const routes = [
     path: '/signup',
     component: SignupView,
     meta: { requiresAuth: false, publicOnly: true }
+  },
+  {
+    path: '/auth/callback',
+    component: AuthCallbackView,
+    meta: { requiresAuth: false, publicOnly: false, theme: 'light' }
   },
   {
     path: '/onboarding',

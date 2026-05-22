@@ -128,9 +128,13 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function signInWithGoogle(): Promise<{ error: AuthError | null }> {
+    // W8a Cluster 01 — redirect to /auth/callback so AuthCallbackView can
+    // branch to /onboarding (new user) or /dashboard (existing user) per
+    // amendment §3.2. New surfaces should prefer useGoogleOAuth() which
+    // adds the offline/consent queryParams.
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: window.location.origin }
+      options: { redirectTo: `${window.location.origin}/auth/callback` }
     })
     return { error }
   }
@@ -153,8 +157,8 @@ export const useAuthStore = defineStore('auth', () => {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${session.value?.access_token ?? ''}`,
-        'X-Idempotency-Key': crypto.randomUUID().replace(/-/g, ''),
-      },
+        'X-Idempotency-Key': crypto.randomUUID().replace(/-/g, '')
+      }
     })
     if (!res.ok) {
       throw new Error(`deletion-request failed: ${res.status}`)
@@ -171,7 +175,7 @@ export const useAuthStore = defineStore('auth', () => {
   async function restoreAccount(): Promise<boolean> {
     const res = await fetch('/api/account/restore', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${session.value?.access_token ?? ''}` },
+      headers: { Authorization: `Bearer ${session.value?.access_token ?? ''}` }
     })
     if (res.status === 200) {
       pendingDeletionState.value = null
@@ -218,6 +222,6 @@ export const useAuthStore = defineStore('auth', () => {
     fetchProfile,
     requestAccountDeletion,
     restoreAccount,
-    dispose,
+    dispose
   }
 })
