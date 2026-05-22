@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 import { writeAudit } from '../_shared/audit'
 import { sendEmail } from '../_shared/email'
+import { loadEnvOrSkip } from '../_shared/env'
 import { verifyIdempotency, IdempotencyHttpError } from '../_shared/idempotency'
 import { getAdminClient } from '../_shared/supabase-admin'
 import { verifyAuthFull, UnauthenticatedError } from '../_shared/verify-auth-full'
@@ -19,20 +20,25 @@ const BodySchema = z.object({ new_email: z.string().email() })
 interface ResponseBody {
   success?: boolean
   error?: string
+  request_id?: string
 }
 
 function jsonResponse(body: ResponseBody, status: number): Response {
   return new Response(JSON.stringify(body), { status, headers: JSON_HEADERS })
 }
 
+function errorResponse(error: string, status: number): Response {
+  return jsonResponse({ error, request_id: crypto.randomUUID() }, status)
+}
+
 export default async function handler(req: Request): Promise<Response> {
-  if (req.method !== 'POST') return jsonResponse({ error: 'method_not_allowed' }, 405)
+  if (req.method !== 'POST') return errorResponse('method_not_allowed', 405)
 
   let auth
   try {
     auth = await verifyAuthFull(req)
   } catch (err) {
-    if (err instanceof UnauthenticatedError) return jsonResponse({ error: 'unauthenticated' }, 401)
+    if (err instanceof UnauthenticatedError) return errorResponse('unauthenticated', 401)
     throw err
   }
 
@@ -42,7 +48,7 @@ export default async function handler(req: Request): Promise<Response> {
   try {
     idem = await verifyIdempotency(admin, req, auth.userId, ENDPOINT)
   } catch (err) {
-    if (err instanceof IdempotencyHttpError) return jsonResponse(err.payload, err.status)
+    if (err instanceof IdempotencyHttpError) return jsonResponse({ ...err.payload, request_id: crypto.randomUUID() }, err.status)
     throw err
   }
 
@@ -54,18 +60,18 @@ export default async function handler(req: Request): Promise<Response> {
   try {
     body = BodySchema.parse(await req.json())
   } catch {
-    return jsonResponse({ error: 'invalid_email' }, 400)
+    return errorResponse('invalid_email', 400)
   }
 
   const { error } = await admin.auth.admin.updateUserById(auth.userId, { email: body.new_email })
   if (error) {
     if (error.message.toLowerCase().includes('exist')) {
-      const out: ResponseBody = { error: 'email_in_use' }
+      const out: ResponseBody = { error: 'email_in_use', request_id: crypto.randomUUID() }
       await idem.persist(409, out)
       return jsonResponse(out, 409)
     }
     console.error('[email-change] updateUserById failed:', error)
-    return jsonResponse({ error: 'internal_error' }, 500)
+    return errorResponse('internal_error', 500)
   }
 
   const out: ResponseBody = { success: true }
@@ -78,13 +84,15 @@ export default async function handler(req: Request): Promise<Response> {
       payload: { old_email: auth.email, new_email: body.new_email },
       clusterOwner: '01',
     })
+    const appUrl = loadEnvOrSkip('PUBLIC_APP_URL')
+    if (appUrl === null) return // No env → no outbound mail (stub mode)
     try {
       await sendEmail({
         to: auth.email,
         subject: 'Email change requested on your Kova account',
         html: `<!doctype html><html><body style="font-family:Inter,system-ui,sans-serif;color:#1a1a1d"><h2>Email change requested</h2><p>We received a request to change the email on your Kova account from <b>${escapeHtml(auth.email)}</b> to <b>${escapeHtml(body.new_email)}</b>.</p><p>If this wasn't you, reply to this email immediately — the change is reversible until verified.</p></body></html>`,
         text: `We received a request to change your Kova email from ${auth.email} to ${body.new_email}. If this wasn't you, reply immediately.`,
-        unsubscribeUrl: `${process.env['PUBLIC_APP_URL'] ?? 'https://app.kova.io'}/unsubscribe`,
+        unsubscribeUrl: `${appUrl}/unsubscribe`,
       })
     } catch (e) {
       console.error('[email-change] old-address notify failed:', e)

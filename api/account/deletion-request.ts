@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 import { writeAudit } from '../_shared/audit'
 import { sendEmail } from '../_shared/email'
+import { loadEnvOrSkip } from '../_shared/env'
 import { verifyIdempotency, IdempotencyHttpError } from '../_shared/idempotency'
 import { getAdminClient } from '../_shared/supabase-admin'
 import { verifyAuthFull, UnauthenticatedError } from '../_shared/verify-auth-full'
@@ -51,9 +52,13 @@ function jsonResponse(body: ResponseBody, status: number): Response {
   return new Response(JSON.stringify(body), { status, headers: JSON_HEADERS })
 }
 
+function errorResponse(error: string, status: number, extra: Partial<ResponseBody> = {}): Response {
+  return jsonResponse({ error, request_id: crypto.randomUUID(), ...extra }, status)
+}
+
 export default async function handler(req: Request): Promise<Response> {
   if (req.method !== 'POST') {
-    return jsonResponse({ error: 'method_not_allowed' }, 405)
+    return errorResponse('method_not_allowed', 405)
   }
 
   let auth
@@ -61,7 +66,7 @@ export default async function handler(req: Request): Promise<Response> {
     auth = await verifyAuthFull(req)
   } catch (err) {
     if (err instanceof UnauthenticatedError) {
-      return jsonResponse({ error: 'unauthenticated' }, 401)
+      return errorResponse('unauthenticated', 401)
     }
     throw err
   }
@@ -70,7 +75,7 @@ export default async function handler(req: Request): Promise<Response> {
 
   const count = await bumpRateLimit(admin, auth.userId)
   if (count > RATE_LIMIT_MAX) {
-    return jsonResponse({ error: 'rate_limited', retry_after_seconds: 60 }, 429)
+    return errorResponse('rate_limited', 429, { retry_after_seconds: 60 })
   }
 
   let idem
@@ -78,7 +83,7 @@ export default async function handler(req: Request): Promise<Response> {
     idem = await verifyIdempotency(admin, req, auth.userId, ENDPOINT)
   } catch (err) {
     if (err instanceof IdempotencyHttpError) {
-      return jsonResponse(err.payload, err.status)
+      return jsonResponse({ ...err.payload, request_id: crypto.randomUUID() }, err.status)
     }
     throw err
   }
@@ -91,12 +96,12 @@ export default async function handler(req: Request): Promise<Response> {
 
   if (error) {
     if (error.message?.includes('Already pending') || error.code === 'P0001') {
-      const body: ResponseBody = { error: 'already_pending' }
+      const body: ResponseBody = { error: 'already_pending', request_id: crypto.randomUUID() }
       await idem.persist(409, body)
       return jsonResponse(body, 409)
     }
     console.error('[deletion-request] RPC failed:', error)
-    return jsonResponse({ error: 'internal_error', request_id: crypto.randomUUID() }, 500)
+    return errorResponse('internal_error', 500)
   }
 
   const body: ResponseBody = { success: true, scheduled_purge_at: scheduledAt as string }
@@ -110,14 +115,15 @@ export default async function handler(req: Request): Promise<Response> {
       payload: { scheduled_purge_at: scheduledAt as string },
       clusterOwner: '01',
     })
+    const appUrl = loadEnvOrSkip('PUBLIC_APP_URL')
+    if (appUrl === null) return // No env → no outbound mail (stub mode)
     try {
-      const restoreUrl = `${process.env['PUBLIC_APP_URL'] ?? 'https://app.kova.io'}/account-pending-deletion`
       await sendEmail({
         to: auth.email,
         subject: 'Your Kova account is scheduled for deletion',
-        html: deletionScheduledHtml(scheduledAt as string, restoreUrl),
-        text: deletionScheduledText(scheduledAt as string, restoreUrl),
-        unsubscribeUrl: `${process.env['PUBLIC_APP_URL'] ?? 'https://app.kova.io'}/unsubscribe`,
+        html: deletionScheduledHtml(scheduledAt as string, `${appUrl}/account-pending-deletion`),
+        text: deletionScheduledText(scheduledAt as string, `${appUrl}/account-pending-deletion`),
+        unsubscribeUrl: `${appUrl}/unsubscribe`,
       })
     } catch (e) {
       console.error('[deletion-request] Resend send failed (best-effort):', e)
