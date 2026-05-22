@@ -3,13 +3,16 @@
 import { onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
+import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/auth'
 
 // W8a Cluster 01 — handles both magic-link AND Google OAuth completion.
-// Supabase's auth client parses the URL hash + populates the session
-// automatically. We watch the store's isAuthenticated flag and route to
-// /onboarding (new user) or /dashboard (existing). 5s timeout falls back
-// to /login?status=callback_failed.
+// On mount we (1) call supabase.auth.getSession() directly to surface any
+// auth error the Supabase client may have stashed (e.g. token-exchange
+// failure on the redirect), then (2) watch the store's isAuthenticated
+// flag (it subscribes to onAuthStateChange) and route to /onboarding
+// (new user) or /dashboard (existing). 5s timeout falls back to
+// /login?status=callback_failed with the underlying reason logged.
 
 const CALLBACK_TIMEOUT_MS = 5_000
 
@@ -28,11 +31,31 @@ function routeAfterAuth(): void {
   void router.replace(next)
 }
 
+async function pollSession(): Promise<void> {
+  const { data, error } = await supabase.auth.getSession()
+  if (error) {
+    console.error('[auth-callback] getSession failed:', error.message)
+    if (timeoutId !== null) {
+      clearTimeout(timeoutId)
+      timeoutId = null
+    }
+    void router.replace({
+      path: '/login',
+      query: { status: 'callback_failed', reason: 'session_error' }
+    })
+    return
+  }
+  if (data.session !== null) {
+    routeAfterAuth()
+  }
+}
+
 onMounted(() => {
   if (auth.isAuthenticated) {
     routeAfterAuth()
     return
   }
+  void pollSession()
   stopWatcher = watch(
     () => auth.isAuthenticated,
     (next) => {
@@ -40,7 +63,13 @@ onMounted(() => {
     }
   )
   timeoutId = setTimeout(() => {
-    void router.replace({ path: '/login', query: { status: 'callback_failed' } })
+    console.error(
+      `[auth-callback] timed out after ${CALLBACK_TIMEOUT_MS}ms — Supabase session never populated`
+    )
+    void router.replace({
+      path: '/login',
+      query: { status: 'callback_failed', reason: 'timeout' }
+    })
   }, CALLBACK_TIMEOUT_MS)
 })
 
