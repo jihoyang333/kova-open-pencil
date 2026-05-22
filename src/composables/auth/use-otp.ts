@@ -1,5 +1,5 @@
 import { computed, ref } from 'vue'
-import type { Ref } from 'vue'
+import type { ComputedRef, Ref } from 'vue'
 
 import { supabase } from '@/lib/supabase'
 
@@ -19,8 +19,8 @@ const MAX_ATTEMPTS = 5
 export function useOtp(email: string): {
   digits: Ref<string[]>
   submit: () => Promise<SubmitResult>
-  attemptsLeft: ReturnType<typeof computed<number>>
-  locked: ReturnType<typeof computed<boolean>>
+  attemptsLeft: ComputedRef<number>
+  locked: ComputedRef<boolean>
   reset: () => void
 } {
   const digits = ref<string[]>(['', '', '', '', '', ''])
@@ -38,7 +38,7 @@ export function useOtp(email: string): {
 
     if (error) {
       attempts.value++
-      if (error.message?.toLowerCase().includes('expired')) return { ok: false, reason: 'expired' }
+      if (error.message.toLowerCase().includes('expired')) return { ok: false, reason: 'expired' }
       return { ok: false, reason: attempts.value >= MAX_ATTEMPTS ? 'locked_out' : 'wrong_code' }
     }
     return { ok: true }

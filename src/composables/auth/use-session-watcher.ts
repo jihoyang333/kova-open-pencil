@@ -22,7 +22,7 @@ export function useSessionWatcher(): void {
       const route = router.currentRoute.value
       const routeName = typeof route.name === 'string' ? route.name : null
       if (routeName && SAFE_SIGNED_OUT_ROUTES.has(routeName)) return
-      if (!route.meta?.requiresAuth) return
+      if (!route.meta.requiresAuth) return
 
       void router.push({
         name: 'auth-session-expired',

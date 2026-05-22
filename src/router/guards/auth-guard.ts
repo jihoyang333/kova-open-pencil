@@ -1,5 +1,6 @@
 import type { NavigationGuard } from 'vue-router'
 
+import { IS_BROWSER } from '@/constants'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/auth'
 
@@ -19,7 +20,7 @@ export const authGuard: NavigationGuard = async (to) => {
   // 1. Viewport
   if (
     to.meta.viewportGuard === 'desktop' &&
-    typeof window !== 'undefined' &&
+    IS_BROWSER &&
     window.innerWidth < DESKTOP_MIN &&
     to.name !== 'desktop-only'
   ) {

@@ -1,4 +1,5 @@
 import { computed, onUnmounted, ref } from 'vue'
+import type { ComputedRef } from 'vue'
 
 import { supabase } from '@/lib/supabase'
 
@@ -17,7 +18,7 @@ const COOLDOWN_SECONDS = 60
 
 export function useMagicLink(): {
   send: (email: string) => Promise<SendResult>
-  cooldown: ReturnType<typeof computed<number>>
+  cooldown: ComputedRef<number>
 } {
   const lastSentAt = ref<number | null>(null)
   const now = ref(Date.now())
@@ -47,7 +48,7 @@ export function useMagicLink(): {
     })
     if (error) {
       if (error.status === 429) return { ok: false, reason: 'rate_limited' }
-      if (error.message?.toLowerCase().includes('invalid')) return { ok: false, reason: 'invalid_email' }
+      if (error.message.toLowerCase().includes('invalid')) return { ok: false, reason: 'invalid_email' }
       return { ok: false, reason: 'unknown' }
     }
     lastSentAt.value = Date.now()

@@ -1,4 +1,5 @@
 import { computed, onUnmounted, ref } from 'vue'
+import type { ComputedRef } from 'vue'
 
 import { useAuthStore } from '@/stores/auth'
 
@@ -14,7 +15,7 @@ const COOLDOWN_SECONDS = 3600
 
 export function useEmailChange(): {
   requestChange: (newEmail: string) => Promise<Result>
-  cooldown: ReturnType<typeof computed<number>>
+  cooldown: ComputedRef<number>
 } {
   const auth = useAuthStore()
   const lastSentAt = ref<number | null>(null)

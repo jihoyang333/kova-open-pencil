@@ -1,4 +1,5 @@
 import { computed } from 'vue'
+import type { ComputedRef } from 'vue'
 
 import { useAuthStore } from '@/stores/auth'
 
@@ -9,8 +10,8 @@ import { useAuthStore } from '@/stores/auth'
 export function useAccountDeletion(): {
   requestDeletion: () => Promise<void>
   restoreAccount: () => Promise<boolean>
-  pending: ReturnType<typeof computed<boolean>>
-  scheduledPurgeAt: ReturnType<typeof computed<string | null>>
+  pending: ComputedRef<boolean>
+  scheduledPurgeAt: ComputedRef<string | null>
 } {
   const auth = useAuthStore()
   return {
