@@ -10,7 +10,7 @@ describe('resolveGuard', () => {
   test('redirects unauthenticated users to /login for protected routes', () => {
     const result = resolveGuard(
       { meta: { requiresAuth: true, requiresOnboarding: true }, path: '/dashboard' },
-      unauthed,
+      unauthed
     )
     expect(result).toBe('/login')
   })
@@ -18,7 +18,7 @@ describe('resolveGuard', () => {
   test('redirects authenticated users away from /login', () => {
     const result = resolveGuard(
       { meta: { requiresAuth: false, publicOnly: true }, path: '/login' },
-      authed,
+      authed
     )
     expect(result).toBe('/dashboard')
   })
@@ -26,7 +26,7 @@ describe('resolveGuard', () => {
   test('redirects authenticated users away from /signup', () => {
     const result = resolveGuard(
       { meta: { requiresAuth: false, publicOnly: true }, path: '/signup' },
-      authed,
+      authed
     )
     expect(result).toBe('/dashboard')
   })
@@ -34,15 +34,18 @@ describe('resolveGuard', () => {
   test('redirects non-onboarded users to /onboarding', () => {
     const result = resolveGuard(
       { meta: { requiresAuth: true, requiresOnboarding: true }, path: '/dashboard' },
-      authedNotOnboarded,
+      authedNotOnboarded
     )
     expect(result).toBe('/onboarding')
   })
 
   test('redirects onboarded users away from /onboarding', () => {
     const result = resolveGuard(
-      { meta: { requiresAuth: true, requiresOnboarding: false, onboardingOnly: true }, path: '/onboarding' },
-      authed,
+      {
+        meta: { requiresAuth: true, requiresOnboarding: false, onboardingOnly: true },
+        path: '/onboarding'
+      },
+      authed
     )
     expect(result).toBe('/dashboard')
   })
@@ -50,7 +53,7 @@ describe('resolveGuard', () => {
   test('allows access to /demo regardless of auth state', () => {
     const result = resolveGuard(
       { meta: { demo: true, requiresAuth: false, publicOnly: false }, path: '/demo' },
-      unauthed,
+      unauthed
     )
     expect(result).toBe(true)
   })
@@ -58,7 +61,7 @@ describe('resolveGuard', () => {
   test('allows authenticated onboarded users to access protected routes', () => {
     const result = resolveGuard(
       { meta: { requiresAuth: true, requiresOnboarding: true }, path: '/dashboard' },
-      authed,
+      authed
     )
     expect(result).toBe(true)
   })
@@ -66,7 +69,7 @@ describe('resolveGuard', () => {
   test('allows unauthenticated users to access public-only routes', () => {
     const result = resolveGuard(
       { meta: { requiresAuth: false, publicOnly: true }, path: '/login' },
-      unauthed,
+      unauthed
     )
     expect(result).toBe(true)
   })
@@ -74,7 +77,7 @@ describe('resolveGuard', () => {
   test('non-onboarded user redirected from /editor to /onboarding', () => {
     const result = resolveGuard(
       { meta: { requiresAuth: true, requiresOnboarding: true }, path: '/editor/some-id' },
-      authedNotOnboarded,
+      authedNotOnboarded
     )
     expect(result).toBe('/onboarding')
   })
@@ -82,25 +85,58 @@ describe('resolveGuard', () => {
   test('onboarded user can access /editor', () => {
     const result = resolveGuard(
       { meta: { requiresAuth: true, requiresOnboarding: true }, path: '/editor/some-id' },
-      authed,
+      authed
     )
     expect(result).toBe(true)
   })
 
   test('non-onboarded user can access /onboarding', () => {
     const result = resolveGuard(
-      { meta: { requiresAuth: true, requiresOnboarding: false, onboardingOnly: true }, path: '/onboarding' },
-      authedNotOnboarded,
+      {
+        meta: { requiresAuth: true, requiresOnboarding: false, onboardingOnly: true },
+        path: '/onboarding'
+      },
+      authedNotOnboarded
     )
     expect(result).toBe(true)
   })
 
   test('unauthenticated user redirected from /onboarding to /login', () => {
     const result = resolveGuard(
-      { meta: { requiresAuth: true, requiresOnboarding: false, onboardingOnly: true }, path: '/onboarding' },
-      unauthed,
+      {
+        meta: { requiresAuth: true, requiresOnboarding: false, onboardingOnly: true },
+        path: '/onboarding'
+      },
+      unauthed
     )
     expect(result).toBe('/login')
+  })
+
+  test('desktopOnly route redirects to /mobile-fallback on phone viewport', () => {
+    const result = resolveGuard(
+      { meta: { requiresAuth: false, publicOnly: true, desktopOnly: true }, path: '/login' },
+      unauthed,
+      { isDesktop: false }
+    )
+    expect(result).toBe('/mobile-fallback')
+  })
+
+  test('desktopOnly route allowed on desktop viewport', () => {
+    const result = resolveGuard(
+      { meta: { requiresAuth: false, publicOnly: true, desktopOnly: true }, path: '/login' },
+      unauthed,
+      { isDesktop: true }
+    )
+    expect(result).toBe(true)
+  })
+
+  test('viewport check skipped when meta.desktopOnly is not set', () => {
+    const result = resolveGuard(
+      { meta: { requiresAuth: false, publicOnly: true }, path: '/login' },
+      unauthed,
+      { isDesktop: false }
+    )
+    expect(result).toBe(true)
   })
 })
 
