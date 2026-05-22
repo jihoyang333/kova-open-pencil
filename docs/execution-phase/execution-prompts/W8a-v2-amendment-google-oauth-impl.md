@@ -1,6 +1,13 @@
 # W8a Amendment — Google OAuth Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` (recommended) or `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+>
+> **Do NOT use `superpowers:subagent-driven-development` for Phase 2-10 mechanical TDD.** This plan already carries inline code skeletons, file paths, and test cases per task — per-task subagent dispatch wastes budget on redundant doc re-reads (each subagent re-loads the 15 mandatory docs cold). Direct in-session TDD execution is faster + tighter for this plan shape.
+>
+> **Reserve subagent dispatch for the named roles in §4 only:**
+> - Phase 11 — `security-auditor` + `e2e-runner` (independent OAuth security review + Playwright artifact capture)
+> - Phase 12 — `superpowers:code-reviewer` (full-diff sweep)
+> - Phase 5+ — `vue-expert` / `typescript-pro` only when you hit a genuine edge case that warrants independent judgment (reactivity bug, OAuth discriminated-union typing). Do not dispatch reflexively per phase.
 
 **Goal:** Ship the Vue auth surface for W8a Cluster 01 with Google OAuth grafted onto the already-shipped magic-link + OTP backend. After this plan completes, c01 is done and the founder advances to W8b.
 
