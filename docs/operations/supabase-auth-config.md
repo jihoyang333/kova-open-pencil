@@ -109,6 +109,49 @@ This configuration interacts with these env vars (server-only — NEVER `VITE_` 
 
 ---
 
+## OAuth providers
+
+### Google OAuth (W8a Cluster 01 amendment §3.6)
+
+Configure via Supabase Studio → Authentication → Providers → Google.
+
+#### Google Cloud Console pre-flight (founder, one-time per environment)
+
+1. Create or select a project at https://console.cloud.google.com/
+2. APIs & Services → OAuth consent screen → publish app (External, with brand + support contact)
+3. Credentials → Create OAuth 2.0 Client ID → Application type: **Web application**
+4. Authorized JavaScript origins:
+   - `https://app.kova.io` (production)
+   - `http://localhost:1420` (local dev)
+5. Authorized redirect URIs (paste the Supabase callback URL — the one
+   shown in the Supabase Studio Google provider settings; it looks like
+   `https://<project-ref>.supabase.co/auth/v1/callback`).
+6. Copy the **Client ID** + **Client secret** into the Supabase Studio
+   Google provider configuration. Do **NOT** put either value in `.env`
+   or in `src/` — Supabase stores the secret server-side.
+
+#### Supabase Studio checklist (per environment)
+
+- [ ] Google provider enabled (toggle on)
+- [ ] Client ID populated from the Cloud Console
+- [ ] Client Secret populated from the Cloud Console
+- [ ] "Skip nonce checks" stays **off** (PKCE handles this)
+- [ ] Redirect allowlist (Authentication → URL Configuration → Redirect URLs)
+      contains `https://app.kova.io/auth/callback` and
+      `http://localhost:1420/auth/callback`
+
+#### Verification
+
+- [ ] On `/signup`, the "Sign up with Google" button opens the Google consent
+      screen, completes the round-trip, and lands at `/onboarding` for new
+      users (or `/dashboard` for returning users with brands).
+- [ ] On `/login`, the "Sign in with Google" button routes a returning user
+      to `/dashboard`.
+- [ ] No `client_secret` or `GOOGLE_CLIENT_SECRET` literal exists in `src/`
+      (`grep -r 'client_secret\\|GOOGLE_CLIENT' src/` returns nothing).
+
+---
+
 **Last applied — local:** TODO
 **Last applied — staging:** TODO
 **Last applied — production:** TODO
