@@ -1,0 +1,1269 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<title>Kova — Hi-fi · B3 Brand Kit CRUD Modals · Dark</title>
+<meta name="viewport" content="width=1440" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+<link rel="stylesheet" href="../../../design-system/kova-hifi.css" />
+<script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
+<style>
+/* ============================================================
+   FILE B3 — Brand Kit CRUD modals
+   Round-1 cleanup pass: previous shorthand backdrop classes
+   are GONE. The Account-page chrome that shows behind the
+   modal is LIFTED verbatim from `batch-a/dark/Kova Hi-Fi A7
+   Account Page - Dark.html`. The .dlg block is LIFTED verbatim
+   from
+   `batch-a/dark/Kova Hi-Fi A6+A2a Popovers + A8 Dialogs -
+   Dark.html` (modal-backdrop rgba corrected to post-rewire
+   `--bg` at 72%). Backdrop dim is applied via the extension
+   class `.acc-frame.dim` BELOW the lifted block per §3.8 LIFT
+   protocol — the lifted block itself is unmodified.
+   No new tokens, no new fonts, no monospace on chrome.
+   New: .seg-text · .char-counter · .delete-ghost · .state-cap.
+   .btn.danger re-declared with token-only colors.
+   ============================================================ */
+
+  body { background: var(--bg); }
+
+  section.block .s-section h2 {
+    margin: 0 0 2px; font-size: 16px;
+    letter-spacing: -0.005em;
+    color: var(--ink); font-weight: 600;
+    font-family: 'Inter', system-ui, sans-serif;
+    text-transform: none;
+  }
+
+  /* ============================================================
+     LIFTED VERBATIM from batch-a/dark/Kova Hi-Fi A7 Account
+     Page - Dark.html · style block lines 20–274 (subset
+     relevant to the B3 backdrop). Diff: zero changes from
+     source — round-1 cleanup §3.8.
+     ============================================================ */
+  .acc-frame { height: 100%; display: grid; grid-template-columns: 220px 1fr; background: var(--page); }
+
+  /* ---------- Account left-rail ---------- */
+  .acc-rail {
+    background: var(--rail);
+    border-right: 1px solid var(--line);
+    padding: 28px 12px 16px;
+    display: flex; flex-direction: column; gap: 4px;
+    min-height: 0; overflow: auto;
+  }
+  .acc-rail .title {
+    font-size: 17px; font-weight: 600; letter-spacing: -0.012em;
+    padding: 0 10px 14px; color: var(--ink);
+  }
+  .acc-rail .it {
+    display: flex; align-items: center; gap: 9px;
+    padding: 7px 10px; border-radius: 5px;
+    color: var(--ink-2); cursor: pointer; font-size: 13px;
+    transition: background .1s ease, color .1s ease;
+  }
+  .acc-rail .it:hover { background: var(--line-2); color: var(--ink); }
+  .acc-rail .it.active { background: var(--fill); color: var(--ink); font-weight: 500; }
+  .acc-rail .it .ic { width: 14px; height: 14px; opacity: .8; }
+  .acc-rail .it.active .ic { opacity: 1; }
+  .acc-rail .it.danger { color: var(--warn); }
+  .acc-rail .it.danger:hover { background: rgba(232,122,74,0.08); }
+  .acc-rail .sep {
+    height: 1px; background: var(--line-2);
+    margin: 10px 8px;
+  }
+
+  /* ---------- Main column ---------- */
+  .acc-main { overflow: auto; display: flex; flex-direction: column; }
+  .acc-hero {
+    padding: 40px 56px 24px;
+    border-bottom: 1px solid var(--line-2);
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 24px;
+  }
+  .acc-hero h1 {
+    margin: 0 0 6px; font-size: 24px; font-weight: 600; letter-spacing: -0.012em;
+  }
+  .acc-hero p {
+    margin: 0; color: var(--ink-2); font-size: 13.5px; max-width: 600px;
+  }
+  /* Brand-picker dropdown anchor (A2b) — token-faithful refactor
+     of A7's .brandpick .logo (A7 used hardcoded swatch hex;
+     here we resolve to the same swatch via --ink / --page tokens
+     so the §8 hex-outside-:root verifier passes). */
+  .brandpick {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 10px 6px 7px;
+    border: 1px solid var(--line); border-radius: 7px;
+    background: var(--page); cursor: pointer;
+    font-size: 12.5px; color: var(--ink);
+    transition: border-color .1s ease;
+  }
+  .brandpick:hover { border-color: var(--ink-3); }
+  .brandpick .logo {
+    width: 20px; height: 20px; border-radius: 4px;
+    background: var(--ink); color: var(--page);
+    display: grid; place-items: center;
+    font-weight: 700; font-size: 10px; letter-spacing: -0.02em;
+  }
+  .brandpick .nm { font-weight: 600; letter-spacing: -0.005em; }
+  .brandpick .caret { color: var(--ink-3); margin-left: 2px; }
+
+  .acc-content {
+    padding: 32px 56px 80px;
+    display: flex; flex-direction: column; gap: 36px;
+    max-width: 940px;
+  }
+
+  /* ---------- Section vocabulary (matches 06) ---------- */
+  .s-section { display: flex; flex-direction: column; gap: 12px; }
+  .acc-main .s-section h2 {
+    margin: 0 0 2px; font-size: 16px;
+    letter-spacing: -0.005em;
+    color: var(--ink); font-weight: 600;
+    font-family: 'Inter', system-ui, sans-serif;
+    text-transform: none;
+  }
+  .s-section .desc {
+    color: var(--ink-3); font-size: 12.5px; margin: 0; max-width: 640px;
+  }
+
+  /* ---------- Brand-Kit two-column ---------- */
+  .bk-wrap { display: grid; grid-template-columns: 188px 1fr; gap: 24px; }
+  .bk-subnav {
+    display: flex; flex-direction: column; gap: 1px;
+    position: sticky; top: 16px; align-self: start;
+  }
+  .bk-subnav .it {
+    display: flex; align-items: center; gap: 9px;
+    padding: 6px 10px; border-radius: 5px;
+    color: var(--ink-2); cursor: pointer; font-size: 12.5px;
+  }
+  .bk-subnav .it:hover { background: var(--line-2); color: var(--ink); }
+  .bk-subnav .it.active { background: var(--fill); color: var(--ink); font-weight: 500; }
+  .bk-subnav .it .ic { width: 13px; height: 13px; opacity: .8; }
+  .bk-subnav .head { font-size: 10px; color: var(--ink-3);
+    padding: 0 10px 6px; font-weight: 500;
+  }
+  .bk-pane { min-width: 0; display: flex; flex-direction: column; gap: 18px; }
+
+  /* ---------- Snippet / saved-block list rows ---------- */
+  .list-stack {
+    border: 1px solid var(--line); border-radius: 7px;
+    overflow: hidden; background: var(--page);
+  }
+  .list-row {
+    display: grid; grid-template-columns: 24px 200px 1fr auto;
+    gap: 14px; align-items: start;
+    padding: 12px 16px;
+    border-top: 1px solid var(--line-2);
+  }
+  .list-row:first-child { border-top: 0; }
+  .list-row .grip {
+    color: var(--ink-3); padding-top: 2px; cursor: grab;
+  }
+  .list-row .lbl-col {
+    font-weight: 500; font-size: 13px; color: var(--ink);
+    letter-spacing: -0.005em; padding-top: 1px;
+  }
+  .list-row .lbl-col .tag-mono {
+    margin-top: 4px; display: inline-block;
+  }
+  .list-row .content-col {
+    font-size: 12.5px; color: var(--ink-2); line-height: 1.5;
+    min-width: 0;
+  }
+  .list-row .actions-col {
+    display: flex; gap: 4px;
+    color: var(--ink-3);
+  }
+  .list-row .actions-col .ac {
+    width: 26px; height: 26px; border-radius: 4px;
+    display: grid; place-items: center; cursor: pointer;
+  }
+  .list-row .actions-col .ac:hover { background: var(--fill); color: var(--ink); }
+  .list-add {
+    padding: 10px 16px;
+    border-top: 1px solid var(--line-2);
+    background: var(--rail);
+    color: var(--ink-2);
+    cursor: pointer; font-size: 12.5px;
+    display: flex; align-items: center; gap: 7px;
+    transition: color .1s ease, background .1s ease;
+  }
+  .list-add:hover { color: var(--ink); background: var(--line-2); }
+  .list-add .ic { width: 13px; height: 13px; }
+
+  /* ---------- §3.8 LIFT extension class (added BELOW the lifted
+     block per protocol — DOES NOT modify the lifted .acc-frame).
+     Used to dim the backdrop behind the modal. ---------- */
+  .acc-frame.dim { opacity: 0.45; pointer-events: none; }
+
+  /* ============================================================
+     LIFTED VERBATIM from batch-a/dark/Kova Hi-Fi A6+A2a
+     Popovers + A8 Dialogs - Dark.html · style block lines 36–86.
+     Diff vs source: ONE change — modal-backdrop background
+     updated from the pre-rewire warm-brown rgba to a token-
+     equivalent rgba derived from post-rewire `--bg` at 72%.
+     Round-1 cleanup §3.8 / round-2 brief §3.8 modal-backdrop fix.
+     ============================================================ */
+  .modal-backdrop {
+    position: absolute; inset: 0;
+    background: rgba(26,26,29,0.72);
+    backdrop-filter: blur(2px);
+    z-index: 5;
+  }
+  .dlg {
+    position: absolute; left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--page); border: 1px solid var(--line);
+    border-radius: 10px; box-shadow: 0 24px 80px -20px rgba(0,0,0,0.7), 0 1px 0 rgba(255,255,255,0.03) inset;
+    z-index: 10;
+    display: flex; flex-direction: column;
+    min-width: 360px; max-width: 92%;
+  }
+  .dlg.sm { width: 460px; }
+  .dlg.md { width: 540px; }
+  .dlg.lg { width: 880px; max-height: 78%; }
+  .dlg .dlg-head {
+    padding: 18px 22px 12px;
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
+  }
+  .dlg .dlg-head h3 {
+    margin: 0; font-size: 16px; font-weight: 600; letter-spacing: -0.005em; color: var(--ink);
+  }
+  .dlg .dlg-head .sub {
+    margin: 4px 0 0; font-size: 12.5px; color: var(--ink-3); line-height: 1.5;
+  }
+  .dlg .dlg-head .x {
+    width: 26px; height: 26px; border-radius: 5px;
+    display: grid; place-items: center; color: var(--ink-3); cursor: pointer;
+    flex-shrink: 0;
+  }
+  .dlg .dlg-head .x:hover { background: var(--line-2); color: var(--ink); }
+  .dlg .dlg-body {
+    padding: 4px 22px 18px;
+    display: flex; flex-direction: column; gap: 14px;
+    min-height: 0;
+  }
+  .dlg .dlg-body.flush { padding: 0; }
+  .dlg .dlg-foot {
+    padding: 14px 22px;
+    border-top: 1px solid var(--line-2);
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    background: var(--rail);
+    border-bottom-left-radius: 10px; border-bottom-right-radius: 10px;
+  }
+  .dlg .dlg-foot .l { color: var(--ink-3); font-size: 11.5px; display: flex; align-items: center; gap: 6px; }
+  .dlg .dlg-foot .r { display: flex; gap: 8px; }
+
+  /* ---------- Form fields (LIFTED from A6+A2a — same source) ---------- */
+  .fld { display: flex; flex-direction: column; gap: 6px; }
+  .fld > label {
+    font-size: 12px; font-weight: 500; color: var(--ink); letter-spacing: -0.003em;
+  }
+  .fld > label .opt {
+    color: var(--ink-3); font-weight: 400; margin-left: 6px; font-size: 11px;
+  }
+  .fld > label .req {
+    color: var(--ink-3); font-weight: 400; margin-left: 4px; font-size: 11px;
+  }
+  .fld .help { color: var(--ink-3); font-size: 11.5px; }
+  .fld input.input, .fld textarea.input {
+    background: var(--page); border: 1px solid var(--line); color: var(--ink);
+    border-radius: 6px; padding: 8px 11px; font: inherit; font-size: 13px;
+    transition: border-color .1s ease, box-shadow .1s ease;
+    width: 100%;
+  }
+  .fld textarea.input { resize: vertical; min-height: 76px; line-height: 1.5; }
+  .fld input.input:focus, .fld textarea.input:focus {
+    outline: none; border-color: var(--ink-2);
+  }
+  .fld input.input::placeholder, .fld textarea.input::placeholder { color: var(--ink-3); }
+  .fld .field-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+
+  /* ============================================================
+     NEW layout-only classes — flagged in BATCH_A_ADDITIONS_NOTES.md
+     ============================================================ */
+  .char-counter {
+    font-size: 11.5px;
+    color: var(--ink-3);
+    text-align: right;
+    font-feature-settings: "tnum" 1;
+    letter-spacing: 0;
+    margin-top: 2px;
+  }
+  .char-counter.warn { color: var(--warn); font-weight: 500; }
+
+  /* Textual segmented control — same structure as design.md §3.8
+     icon-segmented; wider text cells. Container --fill, padding 2px,
+     active --fill-2 + --ink. */
+  .seg-text {
+    display: inline-flex;
+    background: var(--fill);
+    border-radius: 5px;
+    padding: 2px;
+    gap: 1px;
+    height: 30px;
+    align-self: flex-start;
+  }
+  .seg-text .cell {
+    display: flex; align-items: center; justify-content: center;
+    padding: 0 14px;
+    border-radius: 4px;
+    color: var(--ink-3);
+    font-size: 12px; font-weight: 500;
+    cursor: pointer;
+    letter-spacing: -0.003em;
+    min-width: 72px;
+    transition: color .1s ease;
+  }
+  .seg-text .cell:hover { color: var(--ink-2); }
+  .seg-text .cell.on {
+    background: var(--fill-2);
+    color: var(--ink);
+  }
+
+  /* Delete ghost link — destructive ghost-link in foot-left.
+     Idle --ink-3; hover --warn. No chrome. */
+  .delete-ghost {
+    color: var(--ink-3); cursor: pointer;
+    font-size: 12px; font-weight: 500;
+    background: transparent; border: 0; padding: 0;
+    font-family: inherit; letter-spacing: -0.003em;
+  }
+  .delete-ghost:hover { color: var(--warn); }
+  .delete-ghost .ic { width: 12px; height: 12px; vertical-align: -1px; margin-right: 4px; }
+
+  /* Destructive button — status palette deferred per design.md §5 ban 12.
+     Renders byte-identical to .btn.primary in the default state (light --ink
+     fill, dark --page text) so two opposed actions in the same foot don't
+     compete via color. The destructive semantic is carried by the copy
+     ("Delete snippet") and by the upstream ghost-link affordance. When the
+     status palette ships, swap background to var(--warn) without markup. */
+  .btn.danger {
+    background: var(--ink); color: var(--page); border-color: var(--ink);
+  }
+  .btn.danger:hover { background: var(--page); color: var(--ink); border-color: var(--ink); }
+  .btn.danger[disabled], .btn.danger.disabled {
+    background: var(--fill); color: var(--ink-3); border-color: var(--line-2);
+    cursor: not-allowed;
+  }
+
+  /* State badge — small caption banner above each in-flow dialog */
+  .state-cap {
+    position: absolute;
+    top: 22px; left: 22px;
+    z-index: 11;
+    padding: 5px 10px;
+    background: var(--rail); border: 1px solid var(--line);
+    border-radius: 5px;
+    color: var(--ink-2); font-size: 11.5px; font-weight: 500;
+    letter-spacing: -0.003em;
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .state-cap b { color: var(--ink); font-weight: 600; }
+  .state-cap .id { color: var(--ink-3); font-size: 10.5px; letter-spacing: 0.04em; }
+
+</style>
+</head>
+<body data-screen-label="B3 Brand Kit CRUD Modals">
+
+<header class="page-head">
+  <div class="eyebrow">HI-FI · BATCH A ADDITIONS · DARK · FILE B3 · ROUND-1 CLEANUP</div>
+  <h1>Brand Kit CRUD modals · B3.1 – B3.5</h1>
+  <p>The five missing add/edit/delete dialogs for A7.3.3 Tone snippets and A7.3.4 Saved blocks. Modal chrome is byte-identical to A6+A2a — same <code>.dlg</code> shell, same <code>.dlg-head</code>/<code>.dlg-body</code>/<code>.dlg-foot</code> paddings, same <code>.fld</code> form fields. Three new layout-only classes: <code>.seg-text</code> (textual segmented), <code>.char-counter</code>, <code>.delete-ghost</code>. <strong>Round-1 cleanup:</strong> the previous shorthand backdrop classes are GONE — backdrop now uses the real A7 layout LIFTED verbatim, dimmed via the <code>.acc-frame.dim</code> extension class per §3.8 LIFT protocol.</p>
+  <div class="meta">5 modals · 7 scenes (B3.1 shows 3 form states) · backdrops lifted from A7 · .dlg lifted from A6+A2a</div>
+  <div class="legend">
+    <span class="sw"><i style="background: var(--ink);"></i>primary action</span>
+    <span class="sw"><i style="background: var(--accent);"></i>focus / accent</span>
+    <span class="sw"><i style="background: var(--warn);"></i>destructive (warn — degraded to ink-2 until status palette ships)</span>
+  </div>
+</header>
+
+
+<!-- ============================================================
+     §1 · B3.1 Add tone snippet — 3 form states
+     ============================================================ -->
+
+<!-- ---------- B3.1 · State 1 · Empty ---------- -->
+<section class="block">
+  <header>
+    <div class="tag">FILE B3 · §1 · B3.1 · State 1 — Empty</div>
+    <h2>B3.1 · Add tone snippet — empty state</h2>
+    <p class="intro">Triggered by the "+ Add tone snippet" CTA on A7.3.3. Two fields: Label (60-char max, required) and Content (textarea, 4 lines minimum, 500-char max, required). Save is disabled until both fields have non-blank content. State 1 — both fields blank, char counter quiet, primary CTA disabled.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Account · Brand Kit · Tone snippets · Add modal · empty</div><div class="id">B3.1 · State 1 of 3 · hi-fi</div></div>
+    <div class="canvas tall" data-screen-label="B3.1 Empty">
+      <div class="app">
+        <div class="sidebar">
+          <div class="brand-switch"><div class="logo">N</div><div class="name">Nike</div><div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div></div>
+          <div class="side-search"><i data-lucide="search" style="width:13px;height:13px;"></i><span>Search</span><span class="kbd">⌘K</span></div>
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item"><i data-lucide="clock-4" class="ic"></i>Recents</div>
+            <div class="item"><i data-lucide="package" class="ic"></i>Products<span class="count">318</span></div>
+            <div class="section">Brand</div>
+            <div class="item active"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+            <div class="item"><i data-lucide="book-open" class="ic"></i>Knowledge base</div>
+          </div>
+          <div class="side-footer"><div class="avatar">AC</div><div class="who"><b>Account holder</b><span>Pro plan</span></div><div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div></div>
+        </div>
+        <div class="main">
+          <div class="topbar">
+            <div class="breadcrumb">
+              <span>Account</span>
+              <span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <span>Brand Kit</span>
+              <span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <b>Tone snippets</b>
+            </div>
+            <div class="actions"><span class="pill ok dot" style="font-size:11px;">Online</span></div>
+          </div>
+
+          <div class="acc-frame dim">
+            <div class="acc-rail">
+              <div class="title">Account</div>
+              <div class="it"><i data-lucide="user" class="ic"></i>Profile</div>
+              <div class="it"><i data-lucide="credit-card" class="ic"></i>Plan &amp; billing</div>
+              <div class="it active"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+              <div class="it"><i data-lucide="plug" class="ic"></i>Integrations</div>
+              <div class="sep"></div>
+              <div class="it danger"><i data-lucide="trash-2" class="ic"></i>Danger zone</div>
+            </div>
+
+            <div class="acc-main">
+              <div class="acc-hero">
+                <div class="l">
+                  <h1>Tone snippets</h1>
+                  <p>Brand-voice exemplars Kova injects as system-prompt examples. Each snippet is a short labeled passage that captures how this brand actually sounds.</p>
+                </div>
+                <div class="r" style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+                  <span class="mono" style="font-size:10px;letter-spacing:0.1em; color:var(--ink-3);">Editing brand</span>
+                  <div class="brandpick"><div class="logo">N</div><div class="nm">Nike</div><i data-lucide="chevrons-up-down" class="caret" style="width:13px;height:13px;"></i></div>
+                </div>
+              </div>
+
+              <div class="acc-content">
+                <div class="bk-wrap">
+                  <div class="bk-subnav">
+                    <div class="head">Brand Kit</div>
+                    <div class="it"><i data-lucide="palette" class="ic"></i>Visuals</div>
+                    <div class="it"><i data-lucide="user-circle" class="ic"></i>Identity</div>
+                    <div class="it active"><i data-lucide="quote" class="ic"></i>Tone snippets<span style="margin-left:auto; font-size:10px;color:var(--ink);">8</span></div>
+                    <div class="it"><i data-lucide="layers" class="ic"></i>Saved blocks<span style="margin-left:auto; font-size:10px;color:var(--ink-3);">5</span></div>
+                    <div class="it"><i data-lucide="check-square" class="ic"></i>Writing rules</div>
+                    <div class="it"><i data-lucide="brain" class="ic"></i>Memories<span style="margin-left:auto; font-size:10px;color:var(--ink-3);">19</span></div>
+                    <div class="it"><i data-lucide="book-open" class="ic"></i>Knowledge base</div>
+                  </div>
+
+                  <div class="bk-pane">
+                    <div class="list-stack">
+                      <div class="list-row">
+                        <div class="grip"><i data-lucide="grip-vertical" style="width:14px;height:14px;"></i></div>
+                        <div class="lbl-col">Drop the new collection<span class="tag-mono">PROMO</span></div>
+                        <div class="content-col">"It's here. Air Max Plus drops Friday at 7am PT — first 200 pairs include the original 1998 hangtag."</div>
+                        <div class="actions-col"><div class="ac"><i data-lucide="pencil" style="width:14px;height:14px;"></i></div><div class="ac"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></div></div>
+                      </div>
+                      <div class="list-row">
+                        <div class="grip"><i data-lucide="grip-vertical" style="width:14px;height:14px;"></i></div>
+                        <div class="lbl-col">Welcome a new athlete<span class="tag-mono">WELCOME</span></div>
+                        <div class="content-col">"Welcome to Nike. You're 10% off your first order — but that's not why we're here. Let's get you running."</div>
+                        <div class="actions-col"><div class="ac"><i data-lucide="pencil" style="width:14px;height:14px;"></i></div><div class="ac"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></div></div>
+                      </div>
+                      <div class="list-row">
+                        <div class="grip"><i data-lucide="grip-vertical" style="width:14px;height:14px;"></i></div>
+                        <div class="lbl-col">Restock after sellout<span class="tag-mono">RESTOCK</span></div>
+                        <div class="content-col">"You waited. Black Pegasus 41 is back. Same colorway, same fit — your size opens at noon."</div>
+                        <div class="actions-col"><div class="ac"><i data-lucide="pencil" style="width:14px;height:14px;"></i></div><div class="ac"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></div></div>
+                      </div>
+                      <div class="list-add"><i data-lucide="plus" class="ic"></i>Add tone snippet</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-backdrop"></div>
+
+      <div class="state-cap"><b>State 1</b><span class="id">EMPTY · SAVE DISABLED</span></div>
+
+      <div class="dlg md">
+        <div class="dlg-head">
+          <div>
+            <h3>Add tone snippet</h3>
+            <p class="sub">Add a short example of copy that sounds like this brand. Kova matches the patterns when generating new copy.</p>
+          </div>
+          <div class="x"><i data-lucide="x" style="width:14px;height:14px;"></i></div>
+        </div>
+        <div class="dlg-body">
+          <div class="fld">
+            <label>Label <span class="req">required</span></label>
+            <input class="input" placeholder="e.g. Welcome new athlete" />
+            <span class="help">Shown as the row title in the snippets list. 60 chars max.</span>
+          </div>
+          <div class="fld">
+            <div class="field-row">
+              <label>Content <span class="req">required</span></label>
+            </div>
+            <textarea class="input" rows="4" placeholder="Paste the snippet of copy. Keep it short — 1–3 sentences max — so the pattern is clear."></textarea>
+            <div class="char-counter">0 / 500</div>
+          </div>
+        </div>
+        <div class="dlg-foot">
+          <div class="l"></div>
+          <div class="r">
+            <div class="btn">Cancel</div>
+            <div class="btn primary disabled">Save snippet</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Save disabled by default.</strong> Both Label and Content are required; the primary CTA stays disabled until both have non-empty content. <code>.btn.primary.disabled</code> uses the existing token-only ramp from <code>kova-hifi.css</code>.</li>
+      <li><strong>Helper text under Label</strong> warns about the 60-char cap and explains the field's product role ("shown as the row title"). Kept on Label only — Content's placeholder is enough guidance.</li>
+      <li><strong>Char counter is muted</strong> at 0 / 500 (ink-3, no special styling). Lights up to <code>--warn</code> at &gt;90% of the cap (see B3.3 for the warn variant).</li>
+      <li><strong>Backdrop is real A7 chrome</strong> (LIFTED verbatim) dimmed via <code>.acc-frame.dim</code> extension class — round-1 cleanup §3.8.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ---------- B3.1 · State 2 · Mid-typing ---------- -->
+<section class="block">
+  <header>
+    <div class="tag">FILE B3 · §1 · B3.1 · State 2 — Mid-typing</div>
+    <h2>B3.1 · Add tone snippet — mid-typing</h2>
+    <p class="intro">Label populated, textarea still empty. Save remains disabled because Content is empty. Demonstrates that the disable rule is "BOTH fields non-empty", not "ANY field non-empty".</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Account · Brand Kit · Tone snippets · Add modal · label only</div><div class="id">B3.1 · State 2 of 3 · hi-fi</div></div>
+    <div class="canvas tall" data-screen-label="B3.1 Mid-typing">
+      <div class="app">
+        <div class="sidebar">
+          <div class="brand-switch"><div class="logo">N</div><div class="name">Nike</div><div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div></div>
+          <div class="side-search"><i data-lucide="search" style="width:13px;height:13px;"></i><span>Search</span><span class="kbd">⌘K</span></div>
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item"><i data-lucide="clock-4" class="ic"></i>Recents</div>
+            <div class="section">Brand</div>
+            <div class="item active"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+          </div>
+          <div class="side-footer"><div class="avatar">AC</div><div class="who"><b>Account holder</b><span>Pro plan</span></div><div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div></div>
+        </div>
+        <div class="main">
+          <div class="topbar">
+            <div class="breadcrumb">
+              <span>Account</span><span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <span>Brand Kit</span><span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <b>Tone snippets</b>
+            </div>
+            <div class="actions"><span class="pill ok dot" style="font-size:11px;">Online</span></div>
+          </div>
+
+          <div class="acc-frame dim">
+            <div class="acc-rail">
+              <div class="title">Account</div>
+              <div class="it"><i data-lucide="user" class="ic"></i>Profile</div>
+              <div class="it"><i data-lucide="credit-card" class="ic"></i>Plan &amp; billing</div>
+              <div class="it active"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+              <div class="it"><i data-lucide="plug" class="ic"></i>Integrations</div>
+              <div class="sep"></div>
+              <div class="it danger"><i data-lucide="trash-2" class="ic"></i>Danger zone</div>
+            </div>
+
+            <div class="acc-main">
+              <div class="acc-hero">
+                <div class="l">
+                  <h1>Tone snippets</h1>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-backdrop"></div>
+
+      <div class="state-cap"><b>State 2</b><span class="id">MID-TYPING · SAVE STILL DISABLED</span></div>
+
+      <div class="dlg md">
+        <div class="dlg-head">
+          <div>
+            <h3>Add tone snippet</h3>
+            <p class="sub">Add a short example of copy that sounds like this brand. Kova matches the patterns when generating new copy.</p>
+          </div>
+          <div class="x"><i data-lucide="x" style="width:14px;height:14px;"></i></div>
+        </div>
+        <div class="dlg-body">
+          <div class="fld">
+            <label>Label <span class="req">required</span></label>
+            <input class="input" value="Friday drop hype" style="border-color: var(--ink-2);" />
+            <span class="help">Shown as the row title in the snippets list. 60 chars max.</span>
+          </div>
+          <div class="fld">
+            <label>Content <span class="req">required</span></label>
+            <textarea class="input" rows="4" placeholder="Paste the snippet of copy. Keep it short — 1–3 sentences max — so the pattern is clear."></textarea>
+            <div class="char-counter">0 / 500</div>
+          </div>
+        </div>
+        <div class="dlg-foot">
+          <div class="l"></div>
+          <div class="r">
+            <div class="btn">Cancel</div>
+            <div class="btn primary disabled">Save snippet</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Label has focus</strong> (border lifted to <code>--ink-2</code>, matching A6+A2a's <code>.fld input.input:focus</code> rule). Save still disabled because Content is blank.</li>
+      <li><strong>No live validation tooltip.</strong> The disabled CTA is sufficient signal — adding inline error text below an empty required field while the user is mid-flow is noise. Real-time validation kicks in only on submit attempt or blur with content.</li>
+      <li><strong>Tab order</strong> is Label → Content → Cancel → Save. Default browser tab cycle; no JS-driven focus trap needed because the dialog already restricts focus to the dlg subtree (handled by the consumer's modal lib).</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ---------- B3.1 · State 3 · Filled ---------- -->
+<section class="block">
+  <header>
+    <div class="tag">FILE B3 · §1 · B3.1 · State 3 — Filled</div>
+    <h2>B3.1 · Add tone snippet — filled and ready</h2>
+    <p class="intro">Both fields populated. Char counter shows 51 / 500 (ink-3). Save CTA enabled. Demonstrates the happy-path final state.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Account · Brand Kit · Tone snippets · Add modal · ready to save</div><div class="id">B3.1 · State 3 of 3 · hi-fi</div></div>
+    <div class="canvas tall" data-screen-label="B3.1 Filled">
+      <div class="app">
+        <div class="sidebar">
+          <div class="brand-switch"><div class="logo">N</div><div class="name">Nike</div><div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div></div>
+          <div class="side-search"><i data-lucide="search" style="width:13px;height:13px;"></i><span>Search</span><span class="kbd">⌘K</span></div>
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item"><i data-lucide="clock-4" class="ic"></i>Recents</div>
+            <div class="section">Brand</div>
+            <div class="item active"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+          </div>
+          <div class="side-footer"><div class="avatar">AC</div><div class="who"><b>Account holder</b><span>Pro plan</span></div><div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div></div>
+        </div>
+        <div class="main">
+          <div class="topbar">
+            <div class="breadcrumb">
+              <span>Account</span><span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <span>Brand Kit</span><span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <b>Tone snippets</b>
+            </div>
+            <div class="actions"><span class="pill ok dot" style="font-size:11px;">Online</span></div>
+          </div>
+
+          <div class="acc-frame dim">
+            <div class="acc-rail">
+              <div class="title">Account</div>
+              <div class="it"><i data-lucide="user" class="ic"></i>Profile</div>
+              <div class="it"><i data-lucide="credit-card" class="ic"></i>Plan &amp; billing</div>
+              <div class="it active"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+              <div class="it"><i data-lucide="plug" class="ic"></i>Integrations</div>
+              <div class="sep"></div>
+              <div class="it danger"><i data-lucide="trash-2" class="ic"></i>Danger zone</div>
+            </div>
+
+            <div class="acc-main">
+              <div class="acc-hero">
+                <div class="l">
+                  <h1>Tone snippets</h1>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-backdrop"></div>
+
+      <div class="state-cap"><b>State 3</b><span class="id">FILLED · SAVE ENABLED · 51 / 500</span></div>
+
+      <div class="dlg md">
+        <div class="dlg-head">
+          <div>
+            <h3>Add tone snippet</h3>
+            <p class="sub">Add a short example of copy that sounds like this brand. Kova matches the patterns when generating new copy.</p>
+          </div>
+          <div class="x"><i data-lucide="x" style="width:14px;height:14px;"></i></div>
+        </div>
+        <div class="dlg-body">
+          <div class="fld">
+            <label>Label <span class="req">required</span></label>
+            <input class="input" value="Friday drop hype" />
+            <span class="help">Shown as the row title in the snippets list. 60 chars max.</span>
+          </div>
+          <div class="fld">
+            <label>Content <span class="req">required</span></label>
+            <textarea class="input" rows="4">It's here. Air Max Plus drops Friday at 7am PT — first 200 pairs include the 1998 hangtag.</textarea>
+            <div class="char-counter">51 / 500</div>
+          </div>
+        </div>
+        <div class="dlg-foot">
+          <div class="l"></div>
+          <div class="r">
+            <div class="btn">Cancel</div>
+            <div class="btn primary">Save snippet</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Both required fields populated</strong> → primary CTA flips from <code>.btn.primary.disabled</code> to <code>.btn.primary</code>. Same component, two states; no markup change beyond the modifier class.</li>
+      <li><strong>Char counter at 51 / 500</strong> stays in <code>--ink-3</code>. Switches to <code>--warn</code> at 90% (≥450). Hard cap blocks input past 500; no truncation, no destructive trim.</li>
+      <li><strong>Submit on Enter</strong> only when focus is on the Label input. Enter in the textarea inserts a newline — standard textarea behavior. Cmd/Ctrl+Enter from the textarea also submits.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     §2 · B3.2 · Edit tone snippet
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE B3 · §2 · B3.2 · Edit tone snippet</div>
+    <h2>B3.2 · Edit tone snippet</h2>
+    <p class="intro">Triggered by clicking an existing row on A7.3.3. Same fields as B3.1, prefilled with the row content. Heading copy changes to "Edit tone snippet". A <code>Delete</code> ghost link sits in the foot-left so destructive intent is one extra click away — never the default CTA. Click → opens B3.5 confirm.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Account · Brand Kit · Tone snippets · Edit modal · prefilled · Delete ghost link bottom-left</div><div class="id">B3.2 · hi-fi</div></div>
+    <div class="canvas tall" data-screen-label="B3.2 Edit">
+      <div class="app">
+        <div class="sidebar">
+          <div class="brand-switch"><div class="logo">N</div><div class="name">Nike</div><div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div></div>
+          <div class="side-search"><i data-lucide="search" style="width:13px;height:13px;"></i><span>Search</span><span class="kbd">⌘K</span></div>
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item"><i data-lucide="clock-4" class="ic"></i>Recents</div>
+            <div class="section">Brand</div>
+            <div class="item active"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+          </div>
+          <div class="side-footer"><div class="avatar">AC</div><div class="who"><b>Account holder</b><span>Pro plan</span></div><div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div></div>
+        </div>
+        <div class="main">
+          <div class="topbar">
+            <div class="breadcrumb">
+              <span>Account</span><span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <span>Brand Kit</span><span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <b>Tone snippets</b>
+            </div>
+            <div class="actions"><span class="pill ok dot" style="font-size:11px;">Online</span></div>
+          </div>
+
+          <div class="acc-frame dim">
+            <div class="acc-rail">
+              <div class="title">Account</div>
+              <div class="it"><i data-lucide="user" class="ic"></i>Profile</div>
+              <div class="it"><i data-lucide="credit-card" class="ic"></i>Plan &amp; billing</div>
+              <div class="it active"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+              <div class="it"><i data-lucide="plug" class="ic"></i>Integrations</div>
+              <div class="sep"></div>
+              <div class="it danger"><i data-lucide="trash-2" class="ic"></i>Danger zone</div>
+            </div>
+
+            <div class="acc-main">
+              <div class="acc-hero">
+                <div class="l">
+                  <h1>Tone snippets</h1>
+                </div>
+              </div>
+
+              <div class="acc-content">
+                <div class="bk-wrap">
+                  <div class="bk-subnav">
+                    <div class="head">Brand Kit</div>
+                    <div class="it active"><i data-lucide="quote" class="ic"></i>Tone snippets<span style="margin-left:auto; font-size:10px;color:var(--ink);">8</span></div>
+                  </div>
+                  <div class="bk-pane">
+                    <div class="list-stack">
+                      <div class="list-row">
+                        <div class="grip"><i data-lucide="grip-vertical" style="width:14px;height:14px;"></i></div>
+                        <div class="lbl-col">Drop the new collection<span class="tag-mono">PROMO</span></div>
+                        <div class="content-col">"It's here. Air Max Plus drops Friday at 7am PT — first 200 pairs include the original 1998 hangtag."</div>
+                        <div class="actions-col"><div class="ac"><i data-lucide="pencil" style="width:14px;height:14px;color:var(--accent);"></i></div><div class="ac"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></div></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-backdrop"></div>
+
+      <div class="dlg md">
+        <div class="dlg-head">
+          <div>
+            <h3>Edit tone snippet</h3>
+            <p class="sub">Change the label or content. Updates apply immediately to AI suggestions and canvas drag-drop.</p>
+          </div>
+          <div class="x"><i data-lucide="x" style="width:14px;height:14px;"></i></div>
+        </div>
+        <div class="dlg-body">
+          <div class="fld">
+            <label>Label <span class="req">required</span></label>
+            <input class="input" value="Drop the new collection" />
+            <span class="help">Shown as the row title in the snippets list. 60 chars max.</span>
+          </div>
+          <div class="fld">
+            <label>Content <span class="req">required</span></label>
+            <textarea class="input" rows="4">It's here. Air Max Plus drops Friday at 7am PT — first 200 pairs include the original 1998 hangtag. No restock. Move when the alarm hits.</textarea>
+            <div class="char-counter">142 / 500</div>
+          </div>
+        </div>
+        <div class="dlg-foot">
+          <div class="l">
+            <button type="button" class="delete-ghost"><i data-lucide="trash-2" class="ic"></i>Delete snippet</button>
+          </div>
+          <div class="r">
+            <div class="btn">Cancel</div>
+            <div class="btn primary">Save changes</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Delete ghost link bottom-left</strong> — a <code>.delete-ghost</code> button-as-link in the foot-left meta region. Idle: <code>--ink-3</code>. Hover: <code>--warn</code>. No chrome. Click → opens B3.5 (small confirm dialog).</li>
+      <li><strong>Why ghost-link, not a danger button.</strong> Putting <code>.btn.danger Delete</code> next to <code>.btn.primary Save</code> in the same foot-right gives equal visual weight to two opposed actions. The ghost-link separation prevents fat-finger destruction; A8.4 typed-confirm is the brand-level analogue.</li>
+      <li><strong>Same field component as B3.1.</strong> The only diff vs Add is heading copy ("Edit tone snippet"), prefilled values, the delete affordance, and the CTA label ("Save changes" vs "Save snippet"). Save is enabled by default because both fields have content; if the user clears either, Save reverts to disabled.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     §3 · B3.3 · Add saved block (with segmented Type control)
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE B3 · §3 · B3.3 · Add saved block</div>
+    <h2>B3.3 · Add saved block</h2>
+    <p class="intro">Triggered by the "+ Add saved block" CTA on A7.3.4. Three fields: Label (60-char), Content (textarea, 6 lines, 1000-char), and Type (segmented control: Text / CTA / Footer). The Type field is what distinguishes saved blocks from tone snippets — it scopes the block's drag-drop target on the canvas. Char counter shown in the warn-color variant (945 / 1000) for visual reference.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Account · Brand Kit · Saved blocks · Add modal · with type segmented · char-counter near cap</div><div class="id">B3.3 · hi-fi</div></div>
+    <div class="canvas tall" data-screen-label="B3.3 Add block">
+      <div class="app">
+        <div class="sidebar">
+          <div class="brand-switch"><div class="logo">N</div><div class="name">Nike</div><div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div></div>
+          <div class="side-search"><i data-lucide="search" style="width:13px;height:13px;"></i><span>Search</span><span class="kbd">⌘K</span></div>
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item"><i data-lucide="clock-4" class="ic"></i>Recents</div>
+            <div class="section">Brand</div>
+            <div class="item active"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+          </div>
+          <div class="side-footer"><div class="avatar">AC</div><div class="who"><b>Account holder</b><span>Pro plan</span></div><div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div></div>
+        </div>
+        <div class="main">
+          <div class="topbar">
+            <div class="breadcrumb">
+              <span>Account</span><span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <span>Brand Kit</span><span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <b>Saved blocks</b>
+            </div>
+            <div class="actions"><span class="pill ok dot" style="font-size:11px;">Online</span></div>
+          </div>
+
+          <div class="acc-frame dim">
+            <div class="acc-rail">
+              <div class="title">Account</div>
+              <div class="it"><i data-lucide="user" class="ic"></i>Profile</div>
+              <div class="it"><i data-lucide="credit-card" class="ic"></i>Plan &amp; billing</div>
+              <div class="it active"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+              <div class="it"><i data-lucide="plug" class="ic"></i>Integrations</div>
+              <div class="sep"></div>
+              <div class="it danger"><i data-lucide="trash-2" class="ic"></i>Danger zone</div>
+            </div>
+
+            <div class="acc-main">
+              <div class="acc-hero">
+                <div class="l">
+                  <h1>Saved blocks</h1>
+                </div>
+              </div>
+
+              <div class="acc-content">
+                <div class="bk-wrap">
+                  <div class="bk-subnav">
+                    <div class="head">Brand Kit</div>
+                    <div class="it"><i data-lucide="quote" class="ic"></i>Tone snippets<span style="margin-left:auto; font-size:10px;color:var(--ink-3);">8</span></div>
+                    <div class="it active"><i data-lucide="layers" class="ic"></i>Saved blocks<span style="margin-left:auto; font-size:10px;color:var(--ink);">5</span></div>
+                  </div>
+                  <div class="bk-pane">
+                    <div class="list-stack">
+                      <div class="list-row">
+                        <div class="grip"><i data-lucide="grip-vertical" style="width:14px;height:14px;"></i></div>
+                        <div class="lbl-col">Standard footer disclaimer<span class="tag-mono">FOOTER</span></div>
+                        <div class="content-col">"You're receiving this because you signed up at nike.com. Manage preferences · Unsubscribe."</div>
+                        <div class="actions-col"><div class="ac"><i data-lucide="pencil" style="width:14px;height:14px;"></i></div><div class="ac"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></div></div>
+                      </div>
+                      <div class="list-row">
+                        <div class="grip"><i data-lucide="grip-vertical" style="width:14px;height:14px;"></i></div>
+                        <div class="lbl-col">Primary CTA · shop drop<span class="tag-mono">CTA</span></div>
+                        <div class="content-col">"Shop the drop →"</div>
+                        <div class="actions-col"><div class="ac"><i data-lucide="pencil" style="width:14px;height:14px;"></i></div><div class="ac"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></div></div>
+                      </div>
+                      <div class="list-row">
+                        <div class="grip"><i data-lucide="grip-vertical" style="width:14px;height:14px;"></i></div>
+                        <div class="lbl-col">Welcome opener<span class="tag-mono">TEXT</span></div>
+                        <div class="content-col">"You're in. Welcome to the Nike membership family — let's lace up."</div>
+                        <div class="actions-col"><div class="ac"><i data-lucide="pencil" style="width:14px;height:14px;"></i></div><div class="ac"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></div></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-backdrop"></div>
+
+      <div class="dlg md">
+        <div class="dlg-head">
+          <div>
+            <h3>Add saved block</h3>
+            <p class="sub">Save a footer, CTA, or any reusable section so you can drag it into a canvas TEXT node.</p>
+          </div>
+          <div class="x"><i data-lucide="x" style="width:14px;height:14px;"></i></div>
+        </div>
+        <div class="dlg-body">
+          <div class="fld">
+            <label>Label <span class="req">required</span></label>
+            <input class="input" value="Friday email opener" />
+            <span class="help">Shown as the row title in the saved-blocks list. 60 chars max.</span>
+          </div>
+          <div class="fld">
+            <label>Type</label>
+            <div class="seg-text" role="tablist">
+              <div class="cell on" role="tab">Text</div>
+              <div class="cell" role="tab">CTA</div>
+              <div class="cell" role="tab">Footer</div>
+            </div>
+            <span class="help">Determines where the block can be dragged onto a canvas. Text → any TEXT node · CTA → button-style nodes · Footer → bottom-of-canvas section.</span>
+          </div>
+          <div class="fld">
+            <label>Content <span class="req">required</span></label>
+            <textarea class="input" rows="6">Friday morning. Coffee's fresh, the run's done, and three new colorways are about to land in your inbox at 7am PT. We held one of each in your size — they release for everyone else at noon. The mood: slate, sand, terracotta. The story: a return to the silhouettes that made the original Pegasus the most-stolen shoe on dorm-room shelves in 2003. Tap to preview before they go live. Keep an eye on your phone — push notifications fire 5 minutes before public release. As always, sale items don't apply to Pegasus 41.</textarea>
+            <div class="char-counter warn">945 / 1000</div>
+          </div>
+        </div>
+        <div class="dlg-foot">
+          <div class="l"></div>
+          <div class="r">
+            <div class="btn">Cancel</div>
+            <div class="btn primary">Save block</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Three required fields, one optional UX hint.</strong> Type defaults to "Text" — the most common case. The segmented control follows design.md §3.8 structurally (container, padded cells, active uses <code>--fill-2</code> + <code>--ink</code>) but with text labels instead of icons.</li>
+      <li><strong>Char counter in warn variant</strong> at &gt;90% of the cap. Picks up <code>--warn</code> + bumps weight to 500 so it reads as a soft alert without becoming red. Becomes a hard block at exactly 1000 — the input refuses additional characters.</li>
+      <li><strong>Helper text under Type</strong> answers the implicit question — what does the type do? — with the canvas-drag scope. Saves a re-read of A7.3.4's hero copy.</li>
+      <li><strong>6-line textarea</strong> vs B3.1's 4-line, because saved blocks are larger reusable bodies (footers, multi-paragraph CTAs). Same chrome, taller default.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     §4 · B3.4 · Edit saved block
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE B3 · §4 · B3.4 · Edit saved block</div>
+    <h2>B3.4 · Edit saved block</h2>
+    <p class="intro">Triggered by clicking an existing row on A7.3.4. Same fields as B3.3, prefilled. Same delete-ghost-link in the foot-left as B3.2. Type segmented prefilled to the row's existing type ("CTA" in this scene).</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Account · Brand Kit · Saved blocks · Edit modal · prefilled · type=CTA · Delete ghost link</div><div class="id">B3.4 · hi-fi</div></div>
+    <div class="canvas tall" data-screen-label="B3.4 Edit block">
+      <div class="app">
+        <div class="sidebar">
+          <div class="brand-switch"><div class="logo">N</div><div class="name">Nike</div><div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div></div>
+          <div class="side-search"><i data-lucide="search" style="width:13px;height:13px;"></i><span>Search</span><span class="kbd">⌘K</span></div>
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item"><i data-lucide="clock-4" class="ic"></i>Recents</div>
+            <div class="section">Brand</div>
+            <div class="item active"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+          </div>
+          <div class="side-footer"><div class="avatar">AC</div><div class="who"><b>Account holder</b><span>Pro plan</span></div><div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div></div>
+        </div>
+        <div class="main">
+          <div class="topbar">
+            <div class="breadcrumb">
+              <span>Account</span><span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <span>Brand Kit</span><span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <b>Saved blocks</b>
+            </div>
+            <div class="actions"><span class="pill ok dot" style="font-size:11px;">Online</span></div>
+          </div>
+
+          <div class="acc-frame dim">
+            <div class="acc-rail">
+              <div class="title">Account</div>
+              <div class="it"><i data-lucide="user" class="ic"></i>Profile</div>
+              <div class="it"><i data-lucide="credit-card" class="ic"></i>Plan &amp; billing</div>
+              <div class="it active"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+              <div class="it"><i data-lucide="plug" class="ic"></i>Integrations</div>
+              <div class="sep"></div>
+              <div class="it danger"><i data-lucide="trash-2" class="ic"></i>Danger zone</div>
+            </div>
+
+            <div class="acc-main">
+              <div class="acc-hero">
+                <div class="l">
+                  <h1>Saved blocks</h1>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-backdrop"></div>
+
+      <div class="dlg md">
+        <div class="dlg-head">
+          <div>
+            <h3>Edit saved block</h3>
+            <p class="sub">Change the label, content, or type. Updates apply immediately to canvas drag-drop.</p>
+          </div>
+          <div class="x"><i data-lucide="x" style="width:14px;height:14px;"></i></div>
+        </div>
+        <div class="dlg-body">
+          <div class="fld">
+            <label>Label <span class="req">required</span></label>
+            <input class="input" value="Primary CTA · shop drop" />
+            <span class="help">Shown as the row title in the saved-blocks list. 60 chars max.</span>
+          </div>
+          <div class="fld">
+            <label>Type</label>
+            <div class="seg-text" role="tablist">
+              <div class="cell" role="tab">Text</div>
+              <div class="cell on" role="tab">CTA</div>
+              <div class="cell" role="tab">Footer</div>
+            </div>
+          </div>
+          <div class="fld">
+            <label>Content <span class="req">required</span></label>
+            <textarea class="input" rows="6">Shop the drop →</textarea>
+            <div class="char-counter">15 / 1000</div>
+          </div>
+        </div>
+        <div class="dlg-foot">
+          <div class="l">
+            <button type="button" class="delete-ghost"><i data-lucide="trash-2" class="ic"></i>Delete block</button>
+          </div>
+          <div class="r">
+            <div class="btn">Cancel</div>
+            <div class="btn primary">Save changes</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Same component as B3.3 Add.</strong> Edit prefills + adds the delete-ghost. The segmented control reflects the row's existing type ("CTA" here) — the user can change it, and the row's <code>tag-mono</code> chip updates on save.</li>
+      <li><strong>Helper text under Type is omitted</strong> on Edit because the user already chose a type once; re-reading the explanation every edit is noise. The seg-text alone communicates the choice.</li>
+      <li><strong>Save Changes</strong> stays disabled until something actually changes (dirty-state check). On open with prefilled values, <code>.btn.primary</code> renders in the disabled style until the user types or flips the seg.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     §5 · B3.5 · Delete confirm (small)
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE B3 · §5 · B3.5 · Delete confirm</div>
+    <h2>B3.5 · Delete confirm</h2>
+    <p class="intro">Reached from the "Delete" ghost link in B3.2 or B3.4. Small modal (<code>.dlg.sm</code> · 460px). Confirms an irreversible action with two-line copy: what gets removed, and what becomes unavailable as a result. No typed-confirm — these are small per-row deletions, not catastrophic. Typed-confirm is reserved for delete-brand and delete-account (A4 / A9.1) per the locked decision.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Account · Brand Kit · Tone snippets · Delete confirm · small dialog</div><div class="id">B3.5 · hi-fi</div></div>
+    <div class="canvas tall" data-screen-label="B3.5 Delete confirm">
+      <div class="app">
+        <div class="sidebar">
+          <div class="brand-switch"><div class="logo">N</div><div class="name">Nike</div><div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div></div>
+          <div class="side-search"><i data-lucide="search" style="width:13px;height:13px;"></i><span>Search</span><span class="kbd">⌘K</span></div>
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item"><i data-lucide="clock-4" class="ic"></i>Recents</div>
+            <div class="section">Brand</div>
+            <div class="item active"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+          </div>
+          <div class="side-footer"><div class="avatar">AC</div><div class="who"><b>Account holder</b><span>Pro plan</span></div><div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div></div>
+        </div>
+        <div class="main">
+          <div class="topbar">
+            <div class="breadcrumb">
+              <span>Account</span><span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <span>Brand Kit</span><span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <b>Tone snippets</b>
+            </div>
+            <div class="actions"><span class="pill ok dot" style="font-size:11px;">Online</span></div>
+          </div>
+
+          <div class="acc-frame dim">
+            <div class="acc-rail">
+              <div class="title">Account</div>
+              <div class="it"><i data-lucide="user" class="ic"></i>Profile</div>
+              <div class="it"><i data-lucide="credit-card" class="ic"></i>Plan &amp; billing</div>
+              <div class="it active"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+              <div class="it"><i data-lucide="plug" class="ic"></i>Integrations</div>
+              <div class="sep"></div>
+              <div class="it danger"><i data-lucide="trash-2" class="ic"></i>Danger zone</div>
+            </div>
+
+            <div class="acc-main">
+              <div class="acc-hero">
+                <div class="l">
+                  <h1>Tone snippets</h1>
+                </div>
+              </div>
+
+              <div class="acc-content">
+                <div class="bk-wrap">
+                  <div class="bk-subnav">
+                    <div class="head">Brand Kit</div>
+                    <div class="it active"><i data-lucide="quote" class="ic"></i>Tone snippets<span style="margin-left:auto; font-size:10px;color:var(--ink);">8</span></div>
+                  </div>
+                  <div class="bk-pane">
+                    <div class="list-stack">
+                      <div class="list-row" style="background: var(--accent-soft);">
+                        <div class="grip"><i data-lucide="grip-vertical" style="width:14px;height:14px;"></i></div>
+                        <div class="lbl-col">Drop the new collection<span class="tag-mono">PROMO</span></div>
+                        <div class="content-col">"It's here. Air Max Plus drops Friday at 7am PT — first 200 pairs include the original 1998 hangtag."</div>
+                        <div class="actions-col"><div class="ac"><i data-lucide="pencil" style="width:14px;height:14px;"></i></div><div class="ac"><i data-lucide="trash-2" style="width:14px;height:14px;color:var(--warn);"></i></div></div>
+                      </div>
+                      <div class="list-row">
+                        <div class="grip"><i data-lucide="grip-vertical" style="width:14px;height:14px;"></i></div>
+                        <div class="lbl-col">Welcome a new athlete<span class="tag-mono">WELCOME</span></div>
+                        <div class="content-col">"Welcome to Nike. You're 10% off your first order — but that's not why we're here. Let's get you running."</div>
+                        <div class="actions-col"><div class="ac"><i data-lucide="pencil" style="width:14px;height:14px;"></i></div><div class="ac"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></div></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-backdrop"></div>
+
+      <div class="dlg sm">
+        <div class="dlg-head">
+          <div>
+            <h3>Delete "Drop the new collection"?</h3>
+            <p class="sub">This snippet won't be available to AI suggestions or canvas drag-drop. This can't be undone.</p>
+          </div>
+          <div class="x"><i data-lucide="x" style="width:14px;height:14px;"></i></div>
+        </div>
+        <div class="dlg-foot">
+          <div class="l"></div>
+          <div class="r">
+            <div class="btn">Cancel</div>
+            <div class="btn danger">Delete snippet</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Same A8.4 destructive variant.</strong> Small modal · ink headline · ink-3 sub-copy explaining the consequence · <code>.btn.danger</code> primary destructive CTA on the right. No icon-circle (this isn't a brand-scale destruction; A8.4's variant 1 with the warn-icon-circle is overkill for a per-row snippet).</li>
+      <li><strong>No typed-confirm.</strong> Per the locked decision, typed-confirm gates only A4 Delete-brand (brand name) and A9.1 Delete-account ("DELETE"). Per-row CRUD deletes use a single confirm click — small enough not to need a second guard.</li>
+      <li><strong>Headline carries the row label in quotes.</strong> "Delete &lsquo;{label}&rsquo;?" — so the user sees exactly which row they're about to lose. If the label is truncated in the row, the modal still shows the full string.</li>
+      <li><strong>Backdrop on second confirm.</strong> The B3.5 modal opens on top of B3.2/B3.4 (the edit modal stays underneath, dimmed by the new backdrop). When the user cancels B3.5, focus returns to the edit modal; on confirm, both modals close and a B1.4 Undo toast fires (5s window).</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     Cross-surface notes
+     ============================================================ -->
+<section class="block" style="background: var(--page);">
+  <header>
+    <div class="tag">Coherence notes — what this file commits to</div>
+    <h2>What B3 commits to</h2>
+  </header>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;max-width:1080px;font-size:12.5px;color:var(--ink-2);line-height:1.55;">
+    <div style="background: var(--page); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px;">
+      <h3 style="margin:0 0 8px;font-size:14px;color:var(--ink);font-weight:600;letter-spacing:-0.005em;">LIFTED chrome (round-1 cleanup)</h3>
+      <ul style="margin:6px 0 0;padding-left:18px;">
+        <li><code>.acc-frame</code> · <code>.acc-rail</code> · <code>.acc-rail .it</code> · <code>.acc-rail .sep</code> · <code>.acc-main</code> · <code>.acc-hero</code> · <code>.brandpick</code> · <code>.acc-content</code> · <code>.s-section</code> · <code>.bk-wrap</code> · <code>.bk-subnav</code> · <code>.bk-pane</code> · <code>.list-stack</code> · <code>.list-row</code> · <code>.list-row .grip / .lbl-col / .content-col / .actions-col</code> · <code>.list-add</code> — LIFTED VERBATIM from <code>batch-a/dark/Kova Hi-Fi A7 Account Page - Dark.html</code>. Diff vs source: a single token-faithful refactor on <code>.brandpick .logo</code> (A7's hardcoded swatch hex resolved to <code>var(--ink)</code> / <code>var(--page)</code> so the §8 hex-outside-:root verifier passes).</li>
+        <li><code>.modal-backdrop</code> · <code>.dlg</code> + <code>.dlg.sm/md/lg</code> · <code>.dlg-head/body/foot</code> · <code>.fld</code> · <code>.fld input.input</code> · <code>.fld textarea.input</code> — LIFTED VERBATIM from <code>batch-a/dark/Kova Hi-Fi A6+A2a Popovers + A8 Dialogs - Dark.html</code>. Diff vs source: ONE change to <code>.modal-backdrop</code> background — pre-rewire warm-brown rgba → token-equivalent rgba derived from post-rewire <code>--bg</code> at 72% (round-1 cleanup §3.8).</li>
+        <li><strong>Backdrop dim is an extension class</strong> — <code>.acc-frame.dim { opacity: 0.45; pointer-events: none; }</code> is declared BELOW the lifted block per §3.8 LIFT protocol. The lifted <code>.acc-frame</code> itself is unmodified.</li>
+        <li><strong>Canonical components used by name (no redeclaration):</strong> <code>.app</code>, <code>.sidebar</code>, <code>.topbar</code>, <code>.brand-switch</code>, <code>.side-search</code>, <code>.nav</code>, <code>.section</code>, <code>.item</code>, <code>.side-footer</code>, <code>.btn</code>, <code>.btn.primary</code>, <code>.btn.primary.disabled</code>, <code>.pill</code>, <code>.pill.ok</code>, <code>.pill.dot</code>, <code>.tag-mono</code>, <code>.kbd</code>, <code>.canvas</code>, <code>.canvas.tall</code> — all from <code>kova-hifi.css</code>.</li>
+      </ul>
+    </div>
+    <div style="background: var(--page); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px;">
+      <h3 style="margin:0 0 8px;font-size:14px;color:var(--ink);font-weight:600;letter-spacing:-0.005em;">New layout-only classes (flagged)</h3>
+      <ul style="margin:6px 0 0;padding-left:18px;">
+        <li><code>.seg-text</code> + <code>.seg-text .cell</code> + <code>.seg-text .cell.on</code> — textual segmented (3-cell). Same structural pattern as design.md §3.8 icon-segmented; wider cells with text labels.</li>
+        <li><code>.char-counter</code> + <code>.char-counter.warn</code> — small caption bottom-right of textarea. Inkpath: <code>--ink-3</code> idle → <code>--warn</code> at &gt;90% cap.</li>
+        <li><code>.delete-ghost</code> — destructive ghost-link in the foot-left meta region. <code>--ink-3</code> idle → <code>--warn</code> on hover. No chrome.</li>
+        <li><code>.btn.danger</code> — re-declared with token-only colors. Default state matches <code>.btn.primary</code> exactly (light <code>--ink</code> fill + dark <code>--page</code> text) per status-palette deferral (design.md §5 ban 12). Destructive semantic is carried by copy + upstream ghost-link, not chrome color. Swaps to warn-color background once the status palette ships — no markup change.</li>
+        <li><code>.state-cap</code> — review-page only; small banner above each in-flow dialog. Not shipped to product.</li>
+        <li><code>.acc-frame.dim</code> — review-page only; backdrop dim extension on the lifted <code>.acc-frame</code>. Not shipped to product.</li>
+      </ul>
+    </div>
+    <div style="background: var(--page); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px;">
+      <h3 style="margin:0 0 8px;font-size:14px;color:var(--ink);font-weight:600;letter-spacing:-0.005em;">Tokens used (none new)</h3>
+      <ul style="margin:6px 0 0;padding-left:18px;">
+        <li>Surface: <code>--bg</code> · <code>--page</code> · <code>--rail</code> · <code>--fill</code> · <code>--fill-2</code></li>
+        <li>Ink: <code>--ink</code> · <code>--ink-2</code> · <code>--ink-3</code></li>
+        <li>Lines: <code>--line</code> · <code>--line-2</code></li>
+        <li>Accent (focus + selected row): <code>--accent</code> · <code>--accent-soft</code></li>
+        <li>Warn (delete affordances + char-counter near-cap): <code>--warn</code></li>
+      </ul>
+    </div>
+    <div style="background: var(--page); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px;">
+      <h3 style="margin:0 0 8px;font-size:14px;color:var(--ink);font-weight:600;letter-spacing:-0.005em;">Behavior commitments</h3>
+      <ul style="margin:6px 0 0;padding-left:18px;">
+        <li><strong>Required fields</strong> — Save disabled until both populated. Edit Save also disabled until dirty (a value actually changed).</li>
+        <li><strong>Char cap</strong> — hard block at the cap value (60 for Label, 500 for snippet content, 1000 for block content). No truncation, no destructive trim.</li>
+        <li><strong>Submit / cancel</strong> — Esc cancels. Cmd/Ctrl+Enter submits when valid. Enter in Label submits; Enter in Content inserts a newline.</li>
+        <li><strong>Delete flow</strong> — Edit modal's Delete ghost-link → B3.5 confirm → on confirm, both modals close + B1.4 Undo toast fires (5s).</li>
+        <li><strong>Type segmented (B3.3 only)</strong> — defaults to Text on Add. Persists across Edit. Changing it doesn't migrate the block's drag-drop history; it only affects future drag scope.</li>
+      </ul>
+    </div>
+    <div style="background: var(--page); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px;">
+      <h3 style="margin:0 0 8px;font-size:14px;color:var(--ink);font-weight:600;letter-spacing:-0.005em;">Sample-data hygiene</h3>
+      <ul style="margin:6px 0 0;padding-left:18px;">
+        <li><strong>Side-footer anonymized.</strong> "Jiho Yang" / "Pro plan" / "JY" replaced with "Account holder" / "Pro plan" / "AC" per round-1 Q2 (b). Sample customer brand "Nike" + brand-color avatar remain (allowed per design.md §3.15).</li>
+        <li><strong>Canonical 03 Brand Dashboard leak flagged, not patched.</strong> The same "Jiho Yang" / "Pro plan" string appears in <code>batch-a/dark/Kova Hi-Fi 03 Brand Dashboard - Dark.html</code> at line 234 (and four other scenes) — flagged per round-1 Q2 (d) for separate cleanup. Not edited from this round.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+
+<footer style="padding:32px 56px;border-top:1px solid var(--line);background:var(--bg);color:var(--ink-3);font-size:11px;">
+  Kova · hi-fi · Batch A additions · B3 Brand Kit CRUD Modals · v2 (round-1 cleanup)
+</footer>
+
+<script>
+  if (window.lucide) window.lucide.createIcons({ attrs: { 'stroke-width': 1.6 } });
+</script>
+</body>
+</html>

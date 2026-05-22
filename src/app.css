@@ -1,6 +1,14 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 
+/* Cluster 11 W6 REDO 2026-05-20 — load canonical design system globally.
+   Provides every :root short-name token (--page / --ink / --accent / ... +
+   R-2..R-13 additions) AND every lifted primitive class (.toast / .dlg /
+   .popover / .menu / .tooltip / .skeleton / .empty-pane / .err-*) into
+   the app stylesheet. Single source of truth shared with the in-repo
+   hi-fi mockups. */
+@import '../design-system/canonical/kova-hifi.css';
+
 @utility scrollbar-none {
   -ms-overflow-style: none;
   scrollbar-width: none;
@@ -29,15 +37,90 @@
 }
 
 @theme {
-  --color-panel: #2a2a2a;
-  --color-canvas: #1e1e1e;
-  --color-border: #3a3a3a;
-  --color-hover: #353535;
+  /* M1-era ad-hoc tokens — preserved for back-compat with existing
+     OpenPencil-era components (panel, canvas, border, hover, surface,
+     muted, input). Sweep references in follow-up PR. --color-component
+     purple removed 2026-05-20 per Q-A A2 (violates Ban 3). */
+  --color-panel: #1a1a1d;
+  --color-canvas: #242428;
+  --color-border: #2c2c30;
+  --color-hover: #232327;
   --color-accent: #3b82f6;
-  --color-surface: #e0e0e0;
-  --color-muted: #888888;
-  --color-input: #1e1e1e;
-  --color-component: #9747ff;
+  --color-surface: #ebebee;
+  --color-muted: #a8a8ad;
+  --color-input: #26262b;
+
+  /* Cluster 11 — canonical kova-hifi.css :root tokens. Short names per
+     TOKEN_CANONICAL.md §1. New components reference these directly via
+     bg-page / text-ink / border-line / etc. */
+  --color-page: #1a1a1d;
+  --color-bg: #242428;
+  --color-fill: #26262b;
+  --color-fill-2: #303035;
+  --color-line: #2c2c30;
+  --color-line-2: #232327;
+  --color-ink: #ebebee;
+  --color-ink-2: #a8a8ad;
+  --color-ink-3: #6e6e73;
+  --color-ink-4: #4a4a4f;
+  --color-accent-soft: #1d3a66;
+  --color-accent-ai: #a9c4ff;
+  /* Alias: bg-input-hi maps to fill-2 (input active / segmented active). */
+  --color-input-hi: #303035;
+
+  /* Cluster 11 R-1 — missing color aliases. These exist in canonical
+     kova-hifi.css :root as short names; mirror here with --color-* prefix
+     so Tailwind generates bg-rail / text-warn / border-warn-edge utility
+     classes. */
+  --color-rail: #1a1a1d;
+  --color-accent-2: #2a4d80;
+  --color-warn: #a8a8ad;
+  --color-warn-soft: #26262b;
+  --color-warn-edge: #2c2c30;
+  --color-ok: #a8a8ad;
+  --color-ok-soft: #26262b;
+  --color-review: #a8a8ad;
+  --color-review-soft: #26262b;
+  --color-ink-on-primary: #fff;
+  --color-accent-hover: #2563eb;
+  --color-modal-backdrop: rgba(0, 0, 0, 0.72);
+
+  /* Phase 5b — primitive sizing tokens promoted to canonical (W6 REDO
+     post-code-review). */
+  --checkbox-size: 14px;
+  --checkbox-row-gap: 8px;
+  --seg-pad: 2px;
+  --seg-gap: 1px;
+  --seg-pair-gap: 6px;
+  --select-min-w: 160px;
+  --btn-primary-ink: #111;
+  --btn-primary-hover-bg: #fff;
+
+  /* Positional offsets — design.md §3.11–§3.14, mirrored from
+     main-main-kova-scope/design-system/kova-hifi.css. Pre-populated
+     2026-05-20 ahead of the no-raw-visual-values lint (Mandate 6).
+     Components reference these instead of raw px in chrome positioning. */
+  --toolbar-bottom: 22px;
+  --toolbar-pad: 6px;
+  --toolbar-gap: 2px;
+  --toolbar-divider-y: 6px;
+  --toolbar-divider-x: 4px;
+  --zoom-hud-bottom: 22px;
+  --zoom-hud-right: 22px;
+  --zoom-hud-pad-y: 6px;
+  --zoom-hud-pad-x: 10px;
+  --frame-label-offset: 24px;
+  --frame-outline: 2px;
+  --frame-radius: 6px;
+  --handle-size: 9px;
+  --handle-border: 1.5px;
+  --handle-inset: 1px;
+  --size-chip-offset: 36px;
+  --size-chip-pad-y: 5px;
+  --size-chip-pad-x: 12px;
+  --floating-help-bottom: 14px;
+  --floating-help-right: 14px;
+  --floating-help-size: 28px;
 }
 
 html,

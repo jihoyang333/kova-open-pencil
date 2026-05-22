@@ -175,6 +175,9 @@ export class SkiaRenderer {
   auxStroke: Paint
   opacityPaint: Paint
   effectLayerPaint: Paint
+  // Cluster 07a — sibling-traversal mask compositing
+  maskOuterPaint: Paint
+  maskCompositePaint: Paint
   imageFilterCache = new Map<string, ImageFilter | null>()
   maskFilterCache = new Map<number, MaskFilter | null>()
   _tmpColor = new Float32Array(4)
@@ -331,6 +334,9 @@ export class SkiaRenderer {
 
     this.opacityPaint = new ck.Paint()
     this.effectLayerPaint = new ck.Paint()
+    // Cluster 07a — mask compositing paints
+    this.maskOuterPaint = new ck.Paint()
+    this.maskCompositePaint = new ck.Paint()
 
     this.textFont = new ck.Font(null, DEFAULT_FONT_SIZE)
 
@@ -885,6 +891,8 @@ export class SkiaRenderer {
     this.auxFill.delete()
     this.auxStroke.delete()
     this.opacityPaint.delete()
+    this.maskOuterPaint.delete()
+    this.maskCompositePaint.delete()
     this.textFont?.delete()
     this.labelFont?.delete()
     this.sizeFont?.delete()

@@ -1,0 +1,433 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Kova — Hi-fi · B5 Email Change Landing · Light</title>
+<meta name="viewport" content="width=1440" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+<link rel="stylesheet" href="../../design-system/kova-hifi-light.css" />
+<script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
+<style>
+/* ============================================================
+   FILE B5 — Email-change verification landing (LIGHT, 2 scenes)
+   B5.1 success · B5.2 expired-link edge
+
+   Why this file: A7.1 Profile lets users change their email. Supabase
+   sends a verify-email to the new address; the user clicks the link
+   and lands here. Distinct from A15.06 Email-verified-post-signup
+   (different copy, different routing target — Account page, not
+   onboarding), but uses the same auth-card chrome.
+
+   All chrome lifted verbatim from A15 (handoff §3.8 LIFT protocol).
+   One extension class: `.auth-icon` (24×24 icon above headline, no tile)
+   per handoff §6.2 ("smaller than B2 error tile — this is success, not
+   error"). Appended below the lifted block; lifted block unmodified.
+   ============================================================ */
+
+  /* Section-heading typography rule per A15 — scoped to .auth-shell wrapper */
+  .auth-shell h2,
+  section.block .auth-shell h2 {
+    margin: 0 0 2px;
+    font-size: 16px;
+    font-family: 'Inter', system-ui, sans-serif;
+    letter-spacing: -0.005em;
+    color: var(--ink);
+    font-weight: 600;
+    text-transform: none;
+  }
+
+  /* ---------- Frame ---------- */
+  .auth-shell {
+    height: 100%;
+    background: var(--bg);
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    min-height: 0;
+  }
+
+  /* Top bar — wordmark only, very quiet */
+  .auth-top {
+    padding: 22px 28px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .auth-top .wordmark {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 13px; font-weight: 600; color: var(--ink);
+    letter-spacing: -0.01em;
+  }
+  .auth-top .wordmark .glyph {
+    width: 20px; height: 20px; border-radius: 5px;
+    background: var(--ink); color: var(--page);
+    display: grid; place-items: center;
+    font-weight: 800; font-size: 11.5px;
+    letter-spacing: -0.04em;
+  }
+  .auth-top .corner {
+    display: inline-flex; align-items: center; gap: 14px;
+    font-size: 12px; color: var(--ink-3);
+  }
+  .auth-top .corner a { color: var(--ink-2); text-decoration: none; }
+  .auth-top .corner a:hover { color: var(--ink); }
+
+  /* Stage — center the card */
+  .auth-stage {
+    display: grid; place-items: center;
+    padding: 24px 24px 56px;
+    overflow: auto;
+    min-height: 0;
+  }
+
+  /* The card */
+  .auth-card {
+    width: 380px; max-width: 100%;
+    background: var(--page);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 28px 28px 24px;
+    display: flex; flex-direction: column; gap: 18px;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.02), 0 14px 40px -24px rgba(0,0,0,0.10);
+  }
+  .auth-card.wide { width: 420px; }
+
+  /* Heading block */
+  .auth-head {
+    display: flex; flex-direction: column; gap: 6px;
+    text-align: left;
+  }
+  .auth-head .eyebrow { font-size: 10px; color: var(--ink-3); }
+  .auth-card h1 {
+    margin: 0; font-size: 22px; line-height: 1.22;
+    letter-spacing: -0.018em; color: var(--ink); font-weight: 600;
+  }
+  .auth-lede {
+    margin: 0; color: var(--ink-2);
+    font-size: 13px; line-height: 1.55;
+  }
+
+  /* Field */
+  .auth-field { display: flex; flex-direction: column; gap: 6px; }
+  .auth-field .lbl {
+    font-size: 11.5px; font-weight: 500; color: var(--ink-2);
+    letter-spacing: -0.005em;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .auth-field .lbl .help-link {
+    font-size: 11.5px; color: var(--ink-2); text-decoration: none;
+    font-weight: 500;
+  }
+  .auth-field .lbl .help-link:hover { color: var(--ink); text-decoration: underline; }
+  .auth-field .input {
+    width: 100%;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--page);
+    color: var(--ink);
+    padding: 9px 12px; font: inherit; font-size: 14px;
+    outline: 0;
+    transition: border-color .12s ease, box-shadow .12s ease;
+  }
+  .auth-field .input:focus {
+    border-color: var(--ink-2);
+    box-shadow: 0 0 0 3px rgba(17,17,17,0.06);
+  }
+  .auth-field .input::placeholder { color: var(--ink-3); }
+  .auth-field .help { font-size: 11.5px; color: var(--ink-3); }
+  .auth-field .help.ok { color: var(--ok); }
+  .auth-field .help.warn { color: var(--warn); }
+
+  /* CTA button — full width */
+  .auth-cta {
+    width: 100%; justify-content: center;
+    padding: 10px 14px; font-size: 13.5px;
+  }
+  .auth-cta .ic { width: 14px; height: 14px; }
+
+  /* "or" divider */
+  .auth-or {
+    display: flex; align-items: center; gap: 12px;
+    color: var(--ink-3); font-size: 10px; }
+  .auth-or::before, .auth-or::after {
+    content: ""; flex: 1; height: 1px; background: var(--line-2);
+  }
+
+  /* Secondary action — full width ghost-style */
+  .auth-second {
+    width: 100%; justify-content: center;
+    padding: 9px 14px; font-size: 13px;
+  }
+
+  /* Foot — switch login/signup, terms */
+  .auth-foot {
+    margin-top: 2px;
+    text-align: center;
+    font-size: 12px; color: var(--ink-3);
+  }
+  .auth-foot a { color: var(--ink-2); text-decoration: none; font-weight: 500; }
+  .auth-foot a:hover { color: var(--ink); text-decoration: underline; }
+
+  /* Bottom strip below stage — terms / company */
+  .auth-bottom {
+    padding: 22px 28px 26px;
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 11px; color: var(--ink-3); }
+  .auth-bottom .links {
+    display: flex; gap: 16px;
+  }
+  .auth-bottom a { color: var(--ink-3); text-decoration: none; }
+  .auth-bottom a:hover { color: var(--ink-2); }
+
+  /* "Email sent" confirmation block */
+  .auth-sent {
+    display: flex; flex-direction: column; gap: 10px;
+    padding: 14px;
+    border: 1px solid var(--line-2);
+    border-radius: 8px;
+    background: var(--rail);
+  }
+  .auth-sent .row {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 12.5px; color: var(--ink-2);
+  }
+  .auth-sent .row .ic { width: 14px; height: 14px; color: var(--ink-3); }
+  .auth-sent .row b { color: var(--ink); font-weight: 500; }
+  .auth-sent .row .tag-mono { margin-left: auto; }
+  .auth-sent .row.timer {
+    font-size: 11.5px; color: var(--ink-3);
+  }
+  .auth-sent .row.timer .ic { width: 13px; height: 13px; }
+
+  /* OTP cell row */
+  .auth-otp {
+    display: flex; gap: 8px; justify-content: flex-start;
+  }
+  .auth-otp .cell {
+    width: 44px; height: 52px;
+    border: 1px solid var(--line); border-radius: 6px;
+    background: var(--page);
+    display: grid; place-items: center; font-size: 18px; font-weight: 500; color: var(--ink);
+  }
+  .auth-otp .cell.filled { color: var(--ink); }
+  .auth-otp .cell.cursor {
+    border-color: var(--ink-2);
+    box-shadow: 0 0 0 3px rgba(17,17,17,0.06);
+    position: relative;
+  }
+  .auth-otp .cell.cursor::after {
+    content: ""; width: 1px; height: 22px; background: var(--ink);
+    animation: cursor-blink 1.1s steps(2,end) infinite;
+  }
+  .auth-otp .cell.empty { color: var(--ink-3); }
+  @keyframes cursor-blink { 50% { opacity: 0; } }
+
+  /* Persistent-session toggle row (post-magic-link return) */
+  .auth-route {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 10px;
+    padding: 12px 14px;
+    border: 1px solid var(--line-2); border-radius: 8px;
+    background: var(--rail);
+  }
+  .auth-route .l {
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .auth-route .l .nm {
+    font-size: 12.5px; color: var(--ink); font-weight: 500;
+    letter-spacing: -0.005em;
+  }
+  .auth-route .l .sub { font-size: 11.5px; color: var(--ink-3); }
+  .auth-route .ic { width: 14px; height: 14px; color: var(--ink-3); }
+
+  /* Disabled input affordance for verified-email field */
+  .auth-field .input.locked {
+    background: var(--rail);
+    color: var(--ink-2);
+    cursor: not-allowed;
+  }
+
+  /* Force the screen .canvas to size right for these auth views */
+  .auth-canvas { height: 720px; }
+
+  /* ---------- B5 extensions (append-only, do not modify lifted block) ---------- */
+  /* Inline icon above headline — 24×24, no tile background.
+     Smaller than B2 error tile (48×48) per handoff §6.2 — "this is success,
+     not error". Color set inline per scene (accent for success, ink-3 for
+     edge-state expired). */
+  .auth-icon {
+    width: 24px; height: 24px;
+    display: grid; place-items: center;
+    margin-bottom: 2px;
+  }
+  .auth-icon .ic { width: 24px; height: 24px; }
+  .auth-icon.ok  { color: var(--accent); }
+  .auth-icon.dim { color: var(--ink-3); }
+
+  /* Center alignment for the head block when used with .auth-icon */
+  .auth-card.icon-led {
+    align-items: flex-start;
+  }
+  .auth-card.icon-led .auth-head { text-align: left; }
+
+</style>
+</head>
+<body data-screen-label="B5 Email Change Landing · Light">
+
+<header class="page-head">
+  <div class="eyebrow">HI-FI · BATCH A ADDITIONS · LIGHT · FILE B5</div>
+  <h1>Email-change verification landing · 2 scenes · light theme</h1>
+  <p>Where the user lands after clicking a verify-email link sent to a NEW address from A7.1 Profile email-change. Distinct route from A15.06 (post-signup verify) — different copy, different CTA target, same chrome. The expired-link edge case (B5.2) reuses the same card with reframed copy + clock glyph instead of check-circle. No new tokens; one append-only extension class for the small icon-above-headline ornament (smaller than B2's 48×48 error tile per handoff §6.2).</p>
+  <div class="meta">/auth/email-change/verify · 2 scenes · light · same kova-hifi-light.css tokens</div>
+  <div class="legend">
+    <span class="sw"><i style="background:var(--accent);"></i>Success icon (check-circle)</span>
+    <span class="sw"><i style="background:var(--ink-3);"></i>Edge icon (clock — expired)</span>
+    <span class="sw"><i style="background:var(--ink);"></i>Primary CTA (ink)</span>
+    <span class="sw"><i style="background:var(--line);"></i>Card hairline</span>
+  </div>
+</header>
+
+
+<!-- ============================================================
+     B5.1 · EMAIL UPDATED (success)
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE B5 · §1 · B5.1 · Email updated</div>
+    <h2>B5.1 · Email updated · success landing</h2>
+    <p class="intro">User clicked the verify-link in their NEW inbox. Auto-verified — they're already signed in as the new identity. Headline announces the change in one phrase; the sub-line confirms the new address (bolded inline) and sets the security expectation that we've also notified the previous email. Primary CTA routes back to <code>/account/profile</code> (where they came from); no secondary because there's nothing else to do here.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Email updated · success</div><div class="id">B5.1 · /auth/email-change/verify (success)</div></div>
+    <div class="canvas auth-canvas" data-screen-label="B5.1 Email updated">
+      <div class="auth-shell">
+        <div class="auth-top">
+          <div class="wordmark"><div class="glyph">K</div><span>Kova</span></div>
+          <div class="corner"><a href="#">Sign out</a></div>
+        </div>
+
+        <div class="auth-stage">
+          <div class="auth-card icon-led">
+            <div class="auth-icon ok"><i data-lucide="check-circle" class="ic"></i></div>
+            <div class="auth-head">
+              <div class="eyebrow">Email change verified</div>
+              <h1>Email updated</h1>
+              <p class="auth-lede">You're now signed in as <b>jiho.yang+work@studiocollective.co</b>. We've also sent a notification to your previous email so you know the change happened.</p>
+            </div>
+
+            <button class="btn primary auth-cta">Go to account<i data-lucide="arrow-right" class="ic"></i></button>
+
+            <div class="auth-foot">
+              Didn't request this? <a href="#">Revert email change</a>.
+            </div>
+          </div>
+        </div>
+
+        <div class="auth-bottom">
+          <span>© Kova 2026</span>
+          <div class="links">
+            <a href="#">Status</a>
+            <a href="#">Docs</a>
+            <a href="#">Contact</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Inline icon, not a medal.</strong> A15.06's <code>.auth-medal ok</code> (48×48 circle with border) is used for post-signup celebration; an email change is a smaller event that doesn't earn the same celebration. 24×24 inline check-circle in <code>--accent</code> per handoff §6.2.</li>
+      <li><strong>New email is bolded inline,</strong> not blocked off in a row pattern. The address IS the news — user wants to scan it, confirm correctness, and move on. Bold via <code>&lt;b&gt;</code>; no new typography.</li>
+      <li><strong>"We've also sent a notification to your previous email"</strong> — security best-practice messaging. Tells the user the change is reversible from their old inbox if it wasn't them. The "Revert email change" foot link gives the same affordance to the new owner if they were spoofed.</li>
+      <li><strong>Long email wrap.</strong> The longer email <code>jiho.yang+work@studiocollective.co</code> tests wrap behavior — the auth-card max-width 380px keeps the bold address on one line at desktop, gracefully wraps at narrow viewports. Verified via screenshots at 1440 + 375.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     B5.2 · EMAIL-CHANGE LINK EXPIRED (edge)
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE B5 · §1 · B5.2 · Link expired</div>
+    <h2>B5.2 · This verification link expired · edge</h2>
+    <p class="intro">User clicks the verify-link more than 24 hours after it was sent. Same chrome, same icon size — clock glyph in <code>--ink-3</code> instead of check-circle in <code>--accent</code>. Reframed copy guides the user back to A7.1 Profile to request a fresh verification. The previous email remains the active sign-in identity until verification succeeds.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Verification link expired</div><div class="id">B5.2 · /auth/email-change/verify (expired)</div></div>
+    <div class="canvas auth-canvas" data-screen-label="B5.2 Email-change expired">
+      <div class="auth-shell">
+        <div class="auth-top">
+          <div class="wordmark"><div class="glyph">K</div><span>Kova</span></div>
+          <div class="corner"><a href="#">Sign out</a></div>
+        </div>
+
+        <div class="auth-stage">
+          <div class="auth-card icon-led">
+            <div class="auth-icon dim"><i data-lucide="clock" class="ic"></i></div>
+            <div class="auth-head">
+              <div class="eyebrow">Email change pending</div>
+              <h1>This verification link expired</h1>
+              <p class="auth-lede">Email-change links last 24 hours for security. Your account is still on the previous email — request a new one from your account settings to continue.</p>
+            </div>
+
+            <button class="btn primary auth-cta">Go to account<i data-lucide="arrow-right" class="ic"></i></button>
+
+            <div class="auth-foot">
+              Need help? <a href="#">Contact support</a>.
+            </div>
+          </div>
+        </div>
+
+        <div class="auth-bottom">
+          <span>© Kova 2026</span>
+          <div class="links">
+            <a href="#">Status</a>
+            <a href="#">Docs</a>
+            <a href="#">Contact</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Same shell, reframed copy.</strong> Card geometry, typography, button hierarchy are identical to B5.1 — only the icon glyph + color, the headline, and the sub-line change. Visual continuity tells the user "you're still on the same path, this just didn't go through."</li>
+      <li><strong>Account still on old email.</strong> The sub-line explicitly tells the user the change DIDN'T happen — important because they might assume "the link expired" means "the change rolled back." It never went through in the first place.</li>
+      <li><strong>Single CTA.</strong> The recovery is at A7.1, not here — sending the user back to settings to re-request keeps the verify-flow honest (each request gets its own time-bound link).</li>
+      <li><strong>Clock in <code>--ink-3</code></strong> rather than <code>--warn</code> because warn currently degrades to <code>--ink-2</code> per design.md §5 ban 12 — using <code>--ink-3</code> directly preserves the dim-edge intent without competing with the rest of the chrome's secondary text in <code>--ink-2</code>.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     COHERENCE NOTES
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE B5 · NOTES</div>
+    <h2>Coherence notes — what this file commits to</h2>
+    <p class="intro">Patterns this file inherits and decisions a future code-agent needs to wire.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Coherence audit</div><div class="id">B5 · notes</div></div>
+    <div style="padding:24px 28px;">
+      <ul style="margin:0;padding-left:20px;color:var(--ink-2);font-size:13px;line-height:1.7;max-width:820px;">
+        <li><strong>Theme isolation.</strong> Light only — root <code>&lt;html&gt;</code> carries no dark-mode attribute, no dark-mode tokens referenced. Email-change verification happens in the user's authenticated context, but the verify-link landing is pre-app: light auth chrome is the right place per the Figma model.</li>
+        <li><strong>Auth-card chrome lifted from A15</strong> per handoff §3.8. The A15 inline <code>&lt;style&gt;</code> block is reproduced byte-for-byte; the lifted block is unmodified.</li>
+        <li><strong>One extension class:</strong> <code>.auth-icon</code> + <code>.auth-icon.ok</code> + <code>.auth-icon.dim</code> for the 24×24 icon-above-headline ornament (smaller than B2's 48×48 error tile per handoff §6.2). Plus <code>.auth-card.icon-led</code> for the alignment override. All append below the lifted block.</li>
+        <li><strong>Distinct from A15.06.</strong> A15.06 is the post-signup magic-link return — uses <code>.auth-medal ok</code> (48×48 medal) and routes to onboarding/dashboard. B5.1 is post-A7.1-email-change — uses <code>.auth-icon ok</code> (24×24 inline) and routes back to <code>/account/profile</code>. Different events deserve different ornaments.</li>
+        <li><strong>Wrap test.</strong> B5.1 uses a long email (<code>jiho.yang+work@studiocollective.co</code>) so wrap behavior is exercised. Card max-width 380px holds at desktop; gracefully reflows at narrow viewports.</li>
+        <li><strong>Open wiring questions</strong> (flag for engineering): (a) Does the 24-hour expiry come from Supabase's email-change token TTL or an app-side gate? (b) Does the "Revert email change" link auto-rollback on B5.1 if the previous owner clicks it, or does it route through a confirm step? Recommend confirm step (irreversible action).</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<script>
+  if (window.lucide && window.lucide.createIcons) {
+    window.lucide.createIcons({ attrs: { 'stroke-width': 1.6 } });
+  }
+</script>
+</body>
+</html>

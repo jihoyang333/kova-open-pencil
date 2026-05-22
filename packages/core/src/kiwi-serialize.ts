@@ -147,6 +147,8 @@ export function mapToFigmaType(type: SceneNode['type']): string {
       return 'CONNECTOR'
     case 'SHAPE_WITH_TEXT':
       return 'SHAPE_WITH_TEXT'
+    case 'SLICE':
+      return 'SLICE'
     default:
       return 'RECTANGLE'
   }

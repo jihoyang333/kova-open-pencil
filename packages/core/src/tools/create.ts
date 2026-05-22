@@ -191,7 +191,7 @@ export const createVector = defineTool({
 export const createSlice = defineTool({
   name: 'create_slice',
   mutates: true,
-  description: 'Create a slice (export region) on the canvas.',
+  description: 'Create a slice (export region) on the canvas. Slice is a leaf NodeType (Cluster 07a) — cannot contain children.',
   params: {
     x: { type: 'number', description: 'X position', required: true },
     y: { type: 'number', description: 'Y position', required: true },
@@ -201,18 +201,26 @@ export const createSlice = defineTool({
     parent_id: { type: 'string', description: 'Parent node ID' }
   },
   execute: (figma, args) => {
-    const node = figma.createFrame()
+    const node = figma.createSlice()
     node.x = args.x
     node.y = args.y
     node.resize(args.width, args.height)
     node.name = args.name ?? 'Slice'
-    node.fills = []
     if (args.parent_id) {
       const parent = figma.getNodeById(args.parent_id)
       if (parent) parent.appendChild(node)
     }
     return nodeSummary(node)
   }
+})
+
+// Cluster 07a — Phase-2-deferred arrow primitive. Registered to reserve the
+// AI tool slot until the arrow primitive ships (stroke-cap renderer audit dep).
+export const arrowStub = defineTool({
+  name: 'arrow_stub',
+  description: 'Phase-2-deferred. Arrow primitive not yet shipped.',
+  params: {},
+  execute: () => ({ error: 'Arrow primitive deferred to Phase 2' })
 })
 
 

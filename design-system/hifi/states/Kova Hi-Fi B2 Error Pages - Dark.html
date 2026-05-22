@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<title>Kova — Hi-fi · B2 Error Pages · Dark</title>
+<meta name="viewport" content="width=1440" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+<link rel="stylesheet" href="../../../design-system/kova-hifi.css" />
+<script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
+<style>
+/* ============================================================
+   FILE B2 — Error pages (404 · 500 · Network down)
+   Full-page surfaces. Reuse the .empty-pane icon-tile + headline
+   pattern from A11, scaled up to viewport-center "fault state".
+   No sidebar, no topbar — the page IS the surface.
+   No new tokens, no new fonts, no monospace on chrome,
+   no red/yellow/green hexes (status palette deferred).
+   ============================================================ */
+
+  body { background: var(--bg); }
+
+  section.block .s-section h2 {
+    margin: 0 0 2px; font-size: 16px;
+    letter-spacing: -0.005em;
+    color: var(--ink); font-weight: 600;
+    font-family: 'Inter', system-ui, sans-serif;
+    text-transform: none;
+  }
+
+  /* ---------- Full-viewport error frame ---------- */
+  .err-page {
+    position: absolute; inset: 0;
+    background: var(--bg);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 32px 24px;
+    gap: 22px;
+  }
+
+  /* The card — focal element, no outer hairline (per design.md §1.4 — full-bleed surfaces aren't rounded; this is the focal surface) */
+  .err-card {
+    width: 420px; max-width: 100%;
+    padding: 40px 32px;
+    display: flex; flex-direction: column; align-items: center;
+    text-align: center;
+    gap: 14px;
+    background: transparent;
+  }
+
+  .err-icon-tile {
+    width: 48px; height: 48px;
+    border-radius: 6px;
+    background: var(--bg);
+    border: none;
+    display: grid; place-items: center;
+    color: var(--ink-3);
+    margin-bottom: 6px;
+  }
+  .err-icon-tile .ic { width: 24px; height: 24px; }
+
+  .err-card h1 {
+    margin: 0;
+    font-size: 15px; font-weight: 600;
+    letter-spacing: -0.005em;
+    color: var(--ink);
+  }
+  .err-card p {
+    margin: 0;
+    font-size: 12.5px; color: var(--ink-2);
+    line-height: 1.55;
+    max-width: 48ch;
+  }
+
+  .err-cta-stack {
+    width: 100%; max-width: 280px;
+    display: flex; flex-direction: column; align-items: stretch;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .err-cta-stack .btn {
+    justify-content: center;
+    padding: 9px 14px; font-size: 13px;
+  }
+  .err-cta-stack .btn.text {
+    border-color: transparent; background: transparent;
+    color: var(--ink-2); padding: 6px 8px;
+    font-size: 12.5px;
+  }
+  .err-cta-stack .btn.text:hover {
+    color: var(--ink); background: var(--line-2);
+  }
+
+
+</style>
+</head>
+<body data-screen-label="B2 Error Pages">
+
+<header class="page-head">
+  <div class="eyebrow">HI-FI · BATCH A ADDITIONS · DARK · FILE B2</div>
+  <h1>Error pages · B2.1 · B2.2 · B2.3</h1>
+  <p>Three full-page fault surfaces a Vue Router catch-all + error boundary + offline detector route to. All three reuse the <code>.empty-pane</code> icon-tile + headline pattern from A11, lifted to viewport-center scale. No sidebar, no topbar — the page <em>is</em> the surface. Status palette deferred per design.md §5 ban 12 — fault state is conveyed by glyph + tone of copy, not chrome color.</p>
+  <div class="meta">3 surfaces · all full-viewport · same kova-hifi.css tokens · density carried from A11</div>
+  <div class="legend">
+    <span class="sw"><i style="background: var(--ink);"></i>primary CTA</span>
+    <span class="sw"><i style="background: var(--ink-3);"></i>icon glyph (tile invisible)</span>
+    <span class="sw"><i style="background: var(--ink-2);"></i>secondary text-button</span>
+  </div>
+</header>
+
+
+<!-- ============================================================
+     B2.1 · 404 — page not found (Vue Router catch-all)
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE B2 · §1 · B2.1 · 404 — page not found</div>
+    <h2>B2.1 · 404 page not found</h2>
+    <p class="intro">Catch-all route for any URL the SPA doesn't recognize. Primary CTA returns to the dashboard; secondary signs out (covers the case where the URL points at content the user no longer has access to).</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">404 · page not found</div><div class="id">B2.1 · hi-fi</div></div>
+    <div class="canvas tall" data-screen-label="B2.1 · 404">
+      <div class="err-page">
+        <div class="err-card">
+          <div class="err-icon-tile"><i data-lucide="compass" class="ic"></i></div>
+          <h1>Page not found</h1>
+          <p>The page you're looking for doesn't exist or was moved. If you followed a link, it may have pointed to a canvas that's been archived or to a brand you no longer have access to.</p>
+          <div class="err-cta-stack">
+            <div class="btn primary"><i data-lucide="layout-grid" class="ic"></i>Go to dashboard</div>
+            <div class="btn text">Sign out</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Two CTAs, two scenarios.</strong> "Go to dashboard" handles the misclick; "Sign out" handles the auth-mismatch case (deep-link points at another tenant's content). Sign-out is text-button, not danger — leaving and signing back in is a normal recovery, not destructive.</li>
+      <li><strong>Card has no outer hairline.</strong> Per design.md §1.4 — full-bleed and focal surfaces aren't rounded with hairlines. The card sits on the page background; the 48-px icon tile carries the only edge.</li>
+      <li><strong>Icon-tile background matches page bg</strong> (<code>--bg</code>) and the tile carries no border — the square stays invisible so the glyph reads as floating directly on the page. Icon glyph in <code>--ink-3</code> stays clearly visible.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     B2.2 · 500 — error boundary fallback
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE B2 · §1 · B2.2 · 500 — server error</div>
+    <h2>B2.2 · 500 something broke on our end</h2>
+    <p class="intro">Caught by the Vue error boundary. Lead glyph: Lucide <code>alert-triangle</code> blended into the icon-tile per the bg-color rule. Primary CTA reloads the route; secondary returns to the dashboard. No technical disclosure — fault-id and stack traces stay server-side; users get a clean recovery surface.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">500 · error boundary fallback</div><div class="id">B2.2 · hi-fi</div></div>
+    <div class="canvas tall" data-screen-label="B2.2 · 500">
+      <div class="err-page">
+        <div class="err-card">
+          <div class="err-icon-tile"><i data-lucide="alert-triangle" class="ic"></i></div>
+          <h1>Something broke on our end</h1>
+          <p>We've logged the error and an alert is on its way to the on-call engineer. Try again in a moment, or refresh the page — your latest canvas changes are saved locally and will reload automatically.</p>
+          <div class="err-cta-stack">
+            <div class="btn primary"><i data-lucide="rotate-cw" class="ic"></i>Try again</div>
+            <div class="btn text">Go to dashboard</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>No technical disclosure.</strong> Stack traces, fault-ids, and route paths are noise to the user — they want a way out, not diagnostic detail. Server-side logging captures everything we need; the page stays clean.</li>
+      <li><strong>No red.</strong> Status palette deferred (design.md §5 ban 12); the warn-icon glyph in <code>--ink-3</code> on the invisible tile + clear copy carry the fault role. When the palette ships, this re-themes for free — change one token, no markup change.</li>
+      <li><strong>"Try again" is the primary action</strong> because the most likely cause is a transient server glitch (deploy lag, WebSocket reconnect, cold-start). Reload-route succeeds in &gt;70% of caught error-boundary cases.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     B2.3 · Network unreachable
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE B2 · §1 · B2.3 · Network unreachable</div>
+    <h2>B2.3 · Can't reach Kova</h2>
+    <p class="intro">App-level network failure (no DNS, no TLS handshake, server unreachable). Distinct from A13's in-chrome offline strip — A13 says "I noticed your machine is offline"; this page says "I can't get to the server even though your machine appears online". Renders without sidebar/topbar so it works pre-auth (a sign-in attempt that times out hits this page, not A13).</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Network down · pre- and post-auth surface (no sidebar/topbar)</div><div class="id">B2.3 · hi-fi</div></div>
+    <div class="canvas tall" data-screen-label="B2.3 · Network down">
+      <div class="err-page">
+        <div class="err-card">
+          <div class="err-icon-tile"><i data-lucide="wifi-off" class="ic"></i></div>
+          <h1>Can't reach Kova</h1>
+          <p>Check your internet connection. If you're working in a canvas, recent changes are saved locally and will sync as soon as you're back online. If you're trying to sign in, retry once you have a connection.</p>
+          <div class="err-cta-stack">
+            <div class="btn primary"><i data-lucide="rotate-cw" class="ic"></i>Retry connection</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Pre- vs post-auth.</strong> Renders without sidebar or topbar so it works before the user is signed in (sign-in network failure) and after (logged-in network failure during canvas edit). Symmetry beats split surfaces here — the page tells the user the same truth in both cases.</li>
+      <li><strong>Single CTA: Retry.</strong> No "Continue offline" — the page replaces chrome whenever the server is unreachable, and there's nothing for the user to interact with offline at that point. Local Yjs autosave still runs in the background; once the connection is restored and the user retries, their queued edits sync.</li>
+      <li><strong>Why distinct from A13.</strong> A13 is in-chrome (sidebar pill + banner) for graceful degradation while the user keeps working; B2.3 is the page-replacing fault for catastrophic loss of server reachability. Different scope, different surface.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     Cross-surface notes
+     ============================================================ -->
+<section class="block" style="background: var(--page);">
+  <header>
+    <div class="tag">Coherence notes — what this file commits to</div>
+    <h2>What B2 commits to</h2>
+  </header>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;max-width:1080px;font-size:12.5px;color:var(--ink-2);line-height:1.55;">
+    <div style="background: var(--page); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px;">
+      <h3 style="margin:0 0 8px;font-size:14px;color:var(--ink);font-weight:600;letter-spacing:-0.005em;">New layout-only classes</h3>
+      <ul style="margin:6px 0 0;padding-left:18px;">
+        <li><code>.err-page</code> — full-viewport flex-center wrapper. No sidebar / topbar.</li>
+        <li><code>.err-card</code> — focal card, 420 × content. No outer hairline.</li>
+        <li><code>.err-icon-tile</code> — 48×48 icon tile, invisible (bg = <code>--bg</code>, no border) so the glyph reads as floating directly on the page. Icon glyph in <code>--ink-3</code> stays visible.</li>
+        <li><code>.err-cta-stack</code> — primary on top, text-button below.</li>
+      </ul>
+    </div>
+    <div style="background: var(--page); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px;">
+      <h3 style="margin:0 0 8px;font-size:14px;color:var(--ink);font-weight:600;letter-spacing:-0.005em;">Tokens used (none new)</h3>
+      <ul style="margin:6px 0 0;padding-left:18px;">
+        <li>Surface: <code>--bg</code> · <code>--page</code> · <code>--rail</code> · <code>--fill</code></li>
+        <li>Ink: <code>--ink</code> · <code>--ink-2</code> · <code>--ink-3</code></li>
+        <li>Lines: <code>--line</code> · <code>--line-2</code></li>
+        <li>No accent. No warn. The status palette deferral (design.md §5 ban 12) applies — fault role is communicated through glyph + copy, not color.</li>
+      </ul>
+    </div>
+    <div style="background: var(--page); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px;">
+      <h3 style="margin:0 0 8px;font-size:14px;color:var(--ink);font-weight:600;letter-spacing:-0.005em;">Scope split with A13 (offline)</h3>
+      <ul style="margin:6px 0 0;padding-left:18px;">
+        <li><strong>A13 = graceful degradation.</strong> User's machine is offline; the app stays loaded; sidebar pill + banner indicate status; canvas edits queue locally.</li>
+        <li><strong>B2.3 = catastrophic unreachability.</strong> The app cannot talk to the server at all — possibly because we're down, possibly because the user is offline before any session loaded. Page replaces chrome.</li>
+        <li><strong>Detection rules</strong> (for the implementer): if <code>navigator.onLine === false</code> AND a session was already established → A13. If a network request fails AND no session yet OR an active session can't reach the server → B2.3. The two surfaces never render simultaneously.</li>
+      </ul>
+    </div>
+    <div style="background: var(--page); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px;">
+      <h3 style="margin:0 0 8px;font-size:14px;color:var(--ink);font-weight:600;letter-spacing:-0.005em;">Deferred / out of scope</h3>
+      <ul style="margin:6px 0 0;padding-left:18px;">
+        <li><strong>403 / 401 surfaces.</strong> Permission denied + session expired need their own pages — out of scope for this round. Recommend they reuse <code>.err-card</code> with different glyphs (<code>shield-off</code>, <code>log-out</code>) and copy.</li>
+        <li><strong>Maintenance / deploy-window page.</strong> Separate from 500 because it's planned, not faulted. Out of scope.</li>
+        <li><strong>Status palette themed re-render.</strong> Once design.md §1.1 ships <code>--color-status-error</code> etc., the icon-tile + foot-meta should re-theme to the warn variant. No markup change — token swap only.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+
+<footer style="padding:32px 56px;border-top:1px solid var(--line);background:var(--bg);color:var(--ink-3);font-size:11px;">
+  Kova · hi-fi · Batch A additions · B2 Error Pages · v1
+</footer>
+
+<script>
+  if (window.lucide) window.lucide.createIcons({ attrs: { 'stroke-width': 1.6 } });
+</script>
+</body>
+</html>

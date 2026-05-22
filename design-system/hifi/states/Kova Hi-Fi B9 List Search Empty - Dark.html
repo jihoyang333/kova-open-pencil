@@ -1,0 +1,979 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<title>Kova — Hi-fi · B9 List Search Empty · Dark</title>
+<meta name="viewport" content="width=1440" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+<link rel="stylesheet" href="../../design-system/kova-hifi.css" />
+<script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
+<style>
+/* ============================================================
+   FILE B9 — List search-empty state
+   Four scenes covering the inline empty-result state when a
+   user searches/filters a list (Memories, Saved blocks, KB
+   sources) and gets zero results. Smaller than A11.8 full-page
+   pattern; doesn't take over the pane.
+
+   Tokens come from kova-hifi.css. Lifted .empty-pane from A11
+   (canonical CSS does not define .empty-pane). Adds an
+   .empty-pane.inline extension class that scales the pattern
+   down for in-list use.
+
+   Different concept from A11.8 ("no data exists") — B9 is
+   "data exists but doesn't match this filter". Different icon
+   (search-x), different copy, smaller scale.
+   ============================================================ */
+
+  body { background: var(--bg); }
+
+  section.block .s-section h2 {
+    margin: 0 0 2px; font-size: 16px;
+    letter-spacing: -0.005em;
+    color: var(--ink); font-weight: 600;
+    font-family: 'Inter', system-ui, sans-serif;
+    text-transform: none;
+  }
+
+  /* ============================================================
+     LIFTED CHROME — A7 Account (chrome wrappers)
+     Source: batch-a/dark/Kova Hi-Fi A7 Account Page - Dark.html
+     Lift verbatim. Used to wrap B9.1 (Memories), B9.2 (Saved
+     blocks), B9.3 (KB sources) in their natural surfaces.
+     Diff vs source: ZERO.
+     ============================================================ */
+  .acc-frame { height: 100%; display: grid; grid-template-columns: 220px 1fr; background: var(--page); }
+  .acc-rail {
+    background: var(--rail);
+    border-right: 1px solid var(--line);
+    padding: 28px 12px 16px;
+    display: flex; flex-direction: column; gap: 4px;
+    min-height: 0; overflow: auto;
+  }
+  .acc-rail .title {
+    font-size: 17px; font-weight: 600; letter-spacing: -0.012em;
+    padding: 0 10px 14px; color: var(--ink);
+  }
+  .acc-rail .it {
+    display: flex; align-items: center; gap: 9px;
+    padding: 7px 10px; border-radius: 5px;
+    color: var(--ink-2); cursor: pointer; font-size: 13px;
+  }
+  .acc-rail .it:hover { background: var(--line-2); color: var(--ink); }
+  .acc-rail .it.active { background: var(--fill); color: var(--ink); font-weight: 500; }
+  .acc-rail .it .ic { width: 14px; height: 14px; opacity: .8; }
+  .acc-rail .it.active .ic { opacity: 1; }
+  .acc-rail .it.danger { color: var(--warn); }
+  .acc-rail .it.danger:hover { background: rgba(232,122,74,0.08); }
+  .acc-rail .sep { height: 1px; background: var(--line-2); margin: 10px 8px; }
+
+  .acc-main { overflow: auto; display: flex; flex-direction: column; }
+  .acc-hero {
+    padding: 40px 56px 24px;
+    border-bottom: 1px solid var(--line-2);
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 24px;
+  }
+  .acc-hero h1 {
+    margin: 0 0 6px; font-size: 24px; font-weight: 600; letter-spacing: -0.012em;
+  }
+  .acc-hero p {
+    margin: 0; color: var(--ink-2); font-size: 13.5px; max-width: 600px;
+  }
+  .brandpick {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 10px 6px 7px;
+    border: 1px solid var(--line); border-radius: 7px;
+    background: var(--page); cursor: pointer;
+    font-size: 12.5px; color: var(--ink);
+    transition: border-color .1s ease;
+  }
+  .brandpick:hover { border-color: var(--ink-3); }
+  .brandpick .logo {
+    width: 20px; height: 20px; border-radius: 4px;
+    background: var(--ink); color: var(--page);
+    display: grid; place-items: center;
+    font-weight: 700; font-size: 10px; letter-spacing: -0.02em;
+  }
+  .brandpick .nm { font-weight: 600; letter-spacing: -0.005em; }
+  .brandpick .caret { color: var(--ink-3); margin-left: 2px; }
+
+  .acc-content {
+    padding: 32px 56px 80px;
+    display: flex; flex-direction: column; gap: 36px;
+    max-width: 940px;
+  }
+  .s-section { display: flex; flex-direction: column; gap: 12px; }
+  .bk-wrap { display: grid; grid-template-columns: 188px 1fr; gap: 24px; }
+  .bk-subnav {
+    display: flex; flex-direction: column; gap: 1px;
+    position: sticky; top: 16px; align-self: start;
+  }
+  .bk-subnav .it {
+    display: flex; align-items: center; gap: 9px;
+    padding: 6px 10px; border-radius: 5px;
+    color: var(--ink-2); cursor: pointer; font-size: 12.5px;
+  }
+  .bk-subnav .it:hover { background: var(--line-2); color: var(--ink); }
+  .bk-subnav .it.active { background: var(--fill); color: var(--ink); font-weight: 500; }
+  .bk-subnav .it .ic { width: 13px; height: 13px; opacity: .8; }
+  .bk-subnav .head { font-size: 10px; color: var(--ink-3); padding: 0 10px 6px; font-weight: 500; }
+  .bk-pane { min-width: 0; display: flex; flex-direction: column; gap: 18px; }
+
+  /* A7 .ctrl-input — used for the search bar above empty state */
+  .ctrl-input {
+    width: 100%; border: 1px solid var(--line); border-radius: 5px;
+    padding: 6px 10px; font: inherit; font-size: 13px;
+    background: var(--page); color: var(--ink);
+  }
+  .ctrl-input:focus { outline: none; border-color: var(--ink-2); box-shadow: 0 0 0 3px rgba(237,237,234,0.05); }
+
+  /* A7 .seg — used for memory filter row */
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--page); }
+  .seg .o { padding: 6px 12px; font-size: 12px; color: var(--ink-3); cursor: pointer; border-right: 1px solid var(--line-2); background: var(--page); }
+  .seg .o:last-child { border-right: 0; }
+  .seg .o.on { background: var(--fill); color: var(--ink); }
+
+  /* A7 .list-stack (used as container around empty state in B9.1/B9.2) */
+  .list-stack {
+    border: 1px solid var(--line); border-radius: 7px;
+    overflow: hidden; background: var(--page);
+  }
+
+  /* A7 .kb-grid + .kb-sources + .kb-viewer (used in B9.3) */
+  .kb-grid { display: grid; grid-template-columns: 40% 1fr; gap: 12px; height: 460px; }
+  .kb-sources, .kb-viewer {
+    border: 1px solid var(--line); border-radius: 7px;
+    background: var(--page); display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  .kb-sources .hd, .kb-viewer .hd {
+    padding: 10px 14px; border-bottom: 1px solid var(--line-2);
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--rail);
+    font-size: 12px; color: var(--ink);
+  }
+  .kb-sources .hd b { font-weight: 600; }
+  .kb-sources .hd .count { font-size: 10.5px; color: var(--ink-3); }
+  .kb-list { overflow: auto; flex: 1; }
+  .kb-srcs-tabs {
+    display: flex; gap: 4px; padding: 8px 14px;
+    border-top: 1px solid var(--line-2);
+    background: var(--rail);
+    font-size: 11px;
+  }
+  .kb-srcs-tabs .t {
+    padding: 4px 9px; border-radius: 4px;
+    color: var(--ink-3); cursor: pointer;
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+  .kb-srcs-tabs .t.on { background: var(--fill); color: var(--ink); }
+  .kb-srcs-tabs .t .num { font-size: 10px; color: var(--ink-3); }
+  .kb-srcs-tabs .t.on .num { color: var(--ink-2); }
+  .kb-viewer .body {
+    flex: 1; overflow: auto; padding: 18px 22px;
+    color: var(--ink-2); font-size: 13px; line-height: 1.6;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+
+  /* ============================================================
+     LIFTED CHROME — .empty-pane (canonical-of-A11)
+     Source: batch-a/dark/Kova Hi-Fi A11+A12+A13+A_canvas_nav - Dark.html
+     Canonical kova-hifi.css does not define .empty-pane;
+     A11 + A7 each carry per-file declarations. A11's version is
+     the most generic + shared. Lift verbatim.
+     Diff vs source: ZERO.
+     ============================================================ */
+  .empty-pane {
+    border: 1px dashed var(--line); border-radius: 8px;
+    padding: 36px 24px; text-align: center;
+    background: var(--page);
+    display: flex; flex-direction: column; gap: 6px; align-items: center;
+  }
+  .empty-pane .ic-wrap {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: var(--rail); border: 1px solid var(--line);
+    display: grid; place-items: center; color: var(--ink-3);
+    margin-bottom: 4px;
+  }
+  .empty-pane h5 { margin: 0; font-size: 13px; color: var(--ink); font-weight: 600; letter-spacing: -0.005em; }
+  .empty-pane p { margin: 0; font-size: 12px; color: var(--ink-3); max-width: 360px; line-height: 1.5; }
+  .empty-pane .cta-row { display: flex; gap: 8px; margin-top: 10px; }
+
+  /* ============================================================
+     EXTENSION — .empty-pane.inline (B9 only)
+     Smaller variant for in-list zero-results contexts. Lifts on
+     top of the lifted A11 .empty-pane block; doesn't modify it.
+
+     - Icon tile: 32 × 32 (vs A11's 40 × 40)
+     - Headline: 12.5 / 500 (vs A11's 13 / 600) — quieter
+     - Sub-copy: 11.5 / ink-3 / 36ch max
+     - CTA: ghost text button, no chrome (accent ink)
+     - Padding: 24 vertical (vs A11's 36 vertical)
+     - Width: contained within the list area; centered
+     - No outer dashed border (border: 0) — sits inside list-stack already
+     ============================================================ */
+  .empty-pane.inline {
+    border: 0;
+    padding: 24px 16px;
+    background: transparent;
+    gap: 4px;
+  }
+  .empty-pane.inline .ic-wrap {
+    width: 32px; height: 32px;
+    background: var(--fill);
+    border-color: transparent;
+    border-radius: 5px; /* matches --r-md from design.md */
+  }
+  .empty-pane.inline .ic-wrap .ic { width: 16px; height: 16px; }
+  .empty-pane.inline h5 {
+    font-size: 12.5px; font-weight: 500; color: var(--ink);
+    letter-spacing: 0;
+  }
+  .empty-pane.inline h5 .q {
+    /* The quoted query inside the headline (e.g. 'shipping') */
+    color: var(--ink); font-weight: 600;
+  }
+  .empty-pane.inline p {
+    font-size: 11.5px; color: var(--ink-3);
+    max-width: 36ch; line-height: 1.5;
+  }
+  .empty-pane.inline .cta-row {
+    margin-top: 6px; gap: 4px;
+  }
+  .empty-pane.inline .cta-row .ghost-link {
+    background: transparent; border: 0;
+    color: var(--accent); font: inherit;
+    font-size: 12px; font-weight: 500;
+    padding: 4px 8px; border-radius: 4px;
+    cursor: pointer; letter-spacing: -0.003em;
+  }
+  .empty-pane.inline .cta-row .ghost-link:hover {
+    background: var(--line-2);
+  }
+
+  /* B9.3 — Right-side viewer placeholder (when no source selected) */
+  .empty-pane.inline.viewer-quiet {
+    /* Even quieter than the inline list-empty; for the right-viewer
+       "Select a source" placeholder where there's nothing to act on. */
+    padding: 32px 16px;
+  }
+
+  /* ============================================================
+     SCENE GRID — for B9.4 size-family comparison
+     ============================================================ */
+  .scene-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 14px;
+    padding: 24px;
+    background: var(--bg);
+  }
+  .scene-card {
+    background: var(--page); border: 1px solid var(--line);
+    border-radius: 8px; overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+  .scene-card .sc-head {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--line-2);
+    background: var(--rail);
+    display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+  }
+  .scene-card .sc-head .nm { font-size: 12px; font-weight: 600; color: var(--ink); }
+  .scene-card .sc-head .id { font-size: 10px; color: var(--ink-3); }
+  .scene-card .sc-body {
+    padding: 24px 16px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 10px; min-height: 280px;
+  }
+  .scene-card .sc-foot {
+    padding: 10px 14px; border-top: 1px solid var(--line-2);
+    background: var(--rail); color: var(--ink-3); font-size: 11px;
+    line-height: 1.45;
+  }
+
+  /* B9.4 — Larger 48x48 reference variant (full-page hypothetical) */
+  .empty-pane.full-page {
+    padding: 56px 32px;
+    background: var(--page);
+    border: 0;
+  }
+  .empty-pane.full-page .ic-wrap {
+    width: 48px; height: 48px;
+    background: var(--rail);
+    border: 1px solid var(--line);
+    border-radius: 50%;
+  }
+  .empty-pane.full-page .ic-wrap .ic { width: 22px; height: 22px; }
+  .empty-pane.full-page h5 {
+    font-size: 15px; font-weight: 600;
+  }
+
+  /* ============================================================
+     Canonical 03 chrome — byte-match overrides
+     kova-hifi.css `.nav .item.active` defaults to `var(--accent-soft)`
+     (dark navy fill, reads as solid blue). Canonical 03 inline-overrides
+     to `var(--fill)` (neutral tint). Lift verbatim per founder review.
+     Source: batch-a/dark/Kova Hi-Fi 03 Brand Dashboard - Dark.html §205-221.
+     ============================================================ */
+  .nav .section { letter-spacing: 0.12em; }
+  .nav .item.active { background: var(--fill); color: var(--ink); font-weight: 500; }
+  .nav .item.active .ic { color: currentColor; opacity: 1; }
+  .nav .item .count { font-size: 10.5px; color: var(--ink-3); }
+  .nav .item.active .count { color: var(--ink-3); }
+  .side-search .kbd { font-size: 10px; }
+  .side-footer .avatar { background: var(--warn); color: #fff; }
+
+</style>
+</head>
+<body data-screen-label="B9 List Search Empty">
+
+<header class="page-head">
+  <div class="eyebrow">HI-FI · BATCH A ADDITIONS · DARK · FILE B9</div>
+  <h1>List search-empty · B9.1–B9.4</h1>
+  <p>Inline empty-state for lists that return zero results when filtered. Smaller than A11.8 full-page pattern; doesn't take over the pane. Different concept from A11 — A11.x = "no data exists yet" (use icon for the data type, e.g. <code>brain</code> for memories), B9 = "data exists but doesn't match this filter" (use <code>search-x</code> for any list). Search bar stays visible; user can clear or modify the query.</p>
+  <div class="meta">4 surfaces · same kova-hifi.css tokens · 1 lifted block (.empty-pane from A11) + 1 extension (.empty-pane.inline)</div>
+  <div class="legend">
+    <span class="sw"><i style="background: var(--ink);"></i>headline ink</span>
+    <span class="sw"><i style="background: var(--ink-3);"></i>sub-copy / muted</span>
+    <span class="sw"><i style="background: var(--accent);"></i>ghost CTA ink</span>
+    <span class="sw"><i style="background: var(--fill);"></i>icon-tile fill (inline)</span>
+  </div>
+</header>
+
+
+<!-- ============================================================
+     B9.1 — Memories list search-empty (A7.3.6)
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE B9 · §1 · B9.1 · Memories search-empty</div>
+    <h2>B9.1 · Memories search-empty</h2>
+    <p class="intro">Inside A7.3.6 Memories with active search "shipping" returning zero matches. Search bar stays visible at the top; below it, a small inline empty-pane sits centered in the list area. 32-px icon tile, quieter headline, ghost "Clear search" CTA. The typed query is echoed inside the headline (in quotes) so the empty-state copy is dynamic.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Memories · "shipping" · zero matches</div><div class="id">B9.1 · hi-fi · in-situ</div></div>
+    <div class="canvas tall" data-screen-label="B9.1 Memories search-empty">
+      <div class="app">
+        <div class="sidebar">
+          <div class="brand-switch">
+            <div class="logo">N</div>
+            <div class="name">Nike</div>
+            <div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div>
+          </div>
+          <div class="side-search">
+            <i data-lucide="search" style="width:13px;height:13px;"></i>
+            <span>Search</span>
+            <span class="kbd">⌘K</span>
+          </div>
+
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item active"><i data-lucide="clock-4" class="ic"></i><span>Recents</span></div>
+            <div class="item"><i data-lucide="calendar-days" class="ic"></i><span>Calendar</span><span class="count">12</span></div>
+
+            <div class="section">Library</div>
+            <div class="item"><i data-lucide="bookmark" class="ic"></i><span>Swipes</span></div>
+            <div class="item"><i data-lucide="layout-template" class="ic"></i><span>Templates</span></div>
+            <div class="item"><i data-lucide="package" class="ic"></i><span>Products</span><span class="count">318</span></div>
+
+            <div class="section">Brand</div>
+            <div class="item"><i data-lucide="sparkles" class="ic"></i><span>Personalization</span></div>
+            <div class="item"><i data-lucide="book-open" class="ic"></i><span>Knowledge base</span></div>
+            <div class="item"><i data-lucide="brain" class="ic"></i><span>Memories</span><span class="count">19</span></div>
+          </div>
+
+          <div class="side-footer">
+            <div class="avatar">JY</div>
+            <div class="who">
+              <b>Jiho Yang</b>
+              <span>Free plan</span>
+            </div>
+            <div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+          </div>
+        </div>
+
+        <div class="main">
+          <div class="topbar">
+            <div class="breadcrumb">
+              <span>Nike</span>
+              <span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <b>Home</b>
+            </div>
+            <div class="actions">
+              <div class="btn sm">
+                <i data-lucide="folder-plus" class="ic"></i>
+                New canvas
+              </div>
+            </div>
+          </div>
+
+          <div class="acc-frame">
+            <div class="acc-rail">
+              <div class="title">Account</div>
+              <div class="it"><i data-lucide="user" class="ic"></i>Profile</div>
+              <div class="it"><i data-lucide="credit-card" class="ic"></i>Plan &amp; billing</div>
+              <div class="it active"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+              <div class="it"><i data-lucide="plug" class="ic"></i>Integrations</div>
+              <div class="sep"></div>
+              <div class="it danger"><i data-lucide="trash-2" class="ic"></i>Danger zone</div>
+            </div>
+
+            <div class="acc-main">
+              <div class="acc-hero">
+                <div class="l">
+                  <h1>Memories</h1>
+                  <p>Things Kova has remembered while you worked. Filter by type or search the row text.</p>
+                </div>
+                <div class="r" style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+                  <span class="mono" style=" font-size:10px;letter-spacing:0.1em; color:var(--ink-3);">Editing brand</span>
+                  <div class="brandpick"><div class="logo">N</div><div class="nm">Nike</div><i data-lucide="chevrons-up-down" class="caret" style="width:13px;height:13px;"></i></div>
+                </div>
+              </div>
+
+              <div class="acc-content">
+                <div class="bk-wrap">
+                  <div class="bk-subnav">
+                    <div class="head">Brand Kit</div>
+                    <div class="it"><i data-lucide="palette" class="ic"></i>Visuals</div>
+                    <div class="it"><i data-lucide="user-circle" class="ic"></i>Identity</div>
+                    <div class="it"><i data-lucide="quote" class="ic"></i>Tone snippets<span style="margin-left:auto; font-size:10px;color:var(--ink-3);">8</span></div>
+                    <div class="it"><i data-lucide="layers" class="ic"></i>Saved blocks<span style="margin-left:auto; font-size:10px;color:var(--ink-3);">5</span></div>
+                    <div class="it"><i data-lucide="check-square" class="ic"></i>Writing rules</div>
+                    <div class="it active"><i data-lucide="brain" class="ic"></i>Memories<span style="margin-left:auto; font-size:10px;color:var(--ink);">19</span></div>
+                    <div class="it"><i data-lucide="book-open" class="ic"></i>Knowledge base</div>
+                  </div>
+
+                  <div class="bk-pane">
+                    <!-- Toolbar — search bar STAYS VISIBLE on zero results -->
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                      <div class="seg">
+                        <div class="o on">All <span style="color:var(--ink-3);font-size:10px;margin-left:4px;">19</span></div>
+                        <div class="o">Rules <span style="color:var(--ink-3);font-size:10px;margin-left:4px;">7</span></div>
+                        <div class="o">Facts <span style="color:var(--ink-3);font-size:10px;margin-left:4px;">9</span></div>
+                        <div class="o">Preferences <span style="color:var(--ink-3);font-size:10px;margin-left:4px;">3</span></div>
+                      </div>
+                      <input class="ctrl-input" value="shipping" style="flex:1;max-width:240px;" />
+                      <div style="flex:1;"></div>
+                      <div class="btn sm"><i data-lucide="plus" class="ic"></i>Add memory</div>
+                    </div>
+
+                    <!-- Empty list-stack with inline empty-pane inside -->
+                    <div class="list-stack" style="display:flex;align-items:center;justify-content:center;min-height:240px;">
+                      <div class="empty-pane inline">
+                        <div class="ic-wrap"><i data-lucide="search-x" class="ic"></i></div>
+                        <h5>No memories match <span class="q">"shipping"</span></h5>
+                        <p>Try a different search or clear the filter to see all 19 memories.</p>
+                        <div class="cta-row">
+                          <button type="button" class="ghost-link">Clear search</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Search bar stays visible.</strong> Hiding the search input on zero results would force the user to leave the surface to clear the query. The query stays in the input + the headline echoes it, so the user always knows what state they're in.</li>
+      <li><strong>Quoted query in the headline.</strong> <code>"shipping"</code> sits inside <code>&lt;span class="q"&gt;</code>, weight 600 — slightly stronger than the rest of the headline so the user can re-read the query at a glance.</li>
+      <li><strong>32-px icon tile, not 40-px.</strong> A11's panel-confined empty pane uses 40 × 40; B9 inline goes one step quieter at 32 × 32. The list-stack already carries the outer chrome (1px line, 7px radius, var(--page) bg) — repeating that with another dashed pane would be too loud.</li>
+      <li><strong>"Clear search" is a ghost text button</strong> in <code>--accent</code> ink — same vocabulary as B1.x toast inline actions and B8.1 drop-zone "click to browse". One ink role, one affordance type.</li>
+      <li><strong>The 19 count in the segmented "All" tab and the Memories sub-nav both stay accurate.</strong> Empty results don't change the data; they reflect the filter. The user re-applies "All" or clears the search to see them again.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     B9.2 — Saved blocks list search-empty (A7.3.4)
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE B9 · §1 · B9.2 · Saved blocks search-empty</div>
+    <h2>B9.2 · Saved blocks search-empty</h2>
+    <p class="intro">Same pattern as B9.1 applied to A7.3.4 Saved blocks with filter "footer" returning zero. Proves the inline empty-pane pattern is consistent across sub-tabs that share the canonical <code>.list-stack</code> chrome — the only difference between B9.1 and B9.2 is which sub-nav item is active and the typed query.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Saved blocks · "footer" · zero matches</div><div class="id">B9.2 · hi-fi · in-situ</div></div>
+    <div class="canvas tall" data-screen-label="B9.2 Saved blocks search-empty">
+      <div class="app">
+        <div class="sidebar">
+          <div class="brand-switch">
+            <div class="logo">N</div>
+            <div class="name">Nike</div>
+            <div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div>
+          </div>
+          <div class="side-search">
+            <i data-lucide="search" style="width:13px;height:13px;"></i>
+            <span>Search</span>
+            <span class="kbd">⌘K</span>
+          </div>
+
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item active"><i data-lucide="clock-4" class="ic"></i><span>Recents</span></div>
+            <div class="item"><i data-lucide="calendar-days" class="ic"></i><span>Calendar</span><span class="count">12</span></div>
+
+            <div class="section">Library</div>
+            <div class="item"><i data-lucide="bookmark" class="ic"></i><span>Swipes</span></div>
+            <div class="item"><i data-lucide="layout-template" class="ic"></i><span>Templates</span></div>
+            <div class="item"><i data-lucide="package" class="ic"></i><span>Products</span><span class="count">318</span></div>
+
+            <div class="section">Brand</div>
+            <div class="item"><i data-lucide="sparkles" class="ic"></i><span>Personalization</span></div>
+            <div class="item"><i data-lucide="book-open" class="ic"></i><span>Knowledge base</span></div>
+            <div class="item"><i data-lucide="brain" class="ic"></i><span>Memories</span><span class="count">19</span></div>
+          </div>
+
+          <div class="side-footer">
+            <div class="avatar">JY</div>
+            <div class="who">
+              <b>Jiho Yang</b>
+              <span>Free plan</span>
+            </div>
+            <div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+          </div>
+        </div>
+
+        <div class="main">
+          <div class="topbar">
+            <div class="breadcrumb">
+              <span>Nike</span>
+              <span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <b>Home</b>
+            </div>
+            <div class="actions">
+              <div class="btn sm">
+                <i data-lucide="folder-plus" class="ic"></i>
+                New canvas
+              </div>
+            </div>
+          </div>
+
+          <div class="acc-frame">
+            <div class="acc-rail">
+              <div class="title">Account</div>
+              <div class="it"><i data-lucide="user" class="ic"></i>Profile</div>
+              <div class="it"><i data-lucide="credit-card" class="ic"></i>Plan &amp; billing</div>
+              <div class="it active"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+              <div class="it"><i data-lucide="plug" class="ic"></i>Integrations</div>
+              <div class="sep"></div>
+              <div class="it danger"><i data-lucide="trash-2" class="ic"></i>Danger zone</div>
+            </div>
+
+            <div class="acc-main">
+              <div class="acc-hero">
+                <div class="l">
+                  <h1>Saved blocks</h1>
+                  <p>Reusable copy snippets you drag into a canvas TEXT node. Filter by tag or search the block text.</p>
+                </div>
+                <div class="r" style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+                  <span class="mono" style=" font-size:10px;letter-spacing:0.1em; color:var(--ink-3);">Editing brand</span>
+                  <div class="brandpick"><div class="logo">N</div><div class="nm">Nike</div><i data-lucide="chevrons-up-down" class="caret" style="width:13px;height:13px;"></i></div>
+                </div>
+              </div>
+
+              <div class="acc-content">
+                <div class="bk-wrap">
+                  <div class="bk-subnav">
+                    <div class="head">Brand Kit</div>
+                    <div class="it"><i data-lucide="palette" class="ic"></i>Visuals</div>
+                    <div class="it"><i data-lucide="user-circle" class="ic"></i>Identity</div>
+                    <div class="it"><i data-lucide="quote" class="ic"></i>Tone snippets<span style="margin-left:auto; font-size:10px;color:var(--ink-3);">8</span></div>
+                    <div class="it active"><i data-lucide="layers" class="ic"></i>Saved blocks<span style="margin-left:auto; font-size:10px;color:var(--ink);">5</span></div>
+                    <div class="it"><i data-lucide="check-square" class="ic"></i>Writing rules</div>
+                    <div class="it"><i data-lucide="brain" class="ic"></i>Memories<span style="margin-left:auto; font-size:10px;color:var(--ink-3);">19</span></div>
+                    <div class="it"><i data-lucide="book-open" class="ic"></i>Knowledge base</div>
+                  </div>
+
+                  <div class="bk-pane">
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                      <div class="seg">
+                        <div class="o on">All <span style="color:var(--ink-3);font-size:10px;margin-left:4px;">5</span></div>
+                        <div class="o">CTA <span style="color:var(--ink-3);font-size:10px;margin-left:4px;">2</span></div>
+                        <div class="o">Footer <span style="color:var(--ink-3);font-size:10px;margin-left:4px;">2</span></div>
+                        <div class="o">Text <span style="color:var(--ink-3);font-size:10px;margin-left:4px;">1</span></div>
+                      </div>
+                      <input class="ctrl-input" value="footer" style="flex:1;max-width:240px;" />
+                      <div style="flex:1;"></div>
+                      <div class="btn sm"><i data-lucide="plus" class="ic"></i>Add block</div>
+                    </div>
+
+                    <div class="list-stack" style="display:flex;align-items:center;justify-content:center;min-height:240px;">
+                      <div class="empty-pane inline">
+                        <div class="ic-wrap"><i data-lucide="search-x" class="ic"></i></div>
+                        <h5>No saved blocks match <span class="q">"footer"</span></h5>
+                        <p>The Footer category has 2 blocks — try the segmented filter, or clear the search.</p>
+                        <div class="cta-row">
+                          <button type="button" class="ghost-link">Clear search</button>
+                          <button type="button" class="ghost-link" style="color:var(--ink-2);">Try Footer filter</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Two ghost CTAs when a smarter recovery exists.</strong> The user typed "footer" while the Footer segmented filter is right above the empty pane — pointing at it lets the user recover with one click instead of clearing then re-applying the filter. Secondary ghost link uses <code>--ink-2</code> so the primary "Clear search" stays visually first.</li>
+      <li><strong>Identical anatomy to B9.1.</strong> Same icon tile size (32 × 32), same headline weight (12.5 / 500), same sub-copy color + width, same outer container (<code>.list-stack</code>). Only the copy and CTAs change — proves the pattern composes uniformly across sub-tabs.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     B9.3 — KB sources search-empty (60/40 layout)
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE B9 · §1 · B9.3 · KB sources search-empty (60/40)</div>
+    <h2>B9.3 · KB sources search-empty (60/40 split)</h2>
+    <p class="intro">Inside A7.3.7 Knowledge base. Search returns zero in the left-side sources column; the right-side viewer shows its own quiet "Select a source" placeholder because no source has been selected. Proves the inline empty-pane composes within the 60/40 split, not just rectangular sections.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">KB sources · search empty + viewer placeholder</div><div class="id">B9.3 · hi-fi · in-situ</div></div>
+    <div class="canvas tall" data-screen-label="B9.3 KB sources empty">
+      <div class="app">
+        <div class="sidebar">
+          <div class="brand-switch">
+            <div class="logo">N</div>
+            <div class="name">Nike</div>
+            <div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div>
+          </div>
+          <div class="side-search">
+            <i data-lucide="search" style="width:13px;height:13px;"></i>
+            <span>Search</span>
+            <span class="kbd">⌘K</span>
+          </div>
+
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item active"><i data-lucide="clock-4" class="ic"></i><span>Recents</span></div>
+            <div class="item"><i data-lucide="calendar-days" class="ic"></i><span>Calendar</span><span class="count">12</span></div>
+
+            <div class="section">Library</div>
+            <div class="item"><i data-lucide="bookmark" class="ic"></i><span>Swipes</span></div>
+            <div class="item"><i data-lucide="layout-template" class="ic"></i><span>Templates</span></div>
+            <div class="item"><i data-lucide="package" class="ic"></i><span>Products</span><span class="count">318</span></div>
+
+            <div class="section">Brand</div>
+            <div class="item"><i data-lucide="sparkles" class="ic"></i><span>Personalization</span></div>
+            <div class="item"><i data-lucide="book-open" class="ic"></i><span>Knowledge base</span></div>
+            <div class="item"><i data-lucide="brain" class="ic"></i><span>Memories</span><span class="count">19</span></div>
+          </div>
+
+          <div class="side-footer">
+            <div class="avatar">JY</div>
+            <div class="who">
+              <b>Jiho Yang</b>
+              <span>Free plan</span>
+            </div>
+            <div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+          </div>
+        </div>
+
+        <div class="main">
+          <div class="topbar">
+            <div class="breadcrumb">
+              <span>Nike</span>
+              <span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <b>Home</b>
+            </div>
+            <div class="actions">
+              <div class="btn sm">
+                <i data-lucide="folder-plus" class="ic"></i>
+                New canvas
+              </div>
+            </div>
+          </div>
+
+          <div class="acc-frame">
+            <div class="acc-rail">
+              <div class="title">Account</div>
+              <div class="it"><i data-lucide="user" class="ic"></i>Profile</div>
+              <div class="it"><i data-lucide="credit-card" class="ic"></i>Plan &amp; billing</div>
+              <div class="it active"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+              <div class="it"><i data-lucide="plug" class="ic"></i>Integrations</div>
+              <div class="sep"></div>
+              <div class="it danger"><i data-lucide="trash-2" class="ic"></i>Danger zone</div>
+            </div>
+
+            <div class="acc-main">
+              <div class="acc-hero">
+                <div class="l">
+                  <h1>Knowledge base</h1>
+                  <p>Documents Kova reads as ground-truth context. Pick a source on the left to preview on the right.</p>
+                </div>
+                <div class="r" style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+                  <span class="mono" style=" font-size:10px;letter-spacing:0.1em; color:var(--ink-3);">Editing brand</span>
+                  <div class="brandpick"><div class="logo">N</div><div class="nm">Nike</div><i data-lucide="chevrons-up-down" class="caret" style="width:13px;height:13px;"></i></div>
+                </div>
+              </div>
+
+              <div class="acc-content">
+                <div class="bk-wrap">
+                  <div class="bk-subnav">
+                    <div class="head">Brand Kit</div>
+                    <div class="it"><i data-lucide="palette" class="ic"></i>Visuals</div>
+                    <div class="it"><i data-lucide="user-circle" class="ic"></i>Identity</div>
+                    <div class="it"><i data-lucide="quote" class="ic"></i>Tone snippets<span style="margin-left:auto; font-size:10px;color:var(--ink-3);">8</span></div>
+                    <div class="it"><i data-lucide="layers" class="ic"></i>Saved blocks<span style="margin-left:auto; font-size:10px;color:var(--ink-3);">5</span></div>
+                    <div class="it"><i data-lucide="check-square" class="ic"></i>Writing rules</div>
+                    <div class="it"><i data-lucide="brain" class="ic"></i>Memories<span style="margin-left:auto; font-size:10px;color:var(--ink-3);">19</span></div>
+                    <div class="it active"><i data-lucide="book-open" class="ic"></i>Knowledge base</div>
+                  </div>
+
+                  <div class="bk-pane">
+                    <!-- Toolbar -->
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                      <input class="ctrl-input" value="onboarding" placeholder="Search this brand's knowledge…" style="flex:1;max-width:280px;" />
+                      <div style="flex:1;"></div>
+                      <div class="btn sm"><i data-lucide="upload" class="ic"></i>Upload PDF</div>
+                      <div class="btn sm"><i data-lucide="plus" class="ic"></i>New note</div>
+                    </div>
+
+                    <div class="kb-grid">
+                      <!-- LEFT: sources column with empty results -->
+                      <div class="kb-sources">
+                        <div class="hd"><b>Sources</b><span class="count">0 of 12</span></div>
+                        <div class="kb-list" style="display:flex;align-items:center;justify-content:center;">
+                          <div class="empty-pane inline">
+                            <div class="ic-wrap"><i data-lucide="search-x" class="ic"></i></div>
+                            <h5>No sources match <span class="q">"onboarding"</span></h5>
+                            <p>Try a different term or upload a new source. Past emails and Products tabs aren't filtered here.</p>
+                            <div class="cta-row">
+                              <button type="button" class="ghost-link">Clear search</button>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="kb-srcs-tabs">
+                          <div class="t on"><i data-lucide="book-open" style="width:11px;height:11px;"></i>Knowledge base <span class="num">0 / 7</span></div>
+                          <div class="t"><i data-lucide="mail" style="width:11px;height:11px;"></i>Past emails <span class="num">142</span></div>
+                          <div class="t"><i data-lucide="package" style="width:11px;height:11px;"></i>Products <span class="num">318</span></div>
+                        </div>
+                      </div>
+
+                      <!-- RIGHT: viewer placeholder -->
+                      <div class="kb-viewer">
+                        <div class="hd"><b>Preview</b></div>
+                        <div class="body" style="display:flex;align-items:center;justify-content:center;">
+                          <div class="empty-pane inline viewer-quiet">
+                            <div class="ic-wrap"><i data-lucide="file-text" class="ic"></i></div>
+                            <h5>Select a source</h5>
+                            <p>Pick a source on the left to read its content. Indexed sources show full text and citations.</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Empty pattern composes inside the 60/40 split.</strong> Left column has the search-empty (uses <code>search-x</code> glyph + dynamic query); right column has the structurally separate "Select a source" quiet placeholder (uses <code>file-text</code> glyph + no CTA, since there's nothing to act on with no source picked yet).</li>
+      <li><strong>Sources tab still says "Knowledge base 0 / 7"</strong> — the user has 7 sources total but 0 match the current filter. Persisting the count makes it obvious that the underlying data is intact and only the filter is hiding it.</li>
+      <li><strong>Past emails (142) and Products (318) tabs stay countful</strong> because the search above only filters the active tab's content. Switching tab clears the search and shows the new tab's full count. (Documented: search scope = active tab only.)</li>
+      <li><strong>Right-side viewer uses the <code>viewer-quiet</code> modifier</strong> — slightly more vertical padding (32px) since it's not adjacent to a search bar that gives the user something to do; the quiet "Select a source" pose holds the column's surface area without pretending to be actionable.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     B9.4 — Generic small inline empty (size-family reference)
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE B9 · §2 · B9.4 · Size-family reference</div>
+    <h2>B9.4 · The three sizes of empty-pane</h2>
+    <p class="intro">Reference comparison showing the empty-pane pattern at three scales side-by-side. Use the table below to pick the right size for any future caller. Same component family, different visual weights.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">B9.4 · 32 inline / 40 panel-confined / 48 full-page</div><div class="id">B9.4 · annotation</div></div>
+    <div class="canvas" data-screen-label="B9.4 Size family reference">
+      <div class="scene-grid">
+
+        <!-- 32 inline (this file's new variant) -->
+        <div class="scene-card">
+          <div class="sc-head"><div class="nm">32 × 32 — inline (B9 new)</div><div class="id">B9.4.a</div></div>
+          <div class="sc-body">
+            <div class="empty-pane inline">
+              <div class="ic-wrap"><i data-lucide="search-x" class="ic"></i></div>
+              <h5>No memories match <span class="q">"shipping"</span></h5>
+              <p>Try a different search or clear the filter to see all 19 memories.</p>
+              <div class="cta-row">
+                <button type="button" class="ghost-link">Clear search</button>
+              </div>
+            </div>
+          </div>
+          <div class="sc-foot">For inside <code>.list-stack</code>, popover lists, sub-tab list-area zero-results. Sits inside existing chrome — no outer dashed border. Headline 12.5 / 500. Sub max 36ch.</div>
+        </div>
+
+        <!-- 40 panel-confined (A11 current) -->
+        <div class="scene-card">
+          <div class="sc-head"><div class="nm">40 × 40 — panel-confined (A11.x)</div><div class="id">B9.4.b</div></div>
+          <div class="sc-body">
+            <div class="empty-pane">
+              <div class="ic-wrap"><i data-lucide="brain" style="width:17px;height:17px;"></i></div>
+              <h5>Kova hasn't learned anything yet</h5>
+              <p>Memories are facts, rules, and preferences Kova should remember. Add one manually, or capture from a canvas.</p>
+              <div class="cta-row">
+                <div class="btn primary sm"><i data-lucide="plus" class="ic"></i>Add memory</div>
+              </div>
+            </div>
+          </div>
+          <div class="sc-foot">For panel-level "no data exists yet" (e.g. zero memories total). Carries an outer 1px dashed border and a primary CTA. Headline 13 / 600.</div>
+        </div>
+
+        <!-- 48 full-page (hypothetical) -->
+        <div class="scene-card">
+          <div class="sc-head"><div class="nm">48 × 48 — full-page (hypothetical)</div><div class="id">B9.4.c</div></div>
+          <div class="sc-body">
+            <div class="empty-pane full-page">
+              <div class="ic-wrap"><i data-lucide="layers" style="width:22px;height:22px;"></i></div>
+              <h5>No canvases yet</h5>
+              <p>Start a canvas to design emails, landings, or product pages. Your brand kit is ready.</p>
+              <div class="cta-row">
+                <div class="btn primary sm"><i data-lucide="plus" class="ic"></i>New canvas</div>
+                <div class="btn sm"><i data-lucide="sparkles" class="ic" style="color:var(--accent);"></i>Start with AI</div>
+              </div>
+            </div>
+          </div>
+          <div class="sc-foot">For viewport-center "the surface IS the empty state" (e.g. dashboard zero canvases — A11.1 in-situ). 48 × 48 icon-tile, no outer border, headline 15 / 600.</div>
+        </div>
+
+      </div>
+
+      <!-- Decision table -->
+      <div style="padding:0 24px 32px;">
+        <div style="border:1px solid var(--line);border-radius:7px;background:var(--page);overflow:hidden;">
+          <div style="padding:10px 14px;border-bottom:1px solid var(--line-2);background:var(--rail);font-size:12px;font-weight:600;color:var(--ink);">When to use which size</div>
+          <div style="display:grid;grid-template-columns:140px 1fr 1fr 1fr;gap:0;font-size:11.5px;">
+            <div style="padding:8px 14px;border-bottom:1px solid var(--line-2);background:var(--rail);color:var(--ink-3);font-weight:500;">Dimension</div>
+            <div style="padding:8px 14px;border-bottom:1px solid var(--line-2);border-left:1px solid var(--line-2);background:var(--rail);color:var(--ink);font-weight:600;">32 inline</div>
+            <div style="padding:8px 14px;border-bottom:1px solid var(--line-2);border-left:1px solid var(--line-2);background:var(--rail);color:var(--ink);font-weight:600;">40 panel-confined</div>
+            <div style="padding:8px 14px;border-bottom:1px solid var(--line-2);border-left:1px solid var(--line-2);background:var(--rail);color:var(--ink);font-weight:600;">48 full-page</div>
+
+            <div style="padding:8px 14px;color:var(--ink-3);">Use when</div>
+            <div style="padding:8px 14px;border-left:1px solid var(--line-2);color:var(--ink-2);">Search/filter returns zero</div>
+            <div style="padding:8px 14px;border-left:1px solid var(--line-2);color:var(--ink-2);">No data yet (panel)</div>
+            <div style="padding:8px 14px;border-left:1px solid var(--line-2);color:var(--ink-2);">No data yet (full surface)</div>
+
+            <div style="padding:8px 14px;color:var(--ink-3);border-top:1px solid var(--line-2);">Icon</div>
+            <div style="padding:8px 14px;border-left:1px solid var(--line-2);border-top:1px solid var(--line-2);color:var(--ink-2);"><code>search-x</code></div>
+            <div style="padding:8px 14px;border-left:1px solid var(--line-2);border-top:1px solid var(--line-2);color:var(--ink-2);">Data-type icon (<code>brain</code>, <code>quote</code>, etc.)</div>
+            <div style="padding:8px 14px;border-left:1px solid var(--line-2);border-top:1px solid var(--line-2);color:var(--ink-2);">Surface icon (<code>layout-grid</code>, <code>store</code>, etc.)</div>
+
+            <div style="padding:8px 14px;color:var(--ink-3);border-top:1px solid var(--line-2);">Outer border</div>
+            <div style="padding:8px 14px;border-left:1px solid var(--line-2);border-top:1px solid var(--line-2);color:var(--ink-2);">None (sits inside list)</div>
+            <div style="padding:8px 14px;border-left:1px solid var(--line-2);border-top:1px solid var(--line-2);color:var(--ink-2);">1px dashed</div>
+            <div style="padding:8px 14px;border-left:1px solid var(--line-2);border-top:1px solid var(--line-2);color:var(--ink-2);">None (focal surface)</div>
+
+            <div style="padding:8px 14px;color:var(--ink-3);border-top:1px solid var(--line-2);">Headline</div>
+            <div style="padding:8px 14px;border-left:1px solid var(--line-2);border-top:1px solid var(--line-2);color:var(--ink-2);">12.5 / 500</div>
+            <div style="padding:8px 14px;border-left:1px solid var(--line-2);border-top:1px solid var(--line-2);color:var(--ink-2);">13 / 600</div>
+            <div style="padding:8px 14px;border-left:1px solid var(--line-2);border-top:1px solid var(--line-2);color:var(--ink-2);">15 / 600</div>
+
+            <div style="padding:8px 14px;color:var(--ink-3);border-top:1px solid var(--line-2);">Vertical pad</div>
+            <div style="padding:8px 14px;border-left:1px solid var(--line-2);border-top:1px solid var(--line-2);color:var(--ink-2);">24px</div>
+            <div style="padding:8px 14px;border-left:1px solid var(--line-2);border-top:1px solid var(--line-2);color:var(--ink-2);">36px</div>
+            <div style="padding:8px 14px;border-left:1px solid var(--line-2);border-top:1px solid var(--line-2);color:var(--ink-2);">56px</div>
+
+            <div style="padding:8px 14px;color:var(--ink-3);border-top:1px solid var(--line-2);">CTA</div>
+            <div style="padding:8px 14px;border-left:1px solid var(--line-2);border-top:1px solid var(--line-2);color:var(--ink-2);">Ghost text-link only</div>
+            <div style="padding:8px 14px;border-left:1px solid var(--line-2);border-top:1px solid var(--line-2);color:var(--ink-2);">Primary <code>.btn.sm</code> + secondary</div>
+            <div style="padding:8px 14px;border-left:1px solid var(--line-2);border-top:1px solid var(--line-2);color:var(--ink-2);">Primary + AI-accent secondary</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Three sizes, one component family.</strong> Same <code>.empty-pane</code> base + modifier classes (<code>.inline</code>, default, <code>.full-page</code>). Each scale picks its icon, headline weight, padding, and CTA shape from a fixed table — no per-surface invention.</li>
+      <li><strong>Icon vocabulary differs by concept.</strong> Inline = <code>search-x</code> always (filter returned nothing). Panel = data-type icon (<code>brain</code>, <code>quote</code>, etc.) per A11. Full-page = surface icon (the panel as a whole is empty) per A11.1 / A11.7.</li>
+      <li><strong>Shared chrome rules.</strong> All three live on <code>--page</code> backgrounds, use <code>--ink-3</code> for icon glyph + sub-copy, use <code>--ink</code> for headline, and use <code>--accent</code> for any link-style CTA. The size variants only adjust dimension, weight, and padding — never tokens.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     Cross-surface notes
+     ============================================================ -->
+<section class="block" style="background: var(--page);">
+  <header>
+    <div class="tag">Coherence notes — what this file commits to</div>
+    <h2>What B9 commits to</h2>
+  </header>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;max-width:1080px;font-size:12.5px;color:var(--ink-2);line-height:1.55;">
+    <div style="background: var(--page); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px;">
+      <h3 style="margin:0 0 8px;font-size:14px;color:var(--ink);font-weight:600;letter-spacing:-0.005em;">Lifted + new classes</h3>
+      <ul style="margin:6px 0 0;padding-left:18px;">
+        <li><code>.empty-pane</code> + <code>.empty-pane .ic-wrap</code> + <code>.empty-pane h5</code> + <code>.empty-pane p</code> + <code>.empty-pane .cta-row</code> — LIFTED VERBATIM from <code>batch-a/dark/Kova Hi-Fi A11+A12+A13+A_canvas_nav - Dark.html</code>. Diff vs source: ZERO.</li>
+        <li><code>.empty-pane.inline</code> — NEW extension class. Smaller variant for in-list zero-results. Layered BELOW the lifted base block (no modification of the base). Flagged in delivery notes.</li>
+        <li><code>.empty-pane.inline.viewer-quiet</code> — NEW sub-modifier for the right-viewer placeholder in B9.3 (slightly more padding because it has no CTA).</li>
+        <li><code>.empty-pane.full-page</code> — NEW extension class for the 48-px full-page reference variant in B9.4. Demonstrates the family's upper-bound size; not a new shipped state (A11.1 / A11.7 already cover this in-situ).</li>
+        <li><code>.scene-grid</code> · <code>.scene-card</code> — review-page catalog only for B9.4; not shipped.</li>
+      </ul>
+    </div>
+    <div style="background: var(--page); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px;">
+      <h3 style="margin:0 0 8px;font-size:14px;color:var(--ink);font-weight:600;letter-spacing:-0.005em;">Tokens used (none new)</h3>
+      <ul style="margin:6px 0 0;padding-left:18px;">
+        <li>Surface: <code>--bg</code> · <code>--page</code> · <code>--rail</code> · <code>--fill</code></li>
+        <li>Ink: <code>--ink</code> · <code>--ink-2</code> · <code>--ink-3</code></li>
+        <li>Lines: <code>--line</code> · <code>--line-2</code></li>
+        <li>Accent (ghost CTA only): <code>--accent</code></li>
+      </ul>
+    </div>
+    <div style="background: var(--page); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px;">
+      <h3 style="margin:0 0 8px;font-size:14px;color:var(--ink);font-weight:600;letter-spacing:-0.005em;">Behavior commitments</h3>
+      <ul style="margin:6px 0 0;padding-left:18px;">
+        <li><strong>Search bar stays visible</strong> on zero results. Hiding it would force the user to leave the surface to recover.</li>
+        <li><strong>The typed query is echoed in the headline</strong> in quotes so the user can re-read what they searched. Implementation reads the live input value into a <code>&lt;span class="q"&gt;</code>.</li>
+        <li><strong>Icon glyph for B9 is always <code>search-x</code></strong>. Different from A11.x (data-type icon) — distinguishes "filter returned nothing" from "no data exists yet". A11.8 generic-no-data uses <code>search-x</code> already; B9 inline reuses the same glyph at smaller scale.</li>
+        <li><strong>Ghost CTAs use <code>--accent</code> ink</strong> with no chrome (no border, no fill). Hover background lifts to <code>--line-2</code>. Same treatment as B1.x toast inline action buttons.</li>
+        <li><strong>No primary <code>.btn</code></strong> in the inline empty pane — the user already has the search input + segmented filter. Adding a primary CTA would compete with those existing affordances.</li>
+        <li><strong>Search scope = active tab/filter only.</strong> KB sources search filters the active tab (Knowledge base / Past emails / Products); switching tabs clears the search. Documented for the implementer.</li>
+      </ul>
+    </div>
+    <div style="background: var(--page); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px;">
+      <h3 style="margin:0 0 8px;font-size:14px;color:var(--ink);font-weight:600;letter-spacing:-0.005em;">Scope split with A11</h3>
+      <ul style="margin:6px 0 0;padding-left:18px;">
+        <li><strong>A11.x = "no data exists yet."</strong> Use the data-type icon (<code>brain</code>, <code>quote</code>, <code>bookmark</code>, <code>book-open</code>, <code>store</code>). Headline introduces the concept; CTA invites creation.</li>
+        <li><strong>B9.x = "data exists but doesn't match this filter."</strong> Use <code>search-x</code> always. Headline echoes the query; CTA clears the filter or points at a smarter alternative.</li>
+        <li><strong>The two surfaces never render simultaneously.</strong> If the user has zero memories, A11.3 takes the surface — search isn't possible. If the user has memories but searches for something not in them, B9.1 takes the surface.</li>
+        <li><strong>If the founder wants both icon styles unified</strong> (always search-x for any zero-result regardless of cause), the change is a single class swap on each A11.x scene. Flagged as a deliberate split — defaulting to differentiated icons because the user's expected next action differs (create vs clear filter).</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+
+<footer style="padding:32px 56px;border-top:1px solid var(--line);background:var(--bg);color:var(--ink-3);font-size:11px;">
+  Kova · hi-fi · Batch A additions · B9 List search empty · v1
+</footer>
+
+<script>
+  if (window.lucide) window.lucide.createIcons({ attrs: { 'stroke-width': 1.6 } });
+</script>
+</body>
+</html>

@@ -1,10 +1,70 @@
 /* eslint-disable max-lines -- property setters share common patterns, splitting would scatter related tools */
 import { parseColor } from '../color'
 import { DEFAULT_SHADOW_COLOR } from '../constants'
-import type { CharacterStyleOverride, Effect, StyleRun } from '../scene-graph'
+import type { CharacterStyleOverride, Effect, SceneGraph, SceneNode, StyleRun } from '../scene-graph'
 import type { Matrix } from '../types'
 
 import { defineTool } from './schema'
+
+/**
+ * Cluster 07a — recursive geometry scale matching Figma's "K"-key scale tool.
+ * Takes a SceneGraph directly (not the wider FigmaAPI host) so FigmaNodeProxy.scale
+ * can call it without casting through the proxy host interface.
+ */
+export function scaleNodeRecursive(graph: SceneGraph, id: string, factor: number): void {
+  const node = graph.getNode(id)
+  if (!node) return
+  const changes: Partial<SceneNode> = {
+    width: node.width * factor,
+    height: node.height * factor,
+    cornerRadius: node.cornerRadius * factor,
+    topLeftRadius: node.topLeftRadius * factor,
+    topRightRadius: node.topRightRadius * factor,
+    bottomRightRadius: node.bottomRightRadius * factor,
+    bottomLeftRadius: node.bottomLeftRadius * factor,
+    borderTopWeight: node.borderTopWeight * factor,
+    borderRightWeight: node.borderRightWeight * factor,
+    borderBottomWeight: node.borderBottomWeight * factor,
+    borderLeftWeight: node.borderLeftWeight * factor,
+    strokes: node.strokes.map((s) => ({ ...s, weight: s.weight * factor })),
+    effects: node.effects.map((e) => ({
+      ...e,
+      radius: e.radius * factor,
+      offset: { x: e.offset.x * factor, y: e.offset.y * factor },
+      spread: e.spread * factor
+    }))
+  }
+  if (node.type === 'TEXT') changes.fontSize = node.fontSize * factor
+  graph.updateNode(id, changes)
+  for (const cid of node.childIds) {
+    scaleNodeRecursive(graph, cid, factor)
+  }
+}
+
+export const scaleNode = defineTool({
+  name: 'scale_node',
+  mutates: true,
+  description:
+    'Scale a node by a factor, preserving position and rotation. Scales width, ' +
+    'height, font-size, corner radii, stroke weights, and effect radius/offset/spread ' +
+    'proportionally. Applies recursively to descendants. Matches Figma K-key scale-tool ' +
+    'semantics.',
+  params: {
+    id: { type: 'string', description: 'Node ID', required: true },
+    factor: {
+      type: 'number',
+      description: 'Scale factor (1.0 = no change)',
+      required: true,
+      min: 0.01
+    }
+  },
+  execute: (figma, { id, factor }) => {
+    const node = figma.graph.getNode(id)
+    if (!node) return { error: `Node "${id}" not found` }
+    scaleNodeRecursive(figma.graph, id, factor)
+    return { id, factor }
+  }
+})
 
 export const setFill = defineTool({
   name: 'set_fill',

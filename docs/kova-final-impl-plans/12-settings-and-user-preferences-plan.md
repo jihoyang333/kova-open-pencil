@@ -86,9 +86,19 @@
 
 > **Authoritative method:** `docs/execution-phase/claude-design-files/IMPLEMENTATION_PROMPT.md` (read end-to-end before any UI task). Maps PRD 12 §3 hi-fi citations to Plan tasks + actual Kova source paths.
 
-**Translation rule:** hi-fi HTML = visual source of truth; idiomatic Vue 3 + Cluster 11 primitives. **Mockup wins**; drift protocol (RIDER §2.1). Theme: dark.
+**3-rule fidelity contract** (per `docs/execution-phase/claude-design-files/IMPLEMENTATION_PROMPT.md` §0):
 
-**Per-screen diff loop** per IMPLEMENTATION_PROMPT.md Phase 4. Cluster-boundary Playwright gate ≤ 2%.
+1. **Visual values are copied.** Every color, spacing, type, radius, shadow, gap, padding, line-height, tracking, and proportion in the rendered output MUST match the mockup pixel-for-pixel.
+2. **DOM structure is translated.** Vue 3 SFCs + Reka UI primitives + Cluster 11 primitives + K* component layer (`design.md` §3). NOT the mockup's hand-rolled HTML.
+3. **Behavior is engineered.** State in Pinia / refs / composables. Hover / focus / active / selected / disabled states are dynamic bindings, NEVER hardcoded classes.
+
+**Trap phrase ban:** "copy DOM verbatim" is forbidden. Drift protocol per RIDER §2.1 + IMPLEMENTATION_PROMPT.md §7 on any hi-fi value not in `kova-hifi.css :root` — never silently round. **Theme: dark.**
+
+**Phase 1 audit gate** (per IMPLEMENTATION_PROMPT.md §3): produce `KOVA_AUDIT.md` + `tokens-used.md` BEFORE any Vue code. `tokens-used.md` enumerates every visual value in this cluster's surfaces mapped to either an existing token or ⚠️ MISSING (founder decision via AskUserQuestion). No Vue until founder-approved.
+
+**Per-screen diff loop** (per IMPLEMENTATION_PROMPT.md §6): in-repo mockup + Vue route at 1440px → screenshot both → walk Appendix A per property → list discrepancies in `tests/snapshots/cluster-12/<surface>-diff.md` → fix → re-diff until empty. **Visual-diff thresholds: ≤ 0.1% component / ≤ 0.5% screen** (Playwright `maxDiffPixelRatio: 0.005, threshold: 0.2`, masking volatile regions per IMPLEMENTATION_PROMPT.md §10).
+
+**PR artifact:** every PR touching a UI surface in this cluster MUST include 3-screenshot row (mockup / impl / diff) per surface in the PR description.
 
 **Component contract:** per PRD 12 §3.2, `<AccessibilityPanel>` is single-source-of-truth, slotted into BOTH `<ProfileSection>` (`/account/profile`) AND `<PreferencesModal mode="accessibility">` (main menu → Preferences). "Design once, expose twice."
 
@@ -113,9 +123,9 @@ Source: `kova-open-pencil-1/src/components/ui/`:
 
 | Plan surface (task) | Hi-fi file | Scene IDs |
 |---|---|---|
-| Task 10 — `<AccessibilityPanel>` (3 rows: Text size segmented / Reduce motion toggle / High contrast toggle) | `main-main-kova-scope/batch-a/dark/Kova Hi-Fi A7 Account Page - Dark.html` | A7.1 §3 Accessibility (lines 671–704) |
+| Task 10 — `<AccessibilityPanel>` (3 rows: Text size segmented / Reduce motion toggle / High contrast toggle) | `design-system/hifi/account-stripe/Kova Hi-Fi A7 Account Page - Dark.html` | A7.1 §3 Accessibility (lines 671–704) |
 | Task 11 — `<NotificationsPanel>` (2 rows: Product updates / Sync alerts) | A7 | A7.1 §4 Notifications (lines 707–725) |
-| Task 12 — `<PreferencesModal>` (modal host for `<AccessibilityPanel>` when triggered via main menu → Preferences → Accessibility) | `main-main-kova-scope/batch-a/dark/Kova Hi-Fi A6+A2a Popovers + A8 Dialogs - Dark.html` | A8.3 Accessibility settings modal (lines 803–887) |
+| Task 12 — `<PreferencesModal>` (modal host for `<AccessibilityPanel>` when triggered via main menu → Preferences → Accessibility) | `design-system/hifi/canvas-menus/Kova Hi-Fi A6+A2a Popovers + A8 Dialogs - Dark.html` | A8.3 Accessibility settings modal (lines 803–887) |
 
 ### Per-property extraction checklist
 

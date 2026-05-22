@@ -1,0 +1,1824 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<title>Kova — Hi-fi · A5 Command-K · Dark</title>
+<meta name="viewport" content="width=1440" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+<link rel="stylesheet" href="../../design-system/kova-hifi.css" />
+<script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
+<style>
+/* ============================================================
+   FILE 6 — A5 ⌘K global assistant overlay (3 states)
+
+   Inherits from FILE 2:
+     · .modal-backdrop (dim + blur)
+     · dimmed-app-chrome anchor pattern (sidebar + topbar visible
+       behind the modal, content opacity 0.35)
+     · dialog typography (Inter 16/600 sentence-case heads, mono
+       reserved for machine/data labels)
+
+   Three states presented as separate .screen blocks, anchored on
+   the same dashboard chrome so reviewers see the modal in situ.
+   No new tokens, no new fonts.
+   ============================================================ */
+
+  body { background: var(--bg); }
+
+  /* Locked section-head rule (spec-bumped to outweigh `section.block h2`) */
+  section.block .s-section h2 {
+    margin: 0 0 2px; font-size: 16px;
+    letter-spacing: -0.005em;
+    color: var(--ink); font-weight: 600;
+    font-family: 'Inter', system-ui, sans-serif;
+    text-transform: none;
+  }
+
+  /* ---------- Backdrop / dim (inherited contract) ---------- */
+  .modal-backdrop {
+    position: absolute; inset: 0;
+    background: rgba(26,26,29,0.72);
+    backdrop-filter: blur(2px);
+    z-index: 5;
+  }
+
+  /* ---------- ⌘K modal shell ---------- */
+  .ck {
+    position: absolute; left: 50%; top: 14%;
+    transform: translateX(-50%);
+    width: 640px;
+    background: var(--page);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: 0 24px 80px -20px rgba(0,0,0,0.7),
+                0 1px 0 rgba(255,255,255,0.03) inset;
+    z-index: 10;
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  .ck.tall { /* AI chat mode wants more vertical room */ }
+
+  /* Search row (top) */
+  .ck-search {
+    display: flex; align-items: center; gap: 12px;
+    height: 52px; padding: 0 18px;
+    border-bottom: 1px solid var(--line);
+  }
+  .ck-search .spark {
+    width: 18px; height: 18px;
+    color: var(--accent);
+    flex-shrink: 0;
+  }
+  .ck-search input {
+    border: 0; outline: 0; background: transparent;
+    color: var(--ink); flex: 1;
+    font: inherit; font-size: 15px;
+    letter-spacing: -0.005em;
+  }
+  .ck-search input::placeholder { color: var(--ink-3); }
+  .ck-search .hint { font-size: 10px; color: var(--ink-3);
+    letter-spacing: 0.04em;
+    display: flex; align-items: center; gap: 8px;
+    flex-shrink: 0;
+  }
+  .ck-search .hint .kbd { font-size: 10px;
+    background: var(--fill); color: var(--ink-2);
+    padding: 1px 5px; border-radius: 3px; border: 1px solid var(--line-2);
+  }
+  .ck-search .pill-ctx {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 3px 8px; border-radius: 999px;
+    font-size: 11px; font-weight: 500;
+    background: var(--accent-soft); color: var(--accent-ink);
+    border: 1px solid var(--accent-2);
+    flex-shrink: 0;
+  }
+  .ck-search .pill-ctx .logo {
+    width: 14px; height: 14px; border-radius: 3px;
+    display: grid; place-items: center;
+    background: #ededea; color: #0d0d0c;
+    font-weight: 700; font-size: 8.5px;
+  }
+
+  /* Body */
+  .ck-body {
+    max-height: 460px;
+    overflow-y: auto;
+    padding: 6px 0 8px;
+    display: flex; flex-direction: column;
+  }
+  .ck-body.tall { max-height: 520px; padding: 0; }
+  .ck-eyebrow { font-size: 9.5px; color: var(--ink-3);
+    padding: 12px 18px 6px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .ck-eyebrow .ct { font-size: 9px; color: var(--ink-3); margin-left: auto; }
+
+  /* List rows */
+  .ck-row {
+    display: grid;
+    grid-template-columns: 22px 1fr auto;
+    align-items: center; gap: 12px;
+    padding: 9px 18px;
+    color: var(--ink-2); font-size: 13px;
+    cursor: pointer;
+    border-left: 2px solid transparent;
+  }
+  .ck-row:hover { background: var(--line-2); color: var(--ink); }
+  .ck-row.active {
+    background: var(--fill);
+    color: var(--ink);
+    border-left-color: var(--ink);
+  }
+  .ck-row .ic {
+    width: 16px; height: 16px;
+    color: var(--ink-3);
+    justify-self: center;
+  }
+  .ck-row.active .ic { color: var(--ink); }
+  .ck-row .lbl {
+    display: flex; align-items: center; gap: 8px;
+    min-width: 0;
+  }
+  .ck-row .lbl .nm {
+    font-weight: 500; letter-spacing: -0.003em;
+    color: inherit;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .ck-row .lbl .nm em {
+    font-style: normal;
+    background: rgba(90,125,255,0.15);
+    color: var(--ink);
+    border-radius: 2px; padding: 0 2px;
+  }
+  .ck-row .lbl .meta {
+    color: var(--ink-3); font-size: 11.5px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .ck-row .lbl .brand-chip {
+    width: 14px; height: 14px; border-radius: 3px;
+    display: grid; place-items: center;
+    color: #0d0d0c; background: #ededea;
+    font-weight: 700; font-size: 8px; letter-spacing: -0.02em;
+    flex-shrink: 0;
+  }
+  .ck-row .right {
+    color: var(--ink-3); font-size: 11px; letter-spacing: 0.02em;
+    display: flex; align-items: center; gap: 6px;
+    white-space: nowrap;
+  }
+  .ck-row .right .kbd { font-size: 10px;
+    background: var(--fill); color: var(--ink-2);
+    padding: 1px 5px; border-radius: 3px; border: 1px solid var(--line-2);
+  }
+  .ck-row .right .arrow {
+    width: 12px; height: 12px; color: var(--ink-3);
+  }
+
+  /* Ask Kova affordance row (special — accent-tinted) */
+  .ck-row.ask {
+    color: var(--ink);
+  }
+  .ck-row.ask .ic {
+    color: var(--accent);
+  }
+  .ck-row.ask:hover,
+  .ck-row.ask.active {
+    background: var(--accent-soft);
+    border-left-color: var(--accent);
+  }
+  .ck-row.ask .lbl .nm {
+    color: var(--accent-ink); font-weight: 500;
+  }
+  .ck-row.ask .lbl .nm strong {
+    color: var(--accent-ink); font-weight: 600;
+  }
+  .ck-row.ask .right .kbd {
+    background: var(--accent-soft);
+    border-color: var(--accent-2);
+    color: var(--accent-ink);
+  }
+
+  /* Sep line between sections */
+  .ck-sep {
+    height: 1px; background: var(--line-2);
+    margin: 8px 0 0;
+  }
+
+  /* Footer tabs */
+  .ck-foot {
+    display: flex; align-items: center;
+    height: 36px;
+    border-top: 1px solid var(--line);
+    background: var(--rail);
+    padding: 0 12px;
+  }
+  .ck-foot .tabs {
+    display: flex; align-items: center; gap: 2px;
+    height: 100%;
+  }
+  .ck-foot .tab {
+    height: 100%;
+    display: flex; align-items: center; gap: 6px;
+    padding: 0 12px;
+    color: var(--ink-3); font-size: 12px; font-weight: 500;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    letter-spacing: -0.003em;
+  }
+  .ck-foot .tab:hover { color: var(--ink-2); }
+  .ck-foot .tab.active {
+    color: var(--ink); border-bottom-color: var(--ink);
+  }
+  .ck-foot .tab .ic { width: 12px; height: 12px; opacity: 0.85; }
+  .ck-foot .meta {
+    margin-left: auto; font-size: 10px; color: var(--ink-3);
+    letter-spacing: 0.04em;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .ck-foot .meta .sep {
+    width: 1px; height: 10px; background: var(--line);
+  }
+
+  /* ---------- AI chat mode ---------- */
+  .ck-chat {
+    display: flex; flex-direction: column;
+    min-height: 0;
+  }
+  .ck-chat-head {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--line-2);
+    background: var(--rail);
+  }
+  .ck-chat-head .crumb {
+    display: flex; align-items: center; gap: 7px;
+    color: var(--ink-3); font-size: 11.5px;
+  }
+  .ck-chat-head .crumb b { color: var(--ink); font-weight: 600; font-size: 12px; }
+  .ck-chat-head .crumb i { color: var(--ink-3); }
+  .ck-chat-head .reset {
+    margin-left: auto;
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 3px 8px;
+    border-radius: 5px;
+    font-size: 11.5px; color: var(--ink-2);
+    cursor: pointer;
+    background: transparent; border: 1px solid var(--line);
+  }
+  .ck-chat-head .reset:hover { color: var(--ink); border-color: var(--ink-3); }
+  .ck-chat-head .reset .ic { width: 12px; height: 12px; }
+
+  .ck-chat-body {
+    flex: 1; overflow-y: auto;
+    padding: 18px 22px 14px;
+    display: flex; flex-direction: column; gap: 14px;
+  }
+
+  /* Question echo */
+  .ck-q {
+    align-self: flex-end;
+    max-width: 82%;
+    background: var(--fill);
+    color: var(--ink);
+    border: 1px solid var(--line-2);
+    border-radius: 9px;
+    padding: 9px 12px;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  /* Streaming AI block */
+  .ck-a {
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .ck-a .ai-head {
+    display: flex; align-items: center; gap: 8px;
+    color: var(--accent-ink); font-size: 9.5px; }
+  .ck-a .ai-head .ic { width: 13px; height: 13px; color: var(--accent); }
+  .ck-a .ai-head .stream-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+    animation: pulse 1.4s ease-in-out infinite;
+    margin-left: auto;
+  }
+  .ck-a .ai-head .stream-lbl { color: var(--accent-ink); font-size: 9.5px; }
+  @keyframes pulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+  }
+  .ck-a .ai-text {
+    color: var(--ink);
+    font-size: 13px; line-height: 1.6;
+    letter-spacing: -0.003em;
+  }
+  .ck-a .ai-text p { margin: 0 0 10px; }
+  .ck-a .ai-text p:last-child { margin-bottom: 0; }
+  .ck-a .ai-text ul {
+    margin: 0 0 10px; padding-left: 18px;
+    color: var(--ink-2);
+  }
+  .ck-a .ai-text ul li { margin-bottom: 4px; }
+  .ck-a .ai-text strong { color: var(--ink); font-weight: 600; }
+  .ck-a .ai-text .caret {
+    display: inline-block; width: 7px; height: 14px;
+    background: var(--ink); margin-left: 1px; vertical-align: -2px;
+    animation: blink 1s step-end infinite;
+  }
+  @keyframes blink {
+    50% { opacity: 0; }
+  }
+
+  /* Inline action buttons (Do-it affordance) */
+  .ck-actions {
+    display: flex; gap: 8px; flex-wrap: wrap;
+    margin-top: 4px;
+  }
+  .ck-action-btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 6px 11px;
+    border: 1px solid var(--line);
+    background: var(--page);
+    border-radius: 6px;
+    color: var(--ink); font-size: 12px; font-weight: 500;
+    cursor: pointer;
+    letter-spacing: -0.003em;
+  }
+  .ck-action-btn:hover { border-color: var(--ink-3); }
+  .ck-action-btn .ic { width: 13px; height: 13px; color: var(--ink-2); }
+  .ck-action-btn.accent {
+    background: var(--accent-soft); color: var(--accent-ink);
+    border-color: var(--accent-2);
+  }
+  .ck-action-btn.accent .ic { color: var(--accent); }
+
+  /* Sources card under streaming answer */
+  .ck-sources {
+    border: 1px solid var(--line-2);
+    background: var(--rail);
+    border-radius: 7px;
+    padding: 8px 11px;
+    display: flex; flex-direction: column; gap: 5px;
+  }
+  .ck-sources .sh { font-size: 9px; color: var(--ink-3);
+  }
+  .ck-sources .src-row {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 11.5px; color: var(--ink-2);
+  }
+  .ck-sources .src-row .ic { width: 11px; height: 11px; color: var(--ink-3); }
+  .ck-sources .src-row b { color: var(--ink); font-weight: 500; }
+  .ck-sources .src-row .meta {
+    margin-left: auto; font-size: 9.5px;
+    color: var(--ink-3);
+  }
+
+  /* Anchor pin (kept identical to FILE 2) */
+  .anchor-pin {
+    position: absolute; z-index: 4;
+    pointer-events: none;
+  }
+  .anchor-pin .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    border: 2px solid var(--accent); background: var(--page);
+  }
+  .anchor-pin .lbl {
+    position: absolute; left: 14px; top: -2px;
+    background: var(--page); color: var(--ink-2);
+    border: 1px solid var(--line); border-radius: 4px;
+    padding: 2px 6px; font-size: 10.5px; letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+
+  .top-avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--warn); color: #fff;
+    display: grid; place-items: center;
+    font-weight: 600; font-size: 10.5px;
+  }
+
+  /* Side-by-side comparison strip (component view) */
+  .comp-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+    padding: 56px 64px 0;
+  }
+  .comp-card {
+    border: 1px solid var(--line); border-radius: 10px;
+    background: var(--page);
+    overflow: hidden;
+    box-shadow: 0 1px 0 rgba(255,255,255,0.02), 0 12px 40px -20px rgba(0,0,0,0.4);
+    display: flex; flex-direction: column;
+  }
+  .comp-card .ccap {
+    padding: 10px 14px; border-bottom: 1px solid var(--line-2);
+    background: var(--rail);
+    display: flex; justify-content: space-between; gap: 8px;
+    font-size: 11.5px;
+  }
+  .comp-card .ccap b { font-weight: 600; color: var(--ink); }
+  .comp-card .ccap span { font-size: 10px; color: var(--ink-3);
+  }
+  .comp-card .ccontent {
+    padding: 16px; display: flex; justify-content: center;
+    background: var(--bg);
+  }
+  .comp-card .ccontent .ck {
+    position: static; transform: none; width: 100%;
+  }
+</style>
+</head>
+<body data-screen-label="A5 Command-K global assistant">
+
+<header class="page-head">
+  <div class="eyebrow">HI-FI · BATCH A · DARK · FILE 6</div>
+  <h1>A5 · Command-K global assistant · 5 core states + 5 edge branches</h1>
+  <p>Single 640px modal with five core behaviors driven by query + tab state. <strong>Empty</strong> shows recent + categorized suggestions; <strong>populated</strong> shows mixed-category result groups plus an Ask-Kova affordance for the typed string; <strong>AI chat</strong> swaps the list for a streaming answer surface with brand context, inline "Do it" actions, and a New-question reset. Inherits <code>.modal-backdrop</code> + dimmed-app-chrome anchor pattern from FILE 2 so ⌘K reads as a member of the same modal family.</p>
+  <div class="meta">5 core states · 5 edge branches · 640px modal · same kova-hifi.css tokens · accent reserved for AI surfaces</div>
+  <div class="legend">
+    <span class="sw"><i style="background:#ededea"></i>primary action</span>
+    <span class="sw"><i style="background:#5a7dff"></i>AI / accent</span>
+    <span class="sw"><i style="background:#5ec27d"></i>connected / ok</span>
+    <span class="sw"><i style="background:#e87a4a"></i>destructive</span>
+  </div>
+</header>
+
+
+<!-- ============================================================
+     §1 · State 1 — Empty (initial open)
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE 6 · §1 · A5.1 empty / initial</div>
+    <h2>A5.1 · Empty state · ⌘K just opened</h2>
+    <p class="intro">First frame after invocation. No query yet. Surfaces five suggestion categories — Recents, Brands, Settings, Actions, Ask Kova — so the user understands the palette covers navigation <em>and</em> generative requests in one keystroke. Recents come first because the most common ⌘K motion is "jump to the canvas I had open yesterday".</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Dashboard chrome · ⌘K just invoked · empty query</div><div class="id">A5.1 · hi-fi</div></div>
+    <div class="canvas tall" data-screen-label="A5.1 Command-K empty">
+      <!-- Dim app chrome behind -->
+      <div class="app">
+        <div class="sidebar">
+          <div class="brand-switch"><div class="logo">N</div><div class="name">Nike</div><div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div></div>
+          <div class="side-search" style="border-color: var(--ink); background: var(--page);">
+            <i data-lucide="search" style="width:13px;height:13px;color:var(--ink);"></i>
+            <span style="color:var(--ink);">Search</span>
+            <span class="kbd" style="background: var(--accent-soft); color: var(--accent-ink); border-color: var(--accent-2);">⌘K</span>
+          </div>
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item"><i data-lucide="clock-4" class="ic"></i>Recents</div>
+            <div class="item"><i data-lucide="calendar-days" class="ic"></i>Calendar<span class="pill" style="margin-left:auto;font-size:9px;padding:1px 5px;">SOON</span></div>
+            <div class="section">Library</div>
+            <div class="item"><i data-lucide="bookmark" class="ic"></i>Swipes<span class="pill" style="margin-left:auto;font-size:9px;padding:1px 5px;">SOON</span></div>
+            <div class="item"><i data-lucide="layout-template" class="ic"></i>Templates<span class="pill" style="margin-left:auto;font-size:9px;padding:1px 5px;">SOON</span></div>
+            <div class="item"><i data-lucide="package" class="ic"></i>Products<span class="count">318</span></div>
+            <div class="section">Brand</div>
+            <div class="item"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+            <div class="item"><i data-lucide="book-open" class="ic"></i>Knowledge base</div>
+          </div>
+          <div class="side-footer">
+            <div class="avatar">JY</div>
+            <div class="who"><b>Jiho Yang</b><span>Pro plan</span></div>
+            <div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+          </div>
+        </div>
+        <div class="main">
+          <div class="topbar">
+            <div class="breadcrumb">
+              <span><i data-lucide="layout-grid" style="width:14px;height:14px;"></i></span>
+              <b>Brand dashboard</b>
+            </div>
+            <div class="actions">
+              <span class="pill ok dot" style="font-size:11px;">Online</span>
+              <div class="top-avatar">JY</div>
+            </div>
+          </div>
+          <div class="content" style="opacity:.35;">
+            <div class="ph stripes" style="height: 220px; border-radius: 8px;">DASHBOARD CONTENT (DIMMED)</div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">
+              <div class="ph stripes" style="height: 140px; border-radius: 8px;">CARD</div>
+              <div class="ph stripes" style="height: 140px; border-radius: 8px;">CARD</div>
+              <div class="ph stripes" style="height: 140px; border-radius: 8px;">CARD</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-backdrop"></div>
+
+      <!-- ⌘K modal · empty -->
+      <div class="ck">
+        <div class="ck-search">
+          <i data-lucide="sparkles" class="spark"></i>
+          <input placeholder="Ask Kova or search…" />
+          <span class="pill-ctx"><span class="logo">N</span>Nike</span>
+          <span class="hint"><span class="kbd">↵</span>run<span class="kbd">esc</span>close</span>
+        </div>
+
+        <div class="ck-body">
+          <div class="ck-eyebrow">Recents<span class="ct">last 7 days</span></div>
+          <div class="ck-row active">
+            <i data-lucide="file" class="ic"></i>
+            <div class="lbl">
+              <span class="brand-chip">N</span>
+              <span class="nm">Spring · Air Max launch</span>
+              <span class="meta">· edited 18m ago</span>
+            </div>
+            <div class="right"><span class="kbd">↵</span><i data-lucide="corner-down-left" class="arrow"></i></div>
+          </div>
+          <div class="ck-row">
+            <i data-lucide="file" class="ic"></i>
+            <div class="lbl">
+              <span class="brand-chip">N</span>
+              <span class="nm">VIP early access · drop 03</span>
+              <span class="meta">· yesterday</span>
+            </div>
+            <div class="right">Canvas</div>
+          </div>
+          <div class="ck-row">
+            <i data-lucide="file" class="ic"></i>
+            <div class="lbl">
+              <span class="brand-chip" style="background:#fa5400;color:#fff;">A</span>
+              <span class="nm">Allbirds · post-purchase flow</span>
+              <span class="meta">· Apr 24</span>
+            </div>
+            <div class="right">Canvas</div>
+          </div>
+
+          <div class="ck-eyebrow">Brands</div>
+          <div class="ck-row">
+            <i data-lucide="layout-grid" class="ic"></i>
+            <div class="lbl">
+              <span class="brand-chip">N</span>
+              <span class="nm">Nike · dashboard</span>
+              <span class="meta">· current brand</span>
+            </div>
+            <div class="right">/brands/nike</div>
+          </div>
+          <div class="ck-row">
+            <i data-lucide="layout-grid" class="ic"></i>
+            <div class="lbl">
+              <span class="brand-chip" style="background:#1a4be0;color:#fff;">G</span>
+              <span class="nm">Glossier · dashboard</span>
+            </div>
+            <div class="right">/brands/glossier</div>
+          </div>
+
+          <div class="ck-eyebrow">Settings</div>
+          <div class="ck-row">
+            <i data-lucide="user" class="ic"></i>
+            <div class="lbl"><span class="nm">Account</span></div>
+            <div class="right">/account</div>
+          </div>
+          <div class="ck-row">
+            <i data-lucide="palette" class="ic"></i>
+            <div class="lbl"><span class="nm">Brand Kit · Identity</span></div>
+            <div class="right">/account/brand-kit</div>
+          </div>
+          <div class="ck-row">
+            <i data-lucide="keyboard" class="ic"></i>
+            <div class="lbl"><span class="nm">Keyboard shortcuts</span></div>
+            <div class="right"><span class="kbd">⇧</span><span class="kbd">⌘</span><span class="kbd">?</span></div>
+          </div>
+
+          <div class="ck-eyebrow">Actions</div>
+          <div class="ck-row">
+            <i data-lucide="plus-square" class="ic"></i>
+            <div class="lbl"><span class="nm">New canvas</span></div>
+            <div class="right"><span class="kbd">⌘</span><span class="kbd">N</span></div>
+          </div>
+          <div class="ck-row">
+            <i data-lucide="building-2" class="ic"></i>
+            <div class="lbl"><span class="nm">Add new brand</span></div>
+            <div class="right">/brands/new</div>
+          </div>
+          <div class="ck-row">
+            <i data-lucide="save" class="ic"></i>
+            <div class="lbl"><span class="nm">Save snapshot of current canvas</span></div>
+            <div class="right"><span class="kbd">⌥</span><span class="kbd">⌘</span><span class="kbd">S</span></div>
+          </div>
+
+          <div class="ck-sep"></div>
+          <div class="ck-row ask">
+            <i data-lucide="sparkles" class="ic"></i>
+            <div class="lbl"><span class="nm"><strong>Ask Kova</strong> anything about Nike — products, copy, last campaign…</span></div>
+            <div class="right"><span class="kbd">↵</span></div>
+          </div>
+        </div>
+
+        <div class="ck-foot">
+          <div class="tabs">
+            <div class="tab active"><i data-lucide="corner-up-right" class="ic"></i>Jump</div>
+            <div class="tab"><i data-lucide="sparkles" class="ic"></i>Ask</div>
+            <div class="tab"><i data-lucide="plus" class="ic"></i>Create</div>
+          </div>
+          <div class="meta">
+            <span>↑↓ navigate</span>
+            <span class="sep"></span>
+            <span>↵ run</span>
+            <span class="sep"></span>
+            <span>esc close</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Trigger anchor — points at sidebar search row -->
+      <div class="anchor-pin" style="left: 232px; top: 50px;">
+        <div class="dot"></div>
+        <div class="lbl">trigger · ⌘K (any context)</div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Five categories visible by default.</strong> Recents leads (most common motion), Brands and Settings are pure-jump, Actions are verbs, and the Ask-Kova affordance closes the surface so the empty state alone tells the user "you can either jump or ask". Spec-compliant with annotations §11 (4–6 quick actions).</li>
+      <li><strong>Brand context pill in the search row</strong> ("Nike") makes scope visible — every result is filtered to the current brand unless the query explicitly names another. Same accent vocabulary as the Pro plan-badge in A6, intentionally so AI-context and AI-state share one color language.</li>
+      <li><strong>Active row carries a 2px ink left-border</strong> in addition to the fill — the same affordance keyboard-driven menus need to make the focused row unambiguous in a long, scrolling list.</li>
+      <li><strong>Footer tabs (Jump · Ask · Create)</strong> let the user filter the list to one verb when they know what they want. Per §11: active tab gets ink underline; default is Jump.</li>
+      <li><strong>The sidebar search row is the canonical trigger</strong> — visible behind the modal with its accent-tinted ⌘K keycap, so the modal feels like an expansion of that input rather than a separate surface.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     §2 · State 2 — Populated (typed "spring")
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE 6 · §2 · A5.2 populated query</div>
+    <h2>A5.2 · Populated · query <code>"spring"</code></h2>
+    <p class="intro">After typing 6 chars + 300ms idle. Local matches resolve instantly into category groups (Canvases, Brands, Settings, Actions); the bottom <code>ASK KOVA</code> section appears with the typed string echoed back as a runnable AI prompt. Match highlight uses a soft accent fill to keep the typed substring visible without colliding with the AI accent on the Ask-Kova row.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Dashboard chrome · ⌘K · typed "spring"</div><div class="id">A5.2 · hi-fi</div></div>
+    <div class="canvas tall" data-screen-label="A5.2 Command-K populated">
+      <div class="app">
+        <div class="sidebar">
+          <div class="brand-switch"><div class="logo">N</div><div class="name">Nike</div><div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div></div>
+          <div class="side-search" style="border-color: var(--ink); background: var(--page);">
+            <i data-lucide="search" style="width:13px;height:13px;color:var(--ink);"></i>
+            <span style="color:var(--ink);">Search</span>
+            <span class="kbd" style="background: var(--accent-soft); color: var(--accent-ink); border-color: var(--accent-2);">⌘K</span>
+          </div>
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item"><i data-lucide="clock-4" class="ic"></i>Recents</div>
+            <div class="item"><i data-lucide="calendar-days" class="ic"></i>Calendar<span class="pill" style="margin-left:auto;font-size:9px;padding:1px 5px;">SOON</span></div>
+            <div class="section">Library</div>
+            <div class="item"><i data-lucide="bookmark" class="ic"></i>Swipes<span class="pill" style="margin-left:auto;font-size:9px;padding:1px 5px;">SOON</span></div>
+            <div class="item"><i data-lucide="layout-template" class="ic"></i>Templates<span class="pill" style="margin-left:auto;font-size:9px;padding:1px 5px;">SOON</span></div>
+            <div class="item"><i data-lucide="package" class="ic"></i>Products<span class="count">318</span></div>
+            <div class="section">Brand</div>
+            <div class="item"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+            <div class="item"><i data-lucide="book-open" class="ic"></i>Knowledge base</div>
+          </div>
+          <div class="side-footer">
+            <div class="avatar">JY</div>
+            <div class="who"><b>Jiho Yang</b><span>Pro plan</span></div>
+            <div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+          </div>
+        </div>
+        <div class="main">
+          <div class="topbar">
+            <div class="breadcrumb">
+              <span><i data-lucide="layout-grid" style="width:14px;height:14px;"></i></span>
+              <b>Brand dashboard</b>
+            </div>
+            <div class="actions">
+              <span class="pill ok dot" style="font-size:11px;">Online</span>
+              <div class="top-avatar">JY</div>
+            </div>
+          </div>
+          <div class="content" style="opacity:.35;">
+            <div class="ph stripes" style="height: 220px; border-radius: 8px;">DASHBOARD CONTENT (DIMMED)</div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">
+              <div class="ph stripes" style="height: 140px; border-radius: 8px;">CARD</div>
+              <div class="ph stripes" style="height: 140px; border-radius: 8px;">CARD</div>
+              <div class="ph stripes" style="height: 140px; border-radius: 8px;">CARD</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-backdrop"></div>
+
+      <div class="ck">
+        <div class="ck-search">
+          <i data-lucide="sparkles" class="spark"></i>
+          <input value="spring" />
+          <span class="pill-ctx"><span class="logo">N</span>Nike</span>
+          <span class="hint"><span class="kbd">↵</span>run<span class="kbd">esc</span>close</span>
+        </div>
+
+        <div class="ck-body">
+          <div class="ck-eyebrow">Canvases<span class="ct">4 matches</span></div>
+          <div class="ck-row active">
+            <i data-lucide="file" class="ic"></i>
+            <div class="lbl">
+              <span class="brand-chip">N</span>
+              <span class="nm"><em>Spring</em> · Air Max launch</span>
+              <span class="meta">· edited 18m ago</span>
+            </div>
+            <div class="right"><span class="kbd">↵</span><i data-lucide="corner-down-left" class="arrow"></i></div>
+          </div>
+          <div class="ck-row">
+            <i data-lucide="file" class="ic"></i>
+            <div class="lbl">
+              <span class="brand-chip">N</span>
+              <span class="nm"><em>Spring</em> rollout · pre-Klaviyo</span>
+              <span class="meta">· snapshot, Apr 22</span>
+            </div>
+            <div class="right">Canvas</div>
+          </div>
+          <div class="ck-row">
+            <i data-lucide="file" class="ic"></i>
+            <div class="lbl">
+              <span class="brand-chip" style="background:#fa5400;color:#fff;">A</span>
+              <span class="nm">Allbirds · <em>Spring</em> capsule teaser</span>
+              <span class="meta">· Apr 19</span>
+            </div>
+            <div class="right">Canvas</div>
+          </div>
+          <div class="ck-row">
+            <i data-lucide="file" class="ic"></i>
+            <div class="lbl">
+              <span class="brand-chip" style="background:#5ec27d;color:#0d0d0c;">O</span>
+              <span class="nm">Oatly · early-<em>spring</em> swipe</span>
+              <span class="meta">· Apr 14</span>
+            </div>
+            <div class="right">Canvas</div>
+          </div>
+
+          <div class="ck-eyebrow">Memories<span class="ct">2 matches in Brand Kit</span></div>
+          <div class="ck-row">
+            <i data-lucide="brain" class="ic"></i>
+            <div class="lbl">
+              <span class="brand-chip">N</span>
+              <span class="nm"><em>Spring</em> hero CTA copy preference</span>
+              <span class="meta">· Identity · auto-extracted</span>
+            </div>
+            <div class="right">/account/brand-kit</div>
+          </div>
+          <div class="ck-row">
+            <i data-lucide="bookmark" class="ic"></i>
+            <div class="lbl">
+              <span class="brand-chip">N</span>
+              <span class="nm"><em>Spring</em>'24 send schedule (saved block)</span>
+              <span class="meta">· Knowledge base</span>
+            </div>
+            <div class="right">/account/brand-kit</div>
+          </div>
+
+          <div class="ck-eyebrow">Actions</div>
+          <div class="ck-row">
+            <i data-lucide="plus-square" class="ic"></i>
+            <div class="lbl"><span class="nm">New canvas titled "<em>Spring</em>…"</span></div>
+            <div class="right"><span class="kbd">⌘</span><span class="kbd">N</span></div>
+          </div>
+
+          <div class="ck-sep"></div>
+          <div class="ck-eyebrow" style="color:var(--accent-ink);">Ask Kova<span class="ct" style="color:var(--ink-3);">generative · runs against Nike context</span></div>
+          <div class="ck-row ask">
+            <i data-lucide="sparkles" class="ic"></i>
+            <div class="lbl"><span class="nm"><strong>Ask Kova:</strong> "spring"</span></div>
+            <div class="right"><span class="kbd">↵</span> run</div>
+          </div>
+          <div class="ck-row ask" style="opacity: 0.85;">
+            <i data-lucide="message-square-plus" class="ic"></i>
+            <div class="lbl"><span class="nm">Draft a <em>spring</em> launch email for Nike</span></div>
+            <div class="right">suggested</div>
+          </div>
+          <div class="ck-row ask" style="opacity: 0.85;">
+            <i data-lucide="calendar-clock" class="ic"></i>
+            <div class="lbl"><span class="nm">When did Nike's last <em>spring</em> drop ship?</span></div>
+            <div class="right">suggested</div>
+          </div>
+        </div>
+
+        <div class="ck-foot">
+          <div class="tabs">
+            <div class="tab active"><i data-lucide="corner-up-right" class="ic"></i>Jump</div>
+            <div class="tab"><i data-lucide="sparkles" class="ic"></i>Ask</div>
+            <div class="tab"><i data-lucide="plus" class="ic"></i>Create</div>
+          </div>
+          <div class="meta">
+            <span>7 results · 0.18s</span>
+            <span class="sep"></span>
+            <span>↵ run</span>
+            <span class="sep"></span>
+            <span>esc close</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Match highlight uses a soft accent fill</strong> on the matched substring — high enough to find at a glance, low enough not to compete with the dedicated <em>Ask Kova</em> rows. Same accent hue family, lower saturation.</li>
+      <li><strong>Cross-brand canvas results stay visible.</strong> Even though the Nike pill scopes search by default, exact name matches in other brands (Allbirds, Oatly) still surface — each row carries that brand's own logo chip so identity is unambiguous. Switching to that result is implicitly a brand switch + canvas open.</li>
+      <li><strong>Two rows of suggested AI prompts</strong> below the verbatim "Ask Kova: 'spring'" affordance — these are pre-written by the local intent classifier (matching the 300ms idle behavior in §11) so the AI run isn't a blank check; the user can pick a fully-formed question they were probably about to type.</li>
+      <li><strong>Footer meta replaces the keymap with a result count + latency</strong> (mono) — the keymap was scaffolding for the empty state; once results are visible, the user has a feedback loop and the keymap becomes redundant.</li>
+      <li><strong>Memory matches surface as their own group</strong>, not buried under Settings. The Brand-Kit Identity / Knowledge-base entries are first-class search targets because the founder explicitly wants ⌘K to act as the entry point into "what does Kova know about my brand?".</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     §3 · State 3 — AI chat (Ask Kova streaming)
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE 6 · §3 · A5.3 ask-kova streaming</div>
+    <h2>A5.3 · AI chat mode · streaming response</h2>
+    <p class="intro">User pressed Enter on the Ask-Kova row (or the suggested "When did Nike's last spring drop ship?" prompt). The list collapses; the body becomes a streaming answer surface with brand context shown in the head, the user's question echoed back, the streaming AI text with a blinking caret, a sources card, and inline <em>Do it</em> action buttons. <strong>New question</strong> in the head resets back to State 1.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Dashboard chrome · ⌘K · streaming AI answer</div><div class="id">A5.3 · hi-fi</div></div>
+    <div class="canvas tall" data-screen-label="A5.3 Command-K AI chat">
+      <div class="app">
+        <div class="sidebar">
+          <div class="brand-switch"><div class="logo">N</div><div class="name">Nike</div><div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div></div>
+          <div class="side-search" style="border-color: var(--ink); background: var(--page);">
+            <i data-lucide="search" style="width:13px;height:13px;color:var(--ink);"></i>
+            <span style="color:var(--ink);">Search</span>
+            <span class="kbd" style="background: var(--accent-soft); color: var(--accent-ink); border-color: var(--accent-2);">⌘K</span>
+          </div>
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item"><i data-lucide="clock-4" class="ic"></i>Recents</div>
+            <div class="item"><i data-lucide="calendar-days" class="ic"></i>Calendar<span class="pill" style="margin-left:auto;font-size:9px;padding:1px 5px;">SOON</span></div>
+            <div class="section">Library</div>
+            <div class="item"><i data-lucide="bookmark" class="ic"></i>Swipes<span class="pill" style="margin-left:auto;font-size:9px;padding:1px 5px;">SOON</span></div>
+            <div class="item"><i data-lucide="layout-template" class="ic"></i>Templates<span class="pill" style="margin-left:auto;font-size:9px;padding:1px 5px;">SOON</span></div>
+            <div class="item"><i data-lucide="package" class="ic"></i>Products<span class="count">318</span></div>
+            <div class="section">Brand</div>
+            <div class="item"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+            <div class="item"><i data-lucide="book-open" class="ic"></i>Knowledge base</div>
+          </div>
+          <div class="side-footer">
+            <div class="avatar">JY</div>
+            <div class="who"><b>Jiho Yang</b><span>Pro plan</span></div>
+            <div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+          </div>
+        </div>
+        <div class="main">
+          <div class="topbar">
+            <div class="breadcrumb">
+              <span><i data-lucide="layout-grid" style="width:14px;height:14px;"></i></span>
+              <b>Brand dashboard</b>
+            </div>
+            <div class="actions">
+              <span class="pill ok dot" style="font-size:11px;">Online</span>
+              <div class="top-avatar">JY</div>
+            </div>
+          </div>
+          <div class="content" style="opacity:.35;">
+            <div class="ph stripes" style="height: 220px; border-radius: 8px;">DASHBOARD CONTENT (DIMMED)</div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">
+              <div class="ph stripes" style="height: 140px; border-radius: 8px;">CARD</div>
+              <div class="ph stripes" style="height: 140px; border-radius: 8px;">CARD</div>
+              <div class="ph stripes" style="height: 140px; border-radius: 8px;">CARD</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-backdrop"></div>
+
+      <div class="ck tall">
+        <!-- search row stays interactive — user can keep typing to refine -->
+        <div class="ck-search">
+          <i data-lucide="sparkles" class="spark"></i>
+          <input value="When did Nike's last spring drop ship?" />
+          <span class="pill-ctx"><span class="logo">N</span>Nike</span>
+          <span class="hint"><span class="kbd">↵</span>refine<span class="kbd">esc</span>close</span>
+        </div>
+
+        <div class="ck-chat">
+          <div class="ck-chat-head">
+            <div class="crumb">
+              <i data-lucide="sparkles" style="width:13px;height:13px;color:var(--accent);"></i>
+              <b>Ask Kova</b>
+              <i data-lucide="chevron-right" style="width:11px;height:11px;"></i>
+              <span>using <strong style="color:var(--ink-2);">Nike</strong> Brand Kit · Identity · Knowledge base · 318 products</span>
+            </div>
+            <div class="reset"><i data-lucide="rotate-ccw" class="ic"></i>New question</div>
+          </div>
+
+          <div class="ck-body tall">
+            <div class="ck-chat-body">
+              <!-- echoed question -->
+              <div class="ck-q">When did Nike's last spring drop ship?</div>
+
+              <!-- streaming answer -->
+              <div class="ck-a">
+                <div class="ai-head">
+                  <i data-lucide="sparkles" class="ic"></i>
+                  <span>Kova · streaming</span>
+                  <span class="stream-dot"></span>
+                </div>
+                <div class="ai-text">
+                  <p>Your last <strong>spring drop</strong> shipped on <strong>March 14, 2026</strong> as the "Air Max '90 · Pastel Capsule" send. Headline numbers from your campaign log:</p>
+                  <ul>
+                    <li><strong>Audience:</strong> 184,210 subscribers (segment: VIP + lapsed-90d)</li>
+                    <li><strong>Open rate:</strong> 41.2% — 4.8 pts above your 90-day avg</li>
+                    <li><strong>Click-through:</strong> 6.7% — top performer was the "Shop the capsule" CTA at 71% of clicks</li>
+                  </ul>
+                  <p>The follow-up restock send went out four days later on <strong>March 18</strong>; that's the cadence your Brand Kit memory has flagged as the "spring restock rhythm."</p>
+                  <p>Want me to draft the next spring email using the same structure, or pull up the canvas so you can copy frames directly?<span class="caret"></span></p>
+                </div>
+
+                <!-- sources -->
+                <div class="ck-sources">
+                  <div class="sh">Sources · 4</div>
+                  <div class="src-row">
+                    <i data-lucide="file" class="ic"></i>
+                    <b>Spring · Air Max launch</b>
+                    <span class="meta">canvas · Mar 14</span>
+                  </div>
+                  <div class="src-row">
+                    <i data-lucide="brain" class="ic"></i>
+                    <b>Spring restock rhythm</b>
+                    <span class="meta">memory · auto</span>
+                  </div>
+                  <div class="src-row">
+                    <i data-lucide="bar-chart-3" class="ic"></i>
+                    <b>Campaign log · Nike · Mar 2026</b>
+                    <span class="meta">analytics</span>
+                  </div>
+                  <div class="src-row">
+                    <i data-lucide="package" class="ic"></i>
+                    <b>Air Max '90 Pastel · 14 SKUs</b>
+                    <span class="meta">products</span>
+                  </div>
+                </div>
+
+                <!-- inline actions -->
+                <div class="ck-actions">
+                  <div class="ck-action-btn accent">
+                    <i data-lucide="plus-square" class="ic"></i>
+                    Draft the next spring send
+                  </div>
+                  <div class="ck-action-btn">
+                    <i data-lucide="external-link" class="ic"></i>
+                    Open Spring · Air Max launch
+                  </div>
+                  <div class="ck-action-btn">
+                    <i data-lucide="bookmark-plus" class="ic"></i>
+                    Save to memories
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="ck-foot">
+            <div class="tabs">
+              <div class="tab"><i data-lucide="corner-up-right" class="ic"></i>Jump</div>
+              <div class="tab active"><i data-lucide="sparkles" class="ic"></i>Ask</div>
+              <div class="tab"><i data-lucide="plus" class="ic"></i>Create</div>
+            </div>
+            <div class="meta">
+              <span>haiku-4-5 · streaming</span>
+              <span class="sep"></span>
+              <span>614 tok</span>
+              <span class="sep"></span>
+              <span>esc close</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Search row stays editable</strong> — the user can refine without leaving the answer surface. Pressing Enter on a non-empty query starts a new turn; the previous answer scrolls into history. The hint copy switches to "<code>↵ refine</code>" to make this explicit.</li>
+      <li><strong>Brand context is rendered as a header crumb</strong>, not buried in metadata. "Using Nike Brand Kit · Identity · Knowledge base · 318 products" tells the user exactly what was attached to the system prompt — same vocabulary the canvas AI panel uses for its scope chip, intentionally so the two AI surfaces feel like one assistant with two entry points.</li>
+      <li><strong>Streaming caret + pulsing accent dot</strong> share the same accent hue. Per A8.3 Accessibility, both animations are gated by the user's reduce-motion preference; in reduced-motion mode the caret stays solid and the dot stays static-filled.</li>
+      <li><strong>Sources card is part of the answer block</strong>, not a separate panel. Four sources (canvas, memory, analytics, products) demonstrate the four content types this surface can pull from. Each row uses the same icon as its category in State 1, reinforcing that <em>jump</em> and <em>ask</em> share one ontology.</li>
+      <li><strong>Three Do-it actions</strong> — one accent (the suggested generative next step), two neutral (jump-out + save). The accent button matches the spec's "pre-fills schedule modal and closes palette" pattern.</li>
+      <li><strong>Footer meta switches to model + token count</strong> (mono) — useful debugging info during dogfooding, easily hidden in production with one CSS rule. <em>Ask</em> tab is now active in lockstep with the body's mode change.</li>
+      <li><strong>"New question" lives top-right in the chat head</strong>, not in the footer — per §11. Single click resets to State 1 (empty); the search input clears but focus stays in the modal so the next ⌘K motion is keystrokes, not a click.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     §4 · State 4 — Create tab active (verb-only filter)
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE 6 · §4 · A5.4 create tab active</div>
+    <h2>A5.4 · Create tab · verb-only filter</h2>
+    <p class="intro">User clicked the <em>Create</em> footer tab (or invoked ⌘K with the tab pre-selected from the previous session within the same modal lifetime). The list collapses to creation verbs only — <strong>nouns disappear, verbs remain</strong>. Same shell, same search row, same footer; just a filtered render branch. Mirrors the relationship between Jump (state 1) and Ask (state 3): one component, four behaviors gated by intent.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Dashboard chrome · ⌘K · Create tab active</div><div class="id">A5.4 · hi-fi</div></div>
+    <div class="canvas tall" data-screen-label="A5.4 Command-K Create tab">
+      <div class="app">
+        <div class="sidebar">
+          <div class="brand-switch"><div class="logo">N</div><div class="name">Nike</div><div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div></div>
+          <div class="side-search" style="border-color: var(--ink); background: var(--page);">
+            <i data-lucide="search" style="width:13px;height:13px;color:var(--ink);"></i>
+            <span style="color:var(--ink);">Search</span>
+            <span class="kbd" style="background: var(--accent-soft); color: var(--accent-ink); border-color: var(--accent-2);">⌘K</span>
+          </div>
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item"><i data-lucide="clock-4" class="ic"></i>Recents</div>
+            <div class="item"><i data-lucide="calendar-days" class="ic"></i>Calendar<span class="pill" style="margin-left:auto;font-size:9px;padding:1px 5px;">SOON</span></div>
+            <div class="section">Library</div>
+            <div class="item"><i data-lucide="bookmark" class="ic"></i>Swipes<span class="pill" style="margin-left:auto;font-size:9px;padding:1px 5px;">SOON</span></div>
+            <div class="item"><i data-lucide="layout-template" class="ic"></i>Templates<span class="pill" style="margin-left:auto;font-size:9px;padding:1px 5px;">SOON</span></div>
+            <div class="item"><i data-lucide="package" class="ic"></i>Products<span class="count">318</span></div>
+            <div class="section">Brand</div>
+            <div class="item"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+            <div class="item"><i data-lucide="book-open" class="ic"></i>Knowledge base</div>
+          </div>
+          <div class="side-footer">
+            <div class="avatar">JY</div>
+            <div class="who"><b>Jiho Yang</b><span>Pro plan</span></div>
+            <div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+          </div>
+        </div>
+        <div class="main">
+          <div class="topbar">
+            <div class="breadcrumb">
+              <span><i data-lucide="layout-grid" style="width:14px;height:14px;"></i></span>
+              <b>Brand dashboard</b>
+            </div>
+            <div class="actions">
+              <span class="pill ok dot" style="font-size:11px;">Online</span>
+              <div class="top-avatar">JY</div>
+            </div>
+          </div>
+          <div class="content" style="opacity:.35;">
+            <div class="ph stripes" style="height: 220px; border-radius: 8px;">DASHBOARD CONTENT (DIMMED)</div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">
+              <div class="ph stripes" style="height: 140px; border-radius: 8px;">CARD</div>
+              <div class="ph stripes" style="height: 140px; border-radius: 8px;">CARD</div>
+              <div class="ph stripes" style="height: 140px; border-radius: 8px;">CARD</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-backdrop"></div>
+
+      <div class="ck">
+        <div class="ck-search">
+          <i data-lucide="sparkles" class="spark"></i>
+          <input placeholder="Name your new thing, or pick below…" />
+          <span class="pill-ctx"><span class="logo">N</span>Nike</span>
+          <span class="hint"><span class="kbd">↵</span>create<span class="kbd">esc</span>close</span>
+        </div>
+
+        <div class="ck-body">
+          <div class="ck-eyebrow">In <strong style="color:var(--ink-2);font-weight:500;">Nike</strong><span class="ct">brand-scoped</span></div>
+          <div class="ck-row active">
+            <i data-lucide="plus-square" class="ic"></i>
+            <div class="lbl">
+              <span class="nm">New canvas</span>
+              <span class="meta">· blank infinite canvas</span>
+            </div>
+            <div class="right"><span class="kbd">⌘</span><span class="kbd">N</span></div>
+          </div>
+          <div class="ck-row">
+            <i data-lucide="layout-template" class="ic"></i>
+            <div class="lbl">
+              <span class="nm">New canvas from template…</span>
+              <span class="meta">· pick a starting layout</span>
+            </div>
+            <div class="right"><span class="kbd">⇧</span><span class="kbd">⌘</span><span class="kbd">N</span></div>
+          </div>
+          <div class="ck-row">
+            <i data-lucide="save" class="ic"></i>
+            <div class="lbl">
+              <span class="nm">Save snapshot of current canvas</span>
+              <span class="meta">· requires open canvas</span>
+            </div>
+            <div class="right"><span class="kbd">⌥</span><span class="kbd">⌘</span><span class="kbd">S</span></div>
+          </div>
+          <div class="ck-row">
+            <i data-lucide="brain" class="ic"></i>
+            <div class="lbl">
+              <span class="nm">New memory for Nike</span>
+              <span class="meta">· into Brand Kit · Identity</span>
+            </div>
+            <div class="right">/account/brand-kit</div>
+          </div>
+          <div class="ck-row">
+            <i data-lucide="bookmark-plus" class="ic"></i>
+            <div class="lbl">
+              <span class="nm">New saved block</span>
+              <span class="meta">· reusable copy/structure</span>
+            </div>
+            <div class="right">/account/brand-kit</div>
+          </div>
+          <div class="ck-row">
+            <i data-lucide="book-open" class="ic"></i>
+            <div class="lbl">
+              <span class="nm">Add knowledge-base source</span>
+              <span class="meta">· URL, PDF, or pasted text</span>
+            </div>
+            <div class="right">/account/brand-kit</div>
+          </div>
+
+          <div class="ck-eyebrow">Across all brands</div>
+          <div class="ck-row">
+            <i data-lucide="building-2" class="ic"></i>
+            <div class="lbl">
+              <span class="nm">Add new brand</span>
+              <span class="meta">· starts the new-brand flow</span>
+            </div>
+            <div class="right">/brands/new</div>
+          </div>
+          <div class="ck-row">
+            <i data-lucide="link" class="ic"></i>
+            <div class="lbl">
+              <span class="nm">Connect a Shopify store…</span>
+              <span class="meta">· to a brand without one</span>
+            </div>
+            <div class="right">action</div>
+          </div>
+
+          <div class="ck-sep"></div>
+          <div class="ck-eyebrow" style="color:var(--accent-ink);">Generate with Kova<span class="ct" style="color:var(--ink-3);">AI · uses Nike context</span></div>
+          <div class="ck-row ask">
+            <i data-lucide="sparkles" class="ic"></i>
+            <div class="lbl"><span class="nm"><strong>Generate canvas</strong> from a brief…</span></div>
+            <div class="right"><span class="kbd">↵</span></div>
+          </div>
+          <div class="ck-row ask">
+            <i data-lucide="message-square-plus" class="ic"></i>
+            <div class="lbl"><span class="nm"><strong>Draft an email</strong> for Nike…</span></div>
+            <div class="right"><span class="kbd">↵</span></div>
+          </div>
+        </div>
+
+        <div class="ck-foot">
+          <div class="tabs">
+            <div class="tab"><i data-lucide="corner-up-right" class="ic"></i>Jump</div>
+            <div class="tab"><i data-lucide="sparkles" class="ic"></i>Ask</div>
+            <div class="tab active"><i data-lucide="plus" class="ic"></i>Create</div>
+          </div>
+          <div class="meta">
+            <span>8 actions · 2 generative</span>
+            <span class="sep"></span>
+            <span>↵ run</span>
+            <span class="sep"></span>
+            <span>esc close</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Verb-only render branch.</strong> Same row component, same icons, same right-meta — but every entry is an <em>action</em> ("New…", "Add…", "Save…", "Connect…", "Generate…"). Nouns (canvases, brands, memories as destinations) are absent because <em>Create</em> is the "make a new thing" tab, not the "find an existing thing" tab.</li>
+      <li><strong>Two implicit scopes shown as eyebrows.</strong> "In Nike" groups creations that land inside the current brand (canvas, memory, saved block, KB source); "Across all brands" groups account-level creations (new brand, connect Shopify). Saves a click — the user doesn't have to open a brand picker first.</li>
+      <li><strong>Search input placeholder swaps to "Name your new thing"</strong> — typing here pre-fills the name field of whichever creation the user runs (e.g. "Spring restock" + ⌘N creates a canvas already named). The hint copy changes from <code>↵ run</code> to <code>↵ create</code>, mirroring the populated state's <code>↵ refine</code> on AI mode.</li>
+      <li><strong>Generative creations are pulled out into their own bottom group</strong>, accent-tinted, mirroring State 2's <em>Ask Kova</em> footer. "Generate canvas from a brief…" and "Draft an email…" route through the AI surface (state 3) but pre-seeded with a creation intent — the result has a "Save as new canvas" Do-it button instead of a passive answer.</li>
+      <li><strong>Disabled-but-visible affordance:</strong> "Save snapshot of current canvas" stays in the list with a <em>requires open canvas</em> meta hint. From the dashboard it's not actionable, but listing it teaches the user the keystroke (⌥⌘S) for when they're inside a canvas — same pedagogy as A6's "Coming soon" disabled stub.</li>
+      <li><strong>Footer meta = action count + generative count</strong>, mono. Mirrors State 2's "7 results · 0.18s" pattern: feedback loop signals "how much can I do here" without overloading.</li>
+      <li><strong>Tab activation is sticky within the modal lifetime</strong>, not across invocations. Re-opening ⌘K always lands on Jump (the empty state) — per §11 "results are never cached between invocations".</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     §4.5 · State 5 — Ask tab active (blank chat surface,
+            no query, history + starter prompts)
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE 6 · §4.5 · A5.10 ask tab active / blank</div>
+    <h2>A5.10 · Ask tab · blank chat surface</h2>
+    <p class="intro">User clicked the <em>Ask</em> footer tab from any prior state without typing a query first. The list collapses; the body becomes a blank chat surface — same geometry as A5.3, but no question, no answer, no streaming pulse. Two affordances fill the space: a recent-prompt history (so the user can resume yesterday's thread without retyping) and three brand-scoped starter prompts seeded from Nike's Brand Kit memories. Mirrors A5.4: Create's empty branch shows verbs you can run; Ask's empty branch shows questions you can ask.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Dashboard chrome · ⌘K · Ask tab active · no query yet</div><div class="id">A5.10 · hi-fi</div></div>
+    <div class="canvas tall" data-screen-label="A5.10 Command-K Ask tab blank">
+      <div class="app">
+        <div class="sidebar">
+          <div class="brand-switch"><div class="logo">N</div><div class="name">Nike</div><div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div></div>
+          <div class="side-search" style="border-color: var(--ink); background: var(--page);">
+            <i data-lucide="search" style="width:13px;height:13px;color:var(--ink);"></i>
+            <span style="color:var(--ink);">Search</span>
+            <span class="kbd" style="background: var(--accent-soft); color: var(--accent-ink); border-color: var(--accent-2);">⌘K</span>
+          </div>
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item"><i data-lucide="clock-4" class="ic"></i>Recents</div>
+            <div class="item"><i data-lucide="calendar-days" class="ic"></i>Calendar<span class="pill" style="margin-left:auto;font-size:9px;padding:1px 5px;">SOON</span></div>
+            <div class="section">Library</div>
+            <div class="item"><i data-lucide="bookmark" class="ic"></i>Swipes<span class="pill" style="margin-left:auto;font-size:9px;padding:1px 5px;">SOON</span></div>
+            <div class="item"><i data-lucide="layout-template" class="ic"></i>Templates<span class="pill" style="margin-left:auto;font-size:9px;padding:1px 5px;">SOON</span></div>
+            <div class="item"><i data-lucide="package" class="ic"></i>Products<span class="count">318</span></div>
+            <div class="section">Brand</div>
+            <div class="item"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+            <div class="item"><i data-lucide="book-open" class="ic"></i>Knowledge base</div>
+          </div>
+          <div class="side-footer">
+            <div class="avatar">JY</div>
+            <div class="who"><b>Jiho Yang</b><span>Pro plan</span></div>
+            <div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+          </div>
+        </div>
+        <div class="main">
+          <div class="topbar">
+            <div class="breadcrumb">
+              <span><i data-lucide="layout-grid" style="width:14px;height:14px;"></i></span>
+              <b>Brand dashboard</b>
+            </div>
+            <div class="actions">
+              <span class="pill ok dot" style="font-size:11px;">Online</span>
+              <div class="top-avatar">JY</div>
+            </div>
+          </div>
+          <div class="content" style="opacity:.35;">
+            <div class="ph stripes" style="height: 220px; border-radius: 8px;">DASHBOARD CONTENT (DIMMED)</div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">
+              <div class="ph stripes" style="height: 140px; border-radius: 8px;">CARD</div>
+              <div class="ph stripes" style="height: 140px; border-radius: 8px;">CARD</div>
+              <div class="ph stripes" style="height: 140px; border-radius: 8px;">CARD</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-backdrop"></div>
+
+      <div class="ck tall">
+        <div class="ck-search">
+          <i data-lucide="sparkles" class="spark"></i>
+          <input placeholder="Ask Kova about Nike…" />
+          <span class="pill-ctx"><span class="logo">N</span>Nike</span>
+          <span class="hint"><span class="kbd">↵</span>ask<span class="kbd">esc</span>close</span>
+        </div>
+
+        <div class="ck-chat">
+          <div class="ck-chat-head">
+            <div class="crumb">
+              <i data-lucide="sparkles" style="width:13px;height:13px;color:var(--accent);"></i>
+              <b>Ask Kova</b>
+              <span style="color:var(--ink-3); margin-left: 8px;">· using Nike context · 31 memories · 8 sources</span>
+            </div>
+            <div class="reset" style="opacity: 0.4; cursor: not-allowed;"><i data-lucide="rotate-ccw" class="ic"></i>New</div>
+          </div>
+
+          <div class="ck-chat-body" style="max-height: 360px; padding: 18px 22px 14px; gap: 16px;">
+
+            <!-- Starter prompts (brand-scoped, pulled from Brand Kit) -->
+            <div>
+              <div class="ck-eyebrow" style="padding: 0 0 8px;">Try asking</div>
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <div class="ck-row ask" style="border-left-width: 0; border-radius: 7px; padding: 10px 12px; background: var(--accent-soft); border: 1px solid var(--accent-2);">
+                  <i data-lucide="sparkles" class="ic"></i>
+                  <div class="lbl"><span class="nm">When did Nike's last spring drop ship, and what worked?</span></div>
+                  <div class="right"><span class="kbd">↵</span></div>
+                </div>
+                <div class="ck-row" style="border-left-width: 0; border-radius: 7px; padding: 10px 12px; background: var(--rail); border: 1px solid var(--line-2);">
+                  <i data-lucide="message-square-quote" class="ic"></i>
+                  <div class="lbl"><span class="nm">Summarize the Air Max launch performance vs. Pegasus</span></div>
+                  <div class="right" style="color: var(--ink-3);"><i data-lucide="arrow-up-right" style="width:12px;height:12px;"></i></div>
+                </div>
+                <div class="ck-row" style="border-left-width: 0; border-radius: 7px; padding: 10px 12px; background: var(--rail); border: 1px solid var(--line-2);">
+                  <i data-lucide="message-square-quote" class="ic"></i>
+                  <div class="lbl"><span class="nm">Write three CTA variants in Nike's Tone-of-voice "Direct"</span></div>
+                  <div class="right" style="color: var(--ink-3);"><i data-lucide="arrow-up-right" style="width:12px;height:12px;"></i></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Recent prompts (per-brand history) -->
+            <div>
+              <div class="ck-eyebrow" style="padding: 0 0 8px;">Recent · Nike<span class="ct">last 7 days</span></div>
+              <div style="display: flex; flex-direction: column; gap: 0; border: 1px solid var(--line-2); border-radius: 7px; overflow: hidden;">
+                <div class="ck-row" style="border-left-width: 0; padding: 8px 12px; border-bottom: 1px solid var(--line-2);">
+                  <i data-lucide="clock-4" class="ic"></i>
+                  <div class="lbl">
+                    <span class="nm" style="font-weight: 400; color: var(--ink-2);">"Compare CTR on the last 4 sends"</span>
+                  </div>
+                  <div class="right" style="color: var(--ink-3);">2h ago</div>
+                </div>
+                <div class="ck-row" style="border-left-width: 0; padding: 8px 12px; border-bottom: 1px solid var(--line-2);">
+                  <i data-lucide="clock-4" class="ic"></i>
+                  <div class="lbl">
+                    <span class="nm" style="font-weight: 400; color: var(--ink-2);">"Draft a winback for VIP segment, 7-day lapsed"</span>
+                  </div>
+                  <div class="right" style="color: var(--ink-3);">yesterday</div>
+                </div>
+                <div class="ck-row" style="border-left-width: 0; padding: 8px 12px;">
+                  <i data-lucide="clock-4" class="ic"></i>
+                  <div class="lbl">
+                    <span class="nm" style="font-weight: 400; color: var(--ink-2);">"What's our refund policy for sale items?"</span>
+                  </div>
+                  <div class="right" style="color: var(--ink-3);">Tue</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Capability hint footer (mono, quiet) -->
+            <div style="display: flex; align-items: center; gap: 8px; color: var(--ink-3); font-size: 10px; letter-spacing: 0.04em; padding-top: 4px;">
+              <i data-lucide="info" style="width: 11px; height: 11px;"></i>
+              <span>answers cite Nike's brand kit · history is per-brand · ⇧↵ for newline</span>
+            </div>
+
+          </div>
+
+          <div class="ck-foot">
+            <div class="tabs">
+              <div class="tab"><i data-lucide="corner-up-right" class="ic"></i>Jump</div>
+              <div class="tab active"><i data-lucide="sparkles" class="ic"></i>Ask</div>
+              <div class="tab"><i data-lucide="plus" class="ic"></i>Create</div>
+            </div>
+            <div class="meta">
+              <span>haiku-4-5</span>
+              <span class="sep"></span>
+              <span>↵ ask</span>
+              <span class="sep"></span>
+              <span>esc close</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Tab-active without typing.</strong> A5.4 (Create) showed the verb-only branch when the user pre-selects an intent; A5.10 is the same pattern for Ask. Clicking the Ask tab from <em>any</em> prior state collapses the list and pre-commits the modal to AI mode — the user signaled "I want to ask, not jump or create" and the surface follows.</li>
+      <li><strong>No streaming pulse, no caret, no answer.</strong> This is the resting blank chat — a peer of A5.9 (post-stream) but at the <em>start</em> of the conversation rather than the end. The eyebrow reads "Ask Kova · using Nike context · 31 memories · 8 sources" so the user knows what corpus the answer will draw from before they commit a question.</li>
+      <li><strong>Try-asking starter prompts</strong> are not generic copy — they're seeded from the brand's actual data: the <em>"spring drop"</em> question references Nike's last-shipped canvas; <em>"Air Max vs. Pegasus"</em> references two products in the brand's Shopify catalog; <em>"Tone-of-voice 'Direct'"</em> references a Brand Kit voice exemplar. The first prompt is pre-highlighted so ↵ runs it without arrow-down.</li>
+      <li><strong>Recent prompts are scoped to the current brand</strong> (per-brand history, not global) — switching brands via the brand-context pill resets this list. Three rows max, condensed; clicking one re-runs the question (does <em>not</em> resume the prior answer — answers are not cached, per §11). Time labels use relative fuzz (<code>2h ago</code>, <code>yesterday</code>, weekday) following the same vocabulary as A11 empty states.</li>
+      <li><strong>Reset button is disabled-but-visible</strong> at 40% opacity. There's no conversation to clear, but listing the affordance teaches the user it'll appear during a real chat — same pedagogy as A5.4 disabled "Save snapshot" and A6 "What's new" coming-soon stub.</li>
+      <li><strong>Capability hint is mono, quiet, and below the fold of attention.</strong> It tells Claude Code three contracts: answers must cite the brand kit, history is per-brand (not global), <code>⇧↵</code> is the newline binding so <code>↵</code> stays bound to "ask". This is the minimum metadata for the input to feel finished.</li>
+      <li><strong>Footer meta swaps from "↵ run" to "↵ ask"</strong> — same byte-budget, semantically loaded. Mirrors A5.4's swap to "↵ create". The verb on the keystroke always matches the active tab's intent.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     §5 · Edge / system states (4-up: zero-results · loading ·
+            AI error · offline · AI completed)
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE 6 · §5 · A5.5–A5.9 edge &amp; system states</div>
+    <h2>A5.5–A5.9 · Edge &amp; system states</h2>
+    <p class="intro">Five edge branches the five core states inherit from. Same 640px shell, same search row, same footer — only the body content + a single status row changes. These are the states Claude Code <strong>must</strong> implement to ship: zero-results · searching · AI error · offline · AI completed (post-stream). Drawn here side-by-side so the patterns are visible without re-anchoring on dashboard chrome.</p>
+  </header>
+
+  <div class="comp-grid" style="grid-template-columns: repeat(2, 1fr); padding-top: 0;">
+
+    <!-- A5.5 zero-results -->
+    <div class="comp-card">
+      <div class="ccap"><b>Zero results</b><span>A5.5 · query miss</span></div>
+      <div class="ccontent">
+        <div class="ck" style="box-shadow: none;">
+          <div class="ck-search">
+            <i data-lucide="sparkles" class="spark"></i>
+            <input value="quartzite" />
+            <span class="pill-ctx"><span class="logo">N</span>Nike</span>
+          </div>
+          <div class="ck-body" style="max-height: 260px; align-items: center; justify-content: center; padding: 28px 24px;">
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center;">
+              <div style="width: 38px; height: 38px; border-radius: 50%; background: var(--fill); display: grid; place-items: center; color: var(--ink-3);">
+                <i data-lucide="search-x" style="width:17px;height:17px;"></i>
+              </div>
+              <div style="font-size: 13px; color: var(--ink); font-weight: 500;">No matches for <em style="font-style: normal; background: rgba(90,125,255,0.15); padding: 0 3px; border-radius: 2px;">quartzite</em></div>
+              <div style="font-size: 11.5px; color: var(--ink-3); max-width: 260px; line-height: 1.5;">Nothing in canvases, brands, settings, or memories. Try a broader term — or ask Kova to search across web context.</div>
+            </div>
+          </div>
+          <div class="ck-sep" style="margin: 0;"></div>
+          <div class="ck-row ask" style="border-left-width: 0;">
+            <i data-lucide="sparkles" class="ic"></i>
+            <div class="lbl"><span class="nm"><strong>Ask Kova:</strong> "quartzite"</span></div>
+            <div class="right"><span class="kbd">↵</span></div>
+          </div>
+          <div class="ck-foot">
+            <div class="tabs">
+              <div class="tab active"><i data-lucide="corner-up-right" class="ic"></i>Jump</div>
+              <div class="tab"><i data-lucide="sparkles" class="ic"></i>Ask</div>
+              <div class="tab"><i data-lucide="plus" class="ic"></i>Create</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- A5.6 searching / loading -->
+    <div class="comp-card">
+      <div class="ccap"><b>Searching</b><span>A5.6 · 300ms idle window</span></div>
+      <div class="ccontent">
+        <div class="ck" style="box-shadow: none;">
+          <div class="ck-search">
+            <i data-lucide="sparkles" class="spark"></i>
+            <input value="vip launc" />
+            <span class="pill-ctx"><span class="logo">N</span>Nike</span>
+          </div>
+          <div class="ck-body" style="max-height: 280px; padding: 0;">
+            <div style="padding: 9px 18px; display: flex; align-items: center; gap: 10px; color: var(--ink-3); font-size: 11.5px;">
+              <i data-lucide="loader-2" style="width:13px;height:13px;animation: spin 0.9s linear infinite;"></i>
+              <span>Searching local index…</span>
+              <span class="tag-mono" style="margin-left:auto;">300ms idle</span>
+            </div>
+            <div class="ck-eyebrow" style="opacity: 0.5;">Canvases</div>
+            <!-- skeleton rows -->
+            <div style="display: flex; flex-direction: column; gap: 1px;">
+              <div style="display: grid; grid-template-columns: 22px 1fr auto; gap: 12px; padding: 9px 18px; align-items: center;">
+                <div style="width: 14px; height: 14px; border-radius: 3px; background: var(--fill); justify-self: center;"></div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <div style="width: 14px; height: 14px; border-radius: 3px; background: var(--fill);"></div>
+                  <div style="height: 10px; width: 180px; background: var(--fill); border-radius: 3px;"></div>
+                </div>
+                <div style="height: 9px; width: 50px; background: var(--fill); border-radius: 3px;"></div>
+              </div>
+              <div style="display: grid; grid-template-columns: 22px 1fr auto; gap: 12px; padding: 9px 18px; align-items: center;">
+                <div style="width: 14px; height: 14px; border-radius: 3px; background: var(--fill); justify-self: center;"></div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <div style="width: 14px; height: 14px; border-radius: 3px; background: var(--fill);"></div>
+                  <div style="height: 10px; width: 220px; background: var(--fill); border-radius: 3px; opacity: 0.7;"></div>
+                </div>
+                <div style="height: 9px; width: 50px; background: var(--fill); border-radius: 3px; opacity: 0.7;"></div>
+              </div>
+              <div style="display: grid; grid-template-columns: 22px 1fr auto; gap: 12px; padding: 9px 18px; align-items: center;">
+                <div style="width: 14px; height: 14px; border-radius: 3px; background: var(--fill); justify-self: center; opacity: 0.5;"></div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <div style="width: 14px; height: 14px; border-radius: 3px; background: var(--fill); opacity: 0.5;"></div>
+                  <div style="height: 10px; width: 140px; background: var(--fill); border-radius: 3px; opacity: 0.4;"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="ck-foot">
+            <div class="tabs">
+              <div class="tab active"><i data-lucide="corner-up-right" class="ic"></i>Jump</div>
+              <div class="tab"><i data-lucide="sparkles" class="ic"></i>Ask</div>
+              <div class="tab"><i data-lucide="plus" class="ic"></i>Create</div>
+            </div>
+            <div class="meta"><span>indexing…</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- A5.7 AI error -->
+    <div class="comp-card">
+      <div class="ccap"><b>AI error</b><span>A5.7 · stream failed</span></div>
+      <div class="ccontent">
+        <div class="ck tall" style="box-shadow: none;">
+          <div class="ck-search">
+            <i data-lucide="sparkles" class="spark"></i>
+            <input value="Draft a teaser for the spring drop" />
+            <span class="pill-ctx"><span class="logo">N</span>Nike</span>
+          </div>
+          <div class="ck-chat">
+            <div class="ck-chat-head">
+              <div class="crumb">
+                <i data-lucide="sparkles" style="width:13px;height:13px;color:var(--accent);"></i>
+                <b>Ask Kova</b>
+              </div>
+              <div class="reset"><i data-lucide="rotate-ccw" class="ic"></i>New</div>
+            </div>
+            <div class="ck-chat-body" style="max-height: 240px;">
+              <div class="ck-q">Draft a teaser for the spring drop</div>
+              <div class="ck-a">
+                <div class="ai-head" style="color: var(--warn);">
+                  <i data-lucide="alert-triangle" class="ic" style="color: var(--warn);"></i>
+                  <span style="color: var(--warn);">Kova · request failed</span>
+                </div>
+                <div style="border: 1px solid var(--warn-edge); background: var(--warn-soft); border-radius: 7px; padding: 11px 13px; display: flex; flex-direction: column; gap: 6px;">
+                  <div style="font-size: 12.5px; color: var(--ink); font-weight: 500;">Couldn't reach the model.</div>
+                  <div style="font-size: 11.5px; color: var(--ink-2); line-height: 1.5;">Network timed out after 12s. Your question is preserved — try again, or refine and re-run.</div>
+                  <div class="tag-mono warn" style="align-self: flex-start; margin-top: 2px;">net/timeout · req b3f2</div>
+                </div>
+                <div class="ck-actions">
+                  <div class="ck-action-btn accent">
+                    <i data-lucide="rotate-cw" class="ic"></i>
+                    Retry
+                  </div>
+                  <div class="ck-action-btn">
+                    <i data-lucide="edit-3" class="ic"></i>
+                    Edit question
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="ck-foot">
+              <div class="tabs">
+                <div class="tab"><i data-lucide="corner-up-right" class="ic"></i>Jump</div>
+                <div class="tab active"><i data-lucide="sparkles" class="ic"></i>Ask</div>
+                <div class="tab"><i data-lucide="plus" class="ic"></i>Create</div>
+              </div>
+              <div class="meta"><span style="color: var(--warn);">● error</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- A5.8 offline -->
+    <div class="comp-card">
+      <div class="ccap"><b>Offline</b><span>A5.8 · network down</span></div>
+      <div class="ccontent">
+        <div class="ck" style="box-shadow: none;">
+          <div class="ck-search">
+            <i data-lucide="sparkles" class="spark" style="color: var(--ink-3);"></i>
+            <input placeholder="Search local cache only…" />
+            <span class="pill-ctx" style="background: var(--warn-soft); color: var(--warn); border-color: var(--warn-edge);"><i data-lucide="wifi-off" style="width:11px;height:11px;"></i>Offline</span>
+          </div>
+          <div class="ck-body" style="max-height: 280px; padding: 0;">
+            <div style="padding: 9px 18px; display: flex; align-items: center; gap: 9px; background: var(--warn-soft); border-bottom: 1px solid var(--warn-edge); color: var(--warn); font-size: 11.5px;">
+              <i data-lucide="wifi-off" style="width:13px;height:13px;"></i>
+              <span style="color: var(--ink);"><strong style="color: var(--warn); font-weight: 600;">Working offline.</strong> Jump to recents works · Ask Kova is paused until you reconnect.</span>
+            </div>
+            <div class="ck-eyebrow">Recents<span class="ct">cached</span></div>
+            <div class="ck-row active">
+              <i data-lucide="file" class="ic"></i>
+              <div class="lbl"><span class="brand-chip">N</span><span class="nm">Spring · Air Max launch</span><span class="meta">· local copy</span></div>
+              <div class="right"><span class="kbd">↵</span></div>
+            </div>
+            <div class="ck-row">
+              <i data-lucide="file" class="ic"></i>
+              <div class="lbl"><span class="brand-chip">N</span><span class="nm">VIP early access · drop 03</span><span class="meta">· local copy</span></div>
+              <div class="right">Canvas</div>
+            </div>
+            <div class="ck-sep"></div>
+            <div class="ck-row" style="opacity: 0.45; cursor: not-allowed;">
+              <i data-lucide="sparkles" class="ic"></i>
+              <div class="lbl"><span class="nm">Ask Kova · paused</span><span class="meta">· requires connection</span></div>
+              <div class="right"><span class="tag-mono">offline</span></div>
+            </div>
+          </div>
+          <div class="ck-foot">
+            <div class="tabs">
+              <div class="tab active"><i data-lucide="corner-up-right" class="ic"></i>Jump</div>
+              <div class="tab" style="opacity: 0.5; cursor: not-allowed;"><i data-lucide="sparkles" class="ic"></i>Ask</div>
+              <div class="tab"><i data-lucide="plus" class="ic"></i>Create</div>
+            </div>
+            <div class="meta"><span style="color: var(--warn);">● offline</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- A5.9 AI completed (post-stream) -->
+    <div class="comp-card" style="grid-column: 1 / -1;">
+      <div class="ccap"><b>AI completed</b><span>A5.9 · post-stream resting state</span></div>
+      <div class="ccontent">
+        <div class="ck tall" style="box-shadow: none; max-width: 640px;">
+          <div class="ck-search">
+            <i data-lucide="sparkles" class="spark"></i>
+            <input value="Ask a follow-up…" />
+            <span class="pill-ctx"><span class="logo">N</span>Nike</span>
+          </div>
+          <div class="ck-chat">
+            <div class="ck-chat-head">
+              <div class="crumb">
+                <i data-lucide="sparkles" style="width:13px;height:13px;color:var(--accent);"></i>
+                <b>Ask Kova</b>
+                <i data-lucide="chevron-right" style="width:11px;height:11px;"></i>
+                <span>using <strong style="color:var(--ink-2);">Nike</strong> Brand Kit · 318 products</span>
+              </div>
+              <div class="reset"><i data-lucide="rotate-ccw" class="ic"></i>New question</div>
+            </div>
+            <div class="ck-chat-body" style="max-height: 280px;">
+              <div class="ck-q">When did Nike's last spring drop ship?</div>
+              <div class="ck-a">
+                <div class="ai-head">
+                  <i data-lucide="check-circle-2" class="ic" style="color: var(--ok);"></i>
+                  <span style="color: var(--ok);">Kova · answered</span>
+                  <span class="tag-mono ok" style="margin-left: auto;">2.4s · 614 tok</span>
+                </div>
+                <div class="ai-text">
+                  <p>Your last <strong>spring drop</strong> shipped on <strong>March 14, 2026</strong> — "Air Max '90 Pastel Capsule" to 184k subs (41.2% open, 6.7% CTR). Restock followed Mar 18.</p>
+                </div>
+                <div class="ck-actions">
+                  <div class="ck-action-btn accent">
+                    <i data-lucide="plus-square" class="ic"></i>
+                    Draft the next spring send
+                  </div>
+                  <div class="ck-action-btn">
+                    <i data-lucide="external-link" class="ic"></i>
+                    Open Spring · Air Max launch
+                  </div>
+                  <div class="ck-action-btn">
+                    <i data-lucide="copy" class="ic"></i>
+                    Copy answer
+                  </div>
+                  <div class="ck-action-btn">
+                    <i data-lucide="thumbs-up" class="ic"></i>
+                  </div>
+                  <div class="ck-action-btn">
+                    <i data-lucide="thumbs-down" class="ic"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="ck-foot">
+              <div class="tabs">
+                <div class="tab"><i data-lucide="corner-up-right" class="ic"></i>Jump</div>
+                <div class="tab active"><i data-lucide="sparkles" class="ic"></i>Ask</div>
+                <div class="tab"><i data-lucide="plus" class="ic"></i>Create</div>
+              </div>
+              <div class="meta">
+                <span style="color: var(--ok);">● done</span>
+                <span class="sep"></span>
+                <span>haiku-4-5</span>
+                <span class="sep"></span>
+                <span>esc close</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="annot" style="margin: 24px 64px 0; border-radius: 8px; border: 1px dashed var(--line); border-top-style: dashed;"><ul>
+    <li><strong>A5.5 zero-results</strong> never leaves the user at a dead end — the <em>Ask Kova: "{query}"</em> row stays pinned at the bottom as the universal escape hatch. The list collapses to an empty-pane (icon-circle + headline + sub-copy) following the same vocabulary as A11 empty states.</li>
+    <li><strong>A5.6 searching</strong> uses skeleton rows that match the populated row geometry exactly — same 22px icon column, same label width band, same right-meta column — so when results resolve, layout doesn't shift. The eyebrow ("Canvases") fades in at 50% opacity to pre-commit which group is being filled.</li>
+    <li><strong>A5.7 AI error</strong> recolors the AI eyebrow to <code>--warn</code>, swaps the streaming pulse for an alert glyph, and pins a warn-soft callout card with a machine-readable error tag (<code>net/timeout · req b3f2</code>) so the user can quote it to support. <strong>Retry</strong> is the accent action; the user's question is preserved in the input so Edit-question is one keystroke.</li>
+    <li><strong>A5.8 offline</strong> recolors the brand-context pill to warn-soft (mirroring the A13 network indicator), shows a top-of-body banner explaining the partial-functionality contract, demotes the Ask tab to disabled-but-visible (pedagogy: the user learns it'll come back), and tags every cached item with a <code>· local copy</code> meta so the user knows what's actually safe to open.</li>
+    <li><strong>A5.9 AI completed</strong> is the resting state after streaming finishes. The streaming pulse becomes a green check, the input flips to "Ask a follow-up…" prompting continuation, and three feedback affordances appear (copy · thumbs-up · thumbs-down) for the dogfood-era data collection. <em>Esc close</em> returns to the dim chrome behind.</li>
+  </ul></div>
+</section>
+
+<style>
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+
+
+<!-- ============================================================
+     §6 · Component reference (4 modal cards side-by-side)
+     ============================================================ -->
+<section class="block" style="padding-bottom: 56px;">
+  <header>
+    <div class="tag">FILE 6 · §6 · component view</div>
+    <h2>Component view · the same 640px shell, four core branches</h2>
+    <p class="intro">Four core branches side-by-side without surrounding chrome — Ask-tab-blank (A5.10) is shown anchored on dashboard chrome above (§4.5) since its content density would shrink illegibly at this card width. Same shell, same typography, same footer; only the body content differs. This is the core insight: ⌘K is one component with four render branches gated by intent — empty, populated, ai-streaming, create — not four separate modals.</p>
+  </header>
+
+  <div class="comp-grid">
+
+    <!-- card 1: empty -->
+    <div class="comp-card">
+      <div class="ccap"><b>Empty</b><span>A5.1 · state 1</span></div>
+      <div class="ccontent">
+        <div class="ck" style="box-shadow: none;">
+          <div class="ck-search">
+            <i data-lucide="sparkles" class="spark"></i>
+            <input placeholder="Ask Kova or search…" />
+            <span class="pill-ctx"><span class="logo">N</span>Nike</span>
+          </div>
+          <div class="ck-body" style="max-height: 280px;">
+            <div class="ck-eyebrow">Recents</div>
+            <div class="ck-row active">
+              <i data-lucide="file" class="ic"></i>
+              <div class="lbl"><span class="brand-chip">N</span><span class="nm">Spring · Air Max launch</span></div>
+              <div class="right"><span class="kbd">↵</span></div>
+            </div>
+            <div class="ck-row">
+              <i data-lucide="file" class="ic"></i>
+              <div class="lbl"><span class="brand-chip">N</span><span class="nm">VIP early access · drop 03</span></div>
+              <div class="right">Canvas</div>
+            </div>
+            <div class="ck-eyebrow">Actions</div>
+            <div class="ck-row">
+              <i data-lucide="plus-square" class="ic"></i>
+              <div class="lbl"><span class="nm">New canvas</span></div>
+              <div class="right"><span class="kbd">⌘</span><span class="kbd">N</span></div>
+            </div>
+            <div class="ck-sep"></div>
+            <div class="ck-row ask">
+              <i data-lucide="sparkles" class="ic"></i>
+              <div class="lbl"><span class="nm"><strong>Ask Kova</strong> anything…</span></div>
+              <div class="right"><span class="kbd">↵</span></div>
+            </div>
+          </div>
+          <div class="ck-foot">
+            <div class="tabs">
+              <div class="tab active"><i data-lucide="corner-up-right" class="ic"></i>Jump</div>
+              <div class="tab"><i data-lucide="sparkles" class="ic"></i>Ask</div>
+              <div class="tab"><i data-lucide="plus" class="ic"></i>Create</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- card 2: populated -->
+    <div class="comp-card">
+      <div class="ccap"><b>Populated</b><span>A5.2 · state 2</span></div>
+      <div class="ccontent">
+        <div class="ck" style="box-shadow: none;">
+          <div class="ck-search">
+            <i data-lucide="sparkles" class="spark"></i>
+            <input value="spring" />
+            <span class="pill-ctx"><span class="logo">N</span>Nike</span>
+          </div>
+          <div class="ck-body" style="max-height: 280px;">
+            <div class="ck-eyebrow">Canvases<span class="ct">4</span></div>
+            <div class="ck-row active">
+              <i data-lucide="file" class="ic"></i>
+              <div class="lbl"><span class="brand-chip">N</span><span class="nm"><em>Spring</em> · Air Max launch</span></div>
+              <div class="right"><span class="kbd">↵</span></div>
+            </div>
+            <div class="ck-row">
+              <i data-lucide="file" class="ic"></i>
+              <div class="lbl"><span class="brand-chip">N</span><span class="nm"><em>Spring</em> rollout · pre-Klaviyo</span></div>
+              <div class="right">Canvas</div>
+            </div>
+            <div class="ck-eyebrow">Memories</div>
+            <div class="ck-row">
+              <i data-lucide="brain" class="ic"></i>
+              <div class="lbl"><span class="brand-chip">N</span><span class="nm"><em>Spring</em> hero CTA copy</span></div>
+              <div class="right">Brand Kit</div>
+            </div>
+            <div class="ck-sep"></div>
+            <div class="ck-row ask">
+              <i data-lucide="sparkles" class="ic"></i>
+              <div class="lbl"><span class="nm"><strong>Ask Kova:</strong> "spring"</span></div>
+              <div class="right"><span class="kbd">↵</span></div>
+            </div>
+          </div>
+          <div class="ck-foot">
+            <div class="tabs">
+              <div class="tab active"><i data-lucide="corner-up-right" class="ic"></i>Jump</div>
+              <div class="tab"><i data-lucide="sparkles" class="ic"></i>Ask</div>
+              <div class="tab"><i data-lucide="plus" class="ic"></i>Create</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- card 3: ai chat -->
+    <div class="comp-card">
+      <div class="ccap"><b>AI chat</b><span>A5.3 · state 3</span></div>
+      <div class="ccontent">
+        <div class="ck tall" style="box-shadow: none;">
+          <div class="ck-search">
+            <i data-lucide="sparkles" class="spark"></i>
+            <input value="Last spring drop?" />
+            <span class="pill-ctx"><span class="logo">N</span>Nike</span>
+          </div>
+          <div class="ck-chat">
+            <div class="ck-chat-head">
+              <div class="crumb">
+                <i data-lucide="sparkles" style="width:13px;height:13px;color:var(--accent);"></i>
+                <b>Ask Kova</b>
+              </div>
+              <div class="reset"><i data-lucide="rotate-ccw" class="ic"></i>New</div>
+            </div>
+            <div class="ck-chat-body" style="max-height: 232px;">
+              <div class="ck-q">Last spring drop?</div>
+              <div class="ck-a">
+                <div class="ai-head">
+                  <i data-lucide="sparkles" class="ic"></i>
+                  <span>Kova</span>
+                  <span class="stream-dot"></span>
+                </div>
+                <div class="ai-text">
+                  <p>Shipped <strong>Mar 14, 2026</strong> — "Air Max '90 Pastel" to 184k subs, 41.2% open rate.<span class="caret"></span></p>
+                </div>
+                <div class="ck-actions">
+                  <div class="ck-action-btn accent" style="padding: 5px 9px; font-size: 11px;">
+                    <i data-lucide="plus-square" class="ic"></i>
+                    Draft next send
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="ck-foot">
+              <div class="tabs">
+                <div class="tab"><i data-lucide="corner-up-right" class="ic"></i>Jump</div>
+                <div class="tab active"><i data-lucide="sparkles" class="ic"></i>Ask</div>
+                <div class="tab"><i data-lucide="plus" class="ic"></i>Create</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="annot" style="margin: 24px 64px 0; border-radius: 8px; border: 1px dashed var(--line); border-top-style: dashed;"><ul>
+    <li><strong>One shell, three branches.</strong> The 640px container, search row, footer tabs, and accent vocabulary are byte-identical across all three states. The body switches between a list (states 1 + 2) and a chat surface (state 3). No new tokens, no new fonts.</li>
+    <li><strong>The Ask-Kova row is the bridge.</strong> It's the same row component (icon + label + right-meta) painted with the accent vocabulary; pressing Enter on it is what flips state 2 into state 3. There's no separate "AI mode" toggle — it's the natural conclusion of typing a query.</li>
+    <li><strong>Footer tabs let the user pre-filter,</strong> bypassing typing. <em>Jump</em> shows only navigation rows, <em>Ask</em> opens directly into a blank chat surface, <em>Create</em> shows only verb actions. Default is Jump because most ⌘K motions are jumps; tab state is per-session, not persisted.</li>
+  </ul></div>
+</section>
+
+
+<script>
+  if (window.lucide) {
+    window.lucide.createIcons({ attrs: { 'stroke-width': 1.6 } });
+  }
+</script>
+
+</body>
+</html>

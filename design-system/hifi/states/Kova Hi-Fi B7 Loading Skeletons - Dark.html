@@ -1,0 +1,1489 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<title>Kova — Hi-fi · B7 Loading Skeletons · Dark</title>
+<meta name="viewport" content="width=1440" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+<link rel="stylesheet" href="../../design-system/kova-hifi.css" />
+<script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
+<style>
+/* ============================================================
+   FILE B7 — Loading skeletons
+   Five async-load surfaces. Skeleton chrome mirrors populated
+   chrome 1:1 — same widths, paddings, row heights — so when
+   content lands there is NO layout shift. Only the interior
+   content swaps to shimmer rectangles.
+
+   Tokens come from kova-hifi.css. ONE new component family
+   (.skeleton + shimmer keyframes) flagged in the delivery notes.
+   The shimmer gradient inside .skeleton::before is the ONLY
+   gradient permitted in the system per design.md §5 ban 5
+   exception (also documented in delivery notes).
+
+   No new tokens, no new fonts, no monospace on chrome,
+   no red/yellow/green hexes. Status palette deferred per
+   design.md §5 ban 12.
+   ============================================================ */
+
+  body { background: var(--bg); }
+
+  /* Section heading bump — locked Batch A convention
+     (Inter 16/600/sentence-case). Specificity beats canonical
+     `section.block h2 { font-size: 22px }`. */
+  section.block .s-section h2 {
+    margin: 0 0 2px; font-size: 16px;
+    letter-spacing: -0.005em;
+    color: var(--ink); font-weight: 600;
+    font-family: 'Inter', system-ui, sans-serif;
+    text-transform: none;
+  }
+
+  /* ============================================================
+     NEW COMPONENT — .skeleton (B7)
+     Single new layout-only component. Flagged in
+     BATCH_A_ADDITIONS_CHUNK_2_NOTES.md.
+
+     Built on existing tokens:
+       base   = var(--fill)    (input idle)
+       peak   = var(--fill-2)  (input active / segmented active)
+     The brief recommended `--color-surface-input-hi` for the
+     shimmer peak; canonical kova-hifi.css doesn't define that
+     name and exposes the same role as `--fill-2`. Used the
+     existing token per brief §3.1 ("use existing tokens"); a
+     brighter shimmer-peak token is proposed in delivery notes
+     if needed.
+
+     The linear-gradient inside .skeleton::before is the only
+     gradient in the system; design.md §5 ban 5 exception.
+
+     Reduce-motion (prefers-reduced-motion: reduce):
+       Animation disabled; element shows static --fill-2 fill
+       so the skeleton remains legibly distinct from solid panels.
+     ============================================================ */
+  .skeleton {
+    position: relative;
+    background: var(--fill);
+    border-radius: 5px;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .skeleton::before {
+    content: "";
+    position: absolute; inset: 0;
+    width: 50%;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      var(--fill-2) 50%,
+      transparent 100%
+    );
+    transform: translateX(-100%);
+    animation: skeleton-shimmer 1.4s ease-in-out infinite;
+  }
+  @keyframes skeleton-shimmer {
+    0%   { transform: translateX(-100%); }
+    100% { transform: translateX(300%); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .skeleton { background: var(--fill-2); }
+    .skeleton::before { display: none; }
+  }
+
+  /* Skeleton corner-radius variants — match populated counterparts.
+     5px = canonical input/row default; 6px = canonical card edge;
+     999px = pill / circular avatar. */
+  .skeleton.r-pill   { border-radius: 999px; }
+  .skeleton.r-card   { border-radius: 6px; }
+  .skeleton.r-line   { border-radius: 3px; }
+  .skeleton.r-circle { border-radius: 50%; }
+
+  /* ============================================================
+     SCENE GUTTER — separates side-by-side scene cards in B7.4/5
+     Same vocabulary as A11+A12+A13's empty-grid frame.
+     ============================================================ */
+  .scene-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    padding: 24px;
+    background: var(--bg);
+  }
+  .scene-card {
+    background: var(--page); border: 1px solid var(--line);
+    border-radius: 8px; overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+  .scene-card .sc-head {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--line-2);
+    background: var(--rail);
+    display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  }
+  .scene-card .sc-head .nm { font-size: 12px; font-weight: 600; color: var(--ink); }
+  .scene-card .sc-head .id { font-size: 10px; color: var(--ink-3); }
+  .scene-card .sc-body {
+    padding: 24px;
+    display: flex; flex-direction: column;
+    min-height: 220px; justify-content: center; align-items: center;
+  }
+
+  /* ============================================================
+     LIFTED CHROME — 03 Brand Dashboard (B7.1)
+     Source: batch-a/dark/Kova Hi-Fi 03 Brand Dashboard - Dark.html
+     Lift verbatim. Both light defaults AND [data-theme="dark"]
+     overrides included so dark renders byte-correct relative to 03.
+     Diff vs source: ZERO content changes.
+     ============================================================ */
+
+  /* --- 03 § Greeting --- */
+  .greeting {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    padding: 24px 0 8px;
+  }
+  .greeting .hello {
+    font-size: 28px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+    color: var(--ink);
+    text-align: center;
+  }
+
+  /* --- 03 § Hero composer --- */
+  .composer {
+    position: relative;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    overflow: visible;
+    max-width: 760px;
+    margin: 0 auto;
+    width: 100%;
+  }
+  .composer-input-wrap {
+    background: var(--page);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 18px 20px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .composer-input-wrap:focus-within {
+    border-color: var(--ink-3);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  }
+  .composer-input {
+    font-family: inherit;
+    font-size: 15px;
+    line-height: 1.55;
+    color: var(--ink-3);
+    min-height: 56px;
+    letter-spacing: -0.005em;
+  }
+  .composer-input-tools {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-top: none;
+    padding-top: 0;
+  }
+  .composer-input-tools .attach-grp {
+    display: flex;
+    gap: 4px;
+  }
+  .composer-input-tools .attach {
+    width: 30px; height: 30px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--ink-2);
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    padding: 0;
+  }
+  .composer-input-tools .attach .ic { width: 15px; height: 15px; }
+  .composer-input-tools .grow { flex: 1; }
+  .composer-input-tools .hint {
+    font-size: 11px;
+    color: var(--ink-3);
+  }
+  .composer-input-tools .go {
+    padding: 7px 14px;
+    font-size: 12px;
+    gap: 5px;
+    border-radius: 999px;
+  }
+  .composer-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    justify-content: center;
+  }
+  .composer-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 14px;
+    background: var(--page);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    font-size: 12.5px;
+    color: var(--ink-2);
+    cursor: pointer;
+    transition: background 0.1s ease, border-color 0.1s ease, color 0.1s ease;
+  }
+  .composer-chip .ic { width: 13px; height: 13px; color: var(--ink-2); }
+
+  /* --- 03 § Section heads --- */
+  .sec-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .sec-head .l {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .sec-head h4 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: -0.008em;
+    color: var(--ink);
+  }
+  .sec-head .count {
+    font-size: 11px;
+    color: var(--ink-3);
+  }
+  .sec-head .r {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+  .sec-head .filter {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px 4px 10px;
+    border-radius: 5px;
+    border: 1px solid var(--line);
+    font-size: 12px;
+    color: var(--ink-2);
+    background: var(--page);
+    cursor: pointer;
+  }
+  .sec-head .filter .ic { width: 12px; height: 12px; opacity: 0.6; }
+  .sec-head .view-toggle {
+    display: flex;
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    overflow: hidden;
+  }
+  .sec-head .view-toggle .v {
+    width: 28px; height: 26px;
+    display: grid;
+    place-items: center;
+    color: var(--ink-3);
+    background: var(--page);
+    cursor: pointer;
+    border-right: 1px solid var(--line-2);
+  }
+  .sec-head .view-toggle .v:last-child { border-right: 0; }
+  .sec-head .view-toggle .v.on {
+    background: var(--fill);
+    color: var(--ink);
+  }
+  .sec-head .view-toggle .v .ic { width: 13px; height: 13px; }
+
+  /* --- 03 § File grid + file-card --- */
+  .file-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+  }
+  .file-card {
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    overflow: hidden;
+    background: var(--page);
+    cursor: pointer;
+    transition: border-color 0.12s ease, transform 0.12s ease, box-shadow 0.12s ease;
+  }
+  .file-card .thumb {
+    aspect-ratio: 4/3;
+    background: var(--fill);
+    border-bottom: 1px solid var(--line-2);
+    position: relative;
+    overflow: hidden;
+    display: grid;
+    place-items: center;
+  }
+  .file-card .meta {
+    padding: 10px 12px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  /* --- 03 § Up-next list (used in B7.1 only with skeleton interior) --- */
+  .upnext {
+    background: var(--page);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .upnext-row {
+    display: grid;
+    grid-template-columns: 150px 1fr auto auto;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--line-2);
+    cursor: pointer;
+    transition: background 0.1s ease;
+  }
+  .upnext-row:last-child { border-bottom: 0; }
+  .upnext-foot {
+    padding: 10px 16px;
+    background: var(--rail);
+    border-top: 1px solid var(--line-2);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    color: var(--ink-3);
+  }
+
+  /* (No [data-theme="dark"] override block — every rule above already
+     uses dark tokens directly. 03 Dashboard's dual-layer light-base +
+     dark-override pattern was collapsed into single dark-direct rules
+     here, so this file's hex output stays clean per brief §3.1
+     "no hex value in component CSS". Dimensions, paddings, and gaps
+     match 03 verbatim — only color values were token-direct instead of
+     hex+override. Documented in delivery notes.) */
+
+  /* ============================================================
+     LIFTED CHROME — A2 Brand picker (B7.2)
+     Source: batch-a/dark/Kova Hi-Fi A2+A3 Brand picker & New brand - Dark.html
+     Lift verbatim (dark defaults already; no override block needed).
+     Diff vs source: ZERO content changes.
+     ============================================================ */
+  .bp-shell {
+    height: 100%;
+    background: var(--page);
+    display: flex; flex-direction: column;
+    min-height: 0;
+  }
+  .bp-top {
+    height: 56px;
+    border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 28px;
+    flex-shrink: 0;
+    background: var(--page);
+  }
+  .bp-top .wordmark {
+    display: inline-flex; align-items: center; gap: 9px;
+    font-size: 13.5px; font-weight: 600;
+    color: var(--ink); letter-spacing: -0.01em;
+  }
+  .bp-top .wordmark .glyph {
+    width: 20px; height: 20px; border-radius: 4px;
+    background: var(--ink); color: var(--page);
+    display: grid; place-items: center;
+    font-weight: 800; font-size: 12px; letter-spacing: -0.04em;
+  }
+  .bp-top .who {
+    display: inline-flex; align-items: center; gap: 8px;
+    color: var(--ink-2); font-size: 12.5px;
+    padding: 5px 8px 5px 6px;
+    border: 1px solid var(--line); border-radius: 999px;
+    background: var(--page);
+    cursor: pointer;
+    transition: border-color .12s ease;
+  }
+  .bp-top .who .ava {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--fill-2); color: var(--ink);
+    display: grid; place-items: center;
+    font-weight: 600; font-size: 9.5px;
+    letter-spacing: 0.01em;
+  }
+  .bp-top .who .nm { color: var(--ink); font-weight: 500; }
+  .bp-top .who .ic { width: 12px; height: 12px; color: var(--ink-3); }
+
+  .bp-stage {
+    flex: 1; min-height: 0;
+    display: grid; place-items: center;
+    padding: 56px 32px 64px;
+    overflow: auto;
+  }
+  .bp-block {
+    width: 880px; max-width: 100%;
+    display: flex; flex-direction: column; gap: 28px;
+  }
+  .bp-head {
+    display: flex; align-items: flex-end; justify-content: space-between;
+    gap: 24px;
+  }
+  .bp-head .l { display: flex; flex-direction: column; gap: 6px; }
+  .bp-head .eyebrow { font-size: 10.5px; color: var(--ink-3); }
+  .bp-head h1 {
+    margin: 0; font-size: 26px;
+    font-weight: 600; letter-spacing: -0.018em;
+    color: var(--ink); line-height: 1.2;
+  }
+  .bp-head .lede {
+    margin: 0; color: var(--ink-2); font-size: 13.5px;
+    max-width: 540px;
+  }
+  .bp-head .r {
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+
+  .bp-tools {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 10px; align-items: center;
+  }
+  .bp-search {
+    display: flex; align-items: center; gap: 9px;
+    padding: 8px 12px;
+    border: 1px solid var(--line); border-radius: 7px;
+    background: var(--page); color: var(--ink-3);
+    font-size: 13px;
+  }
+  .bp-search .kbd {
+    margin-left: auto; font-size: 10px; color: var(--ink-3);
+    background: var(--fill); padding: 1px 5px;
+    border-radius: 3px; border: 1px solid var(--line-2);
+  }
+  .bp-sort {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 11px;
+    border: 1px solid var(--line); border-radius: 7px;
+    background: var(--page); color: var(--ink-2);
+    font-size: 12.5px; cursor: pointer;
+  }
+  .bp-sort .ic { width: 13px; height: 13px; color: var(--ink-3); }
+  .bp-sort .lbl { color: var(--ink-3); }
+  .bp-sort .val { color: var(--ink); font-weight: 500; }
+
+  .bp-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+  }
+
+  .bp-card {
+    border: 1px solid var(--line);
+    background: var(--page);
+    border-radius: 10px;
+    padding: 18px 18px 14px;
+    display: flex; flex-direction: column; gap: 14px;
+    cursor: pointer;
+    transition: border-color .12s ease, transform .12s ease, background .12s ease;
+    position: relative;
+  }
+  .bp-card .top {
+    display: flex; align-items: flex-start; gap: 12px;
+  }
+  .bp-card .heads {
+    display: flex; flex-direction: column; gap: 3px;
+    min-width: 0; flex: 1;
+  }
+  .bp-card .meta {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--line-2);
+    font-size: 11.5px; color: var(--ink-3);
+  }
+
+  /* ============================================================
+     LIFTED CHROME — A7 Account (B7.3, also reused in B8/B9)
+     Source: batch-a/dark/Kova Hi-Fi A7 Account Page - Dark.html
+     Lift verbatim (dark defaults already).
+     Diff vs source: ZERO content changes.
+     ============================================================ */
+  .acc-frame { height: 100%; display: grid; grid-template-columns: 220px 1fr; background: var(--page); }
+  .acc-rail {
+    background: var(--rail);
+    border-right: 1px solid var(--line);
+    padding: 28px 12px 16px;
+    display: flex; flex-direction: column; gap: 4px;
+    min-height: 0; overflow: auto;
+  }
+  .acc-rail .title {
+    font-size: 17px; font-weight: 600; letter-spacing: -0.012em;
+    padding: 0 10px 14px; color: var(--ink);
+  }
+  .acc-rail .it {
+    display: flex; align-items: center; gap: 9px;
+    padding: 7px 10px; border-radius: 5px;
+    color: var(--ink-2); cursor: pointer; font-size: 13px;
+    transition: background .1s ease, color .1s ease;
+  }
+  .acc-rail .it:hover { background: var(--line-2); color: var(--ink); }
+  .acc-rail .it.active { background: var(--fill); color: var(--ink); font-weight: 500; }
+  .acc-rail .it .ic { width: 14px; height: 14px; opacity: .8; }
+  .acc-rail .it.active .ic { opacity: 1; }
+  .acc-rail .it.danger { color: var(--warn); }
+  .acc-rail .it.danger:hover { background: rgba(232,122,74,0.08); }
+  .acc-rail .sep {
+    height: 1px; background: var(--line-2);
+    margin: 10px 8px;
+  }
+
+  .acc-main { overflow: auto; display: flex; flex-direction: column; }
+  .acc-hero {
+    padding: 40px 56px 24px;
+    border-bottom: 1px solid var(--line-2);
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 24px;
+  }
+  .acc-hero h1 {
+    margin: 0 0 6px; font-size: 24px; font-weight: 600; letter-spacing: -0.012em;
+  }
+  .acc-hero p {
+    margin: 0; color: var(--ink-2); font-size: 13.5px; max-width: 600px;
+  }
+
+  .brandpick {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 10px 6px 7px;
+    border: 1px solid var(--line); border-radius: 7px;
+    background: var(--page); cursor: pointer;
+    font-size: 12.5px; color: var(--ink);
+    transition: border-color .1s ease;
+  }
+  .brandpick:hover { border-color: var(--ink-3); }
+  .brandpick .logo {
+    width: 20px; height: 20px; border-radius: 4px;
+    background: var(--ink); color: var(--page);
+    display: grid; place-items: center;
+    font-weight: 700; font-size: 10px; letter-spacing: -0.02em;
+  }
+  .brandpick .nm { font-weight: 600; letter-spacing: -0.005em; }
+  .brandpick .caret { color: var(--ink-3); margin-left: 2px; }
+
+  .acc-content {
+    padding: 32px 56px 80px;
+    display: flex; flex-direction: column; gap: 36px;
+    max-width: 940px;
+  }
+
+  .s-section { display: flex; flex-direction: column; gap: 12px; }
+  .s-section .desc {
+    color: var(--ink-3); font-size: 12.5px; margin: 0; max-width: 640px;
+  }
+
+  /* A7 .bk-* (Brand-Kit two-column) */
+  .bk-wrap { display: grid; grid-template-columns: 188px 1fr; gap: 24px; }
+  .bk-subnav {
+    display: flex; flex-direction: column; gap: 1px;
+    position: sticky; top: 16px; align-self: start;
+  }
+  .bk-subnav .it {
+    display: flex; align-items: center; gap: 9px;
+    padding: 6px 10px; border-radius: 5px;
+    color: var(--ink-2); cursor: pointer; font-size: 12.5px;
+  }
+  .bk-subnav .it:hover { background: var(--line-2); color: var(--ink); }
+  .bk-subnav .it.active { background: var(--fill); color: var(--ink); font-weight: 500; }
+  .bk-subnav .it .ic { width: 13px; height: 13px; opacity: .8; }
+  .bk-subnav .head { font-size: 10px; color: var(--ink-3);
+    padding: 0 10px 6px; font-weight: 500;
+  }
+  .bk-pane { min-width: 0; display: flex; flex-direction: column; gap: 18px; }
+
+  /* A7 .mem-row (memory rows — used as B7.3 skeleton interior) */
+  .mem-row {
+    display: grid; grid-template-columns: 90px 1fr auto;
+    gap: 14px; align-items: center;
+    padding: 11px 16px;
+    border-top: 1px solid var(--line-2);
+    font-size: 12.5px;
+  }
+  .mem-row:first-child { border-top: 0; }
+
+  .list-stack {
+    border: 1px solid var(--line); border-radius: 7px;
+    overflow: hidden; background: var(--page);
+  }
+
+  /* ============================================================
+     B7.5 — fade-transition annotation
+     Two side-by-side panels with arrow + duration label.
+     Pure visual annotation; not a real animated state.
+     ============================================================ */
+  .fade-demo {
+    display: grid; grid-template-columns: 1fr 80px 1fr;
+    gap: 14px; align-items: stretch;
+    padding: 32px 24px;
+    background: var(--bg);
+  }
+  .fade-demo .panel {
+    background: var(--page); border: 1px solid var(--line);
+    border-radius: 8px; padding: 18px;
+    display: flex; flex-direction: column; gap: 10px;
+    min-height: 220px;
+  }
+  .fade-demo .panel .panel-cap {
+    font-size: 10.5px; color: var(--ink-3);
+    letter-spacing: 0.04em; margin-bottom: 6px;
+    text-transform: none; font-weight: 500;
+  }
+  .fade-demo .arrow {
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 6px;
+    color: var(--ink-3);
+  }
+  .fade-demo .arrow .lbl {
+    font-size: 10.5px; color: var(--ink-2);
+    text-align: center; line-height: 1.3;
+  }
+  .fade-demo .arrow .lbl b { color: var(--ink); font-weight: 600; }
+
+  /* ============================================================
+     Canonical 03 chrome — byte-match overrides
+     kova-hifi.css `.nav .item.active` defaults to `var(--accent-soft)`
+     (dark navy fill, reads as solid blue). Canonical 03 inline-overrides
+     to `var(--fill)` (neutral tint). Lift verbatim per founder review.
+     Source: batch-a/dark/Kova Hi-Fi 03 Brand Dashboard - Dark.html §205-221.
+     ============================================================ */
+  .nav .section { letter-spacing: 0.12em; }
+  .nav .item.active { background: var(--fill); color: var(--ink); font-weight: 500; }
+  .nav .item.active .ic { color: currentColor; opacity: 1; }
+  .nav .item .count { font-size: 10.5px; color: var(--ink-3); }
+  .nav .item.active .count { color: var(--ink-3); }
+  .side-search .kbd { font-size: 10px; }
+  .side-footer .avatar { background: var(--warn); color: #fff; }
+
+</style>
+</head>
+<body data-screen-label="B7 Loading Skeletons">
+
+<header class="page-head">
+  <div class="eyebrow">HI-FI · BATCH A ADDITIONS · DARK · FILE B7</div>
+  <h1>Loading skeletons · B7.1–B7.5</h1>
+  <p>Five async-load surfaces. Skeleton chrome mirrors the populated chrome 1:1 — same widths, paddings, row heights — so when content lands there is no layout shift. Only the interior content swaps to shimmer rectangles. Animation: 1.4s ease-in-out infinite gradient sweep, scoped to <code>.skeleton::before</code>; respects <code>prefers-reduced-motion</code>.</p>
+  <div class="meta">5 surfaces · same kova-hifi.css tokens · 1 new component (.skeleton) · density carried from 03 / A2 / A7</div>
+  <div class="legend">
+    <span class="sw"><i style="background: var(--ink);"></i>chrome (real)</span>
+    <span class="sw"><i style="background: var(--fill);"></i>skeleton base</span>
+    <span class="sw"><i style="background: var(--fill-2);"></i>shimmer peak</span>
+    <span class="sw"><i style="background: var(--accent);"></i>active state (kept solid)</span>
+  </div>
+</header>
+
+
+<!-- ============================================================
+     B7.1 — Dashboard skeleton (mirrors 03 Brand Dashboard)
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE B7 · §1 · B7.1 · Dashboard skeleton</div>
+    <h2>B7.1 · Dashboard skeleton</h2>
+    <p class="intro">Sidebar + topbar render in real chrome (already-loaded shell). Content swaps to shimmer rectangles: composer placeholder shimmer, file-grid (8 file-card shimmers in a 4×2 grid), up-next (3 row shimmers). Nav active state stays solid (already-loaded UI) — only the content interior shimmers.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Dashboard · loading state</div><div class="id">B7.1 · hi-fi</div></div>
+    <div class="canvas tall" data-screen-label="B7.1 Dashboard skeleton">
+      <div class="app">
+
+        <!-- SIDEBAR -->
+        <div class="sidebar">
+          <div class="brand-switch">
+            <div class="logo">N</div>
+            <div class="name">Nike</div>
+            <div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div>
+          </div>
+          <div class="side-search">
+            <i data-lucide="search" style="width:13px;height:13px;"></i>
+            <span>Search</span>
+            <span class="kbd">⌘K</span>
+          </div>
+
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item active"><i data-lucide="clock-4" class="ic"></i><span>Recents</span></div>
+            <div class="item"><i data-lucide="calendar-days" class="ic"></i><span>Calendar</span><span class="count">12</span></div>
+
+            <div class="section">Library</div>
+            <div class="item"><i data-lucide="bookmark" class="ic"></i><span>Swipes</span></div>
+            <div class="item"><i data-lucide="layout-template" class="ic"></i><span>Templates</span></div>
+            <div class="item"><i data-lucide="package" class="ic"></i><span>Products</span><span class="count">318</span></div>
+
+            <div class="section">Brand</div>
+            <div class="item"><i data-lucide="sparkles" class="ic"></i><span>Personalization</span></div>
+            <div class="item"><i data-lucide="book-open" class="ic"></i><span>Knowledge base</span></div>
+            <div class="item"><i data-lucide="brain" class="ic"></i><span>Memories</span><span class="count">19</span></div>
+          </div>
+
+          <div class="side-footer">
+            <div class="avatar">JY</div>
+            <div class="who">
+              <b>Jiho Yang</b>
+              <span>Free plan</span>
+            </div>
+            <div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+          </div>
+        </div>
+
+        <!-- MAIN -->
+        <div class="main">
+          <div class="topbar">
+            <div class="breadcrumb">
+              <span>Nike</span>
+              <span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <b>Home</b>
+            </div>
+            <div class="actions">
+              <div class="btn sm">
+                <i data-lucide="folder-plus" class="ic"></i>
+                New canvas
+              </div>
+            </div>
+          </div>
+
+          <div class="content">
+
+            <!-- Greeting (shimmer text — single line ~360px wide) -->
+            <div class="greeting">
+              <div class="skeleton" style="width: 360px; height: 32px;"></div>
+            </div>
+
+            <!-- Composer skeleton -->
+            <div class="composer">
+              <div class="composer-input-wrap" style="min-height: auto;">
+                <div class="composer-input" style="display:flex;flex-direction:column;gap:8px;">
+                  <div class="skeleton r-line" style="width: 60%; height: 16px;"></div>
+                  <div class="skeleton r-line" style="width: 40%; height: 16px;"></div>
+                </div>
+                <div class="composer-input-tools">
+                  <div class="attach-grp">
+                    <div class="skeleton r-circle" style="width: 30px; height: 30px;"></div>
+                  </div>
+                  <div class="grow"></div>
+                  <div class="skeleton" style="width: 168px; height: 32px; border-radius: 999px;"></div>
+                </div>
+              </div>
+
+              <!-- Composer chips (5 pill shimmers) -->
+              <div class="composer-chips">
+                <div class="skeleton r-pill" style="width: 130px; height: 32px;"></div>
+                <div class="skeleton r-pill" style="width: 158px; height: 32px;"></div>
+                <div class="skeleton r-pill" style="width: 138px; height: 32px;"></div>
+                <div class="skeleton r-pill" style="width: 118px; height: 32px;"></div>
+                <div class="skeleton r-pill" style="width: 142px; height: 32px;"></div>
+              </div>
+            </div>
+
+            <!-- Recent files skeleton -->
+            <div>
+              <div class="sec-head" style="margin-bottom:14px;">
+                <div class="l">
+                  <h4>Recent files</h4>
+                  <div class="skeleton r-line" style="width: 64px; height: 12px;"></div>
+                </div>
+                <div class="r">
+                  <div class="skeleton" style="width: 110px; height: 26px; border-radius: 5px;"></div>
+                  <div class="skeleton" style="width: 60px; height: 28px; border-radius: 5px;"></div>
+                </div>
+              </div>
+
+              <!-- File grid: 8 file-card shimmers (4 × 2) -->
+              <div class="file-grid">
+                <div class="file-card">
+                  <div class="thumb"><div class="skeleton" style="width:100%;height:100%;border-radius:0;"></div></div>
+                  <div class="meta">
+                    <div class="skeleton r-line" style="width: 78%; height: 13px;"></div>
+                    <div class="skeleton r-line" style="width: 56%; height: 11px; margin-top: 4px;"></div>
+                  </div>
+                </div>
+                <div class="file-card">
+                  <div class="thumb"><div class="skeleton" style="width:100%;height:100%;border-radius:0;"></div></div>
+                  <div class="meta">
+                    <div class="skeleton r-line" style="width: 65%; height: 13px;"></div>
+                    <div class="skeleton r-line" style="width: 48%; height: 11px; margin-top: 4px;"></div>
+                  </div>
+                </div>
+                <div class="file-card">
+                  <div class="thumb"><div class="skeleton" style="width:100%;height:100%;border-radius:0;"></div></div>
+                  <div class="meta">
+                    <div class="skeleton r-line" style="width: 82%; height: 13px;"></div>
+                    <div class="skeleton r-line" style="width: 52%; height: 11px; margin-top: 4px;"></div>
+                  </div>
+                </div>
+                <div class="file-card">
+                  <div class="thumb"><div class="skeleton" style="width:100%;height:100%;border-radius:0;"></div></div>
+                  <div class="meta">
+                    <div class="skeleton r-line" style="width: 70%; height: 13px;"></div>
+                    <div class="skeleton r-line" style="width: 60%; height: 11px; margin-top: 4px;"></div>
+                  </div>
+                </div>
+                <div class="file-card">
+                  <div class="thumb"><div class="skeleton" style="width:100%;height:100%;border-radius:0;"></div></div>
+                  <div class="meta">
+                    <div class="skeleton r-line" style="width: 58%; height: 13px;"></div>
+                    <div class="skeleton r-line" style="width: 44%; height: 11px; margin-top: 4px;"></div>
+                  </div>
+                </div>
+                <div class="file-card">
+                  <div class="thumb"><div class="skeleton" style="width:100%;height:100%;border-radius:0;"></div></div>
+                  <div class="meta">
+                    <div class="skeleton r-line" style="width: 76%; height: 13px;"></div>
+                    <div class="skeleton r-line" style="width: 50%; height: 11px; margin-top: 4px;"></div>
+                  </div>
+                </div>
+                <div class="file-card">
+                  <div class="thumb"><div class="skeleton" style="width:100%;height:100%;border-radius:0;"></div></div>
+                  <div class="meta">
+                    <div class="skeleton r-line" style="width: 72%; height: 13px;"></div>
+                    <div class="skeleton r-line" style="width: 56%; height: 11px; margin-top: 4px;"></div>
+                  </div>
+                </div>
+                <div class="file-card">
+                  <div class="thumb"><div class="skeleton" style="width:100%;height:100%;border-radius:0;"></div></div>
+                  <div class="meta">
+                    <div class="skeleton r-line" style="width: 64%; height: 13px;"></div>
+                    <div class="skeleton r-line" style="width: 48%; height: 11px; margin-top: 4px;"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Up-next skeleton (3 row shimmers) -->
+            <div>
+              <div class="sec-head" style="margin-bottom:14px;">
+                <div class="l">
+                  <h4>Up next</h4>
+                  <div class="skeleton r-line" style="width: 50px; height: 12px;"></div>
+                </div>
+              </div>
+              <div class="upnext">
+                <div class="upnext-row">
+                  <div class="skeleton r-line" style="width: 110px; height: 14px;"></div>
+                  <div class="skeleton r-line" style="width: 70%; height: 14px;"></div>
+                  <div class="skeleton r-pill" style="width: 70px; height: 22px;"></div>
+                  <div class="skeleton r-circle" style="width: 18px; height: 18px;"></div>
+                </div>
+                <div class="upnext-row">
+                  <div class="skeleton r-line" style="width: 100px; height: 14px;"></div>
+                  <div class="skeleton r-line" style="width: 80%; height: 14px;"></div>
+                  <div class="skeleton r-pill" style="width: 60px; height: 22px;"></div>
+                  <div class="skeleton r-circle" style="width: 18px; height: 18px;"></div>
+                </div>
+                <div class="upnext-row">
+                  <div class="skeleton r-line" style="width: 120px; height: 14px;"></div>
+                  <div class="skeleton r-line" style="width: 65%; height: 14px;"></div>
+                  <div class="skeleton r-pill" style="width: 76px; height: 22px;"></div>
+                  <div class="skeleton r-circle" style="width: 18px; height: 18px;"></div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Skeleton chrome mirrors populated chrome 1:1.</strong> File-grid is 4 × 2 (matches 03.a's eight-card layout). File-card aspect-ratio 4:3 on the thumb is preserved. Up-next row has the same <code>150px / 1fr / auto / auto</code> grid columns as 03's populated row. When data lands, the layout does not shift.</li>
+      <li><strong>Sidebar nav-active stays solid.</strong> The "Recents" item carries its real <code>.nav .item.active</code> tint — the canonical <code>--accent-soft</code> rgba per design.md §3.4. Already-loaded UI doesn't shimmer; only fetched content does.</li>
+      <li><strong>Topbar pill stays solid.</strong> "Online" status pill renders normally — connection state is known synchronously. Same reason the New-canvas button stays solid.</li>
+      <li><strong>Composer placeholder shimmers a 60% + 40% width pair</strong> (suggests two-line text loading). The 60/40 ratio reads as natural prose more than centered single-line shimmer.</li>
+      <li><strong>Animation duration 1.4s</strong> — slow enough not to flicker, fast enough to read as alive. Reduced-motion fallback shows static <code>--fill-2</code> fill (no animation).</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     B7.2 — Brand picker skeleton (mirrors A2.a)
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE B7 · §1 · B7.2 · Brand picker skeleton</div>
+    <h2>B7.2 · Brand picker skeleton</h2>
+    <p class="intro">Mirrors A2.a brand picker. Top chrome (wordmark + user pill) renders real because it's already loaded. Page eyebrow + h1 ("Pick a brand to work on.") render real if the route is committed. Tools row + brand-card grid (6 cards) swap to shimmers — they're the data the picker is fetching.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Brand picker · loading state (6 card shimmers)</div><div class="id">B7.2 · hi-fi</div></div>
+    <div class="canvas tall" data-screen-label="B7.2 Brand picker skeleton">
+      <div class="bp-shell">
+        <div class="bp-top">
+          <div class="wordmark"><div class="glyph">K</div><span>Kova</span></div>
+          <div class="who">
+            <div class="ava">JY</div>
+            <div class="nm">Jiho Yang</div>
+            <i data-lucide="chevron-down" class="ic"></i>
+          </div>
+        </div>
+
+        <div class="bp-stage">
+          <div class="bp-block">
+            <div class="bp-head">
+              <div class="l">
+                <div class="eyebrow">Workspace</div>
+                <h1>Pick a brand to work on.</h1>
+                <p class="lede">Each brand is fully siloed — its own canvases, brand kit, products, and integrations. Switching is a hop, not a context loss.</p>
+              </div>
+              <div class="r">
+                <div class="skeleton" style="width: 96px; height: 32px; border-radius: 6px;"></div>
+                <div class="skeleton" style="width: 110px; height: 32px; border-radius: 6px;"></div>
+              </div>
+            </div>
+
+            <!-- Tools row skeleton -->
+            <div class="bp-tools">
+              <div class="skeleton" style="height: 38px; border-radius: 7px;"></div>
+              <div class="skeleton" style="width: 168px; height: 38px; border-radius: 7px;"></div>
+              <div class="skeleton" style="width: 98px; height: 38px; border-radius: 7px;"></div>
+            </div>
+
+            <!-- Brand-card grid skeleton (6 cards) -->
+            <div class="bp-grid">
+              <div class="bp-card">
+                <div class="top">
+                  <div class="skeleton" style="width: 44px; height: 44px; border-radius: 8px;"></div>
+                  <div class="heads">
+                    <div class="skeleton r-line" style="width: 78%; height: 16px;"></div>
+                    <div class="skeleton r-line" style="width: 60%; height: 11px; margin-top: 6px;"></div>
+                  </div>
+                  <div class="skeleton" style="width: 26px; height: 26px; border-radius: 5px; flex-shrink:0;"></div>
+                </div>
+                <div style="display:flex;gap:6px;">
+                  <div class="skeleton r-pill" style="width: 130px; height: 22px;"></div>
+                  <div class="skeleton r-pill" style="width: 50px; height: 22px;"></div>
+                </div>
+                <div class="meta">
+                  <div style="display:flex;flex-direction:column;gap:6px;">
+                    <div class="skeleton r-line" style="width: 60%; height: 10px;"></div>
+                    <div class="skeleton r-line" style="width: 40%; height: 13px;"></div>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:6px;">
+                    <div class="skeleton r-line" style="width: 70%; height: 10px;"></div>
+                    <div class="skeleton r-line" style="width: 50%; height: 13px;"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="bp-card">
+                <div class="top">
+                  <div class="skeleton" style="width: 44px; height: 44px; border-radius: 8px;"></div>
+                  <div class="heads">
+                    <div class="skeleton r-line" style="width: 64%; height: 16px;"></div>
+                    <div class="skeleton r-line" style="width: 50%; height: 11px; margin-top: 6px;"></div>
+                  </div>
+                  <div class="skeleton" style="width: 26px; height: 26px; border-radius: 5px; flex-shrink:0;"></div>
+                </div>
+                <div style="display:flex;gap:6px;">
+                  <div class="skeleton r-pill" style="width: 130px; height: 22px;"></div>
+                </div>
+                <div class="meta">
+                  <div style="display:flex;flex-direction:column;gap:6px;">
+                    <div class="skeleton r-line" style="width: 60%; height: 10px;"></div>
+                    <div class="skeleton r-line" style="width: 35%; height: 13px;"></div>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:6px;">
+                    <div class="skeleton r-line" style="width: 70%; height: 10px;"></div>
+                    <div class="skeleton r-line" style="width: 60%; height: 13px;"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="bp-card">
+                <div class="top">
+                  <div class="skeleton" style="width: 44px; height: 44px; border-radius: 8px;"></div>
+                  <div class="heads">
+                    <div class="skeleton r-line" style="width: 70%; height: 16px;"></div>
+                    <div class="skeleton r-line" style="width: 56%; height: 11px; margin-top: 6px;"></div>
+                  </div>
+                  <div class="skeleton" style="width: 26px; height: 26px; border-radius: 5px; flex-shrink:0;"></div>
+                </div>
+                <div style="display:flex;gap:6px;">
+                  <div class="skeleton r-pill" style="width: 130px; height: 22px;"></div>
+                </div>
+                <div class="meta">
+                  <div style="display:flex;flex-direction:column;gap:6px;">
+                    <div class="skeleton r-line" style="width: 60%; height: 10px;"></div>
+                    <div class="skeleton r-line" style="width: 30%; height: 13px;"></div>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:6px;">
+                    <div class="skeleton r-line" style="width: 70%; height: 10px;"></div>
+                    <div class="skeleton r-line" style="width: 50%; height: 13px;"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="bp-card">
+                <div class="top">
+                  <div class="skeleton" style="width: 44px; height: 44px; border-radius: 8px;"></div>
+                  <div class="heads">
+                    <div class="skeleton r-line" style="width: 82%; height: 16px;"></div>
+                    <div class="skeleton r-line" style="width: 64%; height: 11px; margin-top: 6px;"></div>
+                  </div>
+                  <div class="skeleton" style="width: 26px; height: 26px; border-radius: 5px; flex-shrink:0;"></div>
+                </div>
+                <div style="display:flex;gap:6px;">
+                  <div class="skeleton r-pill" style="width: 150px; height: 22px;"></div>
+                </div>
+                <div class="meta">
+                  <div style="display:flex;flex-direction:column;gap:6px;">
+                    <div class="skeleton r-line" style="width: 60%; height: 10px;"></div>
+                    <div class="skeleton r-line" style="width: 25%; height: 13px;"></div>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:6px;">
+                    <div class="skeleton r-line" style="width: 70%; height: 10px;"></div>
+                    <div class="skeleton r-line" style="width: 45%; height: 13px;"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="bp-card">
+                <div class="top">
+                  <div class="skeleton" style="width: 44px; height: 44px; border-radius: 8px;"></div>
+                  <div class="heads">
+                    <div class="skeleton r-line" style="width: 60%; height: 16px;"></div>
+                    <div class="skeleton r-line" style="width: 48%; height: 11px; margin-top: 6px;"></div>
+                  </div>
+                  <div class="skeleton" style="width: 26px; height: 26px; border-radius: 5px; flex-shrink:0;"></div>
+                </div>
+                <div style="display:flex;gap:6px;">
+                  <div class="skeleton r-pill" style="width: 110px; height: 22px;"></div>
+                </div>
+                <div class="meta">
+                  <div style="display:flex;flex-direction:column;gap:6px;">
+                    <div class="skeleton r-line" style="width: 60%; height: 10px;"></div>
+                    <div class="skeleton r-line" style="width: 30%; height: 13px;"></div>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:6px;">
+                    <div class="skeleton r-line" style="width: 70%; height: 10px;"></div>
+                    <div class="skeleton r-line" style="width: 55%; height: 13px;"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="bp-card">
+                <div class="top">
+                  <div class="skeleton" style="width: 44px; height: 44px; border-radius: 8px;"></div>
+                  <div class="heads">
+                    <div class="skeleton r-line" style="width: 74%; height: 16px;"></div>
+                    <div class="skeleton r-line" style="width: 58%; height: 11px; margin-top: 6px;"></div>
+                  </div>
+                  <div class="skeleton" style="width: 26px; height: 26px; border-radius: 5px; flex-shrink:0;"></div>
+                </div>
+                <div style="display:flex;gap:6px;">
+                  <div class="skeleton r-pill" style="width: 130px; height: 22px;"></div>
+                </div>
+                <div class="meta">
+                  <div style="display:flex;flex-direction:column;gap:6px;">
+                    <div class="skeleton r-line" style="width: 60%; height: 10px;"></div>
+                    <div class="skeleton r-line" style="width: 30%; height: 13px;"></div>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:6px;">
+                    <div class="skeleton r-line" style="width: 70%; height: 10px;"></div>
+                    <div class="skeleton r-line" style="width: 50%; height: 13px;"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Real chrome above the fetch boundary.</strong> Wordmark + user pill (top), eyebrow + h1 + lede (head left) all render real because they don't depend on the brands fetch. The "Pick a brand" page loaded; the brand list is the asynchronous part.</li>
+      <li><strong>Six cards in a 3 × 2 grid</strong> matches A2.a's layout density. Each card preserves the populated 18-px padding, 14-px inner gap, the 44 × 44 logo tile, the 1px <code>--line-2</code> divider before the meta footer, and the 2-cell meta grid — pixel-for-pixel.</li>
+      <li><strong>Pills shimmer at the populated pill width</strong> (~130px for "Shopify connected"). Swatch + secondary "Pro" pill on card 1 are absent in the skeleton because they're optional in the populated state — fewer pills loading is a valid future state.</li>
+      <li><strong>"+ New brand" tile is omitted from the skeleton.</strong> It's a static CTA, not data — when the brands fetch resolves the tile is appended at the end.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     B7.3 — A7 section skeleton (Memories sub-tab)
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE B7 · §1 · B7.3 · A7 section skeleton</div>
+    <h2>B7.3 · A7 Brand-Kit Memories skeleton</h2>
+    <p class="intro">Mirrors A7.3.6 Memories. Sidebar + topbar + Account left-rail + Brand-Kit sub-nav stay real (already-loaded UI). Section header ("Memories") + sub-text + brand-picker pill stay real because the route + brand are known synchronously. Toolbar (segmented filter, search, Add memory button) + 6 memory rows shimmer — that's the fetched payload.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Account · Brand Kit · Memories · loading</div><div class="id">B7.3 · hi-fi</div></div>
+    <div class="canvas tall" data-screen-label="B7.3 A7 skeleton">
+      <div class="app">
+
+        <!-- SIDEBAR -->
+        <div class="sidebar">
+          <div class="brand-switch">
+            <div class="logo">N</div>
+            <div class="name">Nike</div>
+            <div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div>
+          </div>
+          <div class="side-search">
+            <i data-lucide="search" style="width:13px;height:13px;"></i>
+            <span>Search</span>
+            <span class="kbd">⌘K</span>
+          </div>
+
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item active"><i data-lucide="clock-4" class="ic"></i><span>Recents</span></div>
+            <div class="item"><i data-lucide="calendar-days" class="ic"></i><span>Calendar</span><span class="count">12</span></div>
+
+            <div class="section">Library</div>
+            <div class="item"><i data-lucide="bookmark" class="ic"></i><span>Swipes</span></div>
+            <div class="item"><i data-lucide="layout-template" class="ic"></i><span>Templates</span></div>
+            <div class="item"><i data-lucide="package" class="ic"></i><span>Products</span><span class="count">318</span></div>
+
+            <div class="section">Brand</div>
+            <div class="item"><i data-lucide="sparkles" class="ic"></i><span>Personalization</span></div>
+            <div class="item"><i data-lucide="book-open" class="ic"></i><span>Knowledge base</span></div>
+            <div class="item"><i data-lucide="brain" class="ic"></i><span>Memories</span><span class="count">19</span></div>
+          </div>
+
+          <div class="side-footer">
+            <div class="avatar">JY</div>
+            <div class="who">
+              <b>Jiho Yang</b>
+              <span>Free plan</span>
+            </div>
+            <div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+          </div>
+        </div>
+
+        <!-- MAIN -->
+        <div class="main">
+          <div class="topbar">
+            <div class="breadcrumb">
+              <span>Nike</span>
+              <span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <b>Home</b>
+            </div>
+            <div class="actions">
+              <div class="btn sm">
+                <i data-lucide="folder-plus" class="ic"></i>
+                New canvas
+              </div>
+            </div>
+          </div>
+
+          <div class="acc-frame">
+            <div class="acc-rail">
+              <div class="title">Account</div>
+              <div class="it"><i data-lucide="user" class="ic"></i>Profile</div>
+              <div class="it"><i data-lucide="credit-card" class="ic"></i>Plan &amp; billing</div>
+              <div class="it active"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+              <div class="it"><i data-lucide="plug" class="ic"></i>Integrations</div>
+              <div class="sep"></div>
+              <div class="it danger"><i data-lucide="trash-2" class="ic"></i>Danger zone</div>
+            </div>
+
+            <div class="acc-main">
+              <div class="acc-hero">
+                <div class="l">
+                  <h1>Memories</h1>
+                  <p>Things Kova has remembered while you worked. One unified list — filter by type (rule / fact / preference), search the row text.</p>
+                </div>
+                <div class="r" style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+                  <span class="mono" style=" font-size:10px;letter-spacing:0.1em; color:var(--ink-3);">Editing brand</span>
+                  <div class="brandpick"><div class="logo">N</div><div class="nm">Nike</div><i data-lucide="chevrons-up-down" class="caret" style="width:13px;height:13px;"></i></div>
+                </div>
+              </div>
+
+              <div class="acc-content">
+                <div class="bk-wrap">
+                  <div class="bk-subnav">
+                    <div class="head">Brand Kit</div>
+                    <div class="it"><i data-lucide="palette" class="ic"></i>Visuals</div>
+                    <div class="it"><i data-lucide="user-circle" class="ic"></i>Identity</div>
+                    <div class="it"><i data-lucide="quote" class="ic"></i>Tone snippets<span style="margin-left:auto; font-size:10px;color:var(--ink-3);">8</span></div>
+                    <div class="it"><i data-lucide="layers" class="ic"></i>Saved blocks<span style="margin-left:auto; font-size:10px;color:var(--ink-3);">5</span></div>
+                    <div class="it"><i data-lucide="check-square" class="ic"></i>Writing rules</div>
+                    <div class="it active"><i data-lucide="brain" class="ic"></i>Memories<span style="margin-left:auto; font-size:10px;color:var(--ink);">19</span></div>
+                    <div class="it"><i data-lucide="book-open" class="ic"></i>Knowledge base</div>
+                  </div>
+
+                  <div class="bk-pane">
+                    <!-- Toolbar skeleton (segmented + search + button) -->
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                      <div class="skeleton" style="width: 320px; height: 30px; border-radius: 6px;"></div>
+                      <div class="skeleton" style="width: 220px; height: 30px; border-radius: 5px;"></div>
+                      <div style="flex:1;"></div>
+                      <div class="skeleton" style="width: 116px; height: 28px; border-radius: 5px;"></div>
+                    </div>
+
+                    <!-- Memory rows skeleton (6 rows in a list-stack) -->
+                    <div class="list-stack">
+                      <div class="mem-row">
+                        <div class="skeleton r-line" style="width: 60px; height: 12px;"></div>
+                        <div style="display:flex;flex-direction:column;gap:6px;">
+                          <div class="skeleton r-line" style="width: 86%; height: 14px;"></div>
+                          <div class="skeleton r-line" style="width: 48%; height: 11px;"></div>
+                        </div>
+                        <div class="skeleton r-line" style="width: 14px; height: 14px;"></div>
+                      </div>
+                      <div class="mem-row">
+                        <div class="skeleton r-line" style="width: 60px; height: 12px;"></div>
+                        <div style="display:flex;flex-direction:column;gap:6px;">
+                          <div class="skeleton r-line" style="width: 78%; height: 14px;"></div>
+                          <div class="skeleton r-line" style="width: 42%; height: 11px;"></div>
+                        </div>
+                        <div class="skeleton r-line" style="width: 14px; height: 14px;"></div>
+                      </div>
+                      <div class="mem-row">
+                        <div class="skeleton r-line" style="width: 60px; height: 12px;"></div>
+                        <div style="display:flex;flex-direction:column;gap:6px;">
+                          <div class="skeleton r-line" style="width: 92%; height: 14px;"></div>
+                          <div class="skeleton r-line" style="width: 56%; height: 11px;"></div>
+                        </div>
+                        <div class="skeleton r-line" style="width: 14px; height: 14px;"></div>
+                      </div>
+                      <div class="mem-row">
+                        <div class="skeleton r-line" style="width: 60px; height: 12px;"></div>
+                        <div style="display:flex;flex-direction:column;gap:6px;">
+                          <div class="skeleton r-line" style="width: 70%; height: 14px;"></div>
+                          <div class="skeleton r-line" style="width: 38%; height: 11px;"></div>
+                        </div>
+                        <div class="skeleton r-line" style="width: 14px; height: 14px;"></div>
+                      </div>
+                      <div class="mem-row">
+                        <div class="skeleton r-line" style="width: 60px; height: 12px;"></div>
+                        <div style="display:flex;flex-direction:column;gap:6px;">
+                          <div class="skeleton r-line" style="width: 84%; height: 14px;"></div>
+                          <div class="skeleton r-line" style="width: 50%; height: 11px;"></div>
+                        </div>
+                        <div class="skeleton r-line" style="width: 14px; height: 14px;"></div>
+                      </div>
+                      <div class="mem-row">
+                        <div class="skeleton r-line" style="width: 60px; height: 12px;"></div>
+                        <div style="display:flex;flex-direction:column;gap:6px;">
+                          <div class="skeleton r-line" style="width: 76%; height: 14px;"></div>
+                          <div class="skeleton r-line" style="width: 46%; height: 11px;"></div>
+                        </div>
+                        <div class="skeleton r-line" style="width: 14px; height: 14px;"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Three solid layers, one shimmering layer.</strong> Sidebar (canonical .nav active state on Brand Kit) → Account left-rail (active on Brand Kit) → Brand-Kit sub-nav (active on Memories). All three nav states render solid because navigation choice is known synchronously.</li>
+      <li><strong>Section title + sub-copy stay real.</strong> "Memories" h1 and the "Things Kova has remembered…" intro paragraph render normally — they don't depend on the rows fetch.</li>
+      <li><strong>Sticky sub-nav active state proves chrome doesn't shimmer.</strong> The active "Memories" item carries its real <code>.bk-subnav .it.active</code> tint while every row beneath it shimmers. No layout shift on resolve — the rows already have the correct grid template (90px / 1fr / auto) and the 11px / 16px paddings.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     B7.4 — Generic small-area skeleton (inline, 280px)
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE B7 · §1 · B7.4 · Generic small-area skeleton</div>
+    <h2>B7.4 · Generic small-area skeleton</h2>
+    <p class="intro">A reusable 280-px wide inline loader for any small list area: dropdown payload, popover content, sub-pane lazy load. Two row shimmers stacked. Reaches for the same shimmer animation; doesn't introduce a new size class.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Generic small-area skeleton (280 × auto)</div><div class="id">B7.4 · hi-fi</div></div>
+    <div class="canvas" data-screen-label="B7.4 Generic small skeleton">
+      <div class="scene-grid">
+        <div class="scene-card">
+          <div class="sc-head"><div class="nm">Generic small panel · 2 rows</div><div class="id">B7.4.a</div></div>
+          <div class="sc-body">
+            <div style="width:280px;background:var(--page);border:1px solid var(--line);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:8px;">
+              <div style="display:flex;align-items:center;gap:10px;">
+                <div class="skeleton r-circle" style="width: 28px; height: 28px;"></div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:5px;">
+                  <div class="skeleton r-line" style="width: 70%; height: 12px;"></div>
+                  <div class="skeleton r-line" style="width: 45%; height: 10px;"></div>
+                </div>
+                <div class="skeleton r-line" style="width: 14px; height: 14px;"></div>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;">
+                <div class="skeleton r-circle" style="width: 28px; height: 28px;"></div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:5px;">
+                  <div class="skeleton r-line" style="width: 60%; height: 12px;"></div>
+                  <div class="skeleton r-line" style="width: 40%; height: 10px;"></div>
+                </div>
+                <div class="skeleton r-line" style="width: 14px; height: 14px;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="scene-card">
+          <div class="sc-head"><div class="nm">Inline list-stack · 3 rows (canonical density)</div><div class="id">B7.4.b</div></div>
+          <div class="sc-body">
+            <div class="list-stack" style="width:280px;">
+              <div class="mem-row">
+                <div class="skeleton r-line" style="width: 50px; height: 11px;"></div>
+                <div class="skeleton r-line" style="width: 70%; height: 12px;"></div>
+                <div class="skeleton r-line" style="width: 14px; height: 14px;"></div>
+              </div>
+              <div class="mem-row">
+                <div class="skeleton r-line" style="width: 50px; height: 11px;"></div>
+                <div class="skeleton r-line" style="width: 60%; height: 12px;"></div>
+                <div class="skeleton r-line" style="width: 14px; height: 14px;"></div>
+              </div>
+              <div class="mem-row">
+                <div class="skeleton r-line" style="width: 50px; height: 11px;"></div>
+                <div class="skeleton r-line" style="width: 80%; height: 12px;"></div>
+                <div class="skeleton r-line" style="width: 14px; height: 14px;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Two variants of the same component.</strong> B7.4.a uses an avatar-led row layout (good for member-list / brand-list popovers). B7.4.b uses the canonical <code>.mem-row</code> grid (matches A7's memory rows; reuse the same chrome at any size).</li>
+      <li><strong>280-px width is the inline minimum.</strong> Below that, single-row shimmers feel too narrow to read as content; above 480-px, switch to the panel-confined or full-page variants in B7.1–B7.3.</li>
+      <li><strong>No new component class.</strong> The same <code>.skeleton</code> primitive does the work — only sizes vary via inline width/height. The container chrome (<code>.list-stack</code> / <code>.mem-row</code>) is canonical and unmodified.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     B7.5 — Skeleton-to-content fade transition (annotation)
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE B7 · §1 · B7.5 · Fade transition (annotation)</div>
+    <h2>B7.5 · Skeleton-to-content fade transition</h2>
+    <p class="intro">Static spec for the moment skeleton swaps to populated content. Two side-by-side panels — left "skeleton", right "populated" — with an arrow + duration label between them. Recommended duration: <strong>200ms ease-out fade</strong>. Cross-fade keeps both layers visible during the transition; no layout shift because skeleton and populated chrome share the same dimensions.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">B7.5 · fade transition · spec</div><div class="id">B7.5 · annotation</div></div>
+    <div class="canvas" data-screen-label="B7.5 Fade transition spec">
+      <div class="fade-demo">
+        <!-- Skeleton panel -->
+        <div class="panel">
+          <div class="panel-cap">SKELETON · t = 0ms</div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div class="skeleton r-circle" style="width: 32px; height: 32px;"></div>
+            <div style="flex:1;display:flex;flex-direction:column;gap:6px;">
+              <div class="skeleton r-line" style="width: 70%; height: 13px;"></div>
+              <div class="skeleton r-line" style="width: 50%; height: 11px;"></div>
+            </div>
+          </div>
+          <div class="skeleton" style="width:100%;height:14px;"></div>
+          <div class="skeleton" style="width:88%;height:14px;"></div>
+          <div class="skeleton" style="width:62%;height:14px;"></div>
+        </div>
+
+        <div class="arrow">
+          <i data-lucide="arrow-right" style="width:18px;height:18px;"></i>
+          <div class="lbl"><b>200ms</b><br/>ease-out fade</div>
+        </div>
+
+        <!-- Populated panel -->
+        <div class="panel">
+          <div class="panel-cap">POPULATED · t = 200ms</div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div style="width:32px;height:32px;border-radius:50%;background:var(--fill-2);color:var(--ink);display:grid;place-items:center;font-weight:600;font-size:11px;">JY</div>
+            <div style="flex:1;display:flex;flex-direction:column;gap:1px;">
+              <div style="font-size:13px;color:var(--ink);font-weight:500;letter-spacing:-0.005em;">Jiho Yang</div>
+              <div style="font-size:11px;color:var(--ink-3);">Last edited Apr 12 · 4 canvases</div>
+            </div>
+          </div>
+          <div style="font-size:13px;color:var(--ink-2);line-height:1.55;">Brand bible · 2026. PDF · Mar 12 · 42 pages. Indexed for AI suggestions, brand voice match, and canvas search across every active brand kit.</div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Cross-fade, not slide.</strong> 200 ms ease-out is the canonical Material/iOS shorthand — long enough to read as a transition (not a snap), short enough not to feel slow. Sliding would create motion that competes with the user's eye landing on the now-real content; cross-fade is invisible.</li>
+      <li><strong>No layout shift</strong> because skeleton chrome and populated chrome share the same dimensions. The skeleton circle is 32 × 32; the populated avatar is 32 × 32. The skeleton lines are 13 px tall; the populated text-line is 13 px tall (font-size 13 + line-height 1.55 = 20 px box, but the text baseline lands at 13 px from top — it overlaps the same skeleton bar perfectly).</li>
+      <li><strong>Reduce-motion fallback</strong> swaps skeleton → populated with no transition (instant). Same content, same layout, just no animation.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     Cross-surface notes
+     ============================================================ -->
+<section class="block" style="background: var(--page);">
+  <header>
+    <div class="tag">Coherence notes — what this file commits to</div>
+    <h2>What B7 commits to</h2>
+  </header>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;max-width:1080px;font-size:12.5px;color:var(--ink-2);line-height:1.55;">
+    <div style="background: var(--page); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px;">
+      <h3 style="margin:0 0 8px;font-size:14px;color:var(--ink);font-weight:600;letter-spacing:-0.005em;">New layout-only classes</h3>
+      <ul style="margin:6px 0 0;padding-left:18px;">
+        <li><code>.skeleton</code> — single new component family. <code>.skeleton::before</code> animates a moving gradient (<code>--fill</code> → <code>--fill-2</code> → <code>--fill</code>) at 1.4s ease-in-out infinite. Scoped exception to design.md §5 ban 5 (no gradients on chrome) — see delivery notes.</li>
+        <li><code>.skeleton.r-pill / .r-card / .r-line / .r-circle</code> — corner-radius variants matching populated counterparts.</li>
+        <li><code>.scene-grid</code> · <code>.scene-card</code> · <code>.scene-card .sc-head/.sc-body</code> — review-page catalog only for B7.4; not shipped.</li>
+        <li><code>.fade-demo</code> · <code>.fade-demo .panel</code> · <code>.fade-demo .arrow</code> — annotation-only spec for B7.5; not shipped.</li>
+      </ul>
+    </div>
+    <div style="background: var(--page); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px;">
+      <h3 style="margin:0 0 8px;font-size:14px;color:var(--ink);font-weight:600;letter-spacing:-0.005em;">Tokens used (none new)</h3>
+      <ul style="margin:6px 0 0;padding-left:18px;">
+        <li>Surface: <code>--bg</code> · <code>--page</code> · <code>--rail</code> · <code>--fill</code> · <code>--fill-2</code></li>
+        <li>Ink: <code>--ink</code> · <code>--ink-2</code> · <code>--ink-3</code></li>
+        <li>Lines: <code>--line</code> · <code>--line-2</code></li>
+        <li>Accent (only on canonical .nav.active / .it.active tints): <code>--accent-soft</code> via canonical CSS — not redeclared.</li>
+        <li>The brief's named tokens (<code>--color-surface-input</code>, <code>--color-surface-input-hi</code>) don't exist in canonical kova-hifi.css; canonical exposes the same values as <code>--fill</code> / <code>--fill-2</code>. Used canonical names.</li>
+      </ul>
+    </div>
+    <div style="background: var(--page); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px;">
+      <h3 style="margin:0 0 8px;font-size:14px;color:var(--ink);font-weight:600;letter-spacing:-0.005em;">Behavior commitments</h3>
+      <ul style="margin:6px 0 0;padding-left:18px;">
+        <li><strong>Animation duration: 1.4s ease-in-out infinite.</strong> Slow enough not to flicker, fast enough to read as alive.</li>
+        <li><strong>Gradient sweep</strong> width = 50% of parent; <code>translateX(-100%)</code> → <code>translateX(300%)</code> across the cycle.</li>
+        <li><strong>Reduce-motion fallback:</strong> animation disabled, static <code>--fill-2</code> fill applied. <code>@media (prefers-reduced-motion: reduce)</code>.</li>
+        <li><strong>Fade-out transition:</strong> 200ms ease-out cross-fade when content lands. No layout shift because skeleton chrome mirrors populated chrome 1:1.</li>
+        <li><strong>Skeleton chrome does NOT shimmer where the data is already known synchronously</strong> — sidebar nav active, topbar online pill, breadcrumb, page h1, sub-nav active state. Only fetched payloads shimmer.</li>
+      </ul>
+    </div>
+    <div style="background: var(--page); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px;">
+      <h3 style="margin:0 0 8px;font-size:14px;color:var(--ink);font-weight:600;letter-spacing:-0.005em;">Out of scope</h3>
+      <ul style="margin:6px 0 0;padding-left:18px;">
+        <li><strong>Page-level "Loading…" indicator</strong> for total cold starts (route splitting). Not designed here; recommend a centered <code>.skeleton</code> at viewport-center if needed pre-route-resolve.</li>
+        <li><strong>Streaming AI generations</strong> — the canvas right-rail AI panel handles those (per B1.5 AI-toast notes); not skeleton work.</li>
+        <li><strong>Progress bars</strong> for known-percent operations — that's B8 upload UI, not skeleton.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+
+<footer style="padding:32px 56px;border-top:1px solid var(--line);background:var(--bg);color:var(--ink-3);font-size:11px;">
+  Kova · hi-fi · Batch A additions · B7 Loading skeletons · v1
+</footer>
+
+<script>
+  if (window.lucide) window.lucide.createIcons({ attrs: { 'stroke-width': 1.6 } });
+</script>
+</body>
+</html>

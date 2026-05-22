@@ -10,7 +10,7 @@
 
 **Reference docs:**
 - PRD: `kova-open-pencil-1/docs/kova-final-prds/09-version-history-and-trash.md`
-- Hi-fi: `main-main-kova-scope/batch-b/chunk-b6/Kova Hi-Fi 17 Version History - Dark.html` (11 scenes), `main-main-kova-scope/batch-b/chunk-b2/Kova Hi-Fi 15 Trash Confirm - Dark.html` (3 scenes)
+- Hi-fi: `design-system/hifi/version-history/Kova Hi-Fi 17 Version History - Dark.html` (11 scenes), `design-system/hifi/version-history/Kova Hi-Fi 15 Trash Confirm - Dark.html` (3 scenes)
 - Design system: `main-main-kova-scope/design-system/{design.md, kova-hifi.css, TOKEN_CANONICAL.md}`
 - Audit base: `kova-open-pencil-1/docs/kova-final-prds/00c-COMPREHENSIVE_AUDIT_REPORT.md` lines 1764–1945
 
@@ -60,9 +60,19 @@ These cross-cluster edits are touched here for completeness but the owning clust
 
 > **Authoritative method:** `docs/execution-phase/claude-design-files/IMPLEMENTATION_PROMPT.md` (read end-to-end before any UI task in this Plan). This section maps PRD 09 §3 hi-fi citations onto the Plan tasks below + points at the actual Kova source paths to consult.
 
-**Translation rule:** hi-fi HTML is the visual source of truth, not a literal copy target. Port to idiomatic Vue 3 using Cluster 11 primitives. **Mockup wins on visual values** — if a hi-fi value isn't in `kova-hifi.css :root`, apply the drift protocol (`DESIGN-SYSTEM-COMPLIANCE-RIDER.md` §2.1) — never silently round.
+**3-rule fidelity contract** (per `docs/execution-phase/claude-design-files/IMPLEMENTATION_PROMPT.md` §0):
 
-**Per-screen diff loop** (per IMPLEMENTATION_PROMPT.md Phase 4): open hi-fi HTML + Vue route at 1440px viewport. Screenshot both. List discrepancies in writing. Fix every one. Re-diff. Move on only at zero discrepancies. Final cluster-boundary Playwright gate is ≤ 2% pixel diff per `MASTER-EXECUTION-GUIDE.md` §8.2.
+1. **Visual values are copied.** Every color, spacing, type, radius, shadow, gap, padding, line-height, tracking, and proportion in the rendered output MUST match the mockup pixel-for-pixel.
+2. **DOM structure is translated.** Vue 3 SFCs + Reka UI primitives + Cluster 11 primitives + K* component layer (`design.md` §3). NOT the mockup's hand-rolled HTML.
+3. **Behavior is engineered.** State in Pinia / refs / composables. Hover / focus / active / selected / disabled states are dynamic bindings, NEVER hardcoded classes.
+
+**Trap phrase ban:** "copy DOM verbatim" is forbidden. Drift protocol per RIDER §2.1 + IMPLEMENTATION_PROMPT.md §7 on any hi-fi value not in `kova-hifi.css :root` — never silently round.
+
+**Phase 1 audit gate** (per IMPLEMENTATION_PROMPT.md §3): produce `KOVA_AUDIT.md` + `tokens-used.md` BEFORE any Vue code. `tokens-used.md` enumerates every visual value in this cluster's surfaces mapped to either an existing token or ⚠️ MISSING (founder decision via AskUserQuestion). No Vue until founder-approved.
+
+**Per-screen diff loop** (per IMPLEMENTATION_PROMPT.md §6): in-repo mockup + Vue route at 1440px → screenshot both → walk Appendix A per property → list discrepancies in `tests/snapshots/cluster-09/<surface>-diff.md` → fix → re-diff until empty. **Visual-diff thresholds: ≤ 0.1% component / ≤ 0.5% screen** (Playwright `maxDiffPixelRatio: 0.005, threshold: 0.2`, masking volatile regions per IMPLEMENTATION_PROMPT.md §10).
+
+**PR artifact:** every PR touching a UI surface in this cluster MUST include 3-screenshot row (mockup / impl / diff) per surface in the PR description.
 
 ### Cluster 11 primitives — use these, do NOT reinvent
 
@@ -85,12 +95,12 @@ Source: `kova-open-pencil-1/src/components/ui/` (Cluster 11 ships these; Plan 09
 
 | Plan task | Surface built | Hi-fi file | Scene IDs |
 |---|---|---|---|
-| Task 13 — `<AddVersionDialog>` | Add-to-version-history modal (`⌘+⌥+S` trigger) | `main-main-kova-scope/batch-b/chunk-b6/Kova Hi-Fi 17 Version History - Dark.html` | 17.8 (initial, empty title), 17.9 (filled, Save enabled) |
+| Task 13 — `<AddVersionDialog>` | Add-to-version-history modal (`⌘+⌥+S` trigger) | `design-system/hifi/version-history/Kova Hi-Fi 17 Version History - Dark.html` | 17.8 (initial, empty title), 17.9 (filled, Save enabled) |
 | Task 14 — `<RestoreConfirmModal>` | Restore-this-version confirm modal | same | 17.10 |
 | Task 15 — `<SnapshotEmptyState>` + `<AutosaveGroupHead>` + `<CurrentVersionRow>` + `<FilterDropdown>` | Empty state + autosave group header + current-version pinned row + autosave-toggle filter dropdown | same | 17.11 (empty), 17.1 (current + group expanded), 17.2 (group collapsed), 17.7 (filter dropdown) |
 | Task 16 — `<SnapshotRow>` | Single snapshot row (idle / hover / active / right-click menu / inline rename) | same | 17.1 (idle), 17.4 (hover with `•••`), 17.5 (5-item right-click dropdown), 17.6 (inline rename) |
 | Task 17 — `<SnapshotTimelinePanel>` | Right-panel composite (vertical `.vh-timeline` + header instruction strip) | same | 17.1, 17.2, 17.3 (mixed named + autosave) — entire panel |
-| Task 18 — `<TrashConfirmModal>` | Move-to-trash confirm modal (dashboard-mounted) | `main-main-kova-scope/batch-b/chunk-b2/Kova Hi-Fi 15 Trash Confirm - Dark.html` | B13.1 (idle), B13.2 (CTA hover), B13.3 (post-confirm with success toast) |
+| Task 18 — `<TrashConfirmModal>` | Move-to-trash confirm modal (dashboard-mounted) | `design-system/hifi/version-history/Kova Hi-Fi 15 Trash Confirm - Dark.html` | B13.1 (idle), B13.2 (CTA hover), B13.3 (post-confirm with success toast) |
 
 ### Local CSS primitives this Plan ships (per PRD 09 §3.3)
 

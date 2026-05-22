@@ -1,0 +1,1529 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<title>Kova — Hi-fi · 08 Top Chrome Menus · Dark</title>
+<meta name="viewport" content="width=1440" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+<link rel="stylesheet" href="../design-system/kova-hifi.css" />
+<script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
+<style>
+  /* =====================================================
+     Top-chrome scaffold — minimal canvas top bar so each
+     popover can be shown anchored to its real trigger.
+     Inherits all colors from kova-hifi.css.
+     ===================================================== */
+
+  .stage {
+    position: relative;
+    height: 560px;
+    background: var(--page);
+    overflow: hidden;
+  }
+  .stage.tall { height: 640px; }
+
+  .top {
+    height: 52px;
+    border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 18px; background: var(--page);
+    position: relative; z-index: 2;
+  }
+  .top .left {
+    display: flex; align-items: center; gap: 0;
+  }
+
+  /* Logo trigger (anchors B1 main menu) */
+  .logo-trigger {
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 10px 6px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    color: var(--ink);
+    transition: background 0.1s ease;
+  }
+  .logo-trigger:hover { background: var(--line-2); }
+  .logo-trigger.open { background: var(--line-2); }
+  .logo-trigger .mark {
+    width: 22px; height: 22px;
+    border-radius: 5px;
+    background: #ededea; color: #0d0d0c;
+    display: grid; place-items: center;
+    font-weight: 700; font-size: 11px;
+    letter-spacing: -0.02em;
+  }
+  .logo-trigger .chev { color: var(--ink-3); }
+  .logo-trigger .chev .ic { width: 12px; height: 12px; }
+
+  /* Breadcrumb between logo & filename */
+  .crumbs {
+    display: flex; align-items: center; gap: 8px;
+    color: var(--ink-3); font-size: 13px;
+    margin-left: 4px;
+  }
+  .crumbs .crumb-brand {
+    display: inline-flex; align-items: center; gap: 6px;
+    color: var(--ink-2); cursor: pointer;
+  }
+  .crumbs .crumb-brand .lg {
+    width: 16px; height: 16px; border-radius: 3px;
+    background: #ededea; color: #0d0d0c;
+    display: grid; place-items: center;
+    font-weight: 700; font-size: 9px;
+  }
+  .crumbs .sep { color: var(--ink-3); opacity: 0.5; display: grid; place-items: center; }
+  .crumbs .sep .ic { width: 13px; height: 13px; }
+
+  /* File-name dropdown trigger (anchors B1.11) */
+  .file-trigger {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 4px 6px 4px 8px;
+    border-radius: 5px;
+    color: var(--ink); font-weight: 600;
+    letter-spacing: -0.005em; cursor: pointer;
+    transition: background 0.1s ease;
+  }
+  .file-trigger:hover { background: var(--line-2); }
+  .file-trigger.open { background: var(--line-2); }
+  .file-trigger .chev { color: var(--ink-3); }
+  .file-trigger .chev .ic { width: 12px; height: 12px; }
+
+  .top .right {
+    display: flex; align-items: center; gap: 8px;
+  }
+  .top .autosave {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 11.5px; color: var(--ok);
+  }
+  .top .autosave .ic { width: 12px; height: 12px; }
+  .top .avatar {
+    width: 26px; height: 26px; border-radius: 50%;
+    background: var(--warn); color: #fff;
+    display: grid; place-items: center;
+    font-weight: 600; font-size: 10.5px;
+  }
+
+  /* Surface beneath the top bar — purely visual context */
+  .stage .surface {
+    position: absolute; inset: 52px 0 0 0;
+    background: #0f0f0e;
+    background-image: radial-gradient(circle, #1f1f1d 1px, transparent 1px);
+    background-size: 22px 22px;
+    background-position: -11px -11px;
+  }
+
+  /* =====================================================
+     Reka DropdownMenu shell — LOCK HERE
+     Inherited by B3.4 / B4.8 / B5.7 / B7.1 / B10
+     Tokens only; no new colors.
+     ===================================================== */
+
+  .menu {
+    position: absolute;
+    background: var(--rail);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 4px;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.55), 0 1px 0 rgba(255,255,255,0.03);
+    min-width: 220px;
+    z-index: 10;
+    font-size: 12.5px;
+    color: var(--ink);
+    user-select: none;
+  }
+  .menu.w-260 { min-width: 260px; }
+  .menu.w-280 { min-width: 280px; }
+
+  .menu .item {
+    display: flex; align-items: center; gap: 10px;
+    height: 26px;
+    padding: 0 8px 0 10px;
+    border-radius: 5px;
+    color: var(--ink);
+    cursor: pointer;
+    line-height: 1;
+  }
+  .menu .item:hover { background: var(--line-2); }
+  .menu .item.hovered { background: var(--fill); }
+  .menu .item .lbl { flex: 1; min-width: 0; }
+  .menu .item .check {
+    width: 12px; height: 12px; flex-shrink: 0;
+    color: var(--ink); opacity: 0;
+  }
+  .menu .item.checked .check { opacity: 1; }
+  .menu .item .check .ic { width: 12px; height: 12px; }
+  .menu .item.checkable { padding-left: 6px; gap: 6px; }
+  .menu .item.checkable .lbl { padding-left: 4px; }
+
+  .menu .item .kbd-row {
+    display: inline-flex; align-items: center; gap: 2px;
+    color: var(--ink-3);
+    font-size: 11px;
+    flex-shrink: 0;
+  }
+  .menu .item:hover .kbd-row { color: var(--ink-2); }
+  .menu .item .arr {
+    color: var(--ink-3);
+    display: grid; place-items: center;
+    flex-shrink: 0;
+  }
+  .menu .item .arr .ic { width: 12px; height: 12px; }
+  .menu .item:hover .arr { color: var(--ink-2); }
+
+  /* Disabled item */
+  .menu .item.disabled { color: var(--ink-3); cursor: default; }
+  .menu .item.disabled:hover { background: transparent; }
+  .menu .item.disabled .kbd-row { color: var(--ink-3); opacity: 0.6; }
+
+  /* Destructive */
+  .menu .item.destructive { color: var(--warn); }
+  .menu .item.destructive:hover { background: var(--warn-soft); color: var(--warn); }
+  .menu .item.destructive .kbd-row { color: var(--warn); opacity: 0.7; }
+
+  /* Hovered (open submenu) parent */
+  .menu .item.has-sub { padding-right: 6px; }
+
+  /* Separator */
+  .menu .sep {
+    height: 1px; background: var(--line-2);
+    margin: 4px 4px;
+  }
+
+  /* Section label inside menu (for grouped popovers) */
+  .menu .group {
+    font-size: 9.5px;
+    font-weight: 500;
+    color: var(--ink-3);
+    padding: 8px 10px 4px;
+  }
+
+  /* =====================================================
+     <kbd> chip — match A8.2 conventions
+     ===================================================== */
+  .menu kbd {
+    font-family: inherit; font-size: 11px;
+    color: inherit;
+    padding: 0;
+  }
+  .menu kbd.glyph {
+    display: inline-grid; place-items: center;
+    min-width: 12px; height: 12px;
+    line-height: 1;
+  }
+
+  /* =====================================================
+     Anchor labels — small leader pointing at the trigger
+     (only visible in this catalog file, not in real app)
+     ===================================================== */
+  .anchor-pin {
+    position: absolute;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 4px rgba(90,125,255,0.15);
+    z-index: 9;
+  }
+  .anchor-pin::after {
+    content: ""; position: absolute;
+    left: 50%; top: 50%;
+    width: 4px; height: 4px;
+    border-radius: 50%;
+    background: var(--page);
+    transform: translate(-50%,-50%);
+  }
+
+  /* Leader line from trigger to popover top edge */
+  .leader {
+    position: absolute;
+    border-left: 1px dashed var(--accent);
+    opacity: 0.4;
+    z-index: 4;
+    pointer-events: none;
+  }
+
+  /* =====================================================
+     Two-column layout: trigger view + opened popover
+     ===================================================== */
+  .multi {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+  }
+  .multi.three { grid-template-columns: repeat(3, 1fr); }
+
+  /* Annotation note inside screens */
+  .stage-note {
+    position: absolute;
+    right: 16px; bottom: 16px;
+    max-width: 320px;
+    background: var(--rail);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-size: 11px;
+    color: var(--ink-2);
+    line-height: 1.5;
+    z-index: 3;
+  }
+  .stage-note b {
+    color: var(--ink); font-weight: 600;
+    font-size: 11px;
+    display: block; margin-bottom: 4px;
+  }
+
+  /* Submenu styling: nested popovers when a parent item with ▶ is hovered */
+  .menu.sub {
+    /* sub-popover positioning is per-instance via inline styles */
+  }
+
+  /* Hide cap of section block backgrounds for these screens (cleaner) */
+  [data-theme="dark"] section.block .stage { background: var(--page); }
+
+  /* Phase 2 / hidden items badge */
+  .menu .item .ph2 {
+    font-size: 9.5px;
+    color: var(--ink-3);
+    background: var(--fill);
+    padding: 1px 5px; border-radius: 3px;
+    margin-right: -2px;
+  }
+
+  /* Component-inventory style row (for the LOCK HERE section at end) */
+  .ci-grid {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+  .ci-card {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--page);
+    padding: 16px;
+  }
+  .ci-card .h {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--ink-3);
+    margin-bottom: 10px;
+  }
+  .ci-card .demo {
+    position: relative;
+    height: 280px;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .ci-spec {
+    font-size: 12.5px; color: var(--ink-2); line-height: 1.55;
+  }
+  .ci-spec ul { margin: 4px 0 0; padding-left: 18px; }
+  .ci-spec li { margin-bottom: 5px; }
+  .ci-spec b { color: var(--ink); font-weight: 600; }
+  .ci-spec code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11.5px;
+    background: var(--fill);
+    padding: 1px 5px; border-radius: 3px;
+    color: var(--ink-2);
+  }
+
+  /* Surface-list intro grid */
+  .surf-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-top: 16px;
+  }
+  .surf-card {
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 12px 14px;
+    background: var(--rail);
+  }
+  .surf-card .id {
+    font-size: 10.5px;
+    color: var(--ink-3);
+    margin-bottom: 4px;
+    font-feature-settings: "tnum" 1;
+  }
+  .surf-card .nm { font-size: 13px; font-weight: 600; color: var(--ink); margin-bottom: 4px; letter-spacing: -0.005em; }
+  .surf-card .sub { font-size: 11.5px; color: var(--ink-2); line-height: 1.45; }
+</style>
+</head>
+<body data-screen-label="08 Top Chrome Menus">
+
+<header class="page-head">
+  <div class="eyebrow">HI-FI · BATCH B · CHUNK 01 · B1</div>
+  <h1>Kova — 08 · Top-chrome menus</h1>
+  <p>The eleven popovers anchored to the canvas top bar — main menu (logo dropdown, 8 submenus) and the file-name dropdown. Densities, separators, kbd-glyph styling, and destructive coloring lock here for every other right-click / overflow / dropdown surface in Batch B.</p>
+  <div class="meta">Scope · 11 popovers · 1440 design width · dark mode · inherits kova-hifi.css verbatim · Reka DropdownMenu shell</div>
+  <div class="legend">
+    <span class="sw"><i style="background:#ededea"></i>primary text</span>
+    <span class="sw"><i style="background:#7e7e79"></i>kbd glyph / meta</span>
+    <span class="sw"><i style="background:#e87a4a"></i>destructive</span>
+    <span class="sw"><i style="background:#5a7dff"></i>anchor pin (catalog only)</span>
+  </div>
+
+  <div class="surf-grid">
+    <div class="surf-card"><div class="id">B1.1</div><div class="nm">Main menu — root</div><div class="sub">8 triggers (Vector hidden). Each row label-left + ▶ chevron right. Anchored to logo dropdown.</div></div>
+    <div class="surf-card"><div class="id">B1.2</div><div class="nm">File ▶</div><div class="sub">New / Export / version history / Move to trash. ⇧⌘E · ⌥⌘S kbd.</div></div>
+    <div class="surf-card"><div class="id">B1.3</div><div class="nm">Edit ▶</div><div class="sub">Undo · Cut/Copy/Paste · Copy as ▶ · Find · Select. Densest submenu.</div></div>
+    <div class="surf-card"><div class="id">B1.4</div><div class="nm">View ▶</div><div class="sub">Pages nav · UI toggles · Panels ▶ · 5 toggleable overlays · Zoom.</div></div>
+    <div class="surf-card"><div class="id">B1.5</div><div class="nm">Object ▶</div><div class="sub">Group · Z-order · Rotate/Flip · Use as mask · Boolean ops ▶ (multi-select).</div></div>
+    <div class="surf-card"><div class="id">B1.6</div><div class="nm">Text ▶</div><div class="sub">Lists · Create link · Case ▶ · text-suggestions Phase 2.</div></div>
+    <div class="surf-card"><div class="id">B1.7</div><div class="nm">Arrange ▶</div><div class="sub">Round to pixel · Pack · Distribute spacing/edges (8 distribute variants).</div></div>
+    <div class="surf-card"><div class="id">B1.8</div><div class="nm">Preferences ▶</div><div class="sub">Accessibility-only in MVP per 03 doc §2.9. One item.</div></div>
+    <div class="surf-card"><div class="id">B1.9</div><div class="nm">Help &amp; account ▶</div><div class="sub">Reduced subset (per founder 26-04-25): Help · Keyboard shortcuts · Log out.</div></div>
+    <div class="surf-card"><div class="id">B1.10</div><div class="nm">Vector ▶</div><div class="sub">TRIGGER HIDDEN. All items removed in MVP — no menu entry rendered.</div></div>
+    <div class="surf-card"><div class="id">B1.11</div><div class="nm">File-name dropdown</div><div class="sub">Distinct popover. Rename / Duplicate / Save / Show / Export / Move to trash.</div></div>
+    <div class="surf-card" style="background:var(--accent-soft);border-color:var(--accent-2);">
+      <div class="id" style="color:var(--accent-ink);opacity:0.7;">LOCK</div>
+      <div class="nm" style="color:var(--accent-ink);">Reka DropdownMenu shell</div>
+      <div class="sub" style="color:var(--accent-ink);">Tokens, density, separators, kbd-glyphs, destructive coloring lock here. Inherited by B3/B4/B5/B7.1/B10.</div>
+    </div>
+  </div>
+</header>
+
+<!-- =================================================================
+     B1.1 · Main menu (root) — anchored to logo dropdown
+     ================================================================= -->
+<section class="block">
+  <header>
+    <div class="tag">B1.1 · main menu — root popover</div>
+    <h2>Main menu — root popover (logo dropdown trigger, 8 entries)</h2>
+    <p class="intro">First item ("Back to dashboard") was specced in Brief A · A_canvas_nav.2 — re-rendered here in canonical place. Vector ▶ entry hidden (B1.10). Each ▶-bearing row opens a sub-popover anchored to its right edge.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Top chrome · main menu open</div><div class="id">B1.1</div></div>
+    <div class="canvas stage" data-screen-label="B1.1 Main menu root">
+      <div class="surface"></div>
+
+      <!-- Top chrome -->
+      <div class="top">
+        <div class="left">
+          <div class="logo-trigger open">
+            <span class="mark">K</span>
+            <span class="chev"><i data-lucide="chevron-down" class="ic"></i></span>
+          </div>
+          <div class="crumbs">
+            <span class="crumb-brand"><span class="lg">N</span>Nike</span>
+            <span class="sep"><i data-lucide="chevron-right" class="ic"></i></span>
+            <span>Files</span>
+            <span class="sep"><i data-lucide="chevron-right" class="ic"></i></span>
+            <span class="file-trigger">Spring Drop<span class="chev"><i data-lucide="chevron-down" class="ic"></i></span></span>
+          </div>
+        </div>
+        <div class="right">
+          <span class="autosave"><i data-lucide="check" class="ic"></i>Saved</span>
+          <span class="avatar">J</span>
+        </div>
+      </div>
+
+      <!-- Pin marker on the logo -->
+      <div class="anchor-pin" style="left:30px; top:42px;"></div>
+
+      <!-- Main menu popover -->
+      <div class="menu w-260" style="left:14px; top:60px;">
+        <div class="item">
+          <span class="arr"><i data-lucide="arrow-left" class="ic"></i></span>
+          <span class="lbl">Back to dashboard</span>
+        </div>
+        <div class="sep"></div>
+        <div class="item has-sub">
+          <span class="lbl">File</span>
+          <span class="arr"><i data-lucide="chevron-right" class="ic"></i></span>
+        </div>
+        <div class="item has-sub">
+          <span class="lbl">Edit</span>
+          <span class="arr"><i data-lucide="chevron-right" class="ic"></i></span>
+        </div>
+        <div class="item has-sub">
+          <span class="lbl">View</span>
+          <span class="arr"><i data-lucide="chevron-right" class="ic"></i></span>
+        </div>
+        <div class="item has-sub">
+          <span class="lbl">Object</span>
+          <span class="arr"><i data-lucide="chevron-right" class="ic"></i></span>
+        </div>
+        <div class="item has-sub">
+          <span class="lbl">Text</span>
+          <span class="arr"><i data-lucide="chevron-right" class="ic"></i></span>
+        </div>
+        <div class="item has-sub">
+          <span class="lbl">Arrange</span>
+          <span class="arr"><i data-lucide="chevron-right" class="ic"></i></span>
+        </div>
+        <div class="sep"></div>
+        <div class="item has-sub">
+          <span class="lbl">Preferences</span>
+          <span class="arr"><i data-lucide="chevron-right" class="ic"></i></span>
+        </div>
+        <div class="item has-sub">
+          <span class="lbl">Help and account</span>
+          <span class="arr"><i data-lucide="chevron-right" class="ic"></i></span>
+        </div>
+      </div>
+
+      <div class="stage-note">
+        <b>Notes</b>
+        Vector ▶ entry hidden per founder 2026-04-25 — all child items removed in MVP, so the trigger is not rendered. Phase 2 reinstates if vector items return. Boolean ops live as a sub-popover under Object ▶ instead.
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Trigger anchor.</strong> The menu opens flush below the logo dropdown — left-aligned to the logo, 8px below the top bar. Same anchor as A_canvas_nav.2.</li>
+      <li><strong>Row density.</strong> 26px row height, 4px outer pad, 5px corner radius. Matches A6 Avatar dropdown + A2a sidebar selector. Do not loosen.</li>
+      <li><strong>Item content.</strong> Label flush-left (10px from popover edge), submenu chevron flush-right (8px). Top "Back to dashboard" carries a left arrow icon to read as navigation, not a submenu.</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- =================================================================
+     B1.2 + B1.3 + B1.4 — File / Edit / View submenus
+     ================================================================= -->
+<section class="block">
+  <header>
+    <div class="tag">B1.2 · B1.3 · B1.4 · file / edit / view</div>
+    <h2>Submenus — File · Edit · View</h2>
+    <p class="intro">Three of the most-used submenus. Sub-popovers are anchored to the right edge of their parent row (3px gap) and inherit the same Reka shell. Items with shortcuts carry a right-aligned <code>kbd-row</code>; items that open a further sub-popover carry a ▶ chevron.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">File ▶ submenu</div><div class="id">B1.2</div></div>
+    <div class="canvas stage" data-screen-label="B1.2 File submenu">
+      <div class="surface"></div>
+      <div class="top">
+        <div class="left">
+          <div class="logo-trigger open"><span class="mark">K</span><span class="chev"><i data-lucide="chevron-down" class="ic"></i></span></div>
+          <div class="crumbs">
+            <span class="crumb-brand"><span class="lg">N</span>Nike</span>
+            <span class="sep"><i data-lucide="chevron-right" class="ic"></i></span>
+            <span>Files</span>
+            <span class="sep"><i data-lucide="chevron-right" class="ic"></i></span>
+            <span class="file-trigger">Spring Drop<span class="chev"><i data-lucide="chevron-down" class="ic"></i></span></span>
+          </div>
+        </div>
+        <div class="right"><span class="autosave"><i data-lucide="check" class="ic"></i>Saved</span><span class="avatar">J</span></div>
+      </div>
+
+      <!-- root menu (compressed, with File hovered) -->
+      <div class="menu w-260" style="left:14px; top:60px;">
+        <div class="item"><span class="arr"><i data-lucide="arrow-left" class="ic"></i></span><span class="lbl">Back to dashboard</span></div>
+        <div class="sep"></div>
+        <div class="item has-sub hovered"><span class="lbl">File</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="item has-sub"><span class="lbl">Edit</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="item has-sub"><span class="lbl">View</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="item has-sub"><span class="lbl">Object</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="item has-sub"><span class="lbl">Text</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="item has-sub"><span class="lbl">Arrange</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="sep"></div>
+        <div class="item has-sub"><span class="lbl">Preferences</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="item has-sub"><span class="lbl">Help and account</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+      </div>
+
+      <!-- File submenu -->
+      <div class="menu sub w-260" style="left:282px; top:88px;">
+        <div class="item">
+          <span class="lbl">New design</span>
+        </div>
+        <div class="item">
+          <span class="lbl">Place image…</span>
+        </div>
+        <div class="item">
+          <span class="lbl">Export…</span>
+        </div>
+        <div class="sep"></div>
+        <div class="item">
+          <span class="lbl">Save to version history</span>
+          <span class="kbd-row"><kbd class="glyph">⌥</kbd><kbd class="glyph">⌘</kbd><kbd>S</kbd></span>
+        </div>
+        <div class="item">
+          <span class="lbl">Show version history</span>
+        </div>
+        <div class="sep"></div>
+        <div class="item destructive">
+          <span class="lbl">Move to trash</span>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Sub-popover offset.</strong> 22px to the right of the parent menu's right edge, top edge aligned 4px below the parent row's top. Same offset every sub-popover in the batch.</li>
+      <li><strong>Save to version history</strong> opens A8.1 Snapshot dialog (Brief A locked). <strong>Show version history</strong> opens B12 Snapshot timeline panel (replaces inspector).</li>
+      <li><strong>Move to trash</strong> destructive coloring (warn token) + opens B13 useConfirm modal (A8.4 destructive variant).</li>
+    </ul></div>
+  </div>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Edit ▶ submenu</div><div class="id">B1.3</div></div>
+    <div class="canvas stage tall" data-screen-label="B1.3 Edit submenu">
+      <div class="surface"></div>
+      <div class="top">
+        <div class="left">
+          <div class="logo-trigger open"><span class="mark">K</span><span class="chev"><i data-lucide="chevron-down" class="ic"></i></span></div>
+          <div class="crumbs">
+            <span class="crumb-brand"><span class="lg">N</span>Nike</span>
+            <span class="sep"><i data-lucide="chevron-right" class="ic"></i></span>
+            <span>Files</span>
+            <span class="sep"><i data-lucide="chevron-right" class="ic"></i></span>
+            <span class="file-trigger">Spring Drop<span class="chev"><i data-lucide="chevron-down" class="ic"></i></span></span>
+          </div>
+        </div>
+        <div class="right"><span class="autosave"><i data-lucide="check" class="ic"></i>Saved</span><span class="avatar">J</span></div>
+      </div>
+
+      <div class="menu w-260" style="left:14px; top:60px;">
+        <div class="item"><span class="arr"><i data-lucide="arrow-left" class="ic"></i></span><span class="lbl">Back to dashboard</span></div>
+        <div class="sep"></div>
+        <div class="item has-sub"><span class="lbl">File</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="item has-sub hovered"><span class="lbl">Edit</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="item has-sub"><span class="lbl">View</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="item has-sub"><span class="lbl">Object</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="item has-sub"><span class="lbl">Text</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="item has-sub"><span class="lbl">Arrange</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="sep"></div>
+        <div class="item has-sub"><span class="lbl">Preferences</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="item has-sub"><span class="lbl">Help and account</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+      </div>
+
+      <!-- Edit submenu -->
+      <div class="menu sub w-280" style="left:282px; top:118px;">
+        <div class="item">
+          <span class="lbl">Undo</span>
+          <span class="kbd-row"><kbd class="glyph">⌘</kbd><kbd>Z</kbd></span>
+        </div>
+        <div class="item">
+          <span class="lbl">Redo</span>
+          <span class="kbd-row"><kbd class="glyph">⇧</kbd><kbd class="glyph">⌘</kbd><kbd>Z</kbd></span>
+        </div>
+        <div class="sep"></div>
+        <div class="item">
+          <span class="lbl">Cut</span>
+          <span class="kbd-row"><kbd class="glyph">⌘</kbd><kbd>X</kbd></span>
+        </div>
+        <div class="item">
+          <span class="lbl">Copy</span>
+          <span class="kbd-row"><kbd class="glyph">⌘</kbd><kbd>C</kbd></span>
+        </div>
+        <div class="item">
+          <span class="lbl">Paste</span>
+          <span class="kbd-row"><kbd class="glyph">⌘</kbd><kbd>V</kbd></span>
+        </div>
+        <div class="item">
+          <span class="lbl">Paste to replace</span>
+          <span class="kbd-row"><kbd class="glyph">⇧</kbd><kbd class="glyph">⌘</kbd><kbd>R</kbd></span>
+        </div>
+        <div class="item">
+          <span class="lbl">Duplicate</span>
+          <span class="kbd-row"><kbd class="glyph">⌘</kbd><kbd>D</kbd></span>
+        </div>
+        <div class="sep"></div>
+        <div class="item has-sub">
+          <span class="lbl">Copy as</span>
+          <span class="arr"><i data-lucide="chevron-right" class="ic"></i></span>
+        </div>
+        <div class="item">
+          <span class="lbl">Copy properties</span>
+          <span class="kbd-row"><kbd class="glyph">⌥</kbd><kbd class="glyph">⌘</kbd><kbd>C</kbd></span>
+        </div>
+        <div class="item">
+          <span class="lbl">Paste properties</span>
+          <span class="kbd-row"><kbd class="glyph">⌥</kbd><kbd class="glyph">⌘</kbd><kbd>V</kbd></span>
+        </div>
+        <div class="item">
+          <span class="lbl">Pick color</span>
+          <span class="kbd-row"><kbd class="glyph">⌃</kbd><kbd>C</kbd></span>
+        </div>
+        <div class="sep"></div>
+        <div class="item">
+          <span class="lbl">Find</span>
+          <span class="kbd-row"><kbd class="glyph">⌘</kbd><kbd>F</kbd></span>
+        </div>
+        <div class="item">
+          <span class="lbl">Find next</span>
+          <span class="kbd-row"><kbd class="glyph">⇧</kbd><kbd class="glyph">⌘</kbd><kbd>F</kbd></span>
+        </div>
+        <div class="item">
+          <span class="lbl">Find previous</span>
+          <span class="kbd-row"><kbd class="glyph">⇧</kbd><kbd class="glyph">⌘</kbd><kbd>D</kbd></span>
+        </div>
+        <div class="sep"></div>
+        <div class="item">
+          <span class="lbl">Select none</span>
+        </div>
+        <div class="item">
+          <span class="lbl">Select inverse</span>
+          <span class="kbd-row"><kbd class="glyph">⇧</kbd><kbd class="glyph">⌘</kbd><kbd>A</kbd></span>
+        </div>
+      </div>
+
+      <div class="stage-note">
+        <b>Edit submenu — implementation</b>
+        Copy as ▶ holds a single child item ("Copy as PNG") per founder pass-2 re-semantic. Pick color invokes B9 Eyedropper canvas overlay; standalone copies hex to clipboard per Q20.
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>kbd glyph order.</strong> macOS-canonical: ⌃ (control) → ⌥ (option) → ⇧ (shift) → ⌘ (cmd) → letter. Each glyph in its own <code>&lt;kbd&gt;</code>; no boxes around individual chips — relies on glyph + monospace tone alone (matches A8.2).</li>
+      <li><strong>Find (⌘F)</strong> opens B11 Find overlay (top-of-canvas floating bar). Find next/previous reuse the same overlay's state.</li>
+      <li><strong>Copy as ▶</strong> is the only sub-of-sub in this batch; sub-of-sub-popover follows the same offset rule (right edge + 22px).</li>
+    </ul></div>
+  </div>
+
+  <div class="screen">
+    <div class="cap"><div class="name">View ▶ submenu</div><div class="id">B1.4</div></div>
+    <div class="canvas stage tall" data-screen-label="B1.4 View submenu">
+      <div class="surface"></div>
+      <div class="top">
+        <div class="left">
+          <div class="logo-trigger open"><span class="mark">K</span><span class="chev"><i data-lucide="chevron-down" class="ic"></i></span></div>
+          <div class="crumbs">
+            <span class="crumb-brand"><span class="lg">N</span>Nike</span>
+            <span class="sep"><i data-lucide="chevron-right" class="ic"></i></span>
+            <span>Files</span>
+            <span class="sep"><i data-lucide="chevron-right" class="ic"></i></span>
+            <span class="file-trigger">Spring Drop<span class="chev"><i data-lucide="chevron-down" class="ic"></i></span></span>
+          </div>
+        </div>
+        <div class="right"><span class="autosave"><i data-lucide="check" class="ic"></i>Saved</span><span class="avatar">J</span></div>
+      </div>
+
+      <div class="menu w-260" style="left:14px; top:60px;">
+        <div class="item"><span class="arr"><i data-lucide="arrow-left" class="ic"></i></span><span class="lbl">Back to dashboard</span></div>
+        <div class="sep"></div>
+        <div class="item has-sub"><span class="lbl">File</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="item has-sub"><span class="lbl">Edit</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="item has-sub hovered"><span class="lbl">View</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="item has-sub"><span class="lbl">Object</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="item has-sub"><span class="lbl">Text</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="item has-sub"><span class="lbl">Arrange</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="sep"></div>
+        <div class="item has-sub"><span class="lbl">Preferences</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="item has-sub"><span class="lbl">Help and account</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+      </div>
+
+      <!-- View submenu -->
+      <div class="menu sub w-280" style="left:282px; top:148px;">
+        <div class="item">
+          <span class="lbl">Previous page</span>
+          <span class="kbd-row"><kbd class="glyph">⌥</kbd><kbd class="glyph">⌘</kbd><kbd class="glyph">↑</kbd></span>
+        </div>
+        <div class="item">
+          <span class="lbl">Next page</span>
+          <span class="kbd-row"><kbd class="glyph">⌥</kbd><kbd class="glyph">⌘</kbd><kbd class="glyph">↓</kbd></span>
+        </div>
+        <div class="sep"></div>
+        <div class="item">
+          <span class="lbl">Show / hide UI</span>
+          <span class="kbd-row"><kbd class="glyph">⌘</kbd><kbd>\</kbd></span>
+        </div>
+        <div class="item">
+          <span class="lbl">Minimize UI</span>
+          <span class="kbd-row"><kbd class="glyph">⇧</kbd><kbd class="glyph">⌘</kbd><kbd>\</kbd></span>
+        </div>
+        <div class="item has-sub">
+          <span class="lbl">Panels</span>
+          <span class="arr"><i data-lucide="chevron-right" class="ic"></i></span>
+        </div>
+        <div class="sep"></div>
+        <div class="item checkable">
+          <span class="check"><i data-lucide="check" class="ic"></i></span>
+          <span class="lbl">Show frame outlines</span>
+        </div>
+        <div class="item checkable">
+          <span class="check"><i data-lucide="check" class="ic"></i></span>
+          <span class="lbl">Show mask outlines</span>
+        </div>
+        <div class="item checkable">
+          <span class="check"><i data-lucide="check" class="ic"></i></span>
+          <span class="lbl">Show slices</span>
+        </div>
+        <div class="item checkable checked">
+          <span class="check"><i data-lucide="check" class="ic"></i></span>
+          <span class="lbl">Show layout guides</span>
+        </div>
+        <div class="item checkable disabled">
+          <span class="check"><i data-lucide="check" class="ic"></i></span>
+          <span class="lbl">Show pixel grid</span>
+          <span class="ph2">Phase 2</span>
+        </div>
+        <div class="sep"></div>
+        <div class="item">
+          <span class="lbl">Zoom in</span>
+          <span class="kbd-row"><kbd class="glyph">⌘</kbd><kbd>+</kbd></span>
+        </div>
+        <div class="item">
+          <span class="lbl">Zoom out</span>
+          <span class="kbd-row"><kbd class="glyph">⌘</kbd><kbd>−</kbd></span>
+        </div>
+        <div class="item">
+          <span class="lbl">Zoom to 100%</span>
+          <span class="kbd-row"><kbd class="glyph">⌘</kbd><kbd>0</kbd></span>
+        </div>
+        <div class="item">
+          <span class="lbl">Zoom to fit</span>
+          <span class="kbd-row"><kbd class="glyph">⇧</kbd><kbd>1</kbd></span>
+        </div>
+        <div class="item">
+          <span class="lbl">Zoom to selection</span>
+          <span class="kbd-row"><kbd class="glyph">⇧</kbd><kbd>2</kbd></span>
+        </div>
+      </div>
+
+      <div class="stage-note">
+        <b>Toggle items — pattern</b>
+        Toggle rows leave 18px on the left for the check glyph. <code>.checked</code> = glyph visible (Show layout guides default ON per Q5 Layer 1 prefs). Disabled rows use muted ink + a "Phase 2" mono pill on the right. Show pixel grid auto-shows at zoom &gt; 800% in MVP; toggle item is Phase 2.
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Toggleable rows</strong> use a 12px check glyph in the left gutter. Reka <code>CheckboxItem</code> primitive (Component Inventory 07).</li>
+      <li><strong>Default ON</strong> only "Show layout guides" per Q5 Layer 1 prefs persistence. Frame outlines / mask outlines / slices default OFF.</li>
+      <li><strong>Panels ▶</strong> sub-popover holds two checkable rows: "Left visible" / "Right visible" — per §2.1 row 7. Persists per-canvas (Yjs awareness).</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- =================================================================
+     B1.5 + B1.6 + B1.7 — Object / Text / Arrange
+     ================================================================= -->
+<section class="block">
+  <header>
+    <div class="tag">B1.5 · B1.6 · B1.7 · object / text / arrange</div>
+    <h2>Submenus — Object · Text · Arrange</h2>
+    <p class="intro">Object holds the Boolean ops sub-popover (Q3 — visible on multi-select only). Text holds Case ▶ (4 transforms). Arrange holds the 8 distribute-edge variants per §2.2.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Object ▶ submenu (multi-select context, Boolean ops visible)</div><div class="id">B1.5</div></div>
+    <div class="canvas stage tall" data-screen-label="B1.5 Object submenu">
+      <div class="surface"></div>
+      <div class="top">
+        <div class="left">
+          <div class="logo-trigger open"><span class="mark">K</span><span class="chev"><i data-lucide="chevron-down" class="ic"></i></span></div>
+          <div class="crumbs">
+            <span class="crumb-brand"><span class="lg">N</span>Nike</span>
+            <span class="sep"><i data-lucide="chevron-right" class="ic"></i></span>
+            <span>Files</span>
+            <span class="sep"><i data-lucide="chevron-right" class="ic"></i></span>
+            <span class="file-trigger">Spring Drop<span class="chev"><i data-lucide="chevron-down" class="ic"></i></span></span>
+          </div>
+        </div>
+        <div class="right"><span class="autosave"><i data-lucide="check" class="ic"></i>Saved</span><span class="avatar">J</span></div>
+      </div>
+
+      <div class="menu w-260" style="left:14px; top:60px;">
+        <div class="item"><span class="arr"><i data-lucide="arrow-left" class="ic"></i></span><span class="lbl">Back to dashboard</span></div>
+        <div class="sep"></div>
+        <div class="item has-sub"><span class="lbl">File</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="item has-sub"><span class="lbl">Edit</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="item has-sub"><span class="lbl">View</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="item has-sub hovered"><span class="lbl">Object</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="item has-sub"><span class="lbl">Text</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="item has-sub"><span class="lbl">Arrange</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="sep"></div>
+        <div class="item has-sub"><span class="lbl">Preferences</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="item has-sub"><span class="lbl">Help and account</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+      </div>
+
+      <!-- Object submenu -->
+      <div class="menu sub w-280" style="left:282px; top:178px;">
+        <div class="item">
+          <span class="lbl">Group</span>
+          <span class="kbd-row"><kbd class="glyph">⌘</kbd><kbd>G</kbd></span>
+        </div>
+        <div class="item">
+          <span class="lbl">Ungroup</span>
+          <span class="kbd-row"><kbd class="glyph">⇧</kbd><kbd class="glyph">⌘</kbd><kbd>G</kbd></span>
+        </div>
+        <div class="item">
+          <span class="lbl">Frame selection</span>
+          <span class="kbd-row"><kbd class="glyph">⌥</kbd><kbd class="glyph">⌘</kbd><kbd>G</kbd></span>
+        </div>
+        <div class="sep"></div>
+        <div class="item">
+          <span class="lbl">Bring forward</span>
+          <span class="kbd-row"><kbd class="glyph">⌘</kbd><kbd>]</kbd></span>
+        </div>
+        <div class="item">
+          <span class="lbl">Send backward</span>
+          <span class="kbd-row"><kbd class="glyph">⌘</kbd><kbd>[</kbd></span>
+        </div>
+        <div class="item">
+          <span class="lbl">Bring to front</span>
+          <span class="kbd-row"><kbd class="glyph">⌥</kbd><kbd class="glyph">⌘</kbd><kbd>]</kbd></span>
+        </div>
+        <div class="item">
+          <span class="lbl">Send to back</span>
+          <span class="kbd-row"><kbd class="glyph">⌥</kbd><kbd class="glyph">⌘</kbd><kbd>[</kbd></span>
+        </div>
+        <div class="sep"></div>
+        <div class="item"><span class="lbl">Rotate 90° left</span></div>
+        <div class="item"><span class="lbl">Rotate 90° right</span></div>
+        <div class="item"><span class="lbl">Rotate 180°</span></div>
+        <div class="item">
+          <span class="lbl">Flip horizontal</span>
+          <span class="kbd-row"><kbd class="glyph">⇧</kbd><kbd>H</kbd></span>
+        </div>
+        <div class="item">
+          <span class="lbl">Flip vertical</span>
+          <span class="kbd-row"><kbd class="glyph">⇧</kbd><kbd>V</kbd></span>
+        </div>
+        <div class="sep"></div>
+        <div class="item">
+          <span class="lbl">Use as mask</span>
+          <span class="kbd-row"><kbd class="glyph">⌃</kbd><kbd class="glyph">⌘</kbd><kbd>M</kbd></span>
+        </div>
+        <div class="sep"></div>
+        <div class="item has-sub hovered">
+          <span class="lbl">Boolean operations</span>
+          <span class="arr"><i data-lucide="chevron-right" class="ic"></i></span>
+        </div>
+        <div class="sep"></div>
+        <div class="item">
+          <span class="lbl">Lock / unlock</span>
+          <span class="kbd-row"><kbd class="glyph">⇧</kbd><kbd class="glyph">⌘</kbd><kbd>L</kbd></span>
+        </div>
+        <div class="item">
+          <span class="lbl">Show / hide</span>
+          <span class="kbd-row"><kbd class="glyph">⇧</kbd><kbd class="glyph">⌘</kbd><kbd>H</kbd></span>
+        </div>
+        <div class="item">
+          <span class="lbl">Rename…</span>
+          <span class="kbd-row"><kbd class="glyph">⌘</kbd><kbd>R</kbd></span>
+        </div>
+        <div class="item destructive">
+          <span class="lbl">Delete</span>
+          <span class="kbd-row"><kbd class="glyph">⌫</kbd></span>
+        </div>
+      </div>
+
+      <!-- Boolean ops sub-of-sub -->
+      <div class="menu sub w-260" style="left:572px; top:454px;">
+        <div class="group">Multi-select only</div>
+        <div class="item">
+          <span class="lbl">Union</span>
+          <span class="kbd-row"><kbd class="glyph">⌘</kbd><kbd class="glyph">⌥</kbd><kbd>U</kbd></span>
+        </div>
+        <div class="item">
+          <span class="lbl">Subtract</span>
+          <span class="kbd-row"><kbd class="glyph">⌘</kbd><kbd class="glyph">⌥</kbd><kbd>S</kbd></span>
+        </div>
+        <div class="item">
+          <span class="lbl">Intersect</span>
+          <span class="kbd-row"><kbd class="glyph">⌘</kbd><kbd class="glyph">⌥</kbd><kbd>I</kbd></span>
+        </div>
+        <div class="item">
+          <span class="lbl">Exclude</span>
+          <span class="kbd-row"><kbd class="glyph">⌘</kbd><kbd class="glyph">⌥</kbd><kbd>X</kbd></span>
+        </div>
+      </div>
+
+      <div class="stage-note">
+        <b>Boolean ops visibility</b>
+        Sub-popover only renders when ≥2 layers are selected (per Q3 #14). On single-select, "Boolean operations" row stays in the parent menu but renders as <code>.disabled</code> with a tooltip "Select 2+ layers" — captured visually at right under B1.5-alt below.
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Use as mask</strong> shortcut is <code>⌃⌘M</code> (control-cmd-M, NOT just ⌘M) per chunk checklist. Toggles existing <code>isMask</code> per Q2.</li>
+      <li><strong>Boolean operations</strong> Z-order in submenu sits between Use-as-mask and Lock/Unlock — separated by mini-separators on both sides for visual grouping.</li>
+      <li><strong>Delete row</strong> uses destructive token color + ⌫ glyph; opens A8.4 useConfirm for irreversible items (multi-select containing locked layers, etc).</li>
+    </ul></div>
+  </div>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Text ▶ submenu — Case ▶ open</div><div class="id">B1.6</div></div>
+    <div class="canvas stage" data-screen-label="B1.6 Text submenu">
+      <div class="surface"></div>
+      <div class="top">
+        <div class="left">
+          <div class="logo-trigger open"><span class="mark">K</span><span class="chev"><i data-lucide="chevron-down" class="ic"></i></span></div>
+          <div class="crumbs">
+            <span class="crumb-brand"><span class="lg">N</span>Nike</span>
+            <span class="sep"><i data-lucide="chevron-right" class="ic"></i></span>
+            <span>Files</span>
+            <span class="sep"><i data-lucide="chevron-right" class="ic"></i></span>
+            <span class="file-trigger">Spring Drop<span class="chev"><i data-lucide="chevron-down" class="ic"></i></span></span>
+          </div>
+        </div>
+        <div class="right"><span class="autosave"><i data-lucide="check" class="ic"></i>Saved</span><span class="avatar">J</span></div>
+      </div>
+
+      <div class="menu w-260" style="left:14px; top:60px;">
+        <div class="item"><span class="arr"><i data-lucide="arrow-left" class="ic"></i></span><span class="lbl">Back to dashboard</span></div>
+        <div class="sep"></div>
+        <div class="item has-sub"><span class="lbl">File</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="item has-sub"><span class="lbl">Edit</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="item has-sub"><span class="lbl">View</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="item has-sub"><span class="lbl">Object</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="item has-sub hovered"><span class="lbl">Text</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="item has-sub"><span class="lbl">Arrange</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="sep"></div>
+        <div class="item has-sub"><span class="lbl">Preferences</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="item has-sub"><span class="lbl">Help and account</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+      </div>
+
+      <!-- Text submenu -->
+      <div class="menu sub w-280" style="left:282px; top:208px;">
+        <div class="item">
+          <span class="lbl">Bulleted list</span>
+          <span class="kbd-row"><kbd class="glyph">⇧</kbd><kbd class="glyph">⌘</kbd><kbd>8</kbd></span>
+        </div>
+        <div class="item">
+          <span class="lbl">Numbered list</span>
+          <span class="kbd-row"><kbd class="glyph">⇧</kbd><kbd class="glyph">⌘</kbd><kbd>7</kbd></span>
+        </div>
+        <div class="sep"></div>
+        <div class="item">
+          <span class="lbl">Create link</span>
+          <span class="kbd-row"><kbd class="glyph">⇧</kbd><kbd class="glyph">⌘</kbd><kbd>U</kbd></span>
+        </div>
+        <div class="sep"></div>
+        <div class="item has-sub hovered">
+          <span class="lbl">Case</span>
+          <span class="arr"><i data-lucide="chevron-right" class="ic"></i></span>
+        </div>
+        <div class="sep"></div>
+        <div class="item disabled">
+          <span class="lbl">Show text suggestions</span>
+          <span class="ph2">Phase 2</span>
+        </div>
+      </div>
+
+      <!-- Case sub-of-sub -->
+      <div class="menu sub w-260" style="left:572px; top:288px;">
+        <div class="item checkable checked">
+          <span class="check"><i data-lucide="check" class="ic"></i></span>
+          <span class="lbl">As typed</span>
+        </div>
+        <div class="item checkable"><span class="check"><i data-lucide="check" class="ic"></i></span><span class="lbl">UPPERCASE</span></div>
+        <div class="item checkable"><span class="check"><i data-lucide="check" class="ic"></i></span><span class="lbl">lowercase</span></div>
+        <div class="item checkable"><span class="check"><i data-lucide="check" class="ic"></i></span><span class="lbl">Title Case</span></div>
+        <div class="item checkable"><span class="check"><i data-lucide="check" class="ic"></i></span><span class="lbl">Sentence case</span></div>
+      </div>
+
+      <div class="stage-note">
+        <b>Case — radio behavior</b>
+        Five options behave as a radio group: only one checkmark visible at a time. "As typed" = original. Per §2.2 + §2.7 — text-suggestions toggle stays disabled in MVP (Phase 2 row).
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Create link</strong> is designer-internal reference (per chunk note) — stored on the text node, not exported in slice rendering.</li>
+      <li><strong>Lists</strong> are list-block toggles per Q3 — same shortcuts as Figma so muscle memory transfers.</li>
+      <li><strong>Show text suggestions</strong> stays as a visible-but-disabled row carrying the Phase 2 pill — the founder wants users to know it's coming, not surprised by the absence.</li>
+    </ul></div>
+  </div>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Arrange ▶ submenu</div><div class="id">B1.7</div></div>
+    <div class="canvas stage tall" data-screen-label="B1.7 Arrange submenu">
+      <div class="surface"></div>
+      <div class="top">
+        <div class="left">
+          <div class="logo-trigger open"><span class="mark">K</span><span class="chev"><i data-lucide="chevron-down" class="ic"></i></span></div>
+          <div class="crumbs">
+            <span class="crumb-brand"><span class="lg">N</span>Nike</span>
+            <span class="sep"><i data-lucide="chevron-right" class="ic"></i></span>
+            <span>Files</span>
+            <span class="sep"><i data-lucide="chevron-right" class="ic"></i></span>
+            <span class="file-trigger">Spring Drop<span class="chev"><i data-lucide="chevron-down" class="ic"></i></span></span>
+          </div>
+        </div>
+        <div class="right"><span class="autosave"><i data-lucide="check" class="ic"></i>Saved</span><span class="avatar">J</span></div>
+      </div>
+
+      <div class="menu w-260" style="left:14px; top:60px;">
+        <div class="item"><span class="arr"><i data-lucide="arrow-left" class="ic"></i></span><span class="lbl">Back to dashboard</span></div>
+        <div class="sep"></div>
+        <div class="item has-sub"><span class="lbl">File</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="item has-sub"><span class="lbl">Edit</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="item has-sub"><span class="lbl">View</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="item has-sub"><span class="lbl">Object</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="item has-sub"><span class="lbl">Text</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="item has-sub hovered"><span class="lbl">Arrange</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="sep"></div>
+        <div class="item has-sub"><span class="lbl">Preferences</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="item has-sub"><span class="lbl">Help and account</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+      </div>
+
+      <!-- Arrange submenu -->
+      <div class="menu sub w-280" style="left:282px; top:238px;">
+        <div class="item">
+          <span class="lbl">Round to pixel</span>
+        </div>
+        <div class="sep"></div>
+        <div class="group">Pack</div>
+        <div class="item"><span class="lbl">Pack horizontal</span></div>
+        <div class="item"><span class="lbl">Pack vertical</span></div>
+        <div class="sep"></div>
+        <div class="group">Distribute spacing</div>
+        <div class="item">
+          <span class="lbl">Distribute horizontal spacing</span>
+          <span class="kbd-row"><kbd class="glyph">⌃</kbd><kbd class="glyph">⌥</kbd><kbd>H</kbd></span>
+        </div>
+        <div class="item">
+          <span class="lbl">Distribute vertical spacing</span>
+          <span class="kbd-row"><kbd class="glyph">⌃</kbd><kbd class="glyph">⌥</kbd><kbd>V</kbd></span>
+        </div>
+        <div class="sep"></div>
+        <div class="group">Distribute edges</div>
+        <div class="item"><span class="lbl">Distribute left edges</span></div>
+        <div class="item"><span class="lbl">Distribute horizontal centers</span></div>
+        <div class="item"><span class="lbl">Distribute right edges</span></div>
+        <div class="item"><span class="lbl">Distribute top edges</span></div>
+        <div class="item"><span class="lbl">Distribute vertical centers</span></div>
+        <div class="item"><span class="lbl">Distribute bottom edges</span></div>
+      </div>
+
+      <div class="stage-note">
+        <b>Group labels</b>
+        Arrange is the only B1 submenu using inline group labels (mono caps). Used because the 6 distribute-edge variants are otherwise indistinguishable at a glance and need scanning aid.
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Group labels</strong> use the same mono caps treatment as <code>.ctx-group</code> on the left rail — 9.5px, 0.12em letterspacing, ink-3, 8/4px padding. Re-used pattern, not new tokens.</li>
+      <li><strong>Round to pixel</strong> sits alone above the first separator — primary affordance for image-export hygiene (sub-pixel coords blur slice output).</li>
+      <li><strong>All 8 distribute variants</strong> per §2.2 row — keep keyboard shortcuts only on the two spacing-distribute rows (most used). Edge-distribute variants are menu-only.</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- =================================================================
+     B1.8 + B1.9 — Preferences / Help & account
+     ================================================================= -->
+<section class="block">
+  <header>
+    <div class="tag">B1.8 · B1.9 · preferences / help</div>
+    <h2>Submenus — Preferences · Help &amp; account</h2>
+    <p class="intro">Two minimal submenus. Preferences holds Accessibility-only in MVP (per 03 doc §2.9). Help &amp; account is the founder-resolved reduced subset (3 rows) — duplicates from Avatar dropdown A6 are intentionally absent.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Preferences ▶ submenu</div><div class="id">B1.8</div></div>
+    <div class="canvas stage" data-screen-label="B1.8 Preferences submenu">
+      <div class="surface"></div>
+      <div class="top">
+        <div class="left">
+          <div class="logo-trigger open"><span class="mark">K</span><span class="chev"><i data-lucide="chevron-down" class="ic"></i></span></div>
+          <div class="crumbs">
+            <span class="crumb-brand"><span class="lg">N</span>Nike</span>
+            <span class="sep"><i data-lucide="chevron-right" class="ic"></i></span>
+            <span>Files</span>
+            <span class="sep"><i data-lucide="chevron-right" class="ic"></i></span>
+            <span class="file-trigger">Spring Drop<span class="chev"><i data-lucide="chevron-down" class="ic"></i></span></span>
+          </div>
+        </div>
+        <div class="right"><span class="autosave"><i data-lucide="check" class="ic"></i>Saved</span><span class="avatar">J</span></div>
+      </div>
+
+      <div class="menu w-260" style="left:14px; top:60px;">
+        <div class="item"><span class="arr"><i data-lucide="arrow-left" class="ic"></i></span><span class="lbl">Back to dashboard</span></div>
+        <div class="sep"></div>
+        <div class="item has-sub"><span class="lbl">File</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="item has-sub"><span class="lbl">Edit</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="item has-sub"><span class="lbl">View</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="item has-sub"><span class="lbl">Object</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="item has-sub"><span class="lbl">Text</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="item has-sub"><span class="lbl">Arrange</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="sep"></div>
+        <div class="item has-sub hovered"><span class="lbl">Preferences</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="item has-sub"><span class="lbl">Help and account</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+      </div>
+
+      <!-- Preferences submenu -->
+      <div class="menu sub w-260" style="left:282px; top:296px;">
+        <div class="item">
+          <span class="lbl">Accessibility settings…</span>
+        </div>
+      </div>
+
+      <div class="stage-note">
+        <b>One-item submenus</b>
+        Single-item submenus still use the standard Reka shell (no special "minimal" variant). Padding, radius, shadow stay constant — visual consistency over information density.
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Accessibility settings…</strong> opens A8.3 Accessibility modal (Brief A locked). Modal style inherits from A8.4 useConfirm pattern.</li>
+      <li><strong>Other prefs intentionally absent</strong> per 03 doc §2.9 — auto-save toggles, snap defaults, etc all live in the canvas surface itself or as session-only behavior. No global app prefs in MVP.</li>
+    </ul></div>
+  </div>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Help &amp; account ▶ submenu</div><div class="id">B1.9</div></div>
+    <div class="canvas stage" data-screen-label="B1.9 Help and account submenu">
+      <div class="surface"></div>
+      <div class="top">
+        <div class="left">
+          <div class="logo-trigger open"><span class="mark">K</span><span class="chev"><i data-lucide="chevron-down" class="ic"></i></span></div>
+          <div class="crumbs">
+            <span class="crumb-brand"><span class="lg">N</span>Nike</span>
+            <span class="sep"><i data-lucide="chevron-right" class="ic"></i></span>
+            <span>Files</span>
+            <span class="sep"><i data-lucide="chevron-right" class="ic"></i></span>
+            <span class="file-trigger">Spring Drop<span class="chev"><i data-lucide="chevron-down" class="ic"></i></span></span>
+          </div>
+        </div>
+        <div class="right"><span class="autosave"><i data-lucide="check" class="ic"></i>Saved</span><span class="avatar">J</span></div>
+      </div>
+
+      <div class="menu w-260" style="left:14px; top:60px;">
+        <div class="item"><span class="arr"><i data-lucide="arrow-left" class="ic"></i></span><span class="lbl">Back to dashboard</span></div>
+        <div class="sep"></div>
+        <div class="item has-sub"><span class="lbl">File</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="item has-sub"><span class="lbl">Edit</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="item has-sub"><span class="lbl">View</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="item has-sub"><span class="lbl">Object</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="item has-sub"><span class="lbl">Text</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="item has-sub"><span class="lbl">Arrange</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="sep"></div>
+        <div class="item has-sub"><span class="lbl">Preferences</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="item has-sub hovered"><span class="lbl">Help and account</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+      </div>
+
+      <!-- Help submenu -->
+      <div class="menu sub w-260" style="left:282px; top:326px;">
+        <div class="item">
+          <span class="lbl">Help</span>
+        </div>
+        <div class="item">
+          <span class="lbl">Keyboard shortcuts</span>
+          <span class="kbd-row"><kbd class="glyph">⇧</kbd><kbd class="glyph">⌘</kbd><kbd>?</kbd></span>
+        </div>
+        <div class="sep"></div>
+        <div class="item">
+          <span class="lbl">Log out</span>
+        </div>
+      </div>
+
+      <div class="stage-note">
+        <b>Why so few?</b>
+        Avatar dropdown A6 already holds Account · Brand kit · Plan · Sign out. Founder ruled the canvas main-menu Help submenu shouldn't duplicate. Only canvas-relevant items remain — Help (keyboard ref), Keyboard shortcuts (the actual <code>⇧⌘?</code> dialog), Log out (last-resort, in case avatar is offscreen).
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Help</strong> = mailto: in MVP (per Q16); upgrades to external <code>/help</code> URL in Phase 2 — same row, different href.</li>
+      <li><strong>Keyboard shortcuts</strong> opens A8.2 dialog (Brief A locked). <code>⇧⌘?</code> kbd matches the global shortcut.</li>
+      <li><strong>Log out</strong> calls <code>useAuthStore.signOut()</code> — no destructive coloring (signing out is recoverable; not the same as deletion).</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- =================================================================
+     B1.10 — Vector trigger HIDDEN (callout-only screen)
+     ================================================================= -->
+<section class="block">
+  <header>
+    <div class="tag">B1.10 · vector trigger HIDDEN</div>
+    <h2>Vector ▶ — trigger not rendered (Phase 2)</h2>
+    <p class="intro">Per founder 2026-04-25, every Vector item was removed from MVP scope. Rather than render an empty submenu, the Vector ▶ root entry is hidden entirely. Documenting here so the implementation matches.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">Vector trigger absent — root menu unchanged</div><div class="id">B1.10</div></div>
+    <div class="canvas stage" data-screen-label="B1.10 Vector hidden">
+      <div class="surface"></div>
+      <div class="top">
+        <div class="left">
+          <div class="logo-trigger open"><span class="mark">K</span><span class="chev"><i data-lucide="chevron-down" class="ic"></i></span></div>
+          <div class="crumbs">
+            <span class="crumb-brand"><span class="lg">N</span>Nike</span>
+            <span class="sep"><i data-lucide="chevron-right" class="ic"></i></span>
+            <span>Files</span>
+            <span class="sep"><i data-lucide="chevron-right" class="ic"></i></span>
+            <span class="file-trigger">Spring Drop<span class="chev"><i data-lucide="chevron-down" class="ic"></i></span></span>
+          </div>
+        </div>
+        <div class="right"><span class="autosave"><i data-lucide="check" class="ic"></i>Saved</span><span class="avatar">J</span></div>
+      </div>
+
+      <!-- Same menu as B1.1 — call out that no Vector entry exists -->
+      <div class="menu w-260" style="left:14px; top:60px;">
+        <div class="item"><span class="arr"><i data-lucide="arrow-left" class="ic"></i></span><span class="lbl">Back to dashboard</span></div>
+        <div class="sep"></div>
+        <div class="item has-sub"><span class="lbl">File</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="item has-sub"><span class="lbl">Edit</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="item has-sub"><span class="lbl">View</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="item has-sub"><span class="lbl">Object</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="item has-sub"><span class="lbl">Text</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="item has-sub"><span class="lbl">Arrange</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="sep"></div>
+        <div class="item has-sub"><span class="lbl">Preferences</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+        <div class="item has-sub"><span class="lbl">Help and account</span><span class="arr"><i data-lucide="chevron-right" class="ic"></i></span></div>
+      </div>
+
+      <!-- Phantom Vector trigger — visualized as where it would have gone -->
+      <div style="position:absolute; left:298px; top:300px; width:300px;
+                  border:1px dashed var(--accent); border-radius:6px;
+                  padding:10px 12px; background: rgba(90,125,255,0.04);
+                  color: var(--accent-ink); font-size: 11.5px; line-height: 1.5;">
+        <div style="font-size:9.5px; color: var(--accent); opacity:0.7; margin-bottom:4px; font-weight:500;">where vector ▶ would live</div>
+        Trigger NOT rendered in MVP — entire row is omitted from the menu, no separator, no spacing. The next item ("Preferences") sits directly beneath Arrange.<br>
+        Phase 2 reinstates if Vector items return (per 03 doc §2.2).
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Implementation rule.</strong> When all child items of a sub-popover would be hidden, the parent trigger is also hidden — no empty submenus, no &ldquo;Coming soon&rdquo; placeholders inside the Reka shell.</li>
+      <li><strong>Layout doesn't shift.</strong> Removing Vector keeps the menu height at the same 8-trigger count it always had (Vector was never in the founder's MVP list).</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- =================================================================
+     B1.11 — File-name dropdown popover
+     ================================================================= -->
+<section class="block">
+  <header>
+    <div class="tag">B1.11 · file-name dropdown</div>
+    <h2>File-name dropdown popover (distinct from main menu)</h2>
+    <p class="intro">Anchored to the chevron next to the canvas/file name in top chrome. Five KEEP-new items per 03 doc §3.3, deliberately overlapping with File ▶ for Figma-pattern symmetry — both entry points expose the same actions. DEFER/REMOVE items not shown.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">File-name dropdown · 5 items + Move to trash</div><div class="id">B1.11</div></div>
+    <div class="canvas stage" data-screen-label="B1.11 File-name dropdown">
+      <div class="surface"></div>
+      <div class="top">
+        <div class="left">
+          <div class="logo-trigger"><span class="mark">K</span><span class="chev"><i data-lucide="chevron-down" class="ic"></i></span></div>
+          <div class="crumbs">
+            <span class="crumb-brand"><span class="lg">N</span>Nike</span>
+            <span class="sep"><i data-lucide="chevron-right" class="ic"></i></span>
+            <span>Files</span>
+            <span class="sep"><i data-lucide="chevron-right" class="ic"></i></span>
+            <span class="file-trigger open">Spring Drop<span class="chev"><i data-lucide="chevron-down" class="ic"></i></span></span>
+          </div>
+        </div>
+        <div class="right"><span class="autosave"><i data-lucide="check" class="ic"></i>Saved</span><span class="avatar">J</span></div>
+      </div>
+
+      <!-- Pin marker on file-name -->
+      <div class="anchor-pin" style="left:208px; top:42px;"></div>
+
+      <!-- File-name dropdown popover — anchored under file-name, not logo -->
+      <div class="menu w-280" style="left:172px; top:60px;">
+        <div class="item">
+          <span class="lbl">Rename</span>
+        </div>
+        <div class="item">
+          <span class="lbl">Duplicate</span>
+        </div>
+        <div class="sep"></div>
+        <div class="item">
+          <span class="lbl">Save to version history</span>
+          <span class="kbd-row"><kbd class="glyph">⌥</kbd><kbd class="glyph">⌘</kbd><kbd>S</kbd></span>
+        </div>
+        <div class="item">
+          <span class="lbl">Show version history</span>
+        </div>
+        <div class="sep"></div>
+        <div class="item">
+          <span class="lbl">Export…</span>
+          <span class="kbd-row"><kbd class="glyph">⇧</kbd><kbd class="glyph">⌘</kbd><kbd>E</kbd></span>
+        </div>
+        <div class="sep"></div>
+        <div class="item destructive">
+          <span class="lbl">Move to trash</span>
+        </div>
+      </div>
+
+      <div class="stage-note">
+        <b>Items NOT in MVP</b>
+        DEFER: Add to sidebar (pinned canvases) · File color profile (sRGB-only MVP) · Move file (cross-brand transfer). REMOVE: Publish library · Create branch (single-user, no team libraries per CLAUDE.md).
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Anchor.</strong> Popover left-aligns to the file-name text (NOT the chevron) — 4px gap below the chrome. Width 280px; minimum width to fit the longest shortcut row ("Save to version history" + ⌥⌘S).</li>
+      <li><strong>Rename</strong> uses <code>use-inline-rename.ts</code> — same composable as B3.2 page rename. The file-name region itself becomes an inline text input; popover closes immediately.</li>
+      <li><strong>Duplicate</strong> creates a sibling canvas within current brand, opens new tab. No confirmation modal (recoverable via trash).</li>
+      <li><strong>Move to trash</strong> opens B13 useConfirm modal (A8.4 destructive variant) — only destructive item in this popover.</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- =================================================================
+     LOCK HERE — Reka DropdownMenu shell, component inventory entry
+     ================================================================= -->
+<section class="block">
+  <header>
+    <div class="tag">LOCK · component inventory 07 · new entry</div>
+    <h2>Reka DropdownMenu shell — visual contract</h2>
+    <p class="intro">All eleven popovers above share one component shell. Locking it here so B3.4 (page right-click), B4.8 (layer right-click), B5.7 (asset right-click), B7.1 (inspector overflow •••), B10 (canvas right-click), and B2 (tool dropdowns) inherit byte-identical chrome.</p>
+  </header>
+
+  <div class="ci-grid">
+    <div class="ci-card">
+      <div class="h">demo · standalone shell</div>
+      <div class="demo">
+        <div class="menu w-260" style="position:absolute; left:24px; top:24px;">
+          <div class="item"><span class="lbl">Standard item</span></div>
+          <div class="item hovered">
+            <span class="lbl">Hovered item</span>
+            <span class="kbd-row"><kbd class="glyph">⌘</kbd><kbd>K</kbd></span>
+          </div>
+          <div class="item has-sub">
+            <span class="lbl">Has submenu</span>
+            <span class="arr"><i data-lucide="chevron-right" class="ic"></i></span>
+          </div>
+          <div class="sep"></div>
+          <div class="item checkable checked">
+            <span class="check"><i data-lucide="check" class="ic"></i></span>
+            <span class="lbl">Toggle · on</span>
+          </div>
+          <div class="item checkable">
+            <span class="check"><i data-lucide="check" class="ic"></i></span>
+            <span class="lbl">Toggle · off</span>
+          </div>
+          <div class="sep"></div>
+          <div class="item disabled">
+            <span class="lbl">Disabled item</span>
+            <span class="ph2">Phase 2</span>
+          </div>
+          <div class="item destructive">
+            <span class="lbl">Destructive</span>
+            <span class="kbd-row"><kbd class="glyph">⌫</kbd></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="ci-spec">
+      <ul>
+        <li><b>Tokens — surfaces.</b> Background <code>--rail</code>; border 1px <code>--line</code>; radius 8px; padding 4px (outer); shadow <code>0 24px 60px rgba(0,0,0,0.55), 0 1px 0 rgba(255,255,255,0.03)</code>.</li>
+        <li><b>Item row.</b> Height 26px; horizontal padding 10px left / 8px right; gap 10px; radius 5px; cursor pointer. Hover background <code>--line-2</code>; opened-submenu state background <code>--fill</code>.</li>
+        <li><b>Label.</b> 12.5px Inter 450; <code>--ink</code>. Flush-left.</li>
+        <li><b>Submenu chevron.</b> 12px Lucide chevron-right; <code>--ink-3</code>; flush-right with 8px outer pad.</li>
+        <li><b>kbd glyph row.</b> Right-aligned. Inter 11px tabular-nums; <code>--ink-3</code> default, <code>--ink-2</code> on hover. macOS glyph order: ⌃ → ⌥ → ⇧ → ⌘ → letter. Each glyph in its own <code>&lt;kbd&gt;</code>; no boxes around individual chips.</li>
+        <li><b>Toggle row.</b> 18px gutter on left for 12px Lucide check glyph; <code>opacity:0</code> when off, <code>1</code> when checked. <code>.checkable</code> reduces left padding to 6px to keep optical alignment with non-toggle rows.</li>
+        <li><b>Separator.</b> 1px <code>--line-2</code>; 4px vertical margin / 4px horizontal margin (pulls away from item radius).</li>
+        <li><b>Section group label.</b> 9.5px Inter 500 sentence-case; <code>--ink-3</code>; padding 8/10/4/10. Used in Arrange (Pack / Distribute spacing / Distribute edges) and Boolean ops (Multi-select only).</li>
+        <li><b>Disabled.</b> Color <code>--ink-3</code>; cursor default; no hover bg. Phase 2 chip = 9.5px Inter, <code>--fill</code> bg, 1px/5px pad, 3px radius — pinned right.</li>
+        <li><b>Destructive.</b> Color <code>--warn</code> (label + kbd row); hover bg <code>--warn-soft</code>. Used for "Move to trash" / "Delete" — opens A8.4 useConfirm.</li>
+        <li><b>Min-widths.</b> <code>w-260</code> (root menus, simple submenus). <code>w-280</code> (Edit / Object / View / Arrange / Text — anything with longer rows or kbd-row crowding). Never less than 220px.</li>
+        <li><b>Sub-popover offset.</b> 22px right of parent menu's right edge; top edge aligned 4px below the parent row's top. Same offset for every sub-of-sub.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- =================================================================
+     Surface inventory + delivery notes
+     ================================================================= -->
+<section class="block">
+  <header>
+    <div class="tag">delivery notes · chunk 01</div>
+    <h2>Surface table + Phase-2 callouts</h2>
+    <p class="intro">All 11 B1 surfaces accounted for. Cross-references to Brief A locked components inline; Phase 2 stubs marked.</p>
+  </header>
+
+  <div style="border:1px solid var(--line); border-radius:8px; overflow:hidden; background:var(--rail);">
+    <div style="display:grid; grid-template-columns: 80px 1fr 1fr 200px; gap:0; font-size:10.5px; color:var(--ink-3); padding:10px 14px; border-bottom:1px solid var(--line);">
+      <span>id</span><span>surface</span><span>opens / links to</span><span>status</span>
+    </div>
+    <div style="display:grid; grid-template-columns: 80px 1fr 1fr 200px; padding:10px 14px; border-bottom:1px solid var(--line-2); font-size:12.5px;">
+      <span class="mono" style="color:var(--ink-3);">B1.1</span>
+      <span style="color:var(--ink);">Main menu — root (8 entries)</span>
+      <span style="color:var(--ink-2);">Logo dropdown trigger; A_canvas_nav.2 anchor</span>
+      <span><span class="tag-mono ok">Drawn</span></span>
+    </div>
+    <div style="display:grid; grid-template-columns: 80px 1fr 1fr 200px; padding:10px 14px; border-bottom:1px solid var(--line-2); font-size:12.5px;">
+      <span class="mono" style="color:var(--ink-3);">B1.2</span>
+      <span style="color:var(--ink);">File ▶</span>
+      <span style="color:var(--ink-2);">Save → A8.1 · Show → B12 · Trash → B13</span>
+      <span><span class="tag-mono ok">Drawn</span></span>
+    </div>
+    <div style="display:grid; grid-template-columns: 80px 1fr 1fr 200px; padding:10px 14px; border-bottom:1px solid var(--line-2); font-size:12.5px;">
+      <span class="mono" style="color:var(--ink-3);">B1.3</span>
+      <span style="color:var(--ink);">Edit ▶ (densest)</span>
+      <span style="color:var(--ink-2);">Find → B11 · Pick color → B9 eyedropper</span>
+      <span><span class="tag-mono ok">Drawn</span></span>
+    </div>
+    <div style="display:grid; grid-template-columns: 80px 1fr 1fr 200px; padding:10px 14px; border-bottom:1px solid var(--line-2); font-size:12.5px;">
+      <span class="mono" style="color:var(--ink-3);">B1.4</span>
+      <span style="color:var(--ink);">View ▶</span>
+      <span style="color:var(--ink-2);">5 toggles · Panels ▶ · Zoom · Q5 prefs</span>
+      <span><span class="tag-mono ok">Drawn</span></span>
+    </div>
+    <div style="display:grid; grid-template-columns: 80px 1fr 1fr 200px; padding:10px 14px; border-bottom:1px solid var(--line-2); font-size:12.5px;">
+      <span class="mono" style="color:var(--ink-3);">B1.5</span>
+      <span style="color:var(--ink);">Object ▶ + Boolean ops ▶ (multi-select)</span>
+      <span style="color:var(--ink-2);">Q3 · Use as mask Q2</span>
+      <span><span class="tag-mono ok">Drawn</span></span>
+    </div>
+    <div style="display:grid; grid-template-columns: 80px 1fr 1fr 200px; padding:10px 14px; border-bottom:1px solid var(--line-2); font-size:12.5px;">
+      <span class="mono" style="color:var(--ink-3);">B1.6</span>
+      <span style="color:var(--ink);">Text ▶ + Case ▶</span>
+      <span style="color:var(--ink-2);">Show text suggestions = Phase 2</span>
+      <span><span class="tag-mono ok">Drawn</span></span>
+    </div>
+    <div style="display:grid; grid-template-columns: 80px 1fr 1fr 200px; padding:10px 14px; border-bottom:1px solid var(--line-2); font-size:12.5px;">
+      <span class="mono" style="color:var(--ink-3);">B1.7</span>
+      <span style="color:var(--ink);">Arrange ▶ (8 distribute variants)</span>
+      <span style="color:var(--ink-2);">§2.2 row</span>
+      <span><span class="tag-mono ok">Drawn</span></span>
+    </div>
+    <div style="display:grid; grid-template-columns: 80px 1fr 1fr 200px; padding:10px 14px; border-bottom:1px solid var(--line-2); font-size:12.5px;">
+      <span class="mono" style="color:var(--ink-3);">B1.8</span>
+      <span style="color:var(--ink);">Preferences ▶ (1 row)</span>
+      <span style="color:var(--ink-2);">Accessibility settings → A8.3</span>
+      <span><span class="tag-mono ok">Drawn</span></span>
+    </div>
+    <div style="display:grid; grid-template-columns: 80px 1fr 1fr 200px; padding:10px 14px; border-bottom:1px solid var(--line-2); font-size:12.5px;">
+      <span class="mono" style="color:var(--ink-3);">B1.9</span>
+      <span style="color:var(--ink);">Help &amp; account ▶ (3 rows)</span>
+      <span style="color:var(--ink-2);">Keyboard shortcuts → A8.2 · signOut()</span>
+      <span><span class="tag-mono ok">Drawn</span></span>
+    </div>
+    <div style="display:grid; grid-template-columns: 80px 1fr 1fr 200px; padding:10px 14px; border-bottom:1px solid var(--line-2); font-size:12.5px;">
+      <span class="mono" style="color:var(--ink-3);">B1.10</span>
+      <span style="color:var(--ink);">Vector ▶ — TRIGGER HIDDEN</span>
+      <span style="color:var(--ink-2);">All items removed in MVP</span>
+      <span><span class="tag-mono">Phase 2</span></span>
+    </div>
+    <div style="display:grid; grid-template-columns: 80px 1fr 1fr 200px; padding:10px 14px; font-size:12.5px;">
+      <span class="mono" style="color:var(--ink-3);">B1.11</span>
+      <span style="color:var(--ink);">File-name dropdown</span>
+      <span style="color:var(--ink-2);">Distinct popover, 5 KEEP items + Trash</span>
+      <span><span class="tag-mono ok">Drawn</span></span>
+    </div>
+  </div>
+
+  <div style="margin-top:24px; display:grid; grid-template-columns: 1fr 1fr; gap:16px;">
+    <div style="border:1px solid var(--line); border-radius:8px; padding:16px; background:var(--rail);">
+      <div class="mono" style="font-size:10.5px;color:var(--ink-3);margin-bottom:8px;">No new tokens needed</div>
+      <div style="font-size:12.5px; color:var(--ink-2); line-height:1.55;">
+        Every color, font-size, spacing value, and shadow used here resolves to an existing <code>kova-hifi.css</code> token. The Reka DropdownMenu shell composes from <code>--rail</code> / <code>--line</code> / <code>--line-2</code> / <code>--fill</code> / <code>--ink</code> / <code>--ink-2</code> / <code>--ink-3</code> / <code>--warn</code> / <code>--warn-soft</code> only. No drift.
+      </div>
+    </div>
+    <div style="border:1px solid var(--line); border-radius:8px; padding:16px; background:var(--rail);">
+      <div class="mono" style="font-size:10.5px;color:var(--ink-3);margin-bottom:8px;">Component inventory 07 — adds</div>
+      <div style="font-size:12.5px; color:var(--ink-2); line-height:1.55;">
+        <b>Reka DropdownMenu shell</b> (this chunk's lock entry) — to be added to 07 as a single component card. All other Batch B chunks reference it by name only. Specs above under "LOCK HERE" form the card's body.
+      </div>
+    </div>
+    <div style="border:1px solid var(--line); border-radius:8px; padding:16px; background:var(--rail);">
+      <div class="mono" style="font-size:10.5px;color:var(--ink-3);margin-bottom:8px;">Brand-switcher absence</div>
+      <div style="font-size:12.5px; color:var(--ink-2); line-height:1.55;">
+        Grep audit: zero occurrences of <code>brand-picker</code> / <code>brand-switcher</code> / <code>brand-dropdown</code> / "Switch brand" / "Change brand" in this file. The only brand mention is the breadcrumb crumb-brand "← Nike" — read-only, no popover.
+      </div>
+    </div>
+    <div style="border:1px solid var(--line); border-radius:8px; padding:16px; background:var(--rail);">
+      <div class="mono" style="font-size:10.5px;color:var(--ink-3);margin-bottom:8px;">Open Qs raised</div>
+      <div style="font-size:12.5px; color:var(--ink-2); line-height:1.55;">
+        None blocking. All 12 brief-authoring Qs from §9 already founder-resolved. B1 chunk has no §9 specific-questions list of its own — proceeded as written.
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer style="padding:32px 64px;border-top:1px solid var(--line);background:var(--bg);color:var(--ink-3);font-size:11px;">
+  Kova · hi-fi · batch B · chunk 01 · B1 top-chrome menus · 11 popovers · 1440 design width · dark mode · v1
+</footer>
+
+<script>
+  if (window.lucide) {
+    window.lucide.createIcons({ attrs: { 'stroke-width': 1.6 } });
+  }
+</script>
+</body>
+</html>

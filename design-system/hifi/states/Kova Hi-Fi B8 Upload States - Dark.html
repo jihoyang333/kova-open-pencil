@@ -1,0 +1,1209 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<title>Kova — Hi-fi · B8 Upload States · Dark</title>
+<meta name="viewport" content="width=1440" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+<link rel="stylesheet" href="../../design-system/kova-hifi.css" />
+<script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
+<style>
+/* ============================================================
+   FILE B8 — File / image upload UI states
+   Eight scenes covering avatar (A7.1), logo + font (A7.3.1),
+   and KB sources (A7.3.7) upload flows. Triggers, in-progress,
+   success, error, multi-state list, and a cross-reference to
+   the Round-1 B1.1 success toast.
+
+   Tokens come from kova-hifi.css. New layout-only classes for
+   upload-specific UI (drop zone, progress ring/bar, file rows).
+   No new tokens, no new fonts. Existing .pill.warn / --warn /
+   --warn-edge cover the error variant per design.md §1.1
+   degraded ramp.
+
+   The dashed 2px border on the drop zone (B8.1) is allowed
+   under design.md §5 ban 6 because dashed reads as a different
+   visual class than solid 2px (which IS banned). Documented in
+   delivery notes.
+   ============================================================ */
+
+  body { background: var(--bg); }
+
+  /* Section heading bump */
+  section.block .s-section h2 {
+    margin: 0 0 2px; font-size: 16px;
+    letter-spacing: -0.005em;
+    color: var(--ink); font-weight: 600;
+    font-family: 'Inter', system-ui, sans-serif;
+    text-transform: none;
+  }
+
+  /* ============================================================
+     LIFTED CHROME — A7 Account (subset for upload contexts)
+     Source: batch-a/dark/Kova Hi-Fi A7 Account Page - Dark.html
+     Lift verbatim. Used to wrap B8.1 (KB drop zone) and B8.7
+     (file list in KB sources). Diff vs source: ZERO.
+     ============================================================ */
+  .acc-frame { height: 100%; display: grid; grid-template-columns: 220px 1fr; background: var(--page); }
+  .acc-rail {
+    background: var(--rail);
+    border-right: 1px solid var(--line);
+    padding: 28px 12px 16px;
+    display: flex; flex-direction: column; gap: 4px;
+    min-height: 0; overflow: auto;
+  }
+  .acc-rail .title {
+    font-size: 17px; font-weight: 600; letter-spacing: -0.012em;
+    padding: 0 10px 14px; color: var(--ink);
+  }
+  .acc-rail .it {
+    display: flex; align-items: center; gap: 9px;
+    padding: 7px 10px; border-radius: 5px;
+    color: var(--ink-2); cursor: pointer; font-size: 13px;
+  }
+  .acc-rail .it:hover { background: var(--line-2); color: var(--ink); }
+  .acc-rail .it.active { background: var(--fill); color: var(--ink); font-weight: 500; }
+  .acc-rail .it .ic { width: 14px; height: 14px; opacity: .8; }
+  .acc-rail .it.active .ic { opacity: 1; }
+  .acc-rail .it.danger { color: var(--warn); }
+  .acc-rail .it.danger:hover { background: rgba(232,122,74,0.08); }
+  .acc-rail .sep { height: 1px; background: var(--line-2); margin: 10px 8px; }
+
+  .acc-main { overflow: auto; display: flex; flex-direction: column; }
+  .acc-hero {
+    padding: 40px 56px 24px;
+    border-bottom: 1px solid var(--line-2);
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 24px;
+  }
+  .acc-hero h1 {
+    margin: 0 0 6px; font-size: 24px; font-weight: 600; letter-spacing: -0.012em;
+  }
+  .acc-hero p {
+    margin: 0; color: var(--ink-2); font-size: 13.5px; max-width: 600px;
+  }
+  .brandpick {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 10px 6px 7px;
+    border: 1px solid var(--line); border-radius: 7px;
+    background: var(--page); cursor: pointer;
+    font-size: 12.5px; color: var(--ink);
+    transition: border-color .1s ease;
+  }
+  .brandpick:hover { border-color: var(--ink-3); }
+  .brandpick .logo {
+    width: 20px; height: 20px; border-radius: 4px;
+    background: var(--ink); color: var(--page);
+    display: grid; place-items: center;
+    font-weight: 700; font-size: 10px; letter-spacing: -0.02em;
+  }
+  .brandpick .nm { font-weight: 600; letter-spacing: -0.005em; }
+  .brandpick .caret { color: var(--ink-3); margin-left: 2px; }
+
+  .acc-content {
+    padding: 32px 56px 80px;
+    display: flex; flex-direction: column; gap: 36px;
+    max-width: 940px;
+  }
+  .s-section { display: flex; flex-direction: column; gap: 12px; }
+  .s-section .desc {
+    color: var(--ink-3); font-size: 12.5px; margin: 0; max-width: 640px;
+  }
+  .bk-wrap { display: grid; grid-template-columns: 188px 1fr; gap: 24px; }
+  .bk-subnav {
+    display: flex; flex-direction: column; gap: 1px;
+    position: sticky; top: 16px; align-self: start;
+  }
+  .bk-subnav .it {
+    display: flex; align-items: center; gap: 9px;
+    padding: 6px 10px; border-radius: 5px;
+    color: var(--ink-2); cursor: pointer; font-size: 12.5px;
+  }
+  .bk-subnav .it:hover { background: var(--line-2); color: var(--ink); }
+  .bk-subnav .it.active { background: var(--fill); color: var(--ink); font-weight: 500; }
+  .bk-subnav .it .ic { width: 13px; height: 13px; opacity: .8; }
+  .bk-subnav .head { font-size: 10px; color: var(--ink-3);
+    padding: 0 10px 6px; font-weight: 500;
+  }
+  .bk-pane { min-width: 0; display: flex; flex-direction: column; gap: 18px; }
+
+  /* A7 .row — used for B8.5 / B8.6 contextual rows inside row-stack */
+  .row {
+    display: grid;
+    grid-template-columns: 200px 1fr auto;
+    align-items: center;
+    gap: 20px;
+    padding: 14px 18px;
+    background: var(--page);
+    border: 1px solid var(--line);
+  }
+  .row-stack { display: flex; flex-direction: column; gap: 0; }
+  .row-stack .row { border-radius: 0; border-top-width: 0; }
+  .row-stack .row:first-child {
+    border-top-width: 1px;
+    border-top-left-radius: 7px; border-top-right-radius: 7px;
+  }
+  .row-stack .row:last-child {
+    border-bottom-left-radius: 7px; border-bottom-right-radius: 7px;
+  }
+  .row .lbl { font-size: 13px; font-weight: 500; color: var(--ink); letter-spacing: -0.005em; }
+  .row .lbl .sub { display: block; color: var(--ink-3); font-size: 11.5px; font-weight: 400; margin-top: 2px; line-height: 1.4; }
+
+  /* A7 .ava-lg — large avatar tile (dark-tuned) */
+  .ava-lg {
+    width: 64px; height: 64px; border-radius: 50%;
+    background: var(--fill-2); color: var(--ink);
+    display: grid; place-items: center;
+    font-weight: 600; font-size: 18px; letter-spacing: 0.01em;
+    flex-shrink: 0;
+  }
+
+  /* ============================================================
+     SCENE GRID — for B8.2/B8.3/B8.4/B8.5/B8.6/B8.8 compact display
+     Two-column layout. Each scene-card is a labeled panel.
+     ============================================================ */
+  .scene-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    padding: 24px;
+    background: var(--bg);
+  }
+  .scene-card {
+    background: var(--page); border: 1px solid var(--line);
+    border-radius: 8px; overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+  .scene-card .sc-head {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--line-2);
+    background: var(--rail);
+    display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  }
+  .scene-card .sc-head .nm { font-size: 12px; font-weight: 600; color: var(--ink); }
+  .scene-card .sc-head .id { font-size: 10px; color: var(--ink-3); }
+  .scene-card .sc-body {
+    padding: 32px 24px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 16px; min-height: 240px;
+  }
+  .scene-card .sc-foot {
+    padding: 10px 14px;
+    border-top: 1px solid var(--line-2);
+    background: var(--rail);
+    color: var(--ink-3); font-size: 11px;
+  }
+
+  /* ============================================================
+     NEW COMPONENTS — Upload UI (B8)
+     Flagged in delivery notes. All built on existing tokens.
+     ============================================================ */
+
+  /* B8.1 — Drop zone (dashed 2px exception, see delivery notes) */
+  .upl-zone {
+    width: 100%;
+    border: 2px dashed var(--line);
+    border-radius: 8px;
+    background: var(--bg);
+    padding: 32px 24px;
+    display: flex; flex-direction: column;
+    align-items: center; gap: 8px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .12s ease, background .12s ease;
+  }
+  .upl-zone:hover {
+    border-color: var(--ink-3);
+    background: var(--fill);
+  }
+  .upl-zone .ic-tile {
+    width: 40px; height: 40px; border-radius: 8px;
+    background: var(--fill); color: var(--ink-3);
+    display: grid; place-items: center;
+    margin-bottom: 4px;
+  }
+  .upl-zone .ic-tile .ic { width: 22px; height: 22px; }
+  .upl-zone .h {
+    font-size: 13px; color: var(--ink); font-weight: 500;
+    letter-spacing: -0.003em;
+  }
+  .upl-zone .h .browse {
+    color: var(--accent); cursor: pointer;
+    font-weight: 500;
+  }
+  .upl-zone .types {
+    font-size: 11px; color: var(--ink-3);
+  }
+
+  /* B8.3 — Progress ring (SVG-based, 28px ring around 64px avatar) */
+  .upl-ring-wrap {
+    position: relative;
+    width: 64px; height: 64px;
+    flex-shrink: 0;
+  }
+  .upl-ring-wrap .ava-lg {
+    width: 64px; height: 64px;
+    /* Slightly dim during upload */
+    opacity: 0.6;
+  }
+  .upl-ring-svg {
+    position: absolute; inset: 0;
+    transform: rotate(-90deg);
+    overflow: visible;
+  }
+  .upl-ring-track {
+    fill: none;
+    stroke: var(--line-2);
+    stroke-width: 2;
+  }
+  .upl-ring-fill {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 2;
+    stroke-linecap: round;
+    /* circumference of r=33 = 2π × 33 = ~207.3; offset = 207.3 × (1 - progress) */
+    /* B8.3 shows ~60% complete → offset = 207.3 × 0.4 = ~83 */
+    stroke-dasharray: 207;
+    stroke-dashoffset: 83;
+  }
+  .upl-ring-cancel {
+    position: absolute; right: -6px; top: -6px;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: var(--page); color: var(--ink-3);
+    border: 1px solid var(--line);
+    display: grid; place-items: center;
+    cursor: pointer;
+  }
+  .upl-ring-cancel:hover { color: var(--ink); border-color: var(--ink-3); }
+  .upl-ring-cancel .ic { width: 11px; height: 11px; }
+
+  /* B8.4 — Progress bar (4px track, accent fill) */
+  .upl-bar-panel {
+    width: 100%;
+    background: var(--page); border: 1px solid var(--line);
+    border-radius: 7px;
+    padding: 14px 16px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .upl-bar-panel .row1 {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .upl-bar-panel .file-glyph {
+    width: 28px; height: 28px; border-radius: 5px;
+    background: var(--fill); color: var(--ink-2);
+    display: grid; place-items: center; flex-shrink: 0;
+  }
+  .upl-bar-panel .file-glyph .ic { width: 14px; height: 14px; }
+  .upl-bar-panel .meta {
+    flex: 1; min-width: 0;
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .upl-bar-panel .meta .nm {
+    font-size: 12.5px; color: var(--ink); font-weight: 500;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .upl-bar-panel .meta .sub {
+    font-size: 11px; color: var(--ink-3);
+  }
+  .upl-bar-panel .cancel {
+    width: 22px; height: 22px; border-radius: 4px;
+    color: var(--ink-3); cursor: pointer;
+    display: grid; place-items: center; flex-shrink: 0;
+  }
+  .upl-bar-panel .cancel:hover { color: var(--ink); background: var(--line-2); }
+  .upl-bar-panel .cancel .ic { width: 13px; height: 13px; }
+
+  .upl-bar-track {
+    height: 4px; width: 100%;
+    background: var(--fill);
+    border-radius: 999px;
+    overflow: hidden;
+    position: relative;
+  }
+  .upl-bar-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 999px;
+    transition: width .2s ease-out;
+  }
+
+  /* B8.5 / B8.6 — inline upload-result rows (success / error) */
+  .upl-result {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 14px;
+    background: var(--page);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    width: 100%;
+  }
+  .upl-result .thumb {
+    width: 36px; height: 36px;
+    border-radius: 5px;
+    background: var(--ink); color: var(--page);
+    display: grid; place-items: center;
+    font-weight: 700; font-size: 14px;
+    flex-shrink: 0;
+  }
+  .upl-result .body {
+    flex: 1; min-width: 0;
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .upl-result .body .nm {
+    font-size: 12.5px; color: var(--ink); font-weight: 500;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .upl-result .body .sub {
+    font-size: 11px; color: var(--ink-3);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .upl-result .body .sub .ok-mark {
+    width: 12px; height: 12px;
+    color: var(--accent);
+  }
+  .upl-result .actions {
+    display: flex; gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .upl-result.error {
+    border-left: 3px solid var(--warn);
+    border-color: var(--warn-edge);
+    border-left-color: var(--warn);
+  }
+  .upl-result.error .body .sub { color: var(--warn); }
+  .upl-result.error .body .meta-ext {
+    font-size: 10.5px; color: var(--ink-3);
+    margin-top: 2px;
+  }
+
+  /* B8.7 — multi-state file list */
+  .upl-list {
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    overflow: hidden;
+    background: var(--page);
+  }
+  .upl-list-row {
+    display: grid;
+    grid-template-columns: 24px 1fr 90px auto auto;
+    gap: 12px; align-items: center;
+    padding: 9px 14px;
+    border-top: 1px solid var(--line-2);
+    font-size: 12.5px;
+    min-height: 36px;
+  }
+  .upl-list-row:first-child { border-top: 0; }
+  .upl-list-row .file-ic {
+    width: 18px; height: 18px;
+    color: var(--ink-3);
+    display: grid; place-items: center;
+  }
+  .upl-list-row .nm {
+    color: var(--ink); font-weight: 500;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .upl-list-row .sz {
+    color: var(--ink-3); font-size: 11px;
+    text-align: right;
+  }
+  .upl-list-row .status {
+    display: inline-flex; align-items: center; gap: 6px;
+    color: var(--ink-3); font-size: 11px;
+  }
+  .upl-list-row .status .st-ic { width: 13px; height: 13px; }
+  .upl-list-row .status.success { color: var(--ink-2); }
+  .upl-list-row .status.success .st-ic { color: var(--accent); }
+  .upl-list-row .status.in-progress { color: var(--ink-2); }
+  .upl-list-row .status.in-progress .st-ic { color: var(--accent); }
+  .upl-list-row .status.error { color: var(--warn); }
+  .upl-list-row .status.error .st-ic { color: var(--warn); }
+  .upl-list-row .status.queued { color: var(--ink-3); }
+  .upl-list-row .remove {
+    width: 22px; height: 22px; border-radius: 4px;
+    color: var(--ink-3); cursor: pointer;
+    display: grid; place-items: center;
+  }
+  .upl-list-row .remove:hover { color: var(--ink); background: var(--line-2); }
+  .upl-list-row .remove .ic { width: 12px; height: 12px; }
+  /* Inline progress bar inside in-progress row */
+  .upl-list-row .row-prog {
+    grid-column: 2 / 5;
+    grid-row: 2;
+    height: 3px; width: 100%;
+    background: var(--fill);
+    border-radius: 999px; overflow: hidden;
+    margin-top: 4px;
+  }
+  .upl-list-row .row-prog > i {
+    display: block; height: 100%;
+    background: var(--accent); border-radius: 999px;
+  }
+  .upl-list-row.has-prog { grid-template-rows: auto auto; row-gap: 0; }
+
+  /* ============================================================
+     LIFTED CHROME — B1 Toasts (B8.8 cross-reference)
+     Source: batch-a-additions/dark/batch-0/Kova Hi-Fi B1 Toasts - Dark.html
+     LIFT VERBATIM. The B8.8 success toast is byte-identical to B1.1
+     so the toast pattern stays consistent across CRUD surfaces.
+     Diff vs source: ZERO.
+     ============================================================ */
+  .toast-stack {
+    position: absolute;
+    bottom: 22px; right: 22px;
+    display: flex; flex-direction: column; gap: 8px;
+    align-items: flex-end;
+    z-index: 20;
+    pointer-events: none;
+    max-width: 420px;
+  }
+  .toast {
+    pointer-events: auto;
+    display: flex; align-items: flex-start; gap: 11px;
+    min-width: 280px; max-width: 420px;
+    padding: 12px 14px;
+    background: var(--page);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    box-shadow:
+      0 8px 24px -6px rgba(0,0,0,0.6),
+      0 1px 0 rgba(255,255,255,0.04) inset;
+    font-size: 12.5px;
+    color: var(--ink);
+    line-height: 1.45;
+  }
+  .toast .ic-lead {
+    flex-shrink: 0;
+    width: 14px; height: 14px;
+    color: var(--ink-2);
+    margin-top: 2px;
+  }
+  .toast .body {
+    flex: 1; min-width: 0;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .toast .msg { color: var(--ink); word-wrap: break-word; overflow-wrap: anywhere; }
+  .toast .msg b { font-weight: 600; }
+  .toast .meta { color: var(--ink-3); font-size: 11.5px; }
+  .toast .dismiss {
+    flex-shrink: 0;
+    width: 18px; height: 18px;
+    border-radius: 3px;
+    display: grid; place-items: center;
+    color: var(--ink-3); cursor: pointer;
+    margin-top: -1px; margin-right: -4px;
+  }
+  .toast .dismiss .ic { width: 13px; height: 13px; }
+  .toast.success .ic-lead { color: var(--ink-2); }
+
+  /* ============================================================
+     Canonical 03 chrome — byte-match overrides
+     kova-hifi.css `.nav .item.active` defaults to `var(--accent-soft)`
+     (dark navy fill, reads as solid blue). Canonical 03 inline-overrides
+     to `var(--fill)` (neutral tint). Lift verbatim per founder review.
+     Source: batch-a/dark/Kova Hi-Fi 03 Brand Dashboard - Dark.html §205-221.
+     ============================================================ */
+  .nav .section { letter-spacing: 0.12em; }
+  .nav .item.active { background: var(--fill); color: var(--ink); font-weight: 500; }
+  .nav .item.active .ic { color: currentColor; opacity: 1; }
+  .nav .item .count { font-size: 10.5px; color: var(--ink-3); }
+  .nav .item.active .count { color: var(--ink-3); }
+  .side-search .kbd { font-size: 10px; }
+  .side-footer .avatar { background: var(--warn); color: #fff; }
+
+</style>
+</head>
+<body data-screen-label="B8 Upload States">
+
+<header class="page-head">
+  <div class="eyebrow">HI-FI · BATCH A ADDITIONS · DARK · FILE B8</div>
+  <h1>Upload states · B8.1–B8.8</h1>
+  <p>Eight scenes covering avatar (A7.1), brand-kit logo + font (A7.3.1), and KB sources (A7.3.7) upload flows. Triggers (drop zone, button), in-progress (ring, bar), terminal (success, error), multi-state list, and a cross-reference to the Round-1 B1.1 success toast so cross-surface consistency is provable.</p>
+  <div class="meta">8 scenes · same kova-hifi.css tokens · upload-specific layout classes flagged in delivery notes · density carried from A7</div>
+  <div class="legend">
+    <span class="sw"><i style="background: var(--ink);"></i>primary action</span>
+    <span class="sw"><i style="background: var(--accent);"></i>progress fill (accent)</span>
+    <span class="sw"><i style="background: var(--warn);"></i>error / retry</span>
+    <span class="sw"><i style="background: var(--ink-3);"></i>queued / muted</span>
+  </div>
+</header>
+
+
+<!-- ============================================================
+     B8.1 — Drop zone (KB sources context, in real A7 chrome)
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE B8 · §1 · B8.1 · Drop zone trigger</div>
+    <h2>B8.1 · Drop zone — generic / KB sources</h2>
+    <p class="intro">Dashed-border drop zone with upload-cloud glyph. Used for Knowledge base file sources (A7.3.7). The 2px dashed border is an explicit allowed exception to design.md §5 ban 6 (no 2px borders) — dashed reads as a different visual class than solid 2px. Documented in delivery notes.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">A7.3.7 KB sources · drop zone (idle)</div><div class="id">B8.1 · hi-fi · in-situ</div></div>
+    <div class="canvas tall" data-screen-label="B8.1 Drop zone in A7 KB chrome">
+      <div class="app">
+        <div class="sidebar">
+          <div class="brand-switch">
+            <div class="logo">N</div>
+            <div class="name">Nike</div>
+            <div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div>
+          </div>
+          <div class="side-search">
+            <i data-lucide="search" style="width:13px;height:13px;"></i>
+            <span>Search</span>
+            <span class="kbd">⌘K</span>
+          </div>
+
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item active"><i data-lucide="clock-4" class="ic"></i><span>Recents</span></div>
+            <div class="item"><i data-lucide="calendar-days" class="ic"></i><span>Calendar</span><span class="count">12</span></div>
+
+            <div class="section">Library</div>
+            <div class="item"><i data-lucide="bookmark" class="ic"></i><span>Swipes</span></div>
+            <div class="item"><i data-lucide="layout-template" class="ic"></i><span>Templates</span></div>
+            <div class="item"><i data-lucide="package" class="ic"></i><span>Products</span><span class="count">318</span></div>
+
+            <div class="section">Brand</div>
+            <div class="item"><i data-lucide="sparkles" class="ic"></i><span>Personalization</span></div>
+            <div class="item"><i data-lucide="book-open" class="ic"></i><span>Knowledge base</span></div>
+            <div class="item"><i data-lucide="brain" class="ic"></i><span>Memories</span><span class="count">19</span></div>
+          </div>
+
+          <div class="side-footer">
+            <div class="avatar">JY</div>
+            <div class="who">
+              <b>Jiho Yang</b>
+              <span>Free plan</span>
+            </div>
+            <div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+          </div>
+        </div>
+
+        <div class="main">
+          <div class="topbar">
+            <div class="breadcrumb">
+              <span>Nike</span>
+              <span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <b>Home</b>
+            </div>
+            <div class="actions">
+              <div class="btn sm">
+                <i data-lucide="folder-plus" class="ic"></i>
+                New canvas
+              </div>
+            </div>
+          </div>
+
+          <div class="acc-frame">
+            <div class="acc-rail">
+              <div class="title">Account</div>
+              <div class="it"><i data-lucide="user" class="ic"></i>Profile</div>
+              <div class="it"><i data-lucide="credit-card" class="ic"></i>Plan &amp; billing</div>
+              <div class="it active"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+              <div class="it"><i data-lucide="plug" class="ic"></i>Integrations</div>
+              <div class="sep"></div>
+              <div class="it danger"><i data-lucide="trash-2" class="ic"></i>Danger zone</div>
+            </div>
+
+            <div class="acc-main">
+              <div class="acc-hero">
+                <div class="l">
+                  <h1>Knowledge base</h1>
+                  <p>Documents Kova reads as ground-truth context. Drop a file to start indexing.</p>
+                </div>
+                <div class="r" style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+                  <span class="mono" style=" font-size:10px;letter-spacing:0.1em; color:var(--ink-3);">Editing brand</span>
+                  <div class="brandpick"><div class="logo">N</div><div class="nm">Nike</div><i data-lucide="chevrons-up-down" class="caret" style="width:13px;height:13px;"></i></div>
+                </div>
+              </div>
+
+              <div class="acc-content">
+                <div class="bk-wrap">
+                  <div class="bk-subnav">
+                    <div class="head">Brand Kit</div>
+                    <div class="it"><i data-lucide="palette" class="ic"></i>Visuals</div>
+                    <div class="it"><i data-lucide="user-circle" class="ic"></i>Identity</div>
+                    <div class="it"><i data-lucide="quote" class="ic"></i>Tone snippets</div>
+                    <div class="it"><i data-lucide="layers" class="ic"></i>Saved blocks</div>
+                    <div class="it"><i data-lucide="check-square" class="ic"></i>Writing rules</div>
+                    <div class="it"><i data-lucide="brain" class="ic"></i>Memories</div>
+                    <div class="it active"><i data-lucide="book-open" class="ic"></i>Knowledge base</div>
+                  </div>
+
+                  <div class="bk-pane">
+                    <div class="upl-zone">
+                      <div class="ic-tile"><i data-lucide="upload-cloud" class="ic"></i></div>
+                      <div class="h">Drop files here, or <span class="browse">click to browse</span></div>
+                      <div class="types">PDF · TXT · MD · DOCX · up to 25 MB each</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Dashed 2px border = allowed exception to design.md §5 ban 6.</strong> Dashed reads as a different visual class than solid 2px (the actual ban target). The drop-zone affordance has a long history of dashed treatment — switching to 1px hairline would lose the "drop here" semantic.</li>
+      <li><strong>Icon-tile background uses <code>--fill</code></strong> (idle input fill), echoing the canonical input chrome. Icon glyph in <code>--ink-3</code> stays visible without a colored tile.</li>
+      <li><strong>"click to browse" carries accent ink</strong> because it is a real interactive affordance — same vocabulary as the toast inline-action button (B1.x <code>.ta</code>).</li>
+      <li><strong>Hover state lifts background to <code>--fill</code></strong> and border to <code>--ink-3</code> — same hover treatment as canonical <code>.btn:hover</code> for visual consistency.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     B8.2 – B8.6 — Compact scene-card grid
+     Button, progress ring, progress bar, success, error
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE B8 · §2 · B8.2–B8.6 · Triggers, in-progress, terminal states</div>
+    <h2>Triggers · in-progress · success · error</h2>
+    <p class="intro">Five scenes shown side-by-side as a catalog. Each carries the populated chrome around the upload widget so the affordance reads in context. Avatar context for B8.3 (progress ring), brand-kit logo context for B8.4/B8.5 (progress bar + success), brand-kit font context for B8.6 (error).</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">B8.2–B8.6 catalog</div><div class="id">B8.2 / B8.3 / B8.4 / B8.5 / B8.6</div></div>
+    <div class="canvas tall" data-screen-label="B8.2-B8.6 catalog">
+      <div class="scene-grid">
+
+        <!-- B8.2 Button trigger -->
+        <div class="scene-card">
+          <div class="sc-head"><div class="nm">Button trigger — avatar / logo</div><div class="id">B8.2</div></div>
+          <div class="sc-body">
+            <!-- Show in row context (A7 row layout) -->
+            <div class="row-stack" style="width:100%;">
+              <div class="row">
+                <div class="lbl">Avatar
+                  <span class="sub">PNG, JPG or SVG · square · ≥256px.</span>
+                </div>
+                <div class="val" style="display:flex;align-items:center;gap:14px;">
+                  <div class="ava-lg" style="width:48px;height:48px;font-size:16px;">JY</div>
+                  <span style="font-size:11px;color:var(--ink-3);">No image uploaded</span>
+                </div>
+                <button class="btn sm" type="button">
+                  <i data-lucide="upload" class="ic"></i>
+                  Upload image
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="sc-foot">Uses canonical <code>.btn.sm</code> + Lucide <code>upload</code> 14×14. Drop-zone alternative for compact contexts.</div>
+        </div>
+
+        <!-- B8.3 Progress ring (avatar) -->
+        <div class="scene-card">
+          <div class="sc-head"><div class="nm">Progress ring — avatar uploading</div><div class="id">B8.3 · ~60%</div></div>
+          <div class="sc-body">
+            <div style="display:flex;align-items:center;gap:14px;">
+              <div class="upl-ring-wrap">
+                <div class="ava-lg">JY</div>
+                <svg class="upl-ring-svg" width="64" height="64" viewBox="0 0 64 64">
+                  <circle class="upl-ring-track" cx="32" cy="32" r="33"></circle>
+                  <circle class="upl-ring-fill" cx="32" cy="32" r="33"></circle>
+                </svg>
+                <div class="upl-ring-cancel" title="Cancel upload">
+                  <i data-lucide="x" class="ic"></i>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:3px;">
+                <div style="font-size:12.5px;color:var(--ink);font-weight:500;">jiho-portrait.png</div>
+                <div style="font-size:11px;color:var(--ink-3);">Uploading · 1.4 MB · 60%</div>
+              </div>
+            </div>
+          </div>
+          <div class="sc-foot">SVG circle r=33, stroke-width 2. Track <code>--line-2</code>; fill <code>--accent</code> stroke-linecap round.</div>
+        </div>
+
+        <!-- B8.4 Progress bar (logo brand-kit) -->
+        <div class="scene-card">
+          <div class="sc-head"><div class="nm">Progress bar — logo uploading</div><div class="id">B8.4 · ~40%</div></div>
+          <div class="sc-body">
+            <div class="upl-bar-panel">
+              <div class="row1">
+                <div class="file-glyph"><i data-lucide="image" class="ic"></i></div>
+                <div class="meta">
+                  <div class="nm">nike_logo_mark_2026_final-revised-vector.svg</div>
+                  <div class="sub">14 KB · uploading 40%</div>
+                </div>
+                <div class="cancel" title="Cancel"><i data-lucide="x" class="ic"></i></div>
+              </div>
+              <div class="upl-bar-track"><div class="upl-bar-fill" style="width: 40%;"></div></div>
+            </div>
+          </div>
+          <div class="sc-foot">Filename truncates with ellipsis mid-string (CSS <code>text-overflow: ellipsis</code> on the .nm). 4px track / accent fill / pill radius.</div>
+        </div>
+
+        <!-- B8.5 Upload success (logo) -->
+        <div class="scene-card">
+          <div class="sc-head"><div class="nm">Upload success — logo</div><div class="id">B8.5</div></div>
+          <div class="sc-body">
+            <div class="upl-result">
+              <div class="thumb">N</div>
+              <div class="body">
+                <div class="nm">nike_logo_mark.svg</div>
+                <div class="sub">
+                  <i data-lucide="check" class="ok-mark"></i>
+                  <span>Uploaded · 14 KB</span>
+                </div>
+              </div>
+              <div class="actions">
+                <button class="btn sm ghost" type="button">
+                  <i data-lucide="trash-2" class="ic"></i>
+                  Remove
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="sc-foot">Logo thumb shows the populated mark; check icon in <code>--accent</code>. Remove is ghost <code>.btn.sm</code>.</div>
+        </div>
+
+        <!-- B8.6 Upload error (font) -->
+        <div class="scene-card" style="grid-column: 1 / span 2;">
+          <div class="sc-head"><div class="nm">Upload error — font · file too large + retry-once meta</div><div class="id">B8.6</div></div>
+          <div class="sc-body">
+            <div class="upl-result error">
+              <div class="thumb" style="background:var(--fill);color:var(--ink-2);font-size:13px;font-weight:600;letter-spacing:0;">Aa</div>
+              <div class="body">
+                <div class="nm">Saans_Display_Bold_Stress_Test.woff2</div>
+                <div class="sub">
+                  <i data-lucide="alert-triangle" style="width:12px;height:12px;color:var(--warn);"></i>
+                  <span>File too large · max 5 MB</span>
+                </div>
+                <div class="meta-ext">Retry · 1 of 3 attempts</div>
+              </div>
+              <div class="actions">
+                <button class="btn sm" type="button">
+                  <i data-lucide="rotate-cw" class="ic"></i>
+                  Retry
+                </button>
+                <button class="btn sm ghost" type="button">Cancel</button>
+              </div>
+            </div>
+          </div>
+          <div class="sc-foot">3px <code>--warn</code> left border, <code>--warn-edge</code> outer border, warn-icon glyph + warn-color sub-line. Retry-count meta-text sits below sub-line in <code>--ink-3</code>.</div>
+        </div>
+
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Avatar gets a ring; logo gets a bar.</strong> Avatar lives in a square chrome already (cropped to circle on display), so a circular ring overlay reads naturally. Logo lives in a list-friendly row of file metadata, so a horizontal bar fits the row's anatomy without forcing extra layout.</li>
+      <li><strong>Avatar dims to 0.6 opacity during upload</strong> to communicate "this isn't your avatar yet" and to keep the ring legible against the avatar fill.</li>
+      <li><strong>Cancel × is the universal abort.</strong> On the ring (B8.3) it's a 22-px chrome-bg circle docked top-right; on the bar (B8.4) it's a 22-px ghost button at the row end. Same affordance, two anatomies.</li>
+      <li><strong>Error variant uses the existing degraded warn ramp</strong> (<code>--warn</code> / <code>--warn-edge</code>). No new red, no new icon set. Once design.md §1.1 ships <code>--color-status-error</code>, this re-themes for free — token swap, no markup change.</li>
+      <li><strong>Long filename truncation.</strong> B8.4 demonstrates ellipsis in the middle of the filename — extension is preserved by virtue of <code>text-overflow: ellipsis</code> wrapping the whole line at the .nm boundary. (For exact mid-string truncation with extension preserved, JS computes the available width and inserts an ellipsis manually — out of scope for this static mockup.)</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     B8.7 — Multi-state file list (KB sources context)
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE B8 · §3 · B8.7 · Multi-state file list</div>
+    <h2>B8.7 · Mixed-state list (KB sources)</h2>
+    <p class="intro">Five rows: 2 success, 1 in-progress, 1 error, 1 queued. Proves the list pattern handles every upload state in a single anatomy. Status icon column (90 px) carries the variant icon; row body shows filename + size; remove × ends every row.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">A7.3.7 KB sources · multi-upload list</div><div class="id">B8.7 · hi-fi</div></div>
+    <div class="canvas tall" data-screen-label="B8.7 File list">
+      <div class="app">
+        <div class="sidebar">
+          <div class="brand-switch">
+            <div class="logo">N</div>
+            <div class="name">Nike</div>
+            <div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div>
+          </div>
+          <div class="side-search">
+            <i data-lucide="search" style="width:13px;height:13px;"></i>
+            <span>Search</span>
+            <span class="kbd">⌘K</span>
+          </div>
+
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item active"><i data-lucide="clock-4" class="ic"></i><span>Recents</span></div>
+            <div class="item"><i data-lucide="calendar-days" class="ic"></i><span>Calendar</span><span class="count">12</span></div>
+
+            <div class="section">Library</div>
+            <div class="item"><i data-lucide="bookmark" class="ic"></i><span>Swipes</span></div>
+            <div class="item"><i data-lucide="layout-template" class="ic"></i><span>Templates</span></div>
+            <div class="item"><i data-lucide="package" class="ic"></i><span>Products</span><span class="count">318</span></div>
+
+            <div class="section">Brand</div>
+            <div class="item"><i data-lucide="sparkles" class="ic"></i><span>Personalization</span></div>
+            <div class="item"><i data-lucide="book-open" class="ic"></i><span>Knowledge base</span></div>
+            <div class="item"><i data-lucide="brain" class="ic"></i><span>Memories</span><span class="count">19</span></div>
+          </div>
+
+          <div class="side-footer">
+            <div class="avatar">JY</div>
+            <div class="who">
+              <b>Jiho Yang</b>
+              <span>Free plan</span>
+            </div>
+            <div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+          </div>
+        </div>
+
+        <div class="main">
+          <div class="topbar">
+            <div class="breadcrumb">
+              <span>Nike</span>
+              <span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <b>Home</b>
+            </div>
+            <div class="actions">
+              <div class="btn sm">
+                <i data-lucide="folder-plus" class="ic"></i>
+                New canvas
+              </div>
+            </div>
+          </div>
+
+          <div class="acc-frame">
+            <div class="acc-rail">
+              <div class="title">Account</div>
+              <div class="it"><i data-lucide="user" class="ic"></i>Profile</div>
+              <div class="it"><i data-lucide="credit-card" class="ic"></i>Plan &amp; billing</div>
+              <div class="it active"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+              <div class="it"><i data-lucide="plug" class="ic"></i>Integrations</div>
+              <div class="sep"></div>
+              <div class="it danger"><i data-lucide="trash-2" class="ic"></i>Danger zone</div>
+            </div>
+
+            <div class="acc-main">
+              <div class="acc-hero">
+                <div class="l">
+                  <h1>Knowledge base</h1>
+                  <p>Documents Kova reads as ground-truth context. Files queued for indexing.</p>
+                </div>
+                <div class="r" style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+                  <span class="mono" style=" font-size:10px;letter-spacing:0.1em; color:var(--ink-3);">Editing brand</span>
+                  <div class="brandpick"><div class="logo">N</div><div class="nm">Nike</div><i data-lucide="chevrons-up-down" class="caret" style="width:13px;height:13px;"></i></div>
+                </div>
+              </div>
+
+              <div class="acc-content">
+                <div class="bk-wrap">
+                  <div class="bk-subnav">
+                    <div class="head">Brand Kit</div>
+                    <div class="it"><i data-lucide="palette" class="ic"></i>Visuals</div>
+                    <div class="it"><i data-lucide="user-circle" class="ic"></i>Identity</div>
+                    <div class="it"><i data-lucide="quote" class="ic"></i>Tone snippets</div>
+                    <div class="it"><i data-lucide="layers" class="ic"></i>Saved blocks</div>
+                    <div class="it"><i data-lucide="check-square" class="ic"></i>Writing rules</div>
+                    <div class="it"><i data-lucide="brain" class="ic"></i>Memories</div>
+                    <div class="it active"><i data-lucide="book-open" class="ic"></i>Knowledge base</div>
+                  </div>
+
+                  <div class="bk-pane">
+                    <!-- Compact drop zone above list -->
+                    <div class="upl-zone" style="padding: 16px 24px;">
+                      <div style="display:flex;align-items:center;gap:10px;">
+                        <i data-lucide="upload-cloud" style="width:16px;height:16px;color:var(--ink-3);"></i>
+                        <span style="font-size:12.5px;color:var(--ink);">Drop more files or <span class="browse" style="color:var(--accent);cursor:pointer;">click to browse</span></span>
+                      </div>
+                    </div>
+
+                    <div class="upl-list">
+                      <!-- Success row 1 -->
+                      <div class="upl-list-row">
+                        <div class="file-ic"><i data-lucide="file-text" style="width:14px;height:14px;"></i></div>
+                        <div class="nm">Brand bible · 2026.pdf</div>
+                        <div class="sz">2.1 MB</div>
+                        <div class="status success">
+                          <i data-lucide="check-circle" class="st-ic"></i>
+                          <span>Indexed</span>
+                        </div>
+                        <div class="remove" title="Remove"><i data-lucide="x" class="ic"></i></div>
+                      </div>
+                      <!-- Success row 2 -->
+                      <div class="upl-list-row">
+                        <div class="file-ic"><i data-lucide="file-text" style="width:14px;height:14px;"></i></div>
+                        <div class="nm">Spring drop launch plan.pdf</div>
+                        <div class="sz">412 KB</div>
+                        <div class="status success">
+                          <i data-lucide="check-circle" class="st-ic"></i>
+                          <span>Indexed</span>
+                        </div>
+                        <div class="remove" title="Remove"><i data-lucide="x" class="ic"></i></div>
+                      </div>
+                      <!-- In-progress row -->
+                      <div class="upl-list-row has-prog">
+                        <div class="file-ic"><i data-lucide="file-text" style="width:14px;height:14px;"></i></div>
+                        <div class="nm">Q1 retro &amp; learnings.pdf</div>
+                        <div class="sz">880 KB</div>
+                        <div class="status in-progress">
+                          <i data-lucide="loader-2" class="st-ic"></i>
+                          <span>Uploading · 64%</span>
+                        </div>
+                        <div class="remove" title="Cancel"><i data-lucide="x" class="ic"></i></div>
+                        <div class="row-prog"><i style="width:64%;"></i></div>
+                      </div>
+                      <!-- Error row -->
+                      <div class="upl-list-row">
+                        <div class="file-ic"><i data-lucide="file-text" style="width:14px;height:14px;"></i></div>
+                        <div class="nm">Q4_brand_audit_huge_archive_v3_final.zip</div>
+                        <div class="sz">62 MB</div>
+                        <div class="status error">
+                          <i data-lucide="alert-circle" class="st-ic"></i>
+                          <span>Too large</span>
+                        </div>
+                        <div class="remove" title="Remove"><i data-lucide="x" class="ic"></i></div>
+                      </div>
+                      <!-- Queued row -->
+                      <div class="upl-list-row">
+                        <div class="file-ic"><i data-lucide="file-text" style="width:14px;height:14px;"></i></div>
+                        <div class="nm">2026 product catalog · pre-fall.pdf</div>
+                        <div class="sz">5.4 MB</div>
+                        <div class="status queued">
+                          <i data-lucide="clock" class="st-ic"></i>
+                          <span>Queued</span>
+                        </div>
+                        <div class="remove" title="Remove from queue"><i data-lucide="x" class="ic"></i></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>One row anatomy, four states.</strong> 24 / 1fr / 90 / auto / auto grid columns. Status icon swaps between <code>check-circle</code> (success), <code>loader-2</code> (in-progress), <code>alert-circle</code> (error), <code>clock</code> (queued). The row itself doesn't change height (36px) so the list stays readable as upload state shifts.</li>
+      <li><strong>In-progress row gets an inline 3px progress bar</strong> that grows in below the row content (second grid row). No layout disruption to other rows because the 3px sits inside the existing row block and only the in-progress row pays the height.</li>
+      <li><strong>Error states stay in the list.</strong> Failed uploads aren't auto-removed — the user explicitly clicks the × to clear, otherwise the row stays so the user can retry from the inline action menu (out of scope for this static mock; B8.6 shows the retry CTA structure).</li>
+      <li><strong>Compact drop zone above the list</strong> uses the same <code>.upl-zone</code> pattern at reduced padding. Same component, two sizes — when the list has any rows the zone shrinks to a single-line affordance so the file list dominates the pane.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     B8.8 — Toast cross-reference (LIFT B1.1 verbatim)
+     ============================================================ -->
+<section class="block">
+  <header>
+    <div class="tag">FILE B8 · §4 · B8.8 · Upload-complete toast</div>
+    <h2>B8.8 · Upload-complete toast (cross-reference)</h2>
+    <p class="intro">After a successful upload terminal state (file indexed, avatar set, logo replaced), the standard B1.1 success toast surfaces from the bottom-right. <strong>Byte-identical to Round-1 B1.1</strong> — this scene proves cross-surface consistency, not a new toast. Lifted verbatim from <code>Kova Hi-Fi B1 Toasts - Dark.html</code>.</p>
+  </header>
+
+  <div class="screen">
+    <div class="cap"><div class="name">B8.8 · upload-complete toast (B1.1 verbatim)</div><div class="id">B8.8 · cross-ref</div></div>
+    <div class="canvas tall" data-screen-label="B8.8 Toast cross-ref">
+      <!-- Same anchor chrome as B8.7 (KB sources) so the toast pattern is in-situ -->
+      <div class="app">
+        <div class="sidebar">
+          <div class="brand-switch">
+            <div class="logo">N</div>
+            <div class="name">Nike</div>
+            <div class="caret"><i data-lucide="chevrons-up-down" style="width:14px;height:14px;"></i></div>
+          </div>
+          <div class="side-search">
+            <i data-lucide="search" style="width:13px;height:13px;"></i>
+            <span>Search</span>
+            <span class="kbd">⌘K</span>
+          </div>
+
+          <div class="nav">
+            <div class="section">Home</div>
+            <div class="item active"><i data-lucide="clock-4" class="ic"></i><span>Recents</span></div>
+            <div class="item"><i data-lucide="calendar-days" class="ic"></i><span>Calendar</span><span class="count">12</span></div>
+
+            <div class="section">Library</div>
+            <div class="item"><i data-lucide="bookmark" class="ic"></i><span>Swipes</span></div>
+            <div class="item"><i data-lucide="layout-template" class="ic"></i><span>Templates</span></div>
+            <div class="item"><i data-lucide="package" class="ic"></i><span>Products</span><span class="count">318</span></div>
+
+            <div class="section">Brand</div>
+            <div class="item"><i data-lucide="sparkles" class="ic"></i><span>Personalization</span></div>
+            <div class="item"><i data-lucide="book-open" class="ic"></i><span>Knowledge base</span></div>
+            <div class="item"><i data-lucide="brain" class="ic"></i><span>Memories</span><span class="count">19</span></div>
+          </div>
+
+          <div class="side-footer">
+            <div class="avatar">JY</div>
+            <div class="who">
+              <b>Jiho Yang</b>
+              <span>Free plan</span>
+            </div>
+            <div class="more"><i data-lucide="more-horizontal" style="width:14px;height:14px;"></i></div>
+          </div>
+        </div>
+
+        <div class="main">
+          <div class="topbar">
+            <div class="breadcrumb">
+              <span>Nike</span>
+              <span class="sep"><i data-lucide="chevron-right" style="width:13px;height:13px;"></i></span>
+              <b>Home</b>
+            </div>
+            <div class="actions">
+              <div class="btn sm">
+                <i data-lucide="folder-plus" class="ic"></i>
+                New canvas
+              </div>
+            </div>
+          </div>
+
+          <div class="acc-frame">
+            <div class="acc-rail">
+              <div class="title">Account</div>
+              <div class="it"><i data-lucide="user" class="ic"></i>Profile</div>
+              <div class="it"><i data-lucide="credit-card" class="ic"></i>Plan &amp; billing</div>
+              <div class="it active"><i data-lucide="palette" class="ic"></i>Brand Kit</div>
+              <div class="it"><i data-lucide="plug" class="ic"></i>Integrations</div>
+              <div class="sep"></div>
+              <div class="it danger"><i data-lucide="trash-2" class="ic"></i>Danger zone</div>
+            </div>
+
+            <div class="acc-main">
+              <div class="acc-hero">
+                <div class="l">
+                  <h1>Brand Kit</h1>
+                  <p>Logo updated. Toast confirms the upload at the bottom-right.</p>
+                </div>
+                <div class="r" style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+                  <span class="mono" style=" font-size:10px;letter-spacing:0.1em; color:var(--ink-3);">Editing brand</span>
+                  <div class="brandpick"><div class="logo">N</div><div class="nm">Nike</div><i data-lucide="chevrons-up-down" class="caret" style="width:13px;height:13px;"></i></div>
+                </div>
+              </div>
+
+              <div class="acc-content">
+                <div class="bk-wrap">
+                  <div class="bk-subnav">
+                    <div class="head">Brand Kit</div>
+                    <div class="it active"><i data-lucide="palette" class="ic"></i>Visuals</div>
+                    <div class="it"><i data-lucide="user-circle" class="ic"></i>Identity</div>
+                    <div class="it"><i data-lucide="quote" class="ic"></i>Tone snippets</div>
+                    <div class="it"><i data-lucide="layers" class="ic"></i>Saved blocks</div>
+                    <div class="it"><i data-lucide="check-square" class="ic"></i>Writing rules</div>
+                    <div class="it"><i data-lucide="brain" class="ic"></i>Memories</div>
+                    <div class="it"><i data-lucide="book-open" class="ic"></i>Knowledge base</div>
+                  </div>
+
+                  <div class="bk-pane">
+                    <div style="display:flex;flex-direction:column;gap:14px;">
+                      <div class="upl-result">
+                        <div class="thumb">N</div>
+                        <div class="body">
+                          <div class="nm">nike_logo_mark.svg</div>
+                          <div class="sub">
+                            <i data-lucide="check" class="ok-mark"></i>
+                            <span>Uploaded · 124 KB</span>
+                          </div>
+                        </div>
+                        <div class="actions">
+                          <button class="btn sm ghost" type="button">
+                            <i data-lucide="trash-2" class="ic"></i>
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                      <div style="font-size:12px;color:var(--ink-3);max-width:540px;line-height:1.55;">A B1.1 success toast surfaces at bottom-right with the same content the inline result displays. Inline result is the persistent state; the toast is the moment-of-event reinforcement that fades after 4 s.</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- B1.1 toast — byte-identical lift -->
+      <div class="toast-stack">
+        <div class="toast success">
+          <i data-lucide="check" class="ic-lead"></i>
+          <div class="body">
+            <div class="msg">Logo uploaded · 124 KB</div>
+          </div>
+          <div class="dismiss" title="Dismiss"><i data-lucide="x" class="ic"></i></div>
+        </div>
+      </div>
+    </div>
+    <div class="annot"><ul>
+      <li><strong>Toast pattern is byte-identical to B1.1.</strong> Same <code>.toast-stack</code> position (bottom-right, 22px from edges). Same <code>.toast.success</code> chrome. Same <code>check</code> lead glyph in <code>--ink-2</code>. Same auto-dismiss 4s commitment from B1's behavior block.</li>
+      <li><strong>Inline result + toast both fire.</strong> The inline result is the persistent state on the surface; the toast is the moment-of-event reinforcement that vanishes after 4s. Two surfaces, same content, complementary scopes — the same pattern as the autosave pill + autosave toast in B1.3.</li>
+      <li><strong>Why both.</strong> If the user navigated away mid-upload, only the toast tells them it landed. If they're still on the surface, the inline row tells them where the file lives now. Belt-and-braces with low pixel cost.</li>
+    </ul></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     Cross-surface notes
+     ============================================================ -->
+<section class="block" style="background: var(--page);">
+  <header>
+    <div class="tag">Coherence notes — what this file commits to</div>
+    <h2>What B8 commits to</h2>
+  </header>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;max-width:1080px;font-size:12.5px;color:var(--ink-2);line-height:1.55;">
+    <div style="background: var(--page); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px;">
+      <h3 style="margin:0 0 8px;font-size:14px;color:var(--ink);font-weight:600;letter-spacing:-0.005em;">New layout-only classes</h3>
+      <ul style="margin:6px 0 0;padding-left:18px;">
+        <li><code>.upl-zone</code> — drop zone (2px dashed border = explicit allowed exception to design.md §5 ban 6).</li>
+        <li><code>.upl-ring-wrap</code> · <code>.upl-ring-svg</code> · <code>.upl-ring-track</code> · <code>.upl-ring-fill</code> · <code>.upl-ring-cancel</code> — circular progress around avatar.</li>
+        <li><code>.upl-bar-panel</code> · <code>.upl-bar-track</code> · <code>.upl-bar-fill</code> — horizontal progress in a list-row anatomy.</li>
+        <li><code>.upl-result</code> · <code>.upl-result.error</code> — terminal-state inline rows.</li>
+        <li><code>.upl-list</code> · <code>.upl-list-row</code> · <code>.upl-list-row .status.success/.in-progress/.error/.queued</code> · <code>.upl-list-row .row-prog</code> — multi-state file list.</li>
+        <li><code>.scene-grid</code> · <code>.scene-card</code> — review-page catalog only for B8.2–B8.6; not shipped.</li>
+      </ul>
+    </div>
+    <div style="background: var(--page); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px;">
+      <h3 style="margin:0 0 8px;font-size:14px;color:var(--ink);font-weight:600;letter-spacing:-0.005em;">Tokens used (none new)</h3>
+      <ul style="margin:6px 0 0;padding-left:18px;">
+        <li>Surface: <code>--bg</code> · <code>--page</code> · <code>--rail</code> · <code>--fill</code> · <code>--fill-2</code></li>
+        <li>Ink: <code>--ink</code> · <code>--ink-2</code> · <code>--ink-3</code></li>
+        <li>Lines: <code>--line</code> · <code>--line-2</code></li>
+        <li>Accent (progress fill, browse link, success check): <code>--accent</code></li>
+        <li>Warn (error variant): <code>--warn</code> · <code>--warn-edge</code> — degraded ramp per design.md §1.1.</li>
+      </ul>
+    </div>
+    <div style="background: var(--page); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px;">
+      <h3 style="margin:0 0 8px;font-size:14px;color:var(--ink);font-weight:600;letter-spacing:-0.005em;">Behavior commitments</h3>
+      <ul style="margin:6px 0 0;padding-left:18px;">
+        <li><strong>Drop-zone hover</strong> lifts background to <code>--fill</code> + border to <code>--ink-3</code>. Drag-over should lift border to <code>--accent</code> + tint background <code>--accent-soft</code> (out of scope for static mock; same vocabulary as canonical input <code>:focus</code> state).</li>
+        <li><strong>Progress ring</strong> is SVG-driven; <code>stroke-dashoffset</code> animates from 207 (0%) to 0 (100%). Stroke-linecap round.</li>
+        <li><strong>Progress bar</strong> uses <code>width</code> transition at 200ms ease-out. Indeterminate state (out of scope) would loop a 30%-wide segment with translateX, mirroring B7 skeleton's gradient.</li>
+        <li><strong>Cancel × is universal</strong> — same affordance on ring, bar, list-row. Aborts upload; queued rows clear immediately.</li>
+        <li><strong>Error state stays sticky</strong> until user clicks remove or retry. No auto-dismiss. Same rule as B1.2 sticky error toast.</li>
+        <li><strong>Toast (B8.8) auto-dismiss 4s</strong> per B1.1 commitment. Inline result row is persistent.</li>
+      </ul>
+    </div>
+    <div style="background: var(--page); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px;">
+      <h3 style="margin:0 0 8px;font-size:14px;color:var(--ink);font-weight:600;letter-spacing:-0.005em;">Dashed 2px exception (B8.1) — explicit log</h3>
+      <ul style="margin:6px 0 0;padding-left:18px;">
+        <li>design.md §5 ban 6 says no 2px borders on chrome. Dashed reads as a different visual class than solid 2px (the actual ban target — "thick lines around boxes").</li>
+        <li>Drop-zone affordance has a long-standing dashed treatment across web platforms; switching to 1px hairline would lose the "drop here" semantic.</li>
+        <li>Existing precedents in the codebase: A2+A3 <code>.bp-newcard</code> uses 1px dashed; A2+A3 <code>.onb-drop</code> uses 1px dashed; A7 <code>.empty-pane</code> uses 1px dashed. B8 <code>.upl-zone</code> upgrades to 2px dashed for the active drop affordance — slightly stronger pull on a high-affordance surface, while the 1px dashed precedents remain for quieter empty-state contexts.</li>
+        <li>If the founder prefers strict 1px dashed for parity with A11/A2, the change is a single property update. Flagged as ambiguity — defaulting to 2px dashed because of the literal brief recommendation in §3.5 / §6.2; awaiting confirmation.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+
+<footer style="padding:32px 56px;border-top:1px solid var(--line);background:var(--bg);color:var(--ink-3);font-size:11px;">
+  Kova · hi-fi · Batch A additions · B8 Upload states · v1
+</footer>
+
+<script>
+  if (window.lucide) window.lucide.createIcons({ attrs: { 'stroke-width': 1.6 } });
+</script>
+</body>
+</html>

@@ -26,6 +26,44 @@ export interface SceneGraphEvents {
   'node:deleted': (id: string) => void
   'node:reparented': (nodeId: string, oldParentId: string | null, newParentId: string) => void
   'node:reordered': (nodeId: string, parentId: string, index: number) => void
+  // Cluster 07a — page-level Measurement lifecycle
+  'measurement:created': (measurement: Measurement) => void
+  'measurement:updated': (measurement: Measurement) => void
+  'measurement:deleted': (measurement: Measurement) => void
+  'measurement:broken': (event: MeasurementBrokenEvent) => void
+  'measurement:dropped': (event: MeasurementDroppedEvent) => void
+}
+
+// Cluster 07a — page-level Measurement system (matches Figma PageNode API)
+export type MeasurementSide = 'TOP' | 'RIGHT' | 'BOTTOM' | 'LEFT'
+
+export type MeasurementOffset =
+  | { type: 'INNER'; relative: number }
+  | { type: 'OUTER'; fixed: number }
+
+export interface MeasurementAnchor {
+  nodeId: string
+  side: MeasurementSide
+}
+
+export interface Measurement {
+  id: string
+  start: MeasurementAnchor
+  end: MeasurementAnchor
+  offset: MeasurementOffset
+  freeText: string
+}
+
+export interface MeasurementBrokenEvent {
+  measurementId: string
+  brokenAnchorNodeId: string
+  canvasId: string
+}
+
+export interface MeasurementDroppedEvent {
+  measurementIds: string[]
+  sourceCanvasId: string
+  movedNodeId: string
 }
 
 export type HandleMirroring = 'NONE' | 'ANGLE' | 'ANGLE_AND_LENGTH'
@@ -81,6 +119,7 @@ export type NodeType =
   | 'INSTANCE'
   | 'CONNECTOR'
   | 'SHAPE_WITH_TEXT'
+  | 'SLICE'
 
 
 export type FillType =
@@ -161,6 +200,9 @@ export type TextAlignVertical = 'TOP' | 'CENTER' | 'BOTTOM'
 export type TextCase = 'ORIGINAL' | 'UPPER' | 'LOWER' | 'TITLE'
 export type TextDecoration = 'NONE' | 'UNDERLINE' | 'STRIKETHROUGH'
 
+// Cluster 07a — list-marker variants for per-text-run style metadata
+export type ListType = 'NONE' | 'BULLETED' | 'NUMBERED'
+
 export interface CharacterStyleOverride {
   fontWeight?: number
   italic?: boolean
@@ -170,6 +212,11 @@ export interface CharacterStyleOverride {
   letterSpacing?: number
   lineHeight?: number | null
   fills?: Fill[]
+  // Cluster 07a — OpenType + list + link metadata
+  openTypeFeatures?: string[]
+  linkHref?: string
+  listType?: ListType
+  listIndent?: number
 }
 
 export interface StyleRun {
@@ -326,6 +373,17 @@ export interface SceneNode {
   flipY: boolean
 
   textPicture: Uint8Array | null
+
+  // Cluster 07a — interactive-resize lock (null = free resize).
+  aspectRatio: number | null
+  // Cluster 07a — CANVAS-only semantic; per-page Slice-batch export inclusion.
+  includeInExports: boolean
+  // Cluster 07a — CANVAS-only semantic; editor-view page background toggle.
+  pageBackgroundVisible: boolean
+
+  // Cluster 07a — page-level Measurement collection. Populated only on
+  // CANVAS-typed nodes; absent (undefined) on every other type.
+  measurements?: Measurement[]
 }
 
 export type VariableType = 'COLOR' | 'FLOAT' | 'STRING' | 'BOOLEAN'
@@ -457,6 +515,11 @@ function createDefaultNode(type: NodeType, overrides: Partial<SceneNode> = {}): 
     flipX: false,
     flipY: false,
     textPicture: null,
+    // Cluster 07a defaults
+    aspectRatio: null,
+    includeInExports: true,
+    pageBackgroundVisible: true,
+    measurements: type === 'CANVAS' ? [] : undefined,
     ...overrides
   }
 }
@@ -682,6 +745,143 @@ export class SceneGraph {
     return node ? CONTAINER_TYPES.has(node.type) : false
   }
 
+  /** Cluster 07a — check whether a NodeType (by type string, not node id) is
+   *  a container. Adds a public read of the existing CONTAINER_TYPES set. */
+  isContainerType(type: NodeType): boolean {
+    return CONTAINER_TYPES.has(type)
+  }
+
+  // -----------------------------------------------------------------
+  // Cluster 07a — page-level Measurement system (Figma-aligned)
+  // -----------------------------------------------------------------
+
+  // Measurement IDs occupy a distinct namespace from SceneNode IDs:
+  // node IDs follow the editor's `0:<localId>` Figma-parity convention
+  // (see `generateId`), measurements are CANVAS-scoped records (not nodes)
+  // so they use a 16-hex random ID to avoid colliding with node-id parsers
+  // (e.g. Cluster 09 snapshot codec regex match on `^\d+:\d+$`).
+  private generateMeasurementId(): string {
+    const bytes = new Uint8Array(8)
+    crypto.getRandomValues(bytes)
+    return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('')
+  }
+
+  /** Cluster 07a — collect node + all descendants into a Set in one DFS pass. */
+  private collectSubtreeIds(rootId: string): Set<string> {
+    const ids = new Set<string>()
+    const stack: string[] = [rootId]
+    while (stack.length > 0) {
+      const id = stack.pop()
+      if (id === undefined || ids.has(id)) continue
+      const n = this.nodes.get(id)
+      if (!n) continue
+      ids.add(id)
+      for (const cid of n.childIds) stack.push(cid)
+    }
+    return ids
+  }
+
+  private findAncestorCanvasId(nodeId: string): string | undefined {
+    let current = this.nodes.get(nodeId)
+    while (current) {
+      if (current.type === 'CANVAS') return current.id
+      current = current.parentId ? this.nodes.get(current.parentId) : undefined
+    }
+    return undefined
+  }
+
+  addMeasurement(
+    canvasId: string,
+    start: MeasurementAnchor,
+    end: MeasurementAnchor,
+    options?: { offset?: MeasurementOffset; freeText?: string }
+  ): Measurement {
+    const canvas = this.nodes.get(canvasId)
+    if (!canvas || canvas.type !== 'CANVAS') {
+      throw new Error(`Target ${canvasId} is not a CANVAS node`)
+    }
+    if (!this.isDescendant(start.nodeId, canvasId)) {
+      throw new Error(`Measurement anchor node not on target canvas: ${start.nodeId}`)
+    }
+    if (!this.isDescendant(end.nodeId, canvasId)) {
+      throw new Error(`Measurement anchor node not on target canvas: ${end.nodeId}`)
+    }
+    // Figma same-axis pair constraint: a Measurement annotates one axis only,
+    // so start.side and end.side must both be horizontal (LEFT/RIGHT) or both
+    // vertical (TOP/BOTTOM). Verified against developers.figma.com/docs/plugins/api/Measurement.
+    const startHorizontal = start.side === 'LEFT' || start.side === 'RIGHT'
+    const endHorizontal = end.side === 'LEFT' || end.side === 'RIGHT'
+    if (startHorizontal !== endHorizontal) {
+      throw new Error(
+        `Measurement start.side and end.side must be on the same axis ` +
+        `(both LEFT/RIGHT or both TOP/BOTTOM); got ${start.side} and ${end.side}`
+      )
+    }
+    const m: Measurement = {
+      id: this.generateMeasurementId(),
+      start: { ...start },
+      end: { ...end },
+      offset: options?.offset ?? { type: 'INNER', relative: 0 },
+      freeText: options?.freeText ?? ''
+    }
+    canvas.measurements = [...(canvas.measurements ?? []), m]
+    this.emitter.emit('measurement:created', m)
+    return m
+  }
+
+  getMeasurements(canvasId: string): Measurement[] {
+    const canvas = this.nodes.get(canvasId)
+    if (!canvas || canvas.type !== 'CANVAS') return []
+    return [...(canvas.measurements ?? [])]
+  }
+
+  getMeasurementsForNode(nodeId: string): Measurement[] {
+    const results: Measurement[] = []
+    for (const node of this.nodes.values()) {
+      if (node.type !== 'CANVAS' || !node.measurements) continue
+      for (const m of node.measurements) {
+        if (m.start.nodeId === nodeId || m.end.nodeId === nodeId) {
+          results.push(m)
+        }
+      }
+    }
+    return results
+  }
+
+  editMeasurement(
+    canvasId: string,
+    id: string,
+    newValue: { offset?: MeasurementOffset; freeText?: string }
+  ): Measurement {
+    const canvas = this.nodes.get(canvasId)
+    if (!canvas || canvas.type !== 'CANVAS' || !canvas.measurements) {
+      throw new Error(`Canvas ${canvasId} has no measurements`)
+    }
+    const idx = canvas.measurements.findIndex((m) => m.id === id)
+    if (idx < 0) throw new Error(`Measurement ${id} not found`)
+    const existing = canvas.measurements[idx]
+    const updated: Measurement = {
+      ...existing,
+      offset: newValue.offset ?? existing.offset,
+      freeText: newValue.freeText ?? existing.freeText
+    }
+    canvas.measurements = [
+      ...canvas.measurements.slice(0, idx),
+      updated,
+      ...canvas.measurements.slice(idx + 1)
+    ]
+    this.emitter.emit('measurement:updated', updated)
+    return updated
+  }
+
+  deleteMeasurement(canvasId: string, id: string): void {
+    const canvas = this.nodes.get(canvasId)
+    if (!canvas || canvas.type !== 'CANVAS' || !canvas.measurements) return
+    const deleted = canvas.measurements.find((m) => m.id === id)
+    canvas.measurements = canvas.measurements.filter((m) => m.id !== id)
+    if (deleted) this.emitter.emit('measurement:deleted', deleted)
+  }
+
   isDescendant(childId: string, ancestorId: string): boolean {
     let current = this.nodes.get(childId)
     while (current) {
@@ -724,11 +924,18 @@ export class SceneGraph {
   }
 
   createNode(type: NodeType, parentId: string, overrides: Partial<SceneNode> = {}): SceneNode {
+    // Cluster 07a — defend SLICE leaf invariant on the create path too
+    // (reparentNode also blocks this; symmetric guard prevents corruption
+    // when tools bypass reparent and pass parentId directly).
+    const parent = this.nodes.get(parentId)
+    if (parent && parent.type === 'SLICE') {
+      throw new Error('Slice nodes cannot have children')
+    }
+
     const node = createDefaultNode(type, overrides)
     node.parentId = parentId
     this.nodes.set(node.id, node)
 
-    const parent = this.nodes.get(parentId)
     if (parent) {
       parent.childIds.push(node.id)
     }
@@ -783,7 +990,38 @@ export class SceneGraph {
     const oldParent = node.parentId ? this.nodes.get(node.parentId) : undefined
     const newParent = this.nodes.get(newParentId)
     if (!newParent) return
+    if (newParent.type === 'SLICE') {
+      throw new Error('Slice nodes cannot have children')
+    }
     if (node.parentId === newParentId) return
+
+    // Cluster 07a — cross-canvas move drops source-canvas measurements
+    // anchored to nodeId or any of its descendants. Collect the full
+    // subtree once and filter on Set.has so a moved GROUP/FRAME/SECTION
+    // does not leave dangling refs anchored to a now-cross-canvas child.
+    const oldCanvasId = node.parentId ? this.findAncestorCanvasId(node.parentId) : undefined
+    const newCanvasId = this.findAncestorCanvasId(newParentId)
+    if (oldCanvasId && newCanvasId && oldCanvasId !== newCanvasId) {
+      const sourceCanvas = this.nodes.get(oldCanvasId)
+      if (sourceCanvas?.type === 'CANVAS' && sourceCanvas.measurements) {
+        const subtreeIds = this.collectSubtreeIds(nodeId)
+        const droppedIds: string[] = []
+        sourceCanvas.measurements = sourceCanvas.measurements.filter((m) => {
+          if (subtreeIds.has(m.start.nodeId) || subtreeIds.has(m.end.nodeId)) {
+            droppedIds.push(m.id)
+            return false
+          }
+          return true
+        })
+        if (droppedIds.length > 0) {
+          this.emitter.emit('measurement:dropped', {
+            measurementIds: droppedIds,
+            sourceCanvasId: oldCanvasId,
+            movedNodeId: nodeId
+          })
+        }
+      }
+    }
 
     const oldParentId = node.parentId
     this.absPosCache.clear()
@@ -844,6 +1082,34 @@ export class SceneGraph {
   deleteNode(id: string): void {
     const node = this.nodes.get(id)
     if (!node || id === this.rootId) return
+
+    // Cluster 07a — drop all measurements on a CANVAS before its descendants
+    // are torn down (so the dropped event fires once with every measurement id).
+    if (node.type === 'CANVAS' && node.measurements && node.measurements.length > 0) {
+      const measurementIds = node.measurements.map((m) => m.id)
+      node.measurements = []
+      this.emitter.emit('measurement:dropped', {
+        measurementIds,
+        sourceCanvasId: id,
+        movedNodeId: id
+      })
+    } else {
+      // Non-canvas deletion — find measurements anchored to this node anywhere
+      // on its parent canvas and emit broken events. Measurements themselves
+      // remain (orphan-on-anchor-delete semantic).
+      for (const canvas of this.nodes.values()) {
+        if (canvas.type !== 'CANVAS' || !canvas.measurements) continue
+        for (const m of canvas.measurements) {
+          if (m.start.nodeId === id || m.end.nodeId === id) {
+            this.emitter.emit('measurement:broken', {
+              measurementId: m.id,
+              brokenAnchorNodeId: id,
+              canvasId: canvas.id
+            })
+          }
+        }
+      }
+    }
 
     if (node.parentId) {
       const parent = this.nodes.get(node.parentId)

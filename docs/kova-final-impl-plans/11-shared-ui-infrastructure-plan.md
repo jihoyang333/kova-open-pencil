@@ -99,9 +99,19 @@
 
 **Cluster 11 is the foundation cluster.** It ships the PRIMITIVES every other cluster consumes (KovaModal, KovaPopover, KovaMenu, KovaTooltip, KovaIcon, KovaSkeleton, KovaToast, error pages). This Plan IS the source of truth for those primitives — downstream Plans 01–10 + 12 reference them by `<KovaX>` name.
 
-**Translation rule:** hi-fi HTML = visual source of truth; idiomatic Vue 3. **Mockup wins**; drift protocol (RIDER §2.1). Theme: dark inside app + light variant for auth (kova-hifi-light.css).
+**3-rule fidelity contract** (per `docs/execution-phase/claude-design-files/IMPLEMENTATION_PROMPT.md` §0):
 
-**Per-screen diff loop** per IMPLEMENTATION_PROMPT.md Phase 4. Cluster-boundary Playwright gate ≤ 2%.
+1. **Visual values are copied.** Every color, spacing, type, radius, shadow, gap, padding, line-height, tracking, and proportion in the rendered output MUST match the mockup pixel-for-pixel.
+2. **DOM structure is translated.** Vue 3 SFCs + Reka UI primitives + Cluster 11 primitives + K* component layer (`design.md` §3). NOT the mockup's hand-rolled HTML.
+3. **Behavior is engineered.** State in Pinia / refs / composables. Hover / focus / active / selected / disabled states are dynamic bindings, NEVER hardcoded classes.
+
+**Trap phrase ban:** "copy DOM verbatim" is forbidden. Drift protocol per RIDER §2.1 + IMPLEMENTATION_PROMPT.md §7 on any hi-fi value not in `kova-hifi.css :root` — never silently round. **Theme:** dark inside app + light variant for auth (`kova-hifi-light.css`).
+
+**Phase 1 audit gate** (per IMPLEMENTATION_PROMPT.md §3): produce `KOVA_AUDIT.md` + `tokens-used.md` BEFORE any Vue code. `tokens-used.md` enumerates every visual value in this cluster's surfaces mapped to either an existing token or ⚠️ MISSING (founder decision via AskUserQuestion). No Vue until founder-approved.
+
+**Per-screen diff loop** (per IMPLEMENTATION_PROMPT.md §6): in-repo mockup + Vue route at 1440px → screenshot both → walk Appendix A per property → list discrepancies in `tests/snapshots/cluster-11/<surface>-diff.md` → fix → re-diff until empty. **Visual-diff thresholds: ≤ 0.1% component / ≤ 0.5% screen** (Playwright `maxDiffPixelRatio: 0.005, threshold: 0.2`, masking volatile regions per IMPLEMENTATION_PROMPT.md §10).
+
+**PR artifact:** every PR touching a UI surface in this cluster MUST include 3-screenshot row (mockup / impl / diff) per surface in the PR description.
 
 ### Kova codebase paths — Cluster 11 SHIPS these
 
@@ -126,13 +136,13 @@ Source: `kova-open-pencil-1/src/components/ui/` — EXISTING files (extend / ver
 
 | Plan task | Primitive shipped | Hi-fi reference | Scene IDs |
 |---|---|---|---|
-| Task 2.1 — Toast variants | `<KovaToast>` + `useToast()` + variants (success / error / info / action / progress / ai-gen) | `main-main-kova-scope/batch-a-additions/dark/batch-0/Kova Hi-Fi B1 Toasts - Dark.html` | B1.1–B1.8 (success / error / progress / action / ai-gen / stacked / wrapping / over-modal) |
-| Task 2.2 — Error pages | `<NotFoundView>` / `<ServerErrorView>` / `<NetworkUnreachableView>` | `main-main-kova-scope/batch-a-additions/dark/batch-0/Kova Hi-Fi B2 Error Pages - Dark.html` | B2.1 (404), B2.2 (500), B2.3 (network) |
-| Task 2.3 — Modal sizes | `<KovaModal>` `sm` (460px) / `md` (540px) / `lg` (880px) | `main-main-kova-scope/batch-a/dark/Kova Hi-Fi A6+A2a Popovers + A8 Dialogs - Dark.html` | A8.1 Snapshot (sm), A8.3 Accessibility (md), A8.2 Keyboard shortcuts (lg) |
+| Task 2.1 — Toast variants | `<KovaToast>` + `useToast()` + variants (success / error / info / action / progress / ai-gen) | `design-system/hifi/states/Kova Hi-Fi B1 Toasts - Dark.html` | B1.1–B1.8 (success / error / progress / action / ai-gen / stacked / wrapping / over-modal) |
+| Task 2.2 — Error pages | `<NotFoundView>` / `<ServerErrorView>` / `<NetworkUnreachableView>` | `design-system/hifi/states/Kova Hi-Fi B2 Error Pages - Dark.html` | B2.1 (404), B2.2 (500), B2.3 (network) |
+| Task 2.3 — Modal sizes | `<KovaModal>` `sm` (460px) / `md` (540px) / `lg` (880px) | `design-system/hifi/canvas-menus/Kova Hi-Fi A6+A2a Popovers + A8 Dialogs - Dark.html` | A8.1 Snapshot (sm), A8.3 Accessibility (md), A8.2 Keyboard shortcuts (lg) |
 | Task 2.4 — Popover + menu + tooltip | `<KovaPopover>` (280px / 240px patterns) / `<KovaMenu>` (Reka DropdownMenu min-width 240px) / `<KovaTooltip>` (500ms delay) | A6+A2a Popovers + A8 Dialogs | A2a (280px brand switcher), A6 (240px avatar) |
-| Task 2.5 — Skeleton primitives | `<KovaSkeleton>` r-pill / r-card / r-line / r-circle variants | `main-main-kova-scope/batch-a-additions/dark/Kova Hi-Fi B7 Loading Skeletons - Dark.html` | B7.1–B7.5 surface compositions ship in consuming clusters |
-| Task 2.6 — Empty states | `<EmptyState>` inline-32 / panel-40 / full-48 variants | `main-main-kova-scope/batch-a-additions/dark/Kova Hi-Fi B9 List Search Empty - Dark.html` | B9.4 reference grid |
-| Task 2.7 — Brand-card right-click items + cluster cross-cut | `<KovaMenu>` shell (Cluster 08 fills with items per surface) | `main-main-kova-scope/batch-b/Kova Hi-Fi 08 Top Chrome Menus - Dark.html` (shell LOCK) | shared by every popover |
+| Task 2.5 — Skeleton primitives | `<KovaSkeleton>` r-pill / r-card / r-line / r-circle variants | `design-system/hifi/states/Kova Hi-Fi B7 Loading Skeletons - Dark.html` | B7.1–B7.5 surface compositions ship in consuming clusters |
+| Task 2.6 — Empty states | `<EmptyState>` inline-32 / panel-40 / full-48 variants | `design-system/hifi/states/Kova Hi-Fi B9 List Search Empty - Dark.html` | B9.4 reference grid |
+| Task 2.7 — Brand-card right-click items + cluster cross-cut | `<KovaMenu>` shell (Cluster 08 fills with items per surface) | `design-system/hifi/canvas-chrome/Kova Hi-Fi 08 Top Chrome Menus - Dark.html` (shell LOCK) | shared by every popover |
 | Task — NetworkStatusIndicator | single 14×14 `cloud-off` icon top-right when offline | per PRD 02 §3.7 + W5a (replaces A13.1/A13.2 retired) | n/a (no dedicated scene) |
 
 ### Token + Tailwind @theme bridge

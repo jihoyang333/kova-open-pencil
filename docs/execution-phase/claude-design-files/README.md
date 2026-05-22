@@ -1,25 +1,35 @@
-# Kova Scope — Hi-Fi Handoff
+# Kova Scope — Hi-Fi Handoff (Reference Only — Plan Supersedes)
+
+> **⚠️ STATUS (2026-05-20):** This file is NOT the authoritative agent instruction. The auto-generated bundle README that originally shipped with this folder is **superseded** by `docs/kova-final-impl-plans/NN-<cluster>-plan.md` (per Mandate 8 of the visual-fidelity contract — see `IMPLEMENTATION_PROMPT.md` §11).
+>
+> Reviewers: reject any PR where the agent followed THIS file's wording instead of the plan + `IMPLEMENTATION_PROMPT.md`.
 
 > Single bundle covering the full Kova Scope product surface: auth, onboarding, brand dashboard, account, modals, popovers, error states, and the canvas editor (top chrome, left panel, inspector, color picker, popovers, overlays, find, trash, toasts, version history).
 
-This handoff package is the **complete visual reference** for implementing Kova Scope in a real codebase. It is self-contained: every HTML file in this folder links to the shared design system in `design-system/`, and every visual decision is documented either in the HTML files themselves or in `design-system/design.md` (the source of truth).
+This handoff package is the **visual reference** for implementing Kova Scope. The canonical method for translating HTML → Vue 3 lives in `IMPLEMENTATION_PROMPT.md` (this folder). Read THAT file before writing any code.
 
 ---
 
-## 1. About the design files
+## 1. About the design files — the 3-rule contract
 
-The files in this bundle are **design references created in HTML/CSS**. They are prototypes showing the intended visual look and component composition — **not production code to copy verbatim**.
+The files in this bundle are **design references created in HTML/CSS**. They are prototypes showing the intended visual look and component composition.
 
-Your job is to **recreate these designs in the target codebase** using its established patterns and libraries. Per the design system's implementation note (`design-system/TOKEN_CANONICAL.md` §6), the intended target is:
+Per the 3-rule fidelity contract (see `IMPLEMENTATION_PROMPT.md` §0):
+
+> 1. **Visual values are copied.** Every color, spacing, type, radius, shadow, gap, padding, line-height, tracking, and proportion in the rendered output MUST match the mockup pixel-for-pixel.
+> 2. **DOM structure is translated.** Compose markup via Vue 3 SFCs, Reka UI primitives, and the K* component layer from `design.md` §3. Do NOT copy the mockup's hand-rolled HTML structure.
+> 3. **Behavior is engineered.** State lives in Pinia / refs / composables. Hover / focus / active / selected states are dynamic bindings, NEVER hardcoded classes.
+
+**Trap phrase ban:** "copy DOM verbatim" is forbidden — it pulls hand-rolled HTML + inline `<style>` blocks + CDN scripts + hardcoded states into the codebase, defeating the component layer.
+
+Target stack (per `design-system/TOKEN_CANONICAL.md` §6):
 
 - **Vue 3** (Composition API, `<script setup>` SFCs)
 - **Tailwind 4** (tokens injected via `@theme` in `app.css`, auto-generated utility classes)
 
-If the target codebase uses a different stack, use the closest idiomatic equivalent — but **the visual output must match the HTML mockups pixel-for-pixel** regardless of framework.
-
 ### Critical rule
 
-> **The HTML mockups are the visual source of truth.** When a mockup value disagrees with a token already defined in the codebase, the mockup wins. Add new tokens, do not silently round to nearby existing values.
+> **The HTML mockups are the visual source of truth for VALUES.** When a mockup value disagrees with a token already defined in the codebase, the mockup wins. Add new tokens via the drift protocol (`IMPLEMENTATION_PROMPT.md` §7) — do NOT silently round to nearby existing values.
 
 ### Authority chain (in case of any conflict)
 
