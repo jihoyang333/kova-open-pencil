@@ -10,6 +10,9 @@ import { createAppRouter } from '@/router'
 import { registerProductVariantOverlay } from '@/canvas-extensions/product-variant/register'
 import { initBrowserSentry } from '@/sentry'
 import { useAuthStore } from '@/stores/auth'
+import { usePreferencesStore } from '@/stores/preferences'
+import { applyReducedMotionDefault } from '@/composables/use-reduced-motion-default'
+import { usePreferencesModal } from '@/composables/use-preferences-modal'
 
 import App from './App.vue'
 
@@ -27,7 +30,13 @@ registerProductVariantOverlay()
 // Initialize auth store before mounting — prevents flash of unauthenticated content.
 // Pinia must be installed via app.use(pinia) before calling useAuthStore().
 const auth = useAuthStore()
-void auth.initialize().finally(() => {
+void auth.initialize().finally(async () => {
+  // Cluster 12 — load user preferences after auth resolves so DOM data-attrs
+  // are set before any pref-dependent component renders.
+  const prefs = usePreferencesStore()
+  await prefs.load()
+  applyReducedMotionDefault()
+
   app.mount('#app')
 
   // Remove the static HTML loader from index.html
@@ -36,6 +45,21 @@ void auth.initialize().finally(() => {
     loader.classList.add('fade-out')
     loader.addEventListener('transitionend', () => loader.remove())
   }
+})
+
+// Cluster 12 — global Cmd+, / Ctrl+, opens the A8.3 Accessibility modal
+// (matches Figma's keyboard shortcut convention, founder-ratified 2026-05-17).
+window.addEventListener('keydown', (e) => {
+  if (e.code !== 'Comma') return
+  const isMod = e.metaKey || e.ctrlKey
+  if (!isMod || e.altKey || e.shiftKey) return
+  const target = e.target as HTMLElement | null
+  if (target) {
+    const tag = target.tagName
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable) return
+  }
+  e.preventDefault()
+  usePreferencesModal().open('accessibility')
 })
 
 if (!IS_TAURI) {

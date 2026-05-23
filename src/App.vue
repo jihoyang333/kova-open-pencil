@@ -5,6 +5,7 @@ import { useHead } from '@unhead/vue'
 import AppToast from '@/components/AppToast.vue'
 import ConfirmModal from '@/components/ui/ConfirmModal.vue'
 import ToastStack from '@/components/ui/ToastStack.vue'
+import PreferencesModal from '@/components/settings/PreferencesModal.vue'
 import { APP_NAME } from '@/constants'
 import { toast } from '@/composables/use-toast'
 import { useAuthStore } from '@/stores/auth'
@@ -34,5 +35,6 @@ onMounted(() => {
     <AppToast />
     <ToastStack />
     <ConfirmModal />
+    <PreferencesModal />
   </template>
 </template>
