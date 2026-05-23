@@ -1,3 +1,4 @@
+import { IS_BROWSER } from '@/constants'
 import { usePreferencesStore } from '@/stores/preferences'
 
 /**
@@ -10,7 +11,7 @@ export function applyReducedMotionDefault(): void {
   const store = usePreferencesStore()
   if (!store.loaded) return
   if (store.hasExplicitAccessibilityKey('reduceMotion')) return
-  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return
+  if (!IS_BROWSER || typeof window.matchMedia !== 'function') return
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
     store.setPath(['accessibility', 'reduceMotion'], true)
   }

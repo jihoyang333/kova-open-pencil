@@ -30,22 +30,24 @@ registerProductVariantOverlay()
 // Initialize auth store before mounting — prevents flash of unauthenticated content.
 // Pinia must be installed via app.use(pinia) before calling useAuthStore().
 const auth = useAuthStore()
-void auth.initialize().finally(async () => {
-  // Cluster 12 — load user preferences after auth resolves so DOM data-attrs
-  // are set before any pref-dependent component renders.
-  const prefs = usePreferencesStore()
-  await prefs.load()
-  applyReducedMotionDefault()
+void auth
+  .initialize()
+  .catch((err) => console.error('Auth initialize failed', err))
+  .then(async () => {
+    // Cluster 12 — load user preferences after auth resolves so DOM data-attrs
+    // are set before any pref-dependent component renders.
+    const prefs = usePreferencesStore()
+    await prefs.load()
+    applyReducedMotionDefault()
 
-  app.mount('#app')
+    app.mount('#app')
 
-  // Remove the static HTML loader from index.html
-  const loader = document.getElementById('loader')
-  if (loader) {
-    loader.classList.add('fade-out')
-    loader.addEventListener('transitionend', () => loader.remove())
-  }
-})
+    const loader = document.getElementById('loader')
+    if (loader) {
+      loader.classList.add('fade-out')
+      loader.addEventListener('transitionend', () => loader.remove())
+    }
+  })
 
 // Cluster 12 — global Cmd+, / Ctrl+, opens the A8.3 Accessibility modal
 // (matches Figma's keyboard shortcut convention, founder-ratified 2026-05-17).

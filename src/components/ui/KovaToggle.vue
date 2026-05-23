@@ -16,21 +16,21 @@ export interface KovaToggleProps {
   id?: string
 }
 
-const props = defineProps<KovaToggleProps>()
+const { modelValue, disabled = false } = defineProps<KovaToggleProps>()
 const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void
 }>()
 
 function onToggle(): void {
-  if (props.disabled) return
-  emit('update:modelValue', !props.modelValue)
+  if (disabled) return
+  emit('update:modelValue', !modelValue)
 }
 
 function onKey(e: KeyboardEvent): void {
-  if (props.disabled) return
+  if (disabled) return
   if (e.code === 'Space' || e.code === 'Enter') {
     e.preventDefault()
-    emit('update:modelValue', !props.modelValue)
+    emit('update:modelValue', !modelValue)
   }
 }
 </script>

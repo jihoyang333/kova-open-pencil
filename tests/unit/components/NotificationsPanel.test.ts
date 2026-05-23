@@ -11,15 +11,23 @@ mock.module('@/lib/supabase', () => ({
       }),
     }),
     rpc: async () => ({ error: null }),
+    auth: {
+      getSession: async () => ({ data: { session: null }, error: null }),
+      onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+    },
   },
 }))
-mock.module('@/stores/auth', () => ({
-  useAuthStore: () => ({ user: { id: 'u1' } }),
-}))
+
+async function seedAuth(): Promise<void> {
+  const { useAuthStore } = await import('@/stores/auth')
+  const auth = useAuthStore()
+  ;(auth as unknown as { user: { id: string } }).user = { id: 'u1' }
+}
 
 beforeEach(async () => {
   await new Promise((r) => setTimeout(r, 1100))
   setActivePinia(createPinia())
+  await seedAuth()
 })
 
 describe('<NotificationsPanel>', () => {
