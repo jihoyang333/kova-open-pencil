@@ -3,7 +3,7 @@
 **Branch:** `app/cluster-04-stripe`
 **Worktree:** `/Users/jihoyang/kova-build-c04`
 **Started from:** W7 (Cluster 07a) merged
-**Commits:** 16 (one-per-task discipline; some tasks batched per plan §)
+**Commits:** 21 — 17 build commits (one-per-task discipline; some tasks batched per plan §) + 4 review-fix commits addressing 16 of 17 W8b AUDIT findings (CRITICAL=0; HIGH 1-4; MEDIUM 1-6 except M-4 = ops/doc-only; LOW 1-7).
 **Sibling wave:** W8a (Cluster 01) + W8c (Cluster 12) — parallel; not merged into this branch.
 
 ---
@@ -212,4 +212,30 @@ d4965167 feat(c04-t3.1): POST /api/stripe/checkout-session
 
 ---
 
-**W8b CLUSTER 04 DONE. 16 commits pushed to app/cluster-04-stripe.**
+## W8b AUDIT fix dispatch (2026-06-06)
+
+| Finding | Fix commit | Files |
+|---|---|---|
+| H-1 normalizeStatus paused/unpaid → 'active' | `db640c08` | `_helpers.ts` (mapStripeStatus), `handle-subscription-{created,updated}.ts` |
+| H-2 user_has_active_plan excludes trialing | `f8288dbb` | `supabase/migrations/20260606_04_user_has_active_plan_fix.sql` |
+| H-3 current_period_end double-cast SDK drift | `db640c08` | `_helpers.ts` (extractCurrentPeriodEnd), both handlers |
+| H-4 webhook final-update swallow | `db640c08` | `api/stripe/webhook.ts` |
+| M-1 useBrandPicker concurrent prefs race | `f8288dbb` | `set_user_preference` RPC migration + composable |
+| M-2 `!` non-null assertion stripe-client | `db640c08` | `api/_shared/stripe-client.ts` |
+| M-3 stores swallow errors | `eb791611` | `src/stores/{account,billing}.ts` |
+| M-4 avatar bucket RLS unverified | `75a7e7c9` | docs/operations/stripe-setup-runbook.md (operator config docs) |
+| M-5 JSON.parse(JSON.stringify) | `eb791611` | `src/stores/account.ts` (structuredClone) |
+| M-6 uncommitted use-account-section | `75a7e7c9` | `src/composables/account/use-account-section.ts` |
+| L-1 accountUrl default https://kova.app | `db640c08` | `_helpers.ts` (requireAppUrl throws) |
+| L-2 lost DB error in findUser | `db640c08` | `_helpers.ts` |
+| L-3 reconcile no continuation | `db640c08` | `api/stripe/reconcile.ts` (keyset cursor) |
+| L-4 invoices empty-id key collision | `db640c08` | `api/stripe/invoices.ts` (flatMap filter) |
+| L-5 escapeHtml/escapeAttr duplicated | `db640c08` | `api/_shared/email-escape.ts` + 4 templates |
+| L-6 BrandPicker top-level await | `75a7e7c9` | `BrandPicker.vue`, `IntegrationsSection.vue` (onMounted) |
+| L-7 DONE commit count drift | this commit | DONE report header revised |
+
+Re-audit needed only on the deltas above. Quality gates after fix: `bun run test:unit` 1704p/0f/99 skip; `bunx vite build` 1.4s; `bun run test:dupes` 1.18% (down from 1.21%); `bun run check` 89 errors (unchanged — all pre-existing in non-c04 code).
+
+---
+
+**W8b CLUSTER 04 DONE. 21 commits pushed to app/cluster-04-stripe (17 build + 4 audit-fix).**
