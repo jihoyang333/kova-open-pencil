@@ -1,0 +1,133 @@
+/* ============================================================
+   Accessibility CSS layer (Cluster 12).
+   Driven by <html data-text-size | data-reduce-motion | data-high-contrast>.
+   Founder ratification 2026-05-17 (PRD 12 §3.3).
+   ============================================================ */
+
+/* ---------- Text size ----------
+   Founder ratified 2026-05-17 — 87.5% / 100% / 112.5% scale on <html> font-size.
+   All rem-based sizing scales automatically. 16px baseline → 14 / 16 / 18px body. */
+html[data-text-size='small'] {
+  font-size: 87.5%;
+}
+html[data-text-size='medium'] {
+  font-size: 100%;
+}
+html[data-text-size='large'] {
+  font-size: 112.5%;
+}
+html:not([data-text-size]) {
+  font-size: 100%;
+}
+
+:root[data-text-size='small'] {
+  --text-base: 14px;
+}
+:root[data-text-size='medium'] {
+  --text-base: 16px;
+}
+:root[data-text-size='large'] {
+  --text-base: 18px;
+}
+:root:not([data-text-size]) {
+  --text-base: 16px;
+}
+
+/* Canvas chrome stays fixed (per A7.1 annotation — "Tools and canvas chrome
+   stay fixed"). Inside .kc scope, chrome elements declare font-size in
+   absolute px (not rem / not --text-base). */
+.kc {
+  --text-base: 12px;
+  font-size: 12px;
+}
+
+body {
+  font-size: var(--text-base);
+}
+
+/* ---------- Reduce motion ---------- */
+:root[data-reduce-motion='true'] *,
+:root[data-reduce-motion='true'] *::before,
+:root[data-reduce-motion='true'] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* OS fallback before usePreferencesStore.load() resolves. */
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-reduce-motion='false']) *,
+  :root:not([data-reduce-motion='false']) *::before,
+  :root:not([data-reduce-motion='false']) *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ---------- High contrast ----------
+   Founder ratified 2026-05-17 — scope = "Borders + dividers stronger (matches
+   Figma)". Text contrast NOT bumped. Focus ring NOT enlarged. */
+:root[data-high-contrast='true'] {
+  /* token-exempt: high-contrast border override — PRD 12 §3.3 founder lock 2026-05-17 */
+  --border: #4a4a4a;
+  --line: #4a4a4a;
+  --line-2: #4a4a4a;
+}
+:root[data-high-contrast='true'] button,
+:root[data-high-contrast='true'] [role='button'] {
+  outline: 1px solid currentColor;
+  outline-offset: -1px;
+}
+
+/* ---------- Binary toggle primitive ----------
+   Lifted from `design-system/hifi/account-stripe/Kova Hi-Fi A7 Account Page - Dark.html`
+   inline <style> block lines 133–145. Per IMPLEMENTATION_PROMPT.md §4.5
+   (inline-style protocol) — lift one-off styles into shared stylesheet.
+   token-exempt comments document the 4 drift values flagged in
+   cluster-12-tokens-used.md §MISSING. */
+.toggle {
+  width: 34px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--line);
+  position: relative;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: background 0.15s;
+  border: 0;
+  padding: 0;
+  appearance: none;
+}
+.toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.toggle::after {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  /* token-exempt: toggle thumb idle — A7.1 hi-fi inline */
+  background: #ededea;
+  top: 2px;
+  left: 2px;
+  /* token-exempt: toggle thumb shadow — A7.1 hi-fi inline */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  transition: left 0.15s;
+}
+.toggle.on {
+  /* token-exempt: toggle on-state bg — A7.1 hi-fi inline */
+  background: #ededea;
+}
+.toggle.on::after {
+  left: 16px;
+  /* token-exempt: toggle thumb on — A7.1 hi-fi inline */
+  background: #0d0d0c;
+}
+.toggle[disabled],
+.toggle.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
