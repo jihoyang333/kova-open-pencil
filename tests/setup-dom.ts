@@ -69,6 +69,11 @@ const globals = [
   'getComputedStyle',
   'requestAnimationFrame',
   'cancelAnimationFrame',
+  // Cluster 12 — Storage APIs for VueUse useLocalStorage in useUIStateStore tests
+  'Storage',
+  'localStorage',
+  'sessionStorage',
+  'matchMedia',
 ] as const
 
 for (const key of globals) {
