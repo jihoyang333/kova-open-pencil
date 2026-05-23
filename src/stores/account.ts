@@ -8,9 +8,10 @@
 // Actions: load(), patch(partial), save(), discard().
 
 import { defineStore } from 'pinia'
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, toRaw } from 'vue'
 
 import { supabase } from '@/lib/supabase'
+import { toast } from '@/composables/use-toast'
 
 export interface ProfileDraft {
   name: string
@@ -25,13 +26,13 @@ const EMPTY_DRAFT: ProfileDraft = {
 }
 
 function clone(d: ProfileDraft): ProfileDraft {
-  // JSON clone (not structuredClone): handles Vue reactive proxies + the
-  // JSONB shape we persist; preferences are plain JSON-serializable per
-  // PRD 04 schema (text/bool/number, no functions or class instances).
+  // structuredClone over toRaw(preferences) — preserves Date/Map/Set fidelity
+  // and unwraps Vue reactive proxies before cloning (per CLAUDE.md coding
+  // convention: "Deep copies: structuredClone, never shallow spread").
   return {
     name: d.name,
     avatarStoragePath: d.avatarStoragePath,
-    preferences: JSON.parse(JSON.stringify(d.preferences)) as Record<string, unknown>,
+    preferences: structuredClone(toRaw(d.preferences)),
   }
 }
 
@@ -62,6 +63,7 @@ export const useAccountStore = defineStore('account', () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (user === null) {
         error.value = 'not_authenticated'
+        toast.show('Sign in required.', 'warning')
         return
       }
       const { data, error: dbErr } = await supabase
@@ -71,6 +73,8 @@ export const useAccountStore = defineStore('account', () => {
         .maybeSingle()
       if (dbErr || data === null) {
         error.value = dbErr?.message ?? 'no_user_row'
+        console.error(`[useAccountStore.load] ${dbErr?.code ?? 'no_row'}: ${dbErr?.message ?? 'no user row'}`)
+        toast.show('Couldn’t load your profile.', 'error')
         return
       }
       const next: ProfileDraft = {
@@ -99,6 +103,7 @@ export const useAccountStore = defineStore('account', () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (user === null) {
         error.value = 'not_authenticated'
+        toast.show('Sign in required.', 'warning')
         return false
       }
       const updates: Record<string, unknown> = {}
@@ -112,9 +117,12 @@ export const useAccountStore = defineStore('account', () => {
       const { error: dbErr } = await supabase.from('users').update(updates).eq('id', user.id)
       if (dbErr) {
         error.value = dbErr.message
+        console.error(`[useAccountStore.save] ${dbErr.code}: ${dbErr.message}`)
+        toast.show('Couldn’t save your changes. Please try again.', 'error')
         return false
       }
       original.value = clone(draft)
+      toast.show('Profile saved.', 'default')
       return true
     } finally {
       isSaving.value = false

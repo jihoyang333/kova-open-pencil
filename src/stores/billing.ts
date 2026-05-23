@@ -10,6 +10,7 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
 import { supabase } from '@/lib/supabase'
+import { toast } from '@/composables/use-toast'
 import type { PlanName, PlanStatus } from '@/constants/billing-plans'
 
 export interface InvoiceItem {
@@ -67,6 +68,8 @@ export const useBillingStore = defineStore('billing', () => {
         .maybeSingle()
       if (dbErr || data === null) {
         error.value = dbErr?.message ?? 'no_user_row'
+        console.error(`[useBillingStore.loadFromUser] ${dbErr?.code ?? 'no_row'}: ${dbErr?.message ?? 'no user row'}`)
+        toast.show('Couldn’t load billing.', 'error')
         return
       }
       plan.value = (data.plan ?? 'free') as PlanName
@@ -87,6 +90,8 @@ export const useBillingStore = defineStore('billing', () => {
     })
     if (!res.ok) {
       error.value = 'invoices_fetch_failed'
+      console.error(`[useBillingStore.fetchInvoices] http_${res.status}`)
+      toast.show('Couldn’t load invoices.', 'error')
       return
     }
     const body = await res.json() as { invoices: InvoiceItem[] }
@@ -109,6 +114,8 @@ export const useBillingStore = defineStore('billing', () => {
     })
     if (!res.ok) {
       error.value = 'checkout_failed'
+      console.error(`[useBillingStore.openCheckout] http_${res.status}`)
+      toast.show('Couldn’t start checkout. Please try again.', 'error')
       return null
     }
     const body = await res.json() as { url: string }
@@ -119,6 +126,7 @@ export const useBillingStore = defineStore('billing', () => {
     const { data: { session } } = await supabase.auth.getSession()
     if (session === null) {
       error.value = 'not_authenticated'
+      toast.show('Sign in required.', 'warning')
       return null
     }
     const res = await fetch('/api/stripe/portal-session', {
@@ -131,6 +139,8 @@ export const useBillingStore = defineStore('billing', () => {
     })
     if (!res.ok) {
       error.value = 'portal_failed'
+      console.error(`[useBillingStore.openPortal] http_${res.status}`)
+      toast.show('Couldn’t open customer portal. Please try again.', 'error')
       return null
     }
     const body = await res.json() as { url: string }
