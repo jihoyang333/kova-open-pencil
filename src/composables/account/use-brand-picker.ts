@@ -72,18 +72,16 @@ export function useBrandPicker() {
 
   async function selectBrand(brandId: string): Promise<void> {
     await router.replace({ query: { ...route.query, brand: brandId } })
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user === null) return
-    const { data: row } = await supabase
-      .from('users')
-      .select('preferences')
-      .eq('id', user.id)
-      .maybeSingle()
-    const prefs = (row?.preferences as Record<string, unknown> | null) ?? {}
-    await supabase
-      .from('users')
-      .update({ preferences: { ...prefs, lastActiveBrandId: brandId } })
-      .eq('id', user.id)
+    // Atomic single-key write via set_user_preference RPC (audit M-1).
+    // Avoids read-modify-write race when two tabs update at once.
+    const { error } = await supabase.rpc('set_user_preference', {
+      p_key: 'lastActiveBrandId',
+      p_value: brandId,
+    })
+    if (error) {
+      console.warn(`[useBrandPicker] persist lastActiveBrandId failed (${error.code}): ${error.message}`)
+      return
+    }
     lastActiveBrandId.value = brandId
   }
 
