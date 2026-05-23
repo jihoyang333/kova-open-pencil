@@ -2,6 +2,7 @@
 import { usePreferencesModal } from '@/composables/use-preferences-modal'
 import KovaModal from '@/components/ui/KovaModal.vue'
 import KovaIcon from '@/components/ui/KovaIcon.vue'
+import KovaButton from '@/components/ui/KovaButton.vue'
 import AccessibilityPanel from './AccessibilityPanel.vue'
 
 const { isOpen, mode, close } = usePreferencesModal()
@@ -23,8 +24,8 @@ const { isOpen, mode, close } = usePreferencesModal()
     </template>
 
     <template #foot>
-      <button type="button" class="btn" @click="close">Cancel</button>
-      <button type="button" class="btn primary" @click="close">Save</button>
+      <KovaButton @click="close">Cancel</KovaButton>
+      <KovaButton variant="primary" @click="close">Save</KovaButton>
     </template>
   </KovaModal>
 </template>

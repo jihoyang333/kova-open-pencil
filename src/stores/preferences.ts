@@ -57,18 +57,33 @@ export const usePreferencesStore = defineStore('preferences', () => {
 
   function set<K extends keyof UserPreferences>(key: K, value: UserPreferences[K]): void {
     prefs.value = { ...prefs.value, [key]: structuredClone(value) }
+    if (key === 'accessibility' && value && typeof value === 'object') {
+      // Whole-group writes mark every accessibility key explicit.
+      for (const k of Object.keys(value)) explicitAccessibilityKeys.value.add(k)
+    }
     applyToDom(prefs.value)
     void debouncedWrite([key as string], value)
   }
 
   function setPath(path: string[], value: unknown): void {
     prefs.value = setIn(prefs.value, path, value) as UserPreferences
+    if (path[0] === 'accessibility' && path.length >= 2) {
+      explicitAccessibilityKeys.value.add(path[1])
+    }
     applyToDom(prefs.value)
     void debouncedWrite(path, value)
   }
 
   function hasExplicitAccessibilityKey(key: string): boolean {
     return explicitAccessibilityKeys.value.has(key)
+  }
+
+  function reset(): void {
+    prefs.value = structuredClone(DEFAULTS)
+    explicitAccessibilityKeys.value = new Set()
+    loaded.value = false
+    loadError.value = null
+    applyToDom(prefs.value)
   }
 
   function applyToDom(p: UserPreferences): void {
@@ -100,6 +115,7 @@ export const usePreferencesStore = defineStore('preferences', () => {
     set,
     setPath,
     hasExplicitAccessibilityKey,
+    reset,
   }
 })
 

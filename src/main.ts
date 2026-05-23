@@ -9,6 +9,7 @@ import { preloadFonts } from '@/engine/fonts'
 import { createAppRouter } from '@/router'
 import { registerProductVariantOverlay } from '@/canvas-extensions/product-variant/register'
 import { initBrowserSentry } from '@/sentry'
+import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/auth'
 import { usePreferencesStore } from '@/stores/preferences'
 import { applyReducedMotionDefault } from '@/composables/use-reduced-motion-default'
@@ -47,6 +48,17 @@ void auth
       loader.classList.add('fade-out')
       loader.addEventListener('transitionend', () => loader.remove())
     }
+
+    // Reload prefs on subsequent SIGNED_IN (account switch / re-login);
+    // reset to DEFAULTS on SIGNED_OUT so the next user doesn't ghost the
+    // previous user's prefs on <html data-*>.
+    supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN') {
+        void prefs.load()
+      } else if (event === 'SIGNED_OUT') {
+        prefs.reset()
+      }
+    })
   })
 
 // Cluster 12 — global Cmd+, / Ctrl+, opens the A8.3 Accessibility modal
