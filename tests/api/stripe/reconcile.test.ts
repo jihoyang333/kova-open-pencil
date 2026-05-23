@@ -24,13 +24,25 @@ const dbState = {
 mock.module('@supabase/supabase-js', () => ({
   createClient: () => ({
     from: () => ({
-      select: () => ({
-        eq: () => ({
-          not: () => ({
-            limit: async () => ({ data: dbState.pastDue, error: null }),
-          }),
-        }),
-      }),
+      select: () => {
+        // Chain shape: .eq().not().order().limit() or .eq().not().order().limit().gt()
+        // Builder returns a thenable that resolves to { data, error } once awaited.
+        let returnedOnce = false
+        const builder = {
+          eq: () => builder,
+          not: () => builder,
+          order: () => builder,
+          limit: () => builder,
+          gt: () => builder,
+          then: (resolve: (v: { data: PastDueRow[]; error: null }) => unknown) => {
+            // Return rows the first time only so the cursor loop terminates.
+            const data = returnedOnce ? [] : dbState.pastDue
+            returnedOnce = true
+            return resolve({ data, error: null })
+          },
+        }
+        return builder
+      },
       update: (row: Record<string, unknown>) => ({
         eq: async (_: string, id: string) => {
           dbState.updates.push({ id, row })

@@ -3,6 +3,7 @@
 // Founder-locked copy 2026-05-17.
 
 import { renderEmailShell, type SendEmailInput } from '../../api/_shared/email'
+import { escapeAttr, escapeHtml } from '../../api/_shared/email-escape'
 
 export interface SubscriptionCancelledInput {
   recipientEmail: string
@@ -46,9 +47,3 @@ export function buildSubscriptionCancelledEmail(input: SubscriptionCancelledInpu
   }
 }
 
-function escapeHtml(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-}
-function escapeAttr(s: string): string {
-  return escapeHtml(s).replace(/"/g, '&quot;')
-}

@@ -62,16 +62,21 @@ export default async function handler(req: Request): Promise<Response> {
   const stripe = getStripeClient()
   const list = await stripe.invoices.list({ customer: customerId, limit: MAX_INVOICES })
 
-  const invoices: InvoiceListItem[] = list.data.map(inv => ({
-    id: inv.id ?? '',
-    created_iso: new Date(inv.created * 1000).toISOString(),
-    description: inv.description,
-    amount_paid_cents: inv.amount_paid,
-    currency: inv.currency,
-    status: inv.status ?? 'open',
-    hosted_invoice_url: inv.hosted_invoice_url,
-    invoice_pdf: inv.invoice_pdf,
-  }))
+  // Filter out invoices with no id — Stripe shouldn't emit them but if it does
+  // an empty-string id collides in Vue's :key loop. Belt-and-braces (L-4).
+  const invoices: InvoiceListItem[] = list.data.flatMap(inv => {
+    if (typeof inv.id !== 'string' || inv.id === '') return []
+    return [{
+      id: inv.id,
+      created_iso: new Date(inv.created * 1000).toISOString(),
+      description: inv.description,
+      amount_paid_cents: inv.amount_paid,
+      currency: inv.currency,
+      status: inv.status ?? 'open',
+      hosted_invoice_url: inv.hosted_invoice_url,
+      invoice_pdf: inv.invoice_pdf,
+    }]
+  })
 
   return new Response(JSON.stringify({ invoices }), { status: 200, headers: JSON_HEADERS })
 }

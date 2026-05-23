@@ -8,17 +8,13 @@ import type Stripe from 'stripe'
 
 import { writeAudit } from '../../_shared/audit'
 import { sendEmail } from '../../_shared/email'
-import { PLAN_INFO, PLAN_STATUS_VALUES, type PlanStatus } from '../../../src/constants/billing-plans'
+import { PLAN_INFO } from '../../../src/constants/billing-plans'
 import { buildSubscriptionUpgradedEmail } from '../../../emails/account/subscription-upgraded'
 
-import { accountUrl, findUserByStripeCustomerId, planFromSubscription, unsubscribeUrl } from './_helpers'
+import { accountUrl, extractCurrentPeriodEnd, findUserByStripeCustomerId, mapStripeStatus, planFromSubscription, unsubscribeUrl } from './_helpers'
 import type { HandlerResult } from './handle-checkout-completed'
 
 const TIER_ORDER = { free: 0, solo: 1, agency: 2 } as const
-
-function normalizeStatus(status: string): PlanStatus {
-  return PLAN_STATUS_VALUES.includes(status as PlanStatus) ? (status as PlanStatus) : 'active'
-}
 
 export async function handleSubscriptionUpdated(
   event: Stripe.Event,
@@ -33,14 +29,14 @@ export async function handleSubscriptionUpdated(
 
   const oldPlan = user.plan
   const newPlan = planFromSubscription(sub) ?? oldPlan
+  const mappedStatus = mapStripeStatus(sub.status)
+  const periodEndIso = extractCurrentPeriodEnd(sub)
 
   await supabase.from('users').update({
     plan: newPlan,
-    plan_status: normalizeStatus(sub.status),
+    plan_status: mappedStatus.value,
     stripe_subscription_id: sub.id,
-    current_period_end: (sub as unknown as { current_period_end?: number }).current_period_end !== undefined
-      ? new Date((sub as unknown as { current_period_end: number }).current_period_end * 1000).toISOString()
-      : null,
+    current_period_end: periodEndIso,
     cancel_at_period_end: sub.cancel_at_period_end,
   }).eq('id', user.id)
 
@@ -51,8 +47,11 @@ export async function handleSubscriptionUpdated(
       subscription_id: sub.id,
       old_plan: oldPlan,
       new_plan: newPlan,
-      status: sub.status,
+      stripe_status: sub.status,
+      mapped_status: mappedStatus.value,
+      status_fallback: mappedStatus.fellBack,
       cancel_at_period_end: sub.cancel_at_period_end,
+      period_end_present: periodEndIso !== null,
     },
     clusterOwner: '04',
   })

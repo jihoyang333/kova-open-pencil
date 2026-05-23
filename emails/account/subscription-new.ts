@@ -2,6 +2,7 @@
 // Founder-locked copy 2026-05-17. Composes EmailShell via renderEmailShell.
 
 import { renderEmailShell, type SendEmailInput } from '../../api/_shared/email'
+import { escapeAttr, escapeHtml } from '../../api/_shared/email-escape'
 
 export interface SubscriptionNewInput {
   recipientEmail: string
@@ -41,9 +42,3 @@ export function buildSubscriptionNewEmail(input: SubscriptionNewInput): SendEmai
   }
 }
 
-function escapeHtml(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-}
-function escapeAttr(s: string): string {
-  return escapeHtml(s).replace(/"/g, '&quot;')
-}

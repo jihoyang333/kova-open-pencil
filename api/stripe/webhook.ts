@@ -111,18 +111,39 @@ export default async function handler(req: Request): Promise<Response> {
   try {
     result = await DISPATCH_TABLE[event.type](event, admin)
   } catch (err: unknown) {
-    await admin.from('stripe_webhook_events').update({
-      outcome: 'error',
-      error_message: err instanceof Error ? err.message : 'unknown_handler_error',
-    }).eq('event_id', event.id)
+    const errorMessage = err instanceof Error ? err.message : 'unknown_handler_error'
+    try {
+      await admin.from('stripe_webhook_events').update({
+        outcome: 'error',
+        error_message: errorMessage,
+      }).eq('event_id', event.id)
+    } catch (updateErr: unknown) {
+      console.error(
+        `[stripe/webhook] failed to record handler-error outcome for ${event.id}: ${updateErr instanceof Error ? updateErr.message : 'unknown'}`,
+        { eventId: event.id, eventType: event.type, originalError: errorMessage }
+      )
+    }
     return jsonResponse(500, { error: 'handler_error' })
   }
 
-  await admin.from('stripe_webhook_events').update({
-    outcome: result.outcome,
-    error_message: result.error ?? null,
-    user_id: result.user_id ?? null,
-  }).eq('event_id', event.id)
+  try {
+    const { error: outcomeErr } = await admin.from('stripe_webhook_events').update({
+      outcome: result.outcome,
+      error_message: result.error ?? null,
+      user_id: result.user_id ?? null,
+    }).eq('event_id', event.id)
+    if (outcomeErr) {
+      console.error(
+        `[stripe/webhook] outcome update failed for ${event.id} (${outcomeErr.code}): ${outcomeErr.message}`,
+        { eventId: event.id, eventType: event.type, attemptedOutcome: result.outcome }
+      )
+    }
+  } catch (updateErr: unknown) {
+    console.error(
+      `[stripe/webhook] outcome update threw for ${event.id}: ${updateErr instanceof Error ? updateErr.message : 'unknown'}`,
+      { eventId: event.id, eventType: event.type, attemptedOutcome: result.outcome }
+    )
+  }
 
   return jsonResponse(200, { received: true, outcome: result.outcome, event_id: event.id })
 }

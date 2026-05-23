@@ -16,7 +16,8 @@ interface GlobalWithStripe {
 
 export function getStripeClient(): Stripe {
   const g = globalThis as GlobalWithStripe
-  if (g[STRIPE_CLIENT_GLOBAL_KEY]) return g[STRIPE_CLIENT_GLOBAL_KEY]!
+  const cached = g[STRIPE_CLIENT_GLOBAL_KEY]
+  if (cached !== undefined) return cached
   const key = process.env.STRIPE_SECRET_KEY
   if (key === undefined || key === '') {
     throw new Error('Missing required environment variable: STRIPE_SECRET_KEY. See docs/operations/stripe-setup-runbook.md.')

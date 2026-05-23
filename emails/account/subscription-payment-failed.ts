@@ -2,6 +2,7 @@
 // Founder-locked copy 2026-05-17: deadline = current_period_end + 7 days.
 
 import { renderEmailShell, type SendEmailInput } from '../../api/_shared/email'
+import { escapeAttr, escapeHtml } from '../../api/_shared/email-escape'
 
 export interface SubscriptionPaymentFailedInput {
   recipientEmail: string
@@ -40,9 +41,3 @@ export function buildSubscriptionPaymentFailedEmail(
   }
 }
 
-function escapeHtml(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-}
-function escapeAttr(s: string): string {
-  return escapeHtml(s).replace(/"/g, '&quot;')
-}
