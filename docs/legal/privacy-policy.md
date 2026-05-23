@@ -29,6 +29,10 @@ Stripe data retention: Stripe retains payment and invoice records for 7 years pe
 | Webhook idempotency log (`stripe_webhook_events`) | Prevent double-processing | 90-day rolling window (manual prune Phase B) |
 | Shopify connection audit (`shopify_connection_history`) | Per-brand connection / sync audit trail | Cascades on brand deletion |
 
+## User preferences (Cluster 12 disclosure)
+
+We store cross-device user preferences (accessibility settings — text size, reduce motion, high contrast; notification opt-ins — product updates, Shopify sync alerts; last-active brand selection) in the `users.preferences` JSONB column. Preferences are read on app load, written atomically on each toggle, and removed with the user account on hard-deletion via the Cluster 01 GDPR cascade.
+
 ## Your rights
 
 You can:

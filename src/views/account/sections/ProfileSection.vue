@@ -65,8 +65,16 @@ async function onSave(): Promise<void> {
   }
 }
 
+// Per-key atomic preference write via set_user_preference RPC. Avoids
+// read-modify-write races with Cluster 12's usePreferencesStore (which uses
+// update_user_pref(text[], jsonb) against the same column). These inline
+// accessibility/notifications blocks remain as the c04 stand-in until
+// Cluster 12 lands its `<AccessibilityPanel>` + `<NotificationsPanel>`
+// components and mounts them here as the canonical surface — see
+// docs/execution-phase/cluster-reports/W8b-cluster-04-DONE.md §Known
+// follow-ups (C12 hand-off).
 function setPref(key: string, value: unknown): void {
-  account.patch({ preferences: { ...account.draft.preferences, [key]: value } })
+  void account.setPreferenceAtomic(key, value)
 }
 
 function getPref<T>(key: string, fallback: T): T {

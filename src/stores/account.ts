@@ -95,6 +95,29 @@ export const useAccountStore = defineStore('account', () => {
     if (partial.preferences !== undefined) draft.preferences = { ...partial.preferences }
   }
 
+  // Atomic per-key preference write. Uses the set_user_preference RPC so the
+  // jsonb_set runs server-side (no read-modify-write race with Cluster 12's
+  // own preference writes). Mirrors the change into BOTH draft and original
+  // baselines so isDirty does not flip to true for this key — preferences
+  // are not part of the form-save UnsavedPill flow.
+  async function setPreferenceAtomic(key: string, value: unknown): Promise<boolean> {
+    const { error: rpcErr } = await supabase.rpc('set_user_preference', {
+      p_key: key,
+      p_value: value,
+    })
+    if (rpcErr) {
+      console.error(`[useAccountStore.setPreferenceAtomic] ${rpcErr.code}: ${rpcErr.message}`)
+      toast.show('Couldn’t save preference.', 'error')
+      return false
+    }
+    draft.preferences = { ...draft.preferences, [key]: value }
+    original.value = {
+      ...original.value,
+      preferences: { ...original.value.preferences, [key]: value },
+    }
+    return true
+  }
+
   async function save(): Promise<boolean> {
     if (!isDirty.value) return true
     isSaving.value = true
@@ -111,8 +134,19 @@ export const useAccountStore = defineStore('account', () => {
       if (draft.avatarStoragePath !== original.value.avatarStoragePath) {
         updates.avatar_storage_path = draft.avatarStoragePath
       }
-      if (JSON.stringify(draft.preferences) !== JSON.stringify(original.value.preferences)) {
-        updates.preferences = draft.preferences
+      // preferences are NOT written here — they belong to Cluster 12's
+      // usePreferencesStore which persists via the atomic `update_user_pref`
+      // RPC on each toggle. Writing the entire `preferences` blob from c04's
+      // save() would race with c12's per-key writes (any c12 mutation between
+      // c04's load + save would be clobbered). Toggles call
+      // `setPreferenceAtomic(key, value)` directly from ProfileSection.
+      if (Object.keys(updates).length === 0) {
+        // No name / avatar diff — nothing to write. Do NOT touch the
+        // original baseline; an unsynced preference diff (rare; should only
+        // happen if a caller used patch({preferences:…}) without then
+        // calling setPreferenceAtomic) stays visible via isDirty so the
+        // caller can decide what to do.
+        return true
       }
       const { error: dbErr } = await supabase.from('users').update(updates).eq('id', user.id)
       if (dbErr) {
@@ -151,6 +185,7 @@ export const useAccountStore = defineStore('account', () => {
     load,
     patch,
     save,
+    setPreferenceAtomic,
     discard,
     $reset,
   }
