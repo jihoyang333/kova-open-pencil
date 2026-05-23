@@ -32,7 +32,8 @@ export function useAccountSection() {
   const router = useRouter()
 
   const activeSection = computed<AccountSection>(() => {
-    const raw = (route.params.section ?? 'profile') as string
+    const param = route.params.section
+    const raw = typeof param === 'string' && param !== '' ? param : 'profile'
     return isAccountSection(raw) ? raw : 'profile'
   })
 

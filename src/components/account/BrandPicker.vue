@@ -1,13 +1,19 @@
 <script setup lang="ts">
 // PRD 04 §6.4.2 — BrandPicker 3-mode (empty / static-label / dropdown).
 // Founder lock D-17 2026-05-17.
+//
+// No top-level await (audit L-6, 2026-06-06): kicks load() on mount so the
+// component can render without a Suspense boundary above it. The mode
+// computed handles the pre-load state gracefully (empty → "No brands yet").
+
+import { onMounted } from 'vue'
 
 import KovaIcon from '@/components/ui/KovaIcon.vue'
 import KovaMenu from '@/components/ui/KovaMenu.vue'
 import { useBrandPicker } from '@/composables/account/use-brand-picker'
 
 const picker = useBrandPicker()
-await picker.load()
+onMounted(() => { void picker.load() })
 </script>
 
 <template>

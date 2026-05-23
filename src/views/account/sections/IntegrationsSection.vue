@@ -4,8 +4,11 @@
 // theme. Full extraction (IntegrationCard / SyncHistoryAccordion) lands as
 // Cluster 04 follow-up; for now reuse the M9 SettingsBrandIntegrationsView
 // component scoped to the brand-picker selection.
+//
+// No top-level await (audit L-6, 2026-06-06): picker loads on mount; the
+// template shows the empty-state stub while brands are still loading.
 
-import { Suspense, defineAsyncComponent } from 'vue'
+import { defineAsyncComponent, onMounted } from 'vue'
 
 import AccountSectionHeader from '@/components/account/AccountSectionHeader.vue'
 import BrandPicker from '@/components/account/BrandPicker.vue'
@@ -18,7 +21,7 @@ const ShopifyIntegrationsCard = defineAsyncComponent(() =>
 )
 
 const picker = useBrandPicker()
-await picker.load()
+onMounted(() => { void picker.load() })
 </script>
 
 <template>

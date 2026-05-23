@@ -24,6 +24,8 @@
    STRIPE_WEBHOOK_SECRET=whsec_…
    STRIPE_PRICE_ID_SOLO=price_…
    STRIPE_PRICE_ID_AGENCY=price_…
+   VITE_APP_URL=https://<staging-domain>   # REQUIRED — handlers throw 500 if unset (audit L-1, fail-loud)
+   CRON_SECRET=<random 32 bytes>           # reconcile cron auth; 503 stub if unset
    ```
 6. **Test the round-trip**:
    - Browse to `/account/billing` and click "Upgrade to Solo".
@@ -68,7 +70,21 @@ Cluster 01's `gdpr_deletion_queue` worker calls `stripe.customers.del(stripe_cus
 
 ## Reconcile cron
 
-Weekly Mon 05:00 UTC (configured in `vercel.json`). Walks `users` where `plan_status='past_due'`, retrieves Stripe subscription, heals to `active` on match. Logs each heal via `writeAudit` with `eventType='stripe.reconcile.heal'`.
+Weekly Mon 05:00 UTC (configured in `vercel.json`). Walks `users` where `plan_status='past_due'` via keyset cursor (BATCH_LIMIT=100, MAX_BATCHES=10 → up to 1000 users per invocation; tail rolls to next tick, response sets `truncated:true`). Retrieves Stripe subscription per row, heals to `active` on match. Logs each heal via `writeAudit` with `eventType='stripe.reconcile.heal'`.
+
+## Avatar uploads — Supabase Storage bucket policy
+
+`POST /api/account/avatar-upload` writes to bucket `media-assets` at path `{user_id}/avatar.png`. The endpoint uses the service role so RLS is bypassed for the write itself, but the public-URL returned in the response (`getPublicUrl`) only resolves if the bucket is configured public OR a signed URL is requested instead. For MVP the avatar is rendered via `<img>` in the dark account UI; configure the bucket as follows (audit M-4, 2026-06-06):
+
+- Bucket name: `media-assets`
+- Public: **enabled** (so `getPublicUrl(...)` resolves without auth)
+- Allowed MIME types (bucket-level guard, defense-in-depth alongside sharp magic-bytes): `image/png, image/jpeg`
+- Max file size: `5 MB`
+- RLS policies on `storage.objects`:
+  - SELECT: anyone (public)
+  - INSERT / UPDATE / DELETE: owner only — `bucket_id='media-assets' AND (storage.foldername(name))[1] = auth.uid()::text`
+
+After provisioning, smoke with `curl -I https://<project>.supabase.co/storage/v1/object/public/media-assets/<user_id>/avatar.png` and confirm `200 OK` (after a successful upload).
 
 ## Operator alerts
 
