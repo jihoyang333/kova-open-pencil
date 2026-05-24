@@ -73,9 +73,17 @@ export const usePreferencesStore = defineStore('preferences', () => {
     1000,
   )
 
+  // JSON round-trip deep clone. Preferences are JSON-safe by design
+  // (primitives + plain objects only — no Maps/Sets/Dates/functions) so
+  // JSON is faster than structuredClone and immune to Pinia/Vue reactive
+  // Proxy targets that structuredClone refuses via DataCloneError.
+  function deepClone<T>(value: T): T {
+    return JSON.parse(JSON.stringify(value)) as T
+  }
+
   function set<K extends keyof UserPreferences>(key: K, value: UserPreferences[K]): void {
-    const prior = structuredClone(prefs.value)
-    prefs.value = { ...prefs.value, [key]: structuredClone(value) }
+    const prior = deepClone(prefs.value)
+    prefs.value = { ...prefs.value, [key]: deepClone(value) }
     if (key === 'accessibility' && value && typeof value === 'object') {
       // Whole-group writes mark every accessibility key explicit.
       for (const k of Object.keys(value)) explicitAccessibilityKeys.value.add(k)
@@ -85,11 +93,11 @@ export const usePreferencesStore = defineStore('preferences', () => {
   }
 
   function setPath(path: string[], value: unknown): void {
-    const prior = structuredClone(prefs.value)
-    // structuredClone the incoming value so a caller mutating the original
+    const prior = deepClone(prefs.value)
+    // Deep-clone the incoming value so a caller mutating the original
     // object reference can't ghost-edit the store state.
     const cloned =
-      value !== null && typeof value === 'object' ? structuredClone(value) : value
+      value !== null && typeof value === 'object' ? deepClone(value) : value
     prefs.value = setIn(prefs.value, path, cloned) as UserPreferences
     if (path[0] === 'accessibility' && path.length >= 2) {
       explicitAccessibilityKeys.value.add(path[1])

@@ -103,7 +103,7 @@ Also: env-guarded `send-sync-alert` Supabase Edge Function (Task 16) for Cluster
 |---|---|
 | All Plan tasks committed | ✅ (14 done + 3 deferred with forward-pointers) |
 | `bun run test:unit` (full suite) | ✅ **1720 pass, 0 fail, 99 skip** (1819 total) |
-| `bun run test:unit` (c12 files only) | ✅ **45 pass, 0 fail** |
+| `bun run test:unit` (c12 files only) | ✅ **43 pass, 0 fail** |
 | `bun run test:dupes` | ✅ **1.17% lines / 1.52% tokens** (under 3% gate) |
 | `bun run check` (c12 files) | ✅ **0 errors** |
 | `bun run check` (other files) | ⚠️ 89 pre-existing errors in `packages/core/` + `src/canvas-extensions/` + `src/components/onboarding/` (untouched by Cluster 12; locked per CLAUDE.md packages/core lock) |
@@ -156,6 +156,10 @@ PRD 12 baked in 16 founder decisions; all traceable to specific files in shipped
 6. **`KovaToggle` re-homing.** Cluster 11 ships `KovaCheckbox` + `KovaSegmented` but no `KovaToggle`. Cluster 12 ships `KovaToggle.vue` under `src/components/ui/` (canonical Cluster 11 primitive location). May be lifted into Cluster 11 PRD's roster post-merge.
 
 7. **`/dev/cluster-12` showcase route.** Not shipped — Cluster 12 surfaces mount inside Cluster 04's `/account/profile` and the global `<PreferencesModal>` overlay. No standalone route required.
+
+8. **A8.3 modal — App menu trigger (Cluster 08).** Cluster 12 ships 1 of the 3 founder-locked A8.3 triggers (the global Cmd+, / Ctrl+, keyboard shortcut). The App menu → Preferences entry is owned by Cluster 08 (main-menu composable) and must invoke `usePreferencesModal().open('accessibility')` from its handler.
+
+9. **A8.3 modal — Profile dropdown trigger (Cluster 04).** Cluster 04 owns the Profile-dropdown Settings link in the top-bar / account chrome and must wire it to `usePreferencesModal().open('accessibility')` so founder lock #11 (3-trigger coverage) closes end-to-end.
 
 ---
 
