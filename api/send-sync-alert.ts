@@ -96,6 +96,8 @@ export default async function handler(req: Request): Promise<Response> {
     auth: { persistSession: false, autoRefreshToken: false },
   })
 
+  const auditPayload = { canvasId: payload.canvasId, lastSyncAt: payload.lastSyncAt }
+
   // users.email is mirrored from auth.users; preferences ships in
   // Cluster 01's 20260522_01_users_account_lifecycle migration.
   const { data: userRow, error: userErr } = await admin
@@ -105,24 +107,54 @@ export default async function handler(req: Request): Promise<Response> {
     .maybeSingle()
   if (userErr) {
     console.error(`[send-sync-alert] users select failed (${userErr.code}): ${userErr.message}`)
+    void writeAudit(admin, {
+      userId,
+      eventType: 'sync_alert.failed_user_lookup',
+      payload: { ...auditPayload, error: userErr.message, code: userErr.code },
+      clusterOwner: '12',
+    })
     return jsonResponse(500, { ok: false, error: 'user_lookup_failed' })
   }
   if (userRow === null) {
+    void writeAudit(admin, {
+      userId,
+      eventType: 'sync_alert.failed_user_not_found',
+      payload: auditPayload,
+      clusterOwner: '12',
+    })
     return jsonResponse(404, { ok: false, error: 'user_not_found' })
   }
 
   const prefs = (userRow.preferences as { notifications?: { syncAlerts?: boolean } } | null) ?? {}
   const optedIn = prefs.notifications?.syncAlerts !== false
   if (!optedIn) {
+    void writeAudit(admin, {
+      userId,
+      eventType: 'sync_alert.skipped_opted_out',
+      payload: auditPayload,
+      clusterOwner: '12',
+    })
     return jsonResponse(200, { ok: true, skipped: 'opted_out' })
   }
 
   const { data: authUser, error: authErr } = await admin.auth.admin.getUserById(userId)
   if (authErr || authUser?.user === null || authUser?.user === undefined) {
+    void writeAudit(admin, {
+      userId,
+      eventType: 'sync_alert.failed_auth_lookup',
+      payload: { ...auditPayload, error: authErr?.message ?? 'no_user' },
+      clusterOwner: '12',
+    })
     return jsonResponse(500, { ok: false, error: 'auth_lookup_failed' })
   }
   const email = authUser.user.email
   if (typeof email !== 'string' || email === '') {
+    void writeAudit(admin, {
+      userId,
+      eventType: 'sync_alert.skipped_no_user_email',
+      payload: auditPayload,
+      clusterOwner: '12',
+    })
     return jsonResponse(200, { ok: true, skipped: 'no_user_email' })
   }
 
@@ -152,11 +184,29 @@ export default async function handler(req: Request): Promise<Response> {
   })
 
   if (result.skipped === true) {
+    void writeAudit(admin, {
+      userId,
+      eventType: 'sync_alert.skipped_no_api_key',
+      payload: auditPayload,
+      clusterOwner: '12',
+    })
     return jsonResponse(200, { ok: true, skipped: 'no_api_key' })
   }
   if (!result.ok) {
     console.error(`[send-sync-alert] Resend send failed: ${result.error ?? 'unknown'}`)
+    void writeAudit(admin, {
+      userId,
+      eventType: 'sync_alert.failed_send',
+      payload: { ...auditPayload, error: result.error ?? 'unknown' },
+      clusterOwner: '12',
+    })
     return jsonResponse(502, { ok: false, error: 'send_failed' })
   }
+  void writeAudit(admin, {
+    userId,
+    eventType: 'sync_alert.sent',
+    payload: auditPayload,
+    clusterOwner: '12',
+  })
   return jsonResponse(200, { ok: true, sent: true })
 }

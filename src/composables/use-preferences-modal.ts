@@ -1,22 +1,23 @@
-import { readonly, ref, type Ref } from 'vue'
+import { computed, type ComputedRef } from 'vue'
+import { useModalsStore, type PreferencesMode } from '@/stores/modals'
 
-type PreferencesMode = 'accessibility'
+// Backwards-compatible facade over useModalsStore so existing call sites
+// (`usePreferencesModal().open(...)`, `usePreferencesModal().close()`) keep
+// working. New code should reach for useModalsStore directly.
 
-const isOpen = ref(false)
-const mode = ref<PreferencesMode>('accessibility')
-
-export function usePreferencesModal() {
-  function open(m: PreferencesMode = 'accessibility'): void {
-    mode.value = m
-    isOpen.value = true
-  }
-  function close(): void {
-    isOpen.value = false
-  }
+export function usePreferencesModal(): {
+  isOpen: ComputedRef<boolean>
+  mode: ComputedRef<PreferencesMode>
+  open: (m?: PreferencesMode) => void
+  close: () => void
+} {
+  const store = useModalsStore()
   return {
-    isOpen: readonly(isOpen) as Readonly<Ref<boolean>>,
-    mode: readonly(mode) as Readonly<Ref<PreferencesMode>>,
-    open,
-    close,
+    isOpen: computed(() => store.preferencesOpen),
+    mode: computed(() => store.preferencesMode),
+    open: (m: PreferencesMode = 'accessibility') => store.openPreferences(m),
+    close: () => store.closePreferences(),
   }
 }
+
+export type { PreferencesMode }

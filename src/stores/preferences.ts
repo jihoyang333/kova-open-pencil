@@ -9,6 +9,7 @@ export const usePreferencesStore = defineStore('preferences', () => {
   const prefs = ref<UserPreferences>(structuredClone(DEFAULTS))
   const loaded = ref(false)
   const loadError = ref<Error | null>(null)
+  const lastWriteError = ref<Error | null>(null)
   const explicitAccessibilityKeys = ref<Set<string>>(new Set())
 
   async function load(): Promise<void> {
@@ -42,36 +43,59 @@ export const usePreferencesStore = defineStore('preferences', () => {
     applyToDom(prefs.value)
   }
 
+  // Optimistic write with rollback. We snapshot the prior prefs object
+  // before applying the local update, then debounce the RPC. On RPC failure
+  // we revert prefs + DOM to the snapshot so the user doesn't see state
+  // that disagrees with persistence. L14 surface lastWriteError in the
+  // modal footer so the user can retry.
   const debouncedWrite = useDebounceFn(
-    async (path: string[], value: unknown): Promise<void> => {
+    async (
+      path: string[],
+      value: unknown,
+      prior: UserPreferences,
+    ): Promise<void> => {
       // supabase-js auto-JSON-encodes RPC args; do NOT pre-stringify or values
       // round-trip back double-quoted (e.g. 'large' → '"large"').
       const { error } = await supabase.rpc('update_user_pref', {
         p_path: path,
         p_value: value,
       })
-      if (error) loadError.value = error as unknown as Error
+      if (error) {
+        const err = error as unknown as Error
+        lastWriteError.value = err
+        loadError.value = err
+        prefs.value = prior
+        applyToDom(prior)
+        return
+      }
+      lastWriteError.value = null
     },
     1000,
   )
 
   function set<K extends keyof UserPreferences>(key: K, value: UserPreferences[K]): void {
+    const prior = structuredClone(prefs.value)
     prefs.value = { ...prefs.value, [key]: structuredClone(value) }
     if (key === 'accessibility' && value && typeof value === 'object') {
       // Whole-group writes mark every accessibility key explicit.
       for (const k of Object.keys(value)) explicitAccessibilityKeys.value.add(k)
     }
     applyToDom(prefs.value)
-    void debouncedWrite([key as string], value)
+    void debouncedWrite([key as string], value, prior)
   }
 
   function setPath(path: string[], value: unknown): void {
-    prefs.value = setIn(prefs.value, path, value) as UserPreferences
+    const prior = structuredClone(prefs.value)
+    // structuredClone the incoming value so a caller mutating the original
+    // object reference can't ghost-edit the store state.
+    const cloned =
+      value !== null && typeof value === 'object' ? structuredClone(value) : value
+    prefs.value = setIn(prefs.value, path, cloned) as UserPreferences
     if (path[0] === 'accessibility' && path.length >= 2) {
       explicitAccessibilityKeys.value.add(path[1])
     }
     applyToDom(prefs.value)
-    void debouncedWrite(path, value)
+    void debouncedWrite(path, cloned, prior)
   }
 
   function hasExplicitAccessibilityKey(key: string): boolean {
@@ -83,6 +107,7 @@ export const usePreferencesStore = defineStore('preferences', () => {
     explicitAccessibilityKeys.value = new Set()
     loaded.value = false
     loadError.value = null
+    lastWriteError.value = null
     applyToDom(prefs.value)
   }
 
@@ -105,6 +130,7 @@ export const usePreferencesStore = defineStore('preferences', () => {
     prefs,
     loaded,
     loadError,
+    lastWriteError,
     accessibility,
     view,
     notifications,

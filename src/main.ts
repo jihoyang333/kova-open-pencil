@@ -63,6 +63,12 @@ void auth
 
 // Cluster 12 — global Cmd+, / Ctrl+, opens the A8.3 Accessibility modal
 // (matches Figma's keyboard shortcut convention, founder-ratified 2026-05-17).
+//
+// The listener attaches at module load, before app.mount() resolves. During
+// the brief auth-resolve window before <PreferencesModal /> mounts,
+// usePreferencesModal().open() flips reactive state but renders nothing
+// visually; once the modal mounts it reads the now-true isOpen and appears.
+// No-op-then-activate is intentional — no early-keydown swallow needed.
 window.addEventListener('keydown', (e) => {
   if (e.code !== 'Comma') return
   const isMod = e.metaKey || e.ctrlKey

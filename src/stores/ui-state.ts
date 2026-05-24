@@ -11,6 +11,9 @@ export const useUIStateStore = defineStore('ui-state', () => {
   const lastActiveCanvasId = useLocalStorage<string | null>('kova:ui:last-canvas', null)
   const dismissedToasts = useLocalStorage<string[]>('kova:ui:dismissed-toasts', [])
 
+  // Normalize to lowercase so '#FF00AA' and '#ff00aa' dedupe as a single
+  // entry. Hex is case-insensitive — downstream consumers must not rely on
+  // round-trip case preservation.
   function pushRecentColor(hex: string): void {
     const next = hex.toLowerCase()
     const filtered = recentColors.value.filter((c) => c.toLowerCase() !== next)

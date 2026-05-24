@@ -46,19 +46,31 @@ const dbState = {
   userError: null as null | { code: string; message: string },
 }
 
+const auditState = { rows: [] as Array<{ event_type: string; user_id: string | null }> }
+
 mock.module('@supabase/supabase-js', () => ({
   createClient: () => ({
-    from: () => ({
-      select: () => ({
-        eq: () => ({
-          maybeSingle: async () => {
-            if (dbState.userError !== null) return { data: null, error: dbState.userError }
-            if (dbState.user === null) return { data: null, error: null }
-            return { data: { preferences: dbState.user.preferences }, error: null }
+    from: (table: string) => {
+      if (table === 'audit_log') {
+        return {
+          insert: async (row: { event_type: string; user_id: string | null }) => {
+            auditState.rows.push({ event_type: row.event_type, user_id: row.user_id })
+            return { error: null }
           },
+        }
+      }
+      return {
+        select: () => ({
+          eq: () => ({
+            maybeSingle: async () => {
+              if (dbState.userError !== null) return { data: null, error: dbState.userError }
+              if (dbState.user === null) return { data: null, error: null }
+              return { data: { preferences: dbState.user.preferences }, error: null }
+            },
+          }),
         }),
-      }),
-    }),
+      }
+    },
     auth: {
       admin: {
         getUserById: async (id: string) => {
@@ -89,6 +101,7 @@ beforeEach(() => {
   emailState.result = { ok: true, id: 'em_test_1' }
   dbState.user = { id: USER_ID, email: 'jiho@example.com', preferences: {} }
   dbState.userError = null
+  auditState.rows = []
 })
 
 function req(body: unknown, opts: { method?: string } = {}): Request {
@@ -196,5 +209,26 @@ describe('POST /api/send-sync-alert', () => {
     expect(res.status).toBe(502)
     const body = await res.json() as { error: string }
     expect(body.error).toBe('send_failed')
+  })
+
+  it('writes audit_log row on happy path send', async () => {
+    await handler(req(VALID_PAYLOAD))
+    const sentRows = auditState.rows.filter((r) => r.event_type === 'sync_alert.sent')
+    expect(sentRows).toHaveLength(1)
+    expect(sentRows[0].user_id).toBe(USER_ID)
+  })
+
+  it('writes audit_log row on opted_out skip', async () => {
+    dbState.user = { id: USER_ID, email: 'jiho@example.com', preferences: { notifications: { syncAlerts: false } } }
+    await handler(req(VALID_PAYLOAD))
+    const skipRows = auditState.rows.filter((r) => r.event_type === 'sync_alert.skipped_opted_out')
+    expect(skipRows).toHaveLength(1)
+  })
+
+  it('writes audit_log row on send failure', async () => {
+    emailState.result = { ok: false, error: 'resend_500' }
+    await handler(req(VALID_PAYLOAD))
+    const failRows = auditState.rows.filter((r) => r.event_type === 'sync_alert.failed_send')
+    expect(failRows).toHaveLength(1)
   })
 })

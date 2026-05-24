@@ -50,7 +50,7 @@ const textSizeOptions = [
     <div class="row">
       <div class="lbl">
         High contrast
-        <span class="sub">Strengthens borders, ink, and focus rings.</span>
+        <span class="sub">Strengthens borders and dividers.</span>
       </div>
       <div class="val">
         <KovaToggle v-model="highContrast" aria-label="High contrast" />

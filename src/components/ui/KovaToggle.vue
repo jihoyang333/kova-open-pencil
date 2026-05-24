@@ -16,21 +16,25 @@ export interface KovaToggleProps {
   id?: string
 }
 
-const { modelValue, disabled = false } = defineProps<KovaToggleProps>()
+// Reference props through the proxy (not destructured) so closures read the
+// live reactive value at invocation time. Destructured defineProps would
+// capture a snapshot inside the function body — safe today (primitives only)
+// but brittle if a parent ever swaps the underlying reactive source.
+const props = withDefaults(defineProps<KovaToggleProps>(), { disabled: false })
 const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void
 }>()
 
 function onToggle(): void {
-  if (disabled) return
-  emit('update:modelValue', !modelValue)
+  if (props.disabled) return
+  emit('update:modelValue', !props.modelValue)
 }
 
 function onKey(e: KeyboardEvent): void {
-  if (disabled) return
+  if (props.disabled) return
   if (e.code === 'Space' || e.code === 'Enter') {
     e.preventDefault()
-    emit('update:modelValue', !modelValue)
+    emit('update:modelValue', !props.modelValue)
   }
 }
 </script>
