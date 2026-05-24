@@ -16,11 +16,14 @@ If you have questions about this policy or your data, contact us at **privacy@ko
 | Category | Examples | Source |
 |---|---|---|
 | Account data | email address, name | You, at signup |
+| User preferences | accessibility (text size, motion, contrast), view, notification opt-ins | You, in `/account` settings |
 | Brand data | brand name, logo, brand kit (fonts, colors, voice snippets) | You, in the app |
 | Canvas data | email designs, layout, copy, image assets you upload | You, in the canvas editor |
 | Shopify store data | OAuth token, shop domain, product/collection/inventory metadata | Shopify (via OAuth, with your authorization) |
 | AI generation content | chat prompts, model outputs, storefront content analyzed for brand-voice inference | Generated when you use Kova's AI features |
 | Operational telemetry | error reports, crash diagnostics (no PII) | Automatic |
+
+> Preferences (accessibility, view, notifications) are stored on your account row and synced across your devices when you sign in. They contain no third-party data.
 
 ## 3. Why we collect it (lawful basis under GDPR Art. 6)
 
