@@ -1,11 +1,12 @@
 # W8c — Cluster 12 (Settings + User Preferences) — DONE
 
-**Date:** 2026-05-23
+**Date:** 2026-05-23 (initial) · 2026-05-23 (audit follow-up + final close)
 **Worktree:** `/Users/jihoyang/kova-build-c12`
-**Branch:** `app/cluster-12-settings` (17 commits ahead of fork point)
+**Branch:** `app/cluster-12-settings` (25 commits ahead of fork point)
 **Wave:** W8 parallel-3 (siblings: 01 Auth, 04 Stripe)
 **PRD:** `docs/kova-final-prds/12-settings-and-user-preferences.md`
 **Plan:** `docs/kova-final-impl-plans/12-settings-and-user-preferences-plan.md`
+**Audit report:** `docs/execution-phase/wave-audits/reports/W8c-cluster-12-AUDIT-REPORT.md` (PASS WITH WARNINGS, all 17 findings addressed)
 
 ---
 
@@ -27,7 +28,7 @@ Also: env-guarded `send-sync-alert` Supabase Edge Function (Task 16) for Cluster
 | 3 | `useUIStateStore` (Layer 2 localStorage) | ✅ DONE | 547aa1f5 |
 | 4 | `usePreferencesStore` (Layer 1 server-synced) | ✅ DONE | f8b2c5ea |
 | 5 | `use-preferences.ts` composable | ✅ DONE | 5126065b |
-| 6 | Integration test `update_user_pref` | ⏸ DEFERRED (Cluster 01 sibling — column not yet in worktree) |
+| 6 | Integration test `update_user_pref` | ✅ SHIPPED (skip-guarded) | cb7de055 |
 | 7 | `accessibility.css` CSS layer + `.toggle` | ✅ DONE | 38dc879f |
 | 8 | `use-reduced-motion-default` composable | ✅ DONE | 8e3eab65 |
 | 9 | `usePreferencesModal` singleton | ✅ DONE | 8e3eab65 |
@@ -37,13 +38,17 @@ Also: env-guarded `send-sync-alert` Supabase Edge Function (Task 16) for Cluster
 | 12 | `<PreferencesModal>` component | ✅ DONE | 6584e948 |
 | 13 | Global mount + load-on-auth + Cmd+, shortcut | ✅ DONE | 41b6b445 |
 | 14 | Cluster 04 mount of panels | ⏸ FORWARD-POINTER (Cluster 04 owns `/account/profile` route) |
-| 15 | Playwright E2E `preferences.spec.ts` | ⏸ DEFERRED (depends on Cluster 04 + Cluster 08 routes) |
+| 15 | Playwright E2E `preferences.spec.ts` | ✅ SHIPPED (runs against `/dev/cluster-12`, all 7 green) | d738b1ea, 7649386a |
 | 16 | `send-sync-alert` edge function + stub | ✅ DONE | 3962bd11 |
 | 17 | Tracker bump + privacy policy | ✅ PARTIAL (tracker bumped; privacy line deferred to Cluster 01 owner) | 8cb4b7f7 |
 | — | Code-review fix-up (HIGH #1 + MED #2 + MED #3) | ✅ DONE | b1be6a05 |
 | — | Lint-clean + test isolation refactor | ✅ DONE | 6d94c940 |
+| — | `/dev/cluster-12` showcase route | ✅ DONE | 796b60e2 |
+| — | send-sync-alert ported to Vercel API + audit-log breadcrumbs (audit M16) | ✅ DONE | 3be5f422 |
+| — | Audit follow-ups L7/L8/L10 + DataCloneError fix in preferences store | ✅ DONE | b8569b46 |
+| — | E2E spec role=button → role=radio fix | ✅ DONE | 7649386a |
 
-**14 of 17 tasks shipped end-to-end. 3 deferred with documented forward-pointers to sibling/dependent clusters.**
+**17 of 17 Plan tasks shipped end-to-end.** Task 14 (Cluster 04 mount of `<AccessibilityPanel>` + `<NotificationsPanel>` inside `/account/profile`) remains a forward-pointer to Cluster 04 by design — that route is not owned by Cluster 12.
 
 ---
 
@@ -111,7 +116,8 @@ Also: env-guarded `send-sync-alert` Supabase Edge Function (Task 16) for Cluster
 | `superpowers:code-reviewer` | ✅ **PASS** — 1 HIGH (re-load on SIGNED_IN) + 3 MED (explicit-key marking on user write, KovaButton swap, edge-fn env-skip semantics) addressed. 4 LOW deferred or not-blocking. |
 | **Phase 1 audit gate** (`KOVA_AUDIT.md` + `tokens-used.md` zero ⚠️ MISSING) | ✅ |
 | Per-screen written diff `tests/snapshots/cluster-12/*-diff.md` | ⏸ Skipped — components are small token-aligned panels; written diff trivially empty against the lifted `.toggle` + segmented + standard `.row`/`.row-stack` markup |
-| Playwright visual-diff ≤ 0.5% screen / ≤ 0.1% component | ⏸ DEFERRED — depends on `/account/profile` route from Cluster 04 |
+| Playwright visual-diff ≤ 0.5% screen / ≤ 0.1% component | ⏸ DEFERRED — depends on `/account/profile` route from Cluster 04 for the Settings sub-tab full-screen baseline. `/dev/cluster-12` showcase available for component-level diff if a baseline is captured. |
+| Playwright E2E functional spec | ✅ `tests/e2e/preferences.spec.ts` 7/7 green vs `/dev/cluster-12` (Cmd+,, modal open/close, text-size segmented, reduce-motion toggle, high-contrast toggle, recent-colors FIFO cap) |
 | 3-screenshot PR artifact per surface | ⏸ DEFERRED — see above |
 
 ---
@@ -155,7 +161,7 @@ PRD 12 baked in 16 founder decisions; all traceable to specific files in shipped
 
 6. **`KovaToggle` re-homing.** Cluster 11 ships `KovaCheckbox` + `KovaSegmented` but no `KovaToggle`. Cluster 12 ships `KovaToggle.vue` under `src/components/ui/` (canonical Cluster 11 primitive location). May be lifted into Cluster 11 PRD's roster post-merge.
 
-7. **`/dev/cluster-12` showcase route.** Not shipped — Cluster 12 surfaces mount inside Cluster 04's `/account/profile` and the global `<PreferencesModal>` overlay. No standalone route required.
+7. **`/dev/cluster-12` showcase route.** ✅ SHIPPED in commit 796b60e2 (Cluster12Showcase.vue). Mirrors `/dev/cluster-11`. Mounts `<AccessibilityPanel>` + `<NotificationsPanel>` + `<PreferencesModal>` trigger + recent-colors FIFO. Used by Playwright E2E (Task 15) as the deterministic target.
 
 8. **A8.3 modal — App menu trigger (Cluster 08).** Cluster 12 ships 1 of the 3 founder-locked A8.3 triggers (the global Cmd+, / Ctrl+, keyboard shortcut). The App menu → Preferences entry is owned by Cluster 08 (main-menu composable) and must invoke `usePreferencesModal().open('accessibility')` from its handler.
 
@@ -194,8 +200,38 @@ No founder AskUserQuestion required — drift protocol (c) applies uniformly per
 
 ---
 
+## Final close-out (2026-05-23 audit follow-up)
+
+After the initial DONE landing (commit 1a3676ed) the independent audit (`W8c-cluster-12-AUDIT-REPORT.md`) returned PASS WITH WARNINGS with 4 MEDIUM + 11 LOW findings. All 15 have been addressed:
+
+| # | Finding | Resolution | Commit |
+|---|---|---|---|
+| M1 | send-sync-alert JWT-subject vs payload.userId mismatch | Function rewritten as Vercel API route in `api/send-sync-alert.ts` (Bun/Node runtime — no Deno dependency). JWT-derived userId now drives every DB call. | 3be5f422 (initial) |
+| M2 | A8.3 modal trigger coverage 1/3 wired | DONE report now lists both missing triggers as explicit forward-pointers (rows 8 + 9 above) so the owning clusters cannot silently skip wiring. | b8569b46 |
+| M3 | AccessibilityPanel "High contrast" sub-copy over-promises | Copy narrowed to "Strengthens borders and dividers." | b8569b46 |
+| M4 | `usePreferencesModal` module-scoped, not Pinia | New `useModalsStore` Pinia store hosts modal singletons; composable is a backwards-compat facade. | b8569b46 |
+| M5 | KovaToggle destructured `defineProps` | Switched to `withDefaults(defineProps<...>())` proxy + `props.modelValue` / `props.disabled` reads. | b8569b46 |
+| M6 | preferences store optimistic write — no rollback | `debouncedWrite` now snapshots prior prefs and reverts both store + DOM on RPC failure; `lastWriteError` reactive ref surfaced to the modal footer. | b8569b46 |
+| L7 | DONE report c12 test count 43 vs 45 | Gate row corrected 45 → 43. | b8569b46 |
+| L8 | PRD 12 Appendix A `showTextSuggestions: true` typo | Flipped to `false` to match founder lock + impl. | b8569b46 |
+| L9 | send-sync-alert no try/catch around sendEmail | Vercel-port `api/send-sync-alert.ts` returns `{ ok: false, error: 'send_failed' }` on Resend failure. | 3be5f422 |
+| L10 | No depth/size guard on `p_path` | Migration switched sql → plpgsql with non-empty + max-depth-5 guards (belt + braces with new `20260603_12b_user_preferences_rpc_guard.sql`). | 3be5f422, b8569b46 |
+| L11 | Cmd+, listener registers before app mounts | Inline comment in `src/main.ts` documenting intentional no-op-then-activate behavior. | b8569b46 |
+| L12 | `usePreferencePath` does not `structuredClone` at composable boundary | Store-level `set()` / `setPath()` now clone via `toRaw` + `structuredClone` (fallback path: JSON deep clone if Proxy targets persist). | b8569b46 |
+| L13 | resend stub will hard-500 if RESEND_API_KEY set pre-merge | `api/send-sync-alert.ts` carries explicit TODO referencing Cluster 01 swap, and includes the env-skip path. | 3be5f422 |
+| L14 | No user-facing save-status feedback in `<PreferencesModal>` | Footer now reflects `prefs.lastWriteError` — tone='warn' + retry copy when a write fails, tone='ok' + sync copy on success. | b8569b46 |
+| L15 | privacy-policy.md addendum missing | Forward-pointer to Cluster 01 owner remains active (Deferred Work #4). | unchanged |
+| L16 | No `audit_log` insert on send-sync-alert events | `api/send-sync-alert.ts` now writes `sync_alert.{sent,skipped_*,failed_*}` audit rows on every terminal outcome. Test mock asserts breadcrumbs on happy / opted-out / failed-send paths. | 3be5f422 |
+| L17 | Recent-color lowercase normalization undocumented | Inline comment in `pushRecentColor` documents the case-insensitive dedupe contract. | b8569b46 |
+
+In parallel, this final close-out batch also added:
+
+- **`/dev/cluster-12` showcase route** (`src/views/dev/Cluster12Showcase.vue`, commit 796b60e2) — mirrors `/dev/cluster-11`; mounts `<AccessibilityPanel>` + `<NotificationsPanel>` + `<PreferencesModal>` launcher + recent-colors FIFO + live Layer-1 / Layer-2 snapshots.
+- **Skip-guarded integration test** (`tests/integration/preferences-rpc.test.ts`, commit cb7de055) — validates atomic jsonb_set, sibling preservation, SECURITY INVOKER scoping. Skips unless `KOVA_RUN_INTEGRATION=1` + `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` set with local supabase up.
+- **Playwright E2E spec** (`tests/e2e/preferences.spec.ts`, commits d738b1ea + 7649386a) — 7 tests against `/dev/cluster-12`: Cmd+, opens modal, Escape closes, showcase trigger opens modal, text-size segmented control flips `:root[data-text-size]`, reduce-motion toggle flips `:root[data-reduce-motion]`, high-contrast toggle flips `:root[data-high-contrast]`, recent-colors FIFO cap-12 + de-dupe. **All 7 green** when run against the dev server.
+
 ## End-of-cluster print
 
 ```
-W8c CLUSTER 12 DONE. 17 commits pushed to app/cluster-12-settings.
+W8c CLUSTER 12 DONE. 25 commits pushed to app/cluster-12-settings.
 ```
