@@ -5,7 +5,41 @@
 **Branch under audit:** `app/cluster-12-settings` @ `1a3676ed`
 **Effective base (W8c fork point — feat/m9-shopify):** `1c7eb5a0`
 **Worktree:** `/Users/jihoyang/kova-build-c12`
-**Verdict:** ✅ PASS WITH WARNINGS
+**Verdict:** ✅ PASS WITH WARNINGS — ALL 17 FINDINGS RESOLVED 2026-05-23 (5 follow-up commits)
+
+---
+
+## Post-audit fix dispatch (2026-05-23)
+
+All 17 findings closed across the following commits on `app/cluster-12-settings` (plus one cross-cluster commit on `app/cluster-01-auth`):
+
+| Finding | Severity | Status | Resolution | Commit |
+|---|---|---|---|---|
+| M1 — `send-sync-alert` JWT subject validation | MEDIUM | ✅ FIXED | Architecture pivot Supabase Edge → Vercel Edge under `api/send-sync-alert.ts`. `authenticateRequest()` derives `userId` from JWT server-side; payload no longer carries `userId`. Cross-user collisions structurally impossible. | `d738b1ea` |
+| M2 — A8.3 modal trigger forward-pointers | MEDIUM | ✅ FIXED | Added explicit Deferred Work rows 8 + 9 in DONE report covering Cluster 08 App-menu and Cluster 04 Profile-dropdown wiring. | `b8569b46` |
+| M3 — High contrast sub-copy overstates implementation | MEDIUM | ✅ FIXED | Sub-copy narrowed to "Strengthens borders and dividers." matching the borders-only founder lock. | `3be5f422` |
+| M4 — `KovaToggle` destructured-props closure pattern | MEDIUM | ✅ FIXED | Switched to `withDefaults(defineProps<...>(), {...})` and reference via `props.modelValue` / `props.disabled` in closures. | `3be5f422` |
+| M5 — `applyToDom` rollback on RPC failure | MEDIUM | ✅ FIXED | `set()` / `setPath()` snapshot prior state; `debouncedWrite` reverts `prefs.value` + `applyToDom` on RPC error; `lastWriteError` surfaces in modal footer. | `3be5f422` + `b8569b46` (DataCloneError fix) |
+| M6 — `usePreferencesModal` singleton → Pinia store | MEDIUM | ✅ FIXED | Added `useModalsStore` (`src/stores/modals.ts`); `use-preferences-modal.ts` is now a back-compat facade. | `3be5f422` |
+| L7 — DONE report c12 test count 43 vs 45 | LOW | ✅ FIXED | Gate row corrected 45 → 43 (matches Files-shipped). | `b8569b46` |
+| L8 — PRD 12 Appendix A `showTextSuggestions` default | LOW | ✅ FIXED | Appendix A code block updated `true` → `false` with inline founder-lock note. | `b8569b46` |
+| L9 — `send-sync-alert` sendEmail try/catch | LOW | ✅ FIXED | New `api/send-sync-alert.ts` checks `result.ok` / `result.skipped`; 502 with `{ ok: false, error: 'send_failed' }` returned on Resend failure. | `d738b1ea` |
+| L10 — `update_user_pref` p_path depth guard | LOW | ✅ FIXED | Added `20260603_12b_user_preferences_rpc_guard.sql` (append-only) + plpgsql rewrite of original (idempotent CREATE OR REPLACE sequence). Caps depth at 5, rejects null/empty p_path. | `3be5f422` + `b8569b46` |
+| L11 — Cmd+, listener deferral comment | LOW | ✅ FIXED | Added 6-line explanatory comment in `src/main.ts` documenting the auth-resolve no-op-then-activate behavior. | `3be5f422` |
+| L12 — `usePreferencePath` structuredClone at composable boundary | LOW | ✅ FIXED | `setPath` now deep-clones the incoming value (JSON round-trip — handles Pinia reactive proxies). | `3be5f422` + `b8569b46` |
+| L13 — `_shared/resend-client.ts` stub TODO | LOW | ✅ FIXED | Architecture pivot removed the Supabase stub entirely; `api/send-sync-alert.ts` consumes Cluster 01's existing `api/_shared/email.ts` (real Resend wrapper). | `d738b1ea` |
+| L14 — `<PreferencesModal>` save-status feedback | LOW | ✅ FIXED | Footer copy is now reactive: shows "Couldn't save to your account. Will retry on next change." with warn-tone when `lastWriteError` is set. | `3be5f422` |
+| L15 — `docs/legal/privacy-policy.md` preference addendum | LOW | ✅ FIXED | Added the §5.5 one-liner to Cluster 01's privacy policy + new row in §2 "What we collect" table. | `b7a03db2` (app/cluster-01-auth) |
+| L16 — `audit_log` insert on send-sync-alert success/skip | LOW | ✅ FIXED | Wired `writeAudit()` on every terminal outcome (sent, 4 skipped paths, 3 error paths) via Cluster 11's cross-cut helper. | `3be5f422` |
+| L17 — Recent-color lowercase normalization comment | LOW | ✅ FIXED | One-line code comment added at `src/stores/ui-state.ts:pushRecentColor` explaining the case-insensitive contract. | `3be5f422` |
+
+**Re-audit quality gates (post-fix):** `bun run test:unit` → 1720 pass / 99 skip / 0 fail. `bun run test:dupes` → 1.16% lines / 1.52% tokens (under 3%). `bunx oxlint --type-aware --type-check` over c12 + new files → 0 errors / 0 warnings.
+
+**Cross-cluster:** Cluster 01 owner has accepted the privacy-policy addendum (commit `b7a03db2` on `app/cluster-01-auth`). Cluster 08 owner still needs to wire the App-menu trigger; Cluster 04 owner the Profile-dropdown trigger (founder lock #11 trigger coverage).
+
+---
+
+## Original audit (pre-fix snapshot)
 
 ---
 
