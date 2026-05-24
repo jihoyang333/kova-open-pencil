@@ -1,6 +1,6 @@
 # Record of Processing Activities (RoPA)
 
-**Last updated:** 2026-05-21
+**Last updated:** 2026-05-22
 **Owner:** Privacy & Compliance (privacy@kova.io)
 **Internal document — not user-facing.** This is the GDPR Art. 30 record required of every controller.
 
@@ -17,11 +17,20 @@
 |---|---|---|---|---|---|
 | User account management | Art. 6(1)(b) contract performance | Email, name, hashed password (none — passwordless), timezone | Supabase Auth (US) | Lifetime of account + 30-day soft-delete window | US (Supabase) under SCCs |
 | Subscription billing | Art. 6(1)(b) contract performance | Email, name, billing address, card last-4 (held by Stripe), plan tier | Stripe (US) | Stripe-side: per Stripe retention policy. Kova-side: until account deletion. | US (Stripe) under SCCs |
+| Webhook ledger (Stripe) | Art. 6(1)(f) legitimate interest — fraud prevention + idempotency | Stripe event ID, type, payload hash, optional `user_id` | None (internal) | 90 days (manual prune) | US (Stripe → Kova webhook) |
+| Subscription mirror (`users` columns) | Art. 6(1)(b) contract performance | `stripe_customer_id`, `stripe_subscription_id`, `plan`, `plan_status`, `current_period_end`, `cancel_at_period_end` | None (internal) | Until account deletion (Stripe Customer also deleted via Cluster 01 cron — D-2 amendment 2026-05-17) | US (sourced from Stripe webhooks) |
+| Avatar storage | Art. 6(1)(a) consent (user chose to upload) | 256×256 PNG image (server-normalized via sharp) | None (Supabase Storage media-assets bucket, public-read) | Until removal or account deletion | US (Supabase) under SCCs |
+| Shopify connection audit | Art. 6(1)(f) legitimate interest — audit + sync debugging | brand_id, event_type, source, metadata (shop_domain, scopes, sync stats) | None (internal) | Cascade-deleted on brand removal | US (Supabase) under SCCs |
 | Brand + canvas design workspace | Art. 6(1)(b) contract performance | User-uploaded designs, brand kits, fonts, color palettes, image assets | Supabase (DB + Storage, US) | Lifetime of account + 30-day soft-delete | US (Supabase) under SCCs |
 | Shopify storefront integration | Art. 6(1)(a) explicit consent via OAuth | OAuth access token, shop domain, product/collection/inventory metadata | Shopify (US), Supabase (storage of OAuth token in encrypted Vault) | Until user disconnects shop OR account deleted | US (Shopify, Supabase) under SCCs |
 | AI generation + brand-voice inference | Art. 6(1)(b) contract performance | Chat prompts, model outputs, storefront content snippets | Anthropic (US) | Anthropic-side: 30 days per default policy; Kova-side: until account deletion | US (Anthropic) under SCCs. Pre-launch goal: migrate to Anthropic ZDR (Zero Data Retention). |
 | Transactional email (account events) | Art. 6(1)(b) contract performance + Art. 6(1)(f) legitimate interest (security notifications) | Email address, account event metadata | Resend (US) | Resend-side: 90 days per default; Kova-side: not retained beyond send | US (Resend) under SCCs |
 | Operational telemetry (error reports) | Art. 6(1)(f) legitimate interest (service stability) | Stack traces, request IDs (no PII by design) | Sentry (US, when wired pre-launch) | Sentry-side: 90 days | US (Sentry) under SCCs |
+
+## Cross-cluster contracts
+
+- **Cluster 01 GDPR cron** (`gdpr_deletion_queue` workers — see `supabase/migrations/20260423_m9_*.sql`) calls `stripe.customers.del(stripe_customer_id)` as part of the account-deletion cascade. Stripe invoice history persists per Stripe's statutory retention.
+- **Cluster 11 audit_log** receives every Stripe state-change event via `writeAudit(supabase, { eventType, user_id, payload, clusterOwner: '04' })`.
 
 ## GDPR deletion cascade
 

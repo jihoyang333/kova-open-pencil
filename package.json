@@ -72,6 +72,7 @@
     "prismjs": "^1.30.0",
     "reka-ui": "^2.9.0",
     "resend": "^6.12.3",
+    "sharp": "^0.34.5",
     "stripe": "^22.1.1",
     "tailwind-merge": "^3.5.0",
     "tailwind-variants": "^3.2.2",

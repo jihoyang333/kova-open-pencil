@@ -28,6 +28,10 @@ const BrandSettingsView = () => import('./views/dashboard/BrandSettingsView.vue'
 const SettingsBrandIntegrationsView = () =>
   import('./views/dashboard/SettingsBrandIntegrationsView.vue')
 const SettingsView = () => import('./views/dashboard/SettingsView.vue')
+const AccountView = () => import('./views/account/AccountView.vue')
+const StripeReturnLanding = () => import('./views/account/StripeReturnLanding.vue')
+
+const ACCOUNT_SECTIONS_RE = '(profile|brands|billing|brand-kit|integrations|danger-zone)?'
 const TokensDebugView = () => import('./views/dev/TokensDebugView.vue')
 const Cluster11Showcase = () => import('./views/dev/Cluster11Showcase.vue')
 const NotFoundView = () => import('./views/error/NotFoundView.vue')
@@ -134,6 +138,7 @@ const routes = [
   },
   {
     path: '/dashboard',
+    name: 'dashboard',
     component: DashboardView,
     meta: { requiresAuth: true, requiresOnboarding: true },
     children: [
@@ -168,6 +173,28 @@ const routes = [
         meta: { requiresAuth: true, requiresOnboarding: true }
       }
     ]
+  },
+  {
+    path: '/account/billing/success',
+    name: 'account-billing-success',
+    component: StripeReturnLanding,
+    meta: { requiresAuth: true, requiresOnboarding: true, theme: 'dark' }
+  },
+  {
+    path: '/account/billing/cancel',
+    name: 'account-billing-cancel',
+    component: StripeReturnLanding,
+    meta: { requiresAuth: true, requiresOnboarding: true, theme: 'dark' }
+  },
+  {
+    path: `/account/:section${ACCOUNT_SECTIONS_RE}`,
+    name: 'account',
+    component: AccountView,
+    meta: { requiresAuth: true, requiresOnboarding: true, theme: 'dark', viewport: 'desktop' }
+  },
+  {
+    path: '/account',
+    redirect: { name: 'account', params: { section: 'profile' } }
   },
   {
     path: '/editor',

@@ -21,6 +21,8 @@ If you have questions about this policy or your data, contact us at **privacy@ko
 | Canvas data | email designs, layout, copy, image assets you upload | You, in the canvas editor |
 | Shopify store data | OAuth token, shop domain, product/collection/inventory metadata | Shopify (via OAuth, with your authorization) |
 | AI generation content | chat prompts, model outputs, storefront content analyzed for brand-voice inference | Generated when you use Kova's AI features |
+| Stripe billing data | Stripe Customer ID, subscription metadata (plan, status, period end, cancel-at-period-end), webhook idempotency log | Stripe (passed in/out via webhook + Kova UI) |
+| Avatar image | 256×256 PNG profile image | You, in `/account/profile` |
 | Operational telemetry | error reports, crash diagnostics (no PII) | Automatic |
 
 > Preferences (accessibility, view, notifications) are stored on your account row and synced across your devices when you sign in. They contain no third-party data.
@@ -45,6 +47,19 @@ We share data ONLY with the following sub-processors. Each is contractually boun
 
 > **D-3 disclosure:** Storefront content is sent to Anthropic to infer your brand voice when you generate AI content for a connected Shopify brand. This is the most data-sensitive flow in Kova. If you disconnect Shopify from a brand, no new storefront content is sent.
 
+### 4.1 Stripe (detailed sub-processor disclosure)
+
+Stripe collects and stores the following categories of personal data on our behalf:
+
+- Cardholder name and billing address
+- Payment card number, expiration date, and CVV (held by Stripe — never reaches Kova servers)
+- Subscription status, billing cycle dates, and invoice history
+- Email address (passed from Kova as the Stripe Customer's email)
+
+Stripe processes payment data under PCI-DSS Level 1 compliance. Kova never sees, stores, or transmits raw card numbers.
+
+Stripe data retention: Stripe retains payment and invoice records for 7 years per applicable financial regulations, **independent of Kova's own data retention policy**. Deletion of a Kova account triggers a `customer.delete` call to Stripe (Cluster 01 GDPR cron, D-2 amendment 2026-05-17), removing the Stripe Customer object — but invoice history persists in Stripe per their statutory retention.
+
 ## 5. Data retention
 
 | Event | Retention |
@@ -54,6 +69,16 @@ We share data ONLY with the following sub-processors. Each is contractually boun
 | After 30 days | Data permanently deleted: Stripe Customer canceled, Shopify OAuth revoked, AI conversation history erased, Supabase Storage purged, database row deleted |
 | Supabase backups | **7-day point-in-time recovery (PITR)** — backups expire 7 days after deletion, then the data is fully irrecoverable |
 | Anthropic data | Inference data retained by Anthropic for **30 days** per their default retention. Kova queues deletion requests to Anthropic for manual processing weekly (full programmatic deletion not yet available; we are migrating to Anthropic Zero Data Retention post-launch). |
+
+### 5.1 Cluster 04 (account + billing) data categories
+
+| Category | Purpose | Retention |
+|---|---|---|
+| Stripe Customer ID (`stripe_customer_id`) | Link Kova user to Stripe account | Deleted on account-deletion |
+| Subscription metadata (`plan`, `plan_status`, `current_period_end`, `cancel_at_period_end`) | Plan-gate features, dunning UX | Cleared on subscription-deleted |
+| Avatar image (256×256 PNG) | Profile display | Removed on account-deletion |
+| Webhook idempotency log (`stripe_webhook_events`) | Prevent double-processing | 90-day rolling window (manual prune Phase B) |
+| Shopify connection audit (`shopify_connection_history`) | Per-brand connection / sync audit trail | Cascades on brand deletion |
 
 ## 6. Your rights under GDPR
 
@@ -67,6 +92,8 @@ We share data ONLY with the following sub-processors. Each is contractually boun
 | **Right to lodge a complaint** | Contact your local data protection authority |
 
 We respond to verified rights requests within **30 days**.
+
+Subscription state is visible in `/account/billing`; cancel via Stripe Customer Portal (Account → Plan & billing → Manage billing). For Stripe-specific data handling see Stripe's privacy notice at <https://stripe.com/privacy>.
 
 ## 7. International transfers
 

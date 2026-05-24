@@ -9,6 +9,7 @@
     { "path": "/api/shopify/cron/product-delta",   "schedule": "0 */6 * * *" },
     { "path": "/api/shopify/cron/purge-worker",    "schedule": "30 3 * * *" },
     { "path": "/api/cron/idempotency-cleanup",     "schedule": "0 4 * * *" },
-    { "path": "/api/cron/delete-account",          "schedule": "0 3 * * *" }
+    { "path": "/api/cron/delete-account",          "schedule": "0 3 * * *" },
+    { "path": "/api/stripe/reconcile",             "schedule": "0 5 * * 1" }
   ]
 }
