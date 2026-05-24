@@ -1156,7 +1156,7 @@ export interface UserPreferences {
 
 export const DEFAULTS: UserPreferences = {
   accessibility: { textSize: 'medium', reduceMotion: false, highContrast: false },
-  ai: { showTextSuggestions: true },
+  ai: { showTextSuggestions: false }, // founder-locked 2026-05-17: reserved slot, default OFF
   view: {
     showRuler: false,
     showLayoutGuide: true,   // Figma-exact per Q24

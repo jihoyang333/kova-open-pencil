@@ -9,6 +9,10 @@
    hi-fi mockups. */
 @import '../design-system/canonical/kova-hifi.css';
 
+/* Cluster 12 — accessibility CSS layer (textSize / reduceMotion / highContrast
+   data-attr driven) + lifted .toggle primitive. */
+@import './styles/accessibility.css';
+
 @utility scrollbar-none {
   -ms-overflow-style: none;
   scrollbar-width: none;

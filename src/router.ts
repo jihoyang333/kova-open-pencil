@@ -34,6 +34,7 @@ const StripeReturnLanding = () => import('./views/account/StripeReturnLanding.vu
 const ACCOUNT_SECTIONS_RE = '(profile|brands|billing|brand-kit|integrations|danger-zone)?'
 const TokensDebugView = () => import('./views/dev/TokensDebugView.vue')
 const Cluster11Showcase = () => import('./views/dev/Cluster11Showcase.vue')
+const Cluster12Showcase = () => import('./views/dev/Cluster12Showcase.vue')
 const NotFoundView = () => import('./views/error/NotFoundView.vue')
 const ServerErrorView = () => import('./views/error/ServerErrorView.vue')
 const NetworkUnreachableView = () => import('./views/error/NetworkUnreachableView.vue')
@@ -218,6 +219,11 @@ const routes = [
   {
     path: '/dev/cluster-11',
     component: Cluster11Showcase,
+    meta: { demo: true, requiresAuth: false, publicOnly: false }
+  },
+  {
+    path: '/dev/cluster-12',
+    component: Cluster12Showcase,
     meta: { demo: true, requiresAuth: false, publicOnly: false }
   },
   {
