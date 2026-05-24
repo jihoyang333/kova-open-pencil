@@ -52,14 +52,14 @@ test('Showcase button opens modal', async () => {
 })
 
 test('text size segmented control sets html data-attr', async () => {
-  // First control on the panel renders 3 segments
-  await page.getByRole('button', { name: 'Large' }).first().click()
+  // KovaSegmented renders role="radiogroup" with role="radio" segments
+  await page.getByRole('radio', { name: 'Large' }).first().click()
   await expect(page.locator('html')).toHaveAttribute('data-text-size', 'large')
 
-  await page.getByRole('button', { name: 'Small' }).first().click()
+  await page.getByRole('radio', { name: 'Small' }).first().click()
   await expect(page.locator('html')).toHaveAttribute('data-text-size', 'small')
 
-  await page.getByRole('button', { name: 'Medium' }).first().click()
+  await page.getByRole('radio', { name: 'Medium' }).first().click()
   await expect(page.locator('html')).toHaveAttribute('data-text-size', 'medium')
 })
 
