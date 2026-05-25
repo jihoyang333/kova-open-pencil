@@ -89,6 +89,14 @@
   --color-accent-hover: #2563eb;
   --color-modal-backdrop: rgba(0, 0, 0, 0.72);
 
+  /* Cluster 02 W9a additions (founder-approved 2026-05-25 audit gate).
+     bucket-1: warm-white surface + near-black ink for light-glyph-on-dark
+     treatments (brand-switch logo, .btn.primary, onb wordmark, etc.).
+     Used 10+ times across Cluster 02 + the Cluster 12 toggle artifact. */
+  --color-surface-on-dark: #ededea;
+  --color-surface-on-dark-hover: #ffffff;
+  --color-ink-on-light: #0d0d0c;
+
   /* Phase 5b — primitive sizing tokens promoted to canonical (W6 REDO
      post-code-review). */
   --checkbox-size: 14px;
