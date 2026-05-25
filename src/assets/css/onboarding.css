@@ -1,0 +1,430 @@
+/* ========================================================================
+   Onboarding wizard styles — Cluster 02
+   Lifted from design-system/hifi/onboarding/Kova Hi-Fi A1 Onboarding - Dark.html
+   inline <style> per design.md §6 extension protocol + CLAUDE.md
+   no-<style>-blocks rule. Tokens substituted for raw hex per Cluster 02
+   audit gate (#ededea -> --surface-on-dark, #0d0d0c -> --ink-on-light).
+   ======================================================================== */
+
+/* Card container -------------------------------------------------------- */
+.onb-card {
+  width: 480px;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+.onb-card.wide { width: 560px; }
+
+.onb-eyebrow {
+  font-size: 11px;
+  color: var(--ink-3);
+  font-weight: 500;
+}
+.onb-card h1 {
+  margin: 0;
+  font-size: 26px;
+  line-height: 1.2;
+  font-weight: 600;
+  letter-spacing: -0.018em;
+  color: var(--ink);
+}
+.onb-lede {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 14px;
+  line-height: 1.55;
+  max-width: 440px;
+}
+
+/* Form fields ----------------------------------------------------------- */
+.onb-field { display: flex; flex-direction: column; gap: 6px; }
+.onb-field .lbl {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--ink-2);
+  letter-spacing: -0.005em;
+}
+.onb-field .lbl .opt {
+  font-size: 11px;
+  color: var(--ink-3);
+  margin-left: 6px;
+  font-weight: 400;
+}
+.onb-field .input { font-size: 14px; padding: 9px 12px; }
+.onb-field .help { font-size: 11.5px; color: var(--ink-3); }
+.onb-field .help.ok { color: var(--ok); }
+
+/* Affixed input wrap (https:// prefix, etc.) ---------------------------- */
+.onb-input-affixed {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--page);
+  overflow: hidden;
+}
+.onb-input-affixed .pre {
+  padding: 9px 11px;
+  background: var(--rail);
+  border-right: 1px solid var(--line);
+  color: var(--ink-3);
+  font-size: 13px;
+  display: grid;
+  place-items: center;
+}
+.onb-input-affixed input {
+  flex: 1;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  padding: 9px 12px;
+  font-size: 14px;
+}
+.onb-input-affixed .post {
+  padding: 0 12px;
+  background: transparent;
+  color: var(--ink-3);
+  font-size: 13px;
+  display: grid;
+  place-items: center;
+}
+
+/* Action row ------------------------------------------------------------ */
+.onb-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 4px;
+}
+.onb-actions .btn { padding: 9px 14px; font-size: 13px; }
+.onb-actions .btn.primary { padding: 9px 16px; }
+.onb-actions .btn .ic { width: 14px; height: 14px; }
+
+/* Identity preview row (logo + name pair) — A1.01.c --------------------- */
+.onb-id-row {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  gap: 14px;
+  align-items: stretch;
+}
+.onb-id-row .logo-slot {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--r-card);
+  border: 1px dashed var(--line);
+  background: var(--rail);
+  display: grid;
+  place-items: center;
+  color: var(--ink-3);
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  padding: 0;
+}
+.onb-id-row .logo-slot.fetched {
+  border-style: solid;
+  border-color: var(--line);
+  background: var(--ink-on-light);
+  color: var(--surface-on-dark);
+  font-weight: 800;
+  font-size: 26px;
+  letter-spacing: -0.04em;
+}
+.onb-id-row .logo-slot img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.onb-id-row .logo-slot .pulse {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(237, 237, 234, 0.04), transparent);
+}
+
+/* Step 4 — Shopify connect surface -------------------------------------- */
+.onb-connect {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--rail);
+  overflow: hidden;
+}
+.onb-connect .head {
+  padding: 16px 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border-bottom: 1px solid var(--line-2);
+}
+.onb-connect .head .glyph {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--r-card);
+  background: #95bf47; /* token-exempt: Shopify brand color */
+  color: var(--ink-on-light);
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: -0.04em;
+}
+.onb-connect .head .nm {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.005em;
+}
+.onb-connect .head .sub {
+  font-size: 11.5px;
+  color: var(--ink-3);
+  margin-top: 1px;
+}
+.onb-connect .head .pill { margin-left: auto; }
+.onb-connect .body {
+  padding: 14px 18px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.onb-connect .scope {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+.onb-connect .scope .ic { width: 13px; height: 13px; color: var(--ok); }
+.onb-store-input { display: flex; flex-direction: column; gap: 6px; }
+
+/* Step 5 — Brand kit drop zone + extraction ----------------------------- */
+.onb-drop {
+  border: 1px dashed var(--line);
+  border-radius: var(--r-card);
+  background: var(--rail);
+  padding: 26px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  text-align: center;
+}
+.onb-drop .ic-circle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--fill);
+  color: var(--ink-2);
+  display: grid;
+  place-items: center;
+  margin-bottom: 4px;
+}
+.onb-drop .h {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--ink);
+  flex-direction: column;
+  gap: 0;
+}
+.onb-drop .types { font-size: 11px; color: var(--ink-3); }
+.onb-drop .or-link { font-size: 12px; color: var(--ink-2); }
+
+.onb-textarea {
+  width: 100%;
+  background: var(--page);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink);
+  min-height: 92px;
+  resize: vertical;
+  line-height: 1.55;
+}
+.onb-textarea::placeholder { color: var(--ink-3); }
+
+.onb-files { display: flex; flex-direction: column; gap: 6px; }
+.onb-files .file {
+  display: grid;
+  grid-template-columns: 22px 1fr auto auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--page);
+  font-size: 12.5px;
+}
+.onb-files .file .nm { color: var(--ink); font-weight: 500; }
+.onb-files .file .sz {
+  font-size: 11px;
+  color: var(--ink-3);
+  font-feature-settings: 'tnum' 1;
+}
+.onb-files .file .x {
+  color: var(--ink-3);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+/* AI extraction surface — accent blue, AI-only ---------------------------*/
+.onb-ai {
+  border: 1px solid var(--accent-2);
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  border-radius: var(--r-card);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.onb-ai .top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--accent-ink);
+  letter-spacing: -0.005em;
+}
+.onb-ai .top .ic { width: 14px; height: 14px; color: var(--accent); }
+.onb-ai .top .pill {
+  margin-left: auto;
+  background: rgba(95, 125, 255, 0.16); /* token-exempt: accent tint on AI pill */
+  color: var(--accent-ink);
+  border-color: var(--accent-2);
+  font-size: 10.5px;
+  font-weight: 500;
+}
+.onb-ai .checks {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.onb-ai .checks li {
+  display: grid;
+  grid-template-columns: 16px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  font-size: 12.5px;
+  color: var(--accent-ink);
+}
+.onb-ai .checks li .ic { width: 14px; height: 14px; color: var(--accent); }
+.onb-ai .checks li.pending { color: rgba(169, 186, 255, 0.7); }
+.onb-ai .checks li.pending .ic { color: rgba(169, 186, 255, 0.5); }
+.onb-ai .checks li .meta { font-size: 11px; color: rgba(169, 186, 255, 0.7); }
+
+/* Splash (step 6) ------------------------------------------------------- */
+.onb-splash {
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  align-items: center;
+  text-align: center;
+}
+.onb-splash .check-medal {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--ok-soft);
+  color: var(--ok);
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(94, 194, 125, 0.18); /* token-exempt: success medal ring */
+}
+.onb-splash h1 { font-size: 30px; }
+.onb-splash .lede { text-align: center; margin: 0 auto; }
+.onb-next {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  width: 100%;
+}
+.onb-next .opt {
+  text-align: left;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  padding: 14px;
+  background: var(--rail);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  cursor: pointer;
+  transition: border-color var(--motion-fast) ease, background var(--motion-fast) ease;
+}
+.onb-next .opt:hover { border-color: var(--ink-3); background: var(--page); }
+.onb-next .opt .lbl {
+  font-size: 10.5px;
+  color: var(--ink-3);
+  font-weight: 500;
+}
+.onb-next .opt .nm {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.005em;
+}
+.onb-next .opt .sub { font-size: 11.5px; color: var(--ink-3); }
+.onb-splash .enter-btn { padding: 11px 18px; font-size: 13.5px; }
+
+/* Wizard host chrome — used by OnboardingView (T17) --------------------- */
+.onb-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--page);
+  color: var(--ink);
+}
+.onb-progress {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--line);
+}
+.onb-progress .dots {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.onb-progress .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--line-2);
+}
+.onb-progress .dot.active { background: var(--ink); }
+.onb-progress .dot.done { background: var(--ink-3); }
+.onb-progress .corner {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink-3);
+  font-size: 12px;
+}
+.onb-progress .corner a { color: var(--ink-2); }
+.onb-stage {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  padding: 40px 24px 56px;
+  overflow: auto;
+}
+.onb-foothint {
+  margin-top: 6px;
+  font-size: 11.5px;
+  color: var(--ink-3);
+  text-align: center;
+}
+.onb-foothint a { color: var(--ink-2); }

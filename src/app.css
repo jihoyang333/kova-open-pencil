@@ -8,6 +8,7 @@
    the app stylesheet. Single source of truth shared with the in-repo
    hi-fi mockups. */
 @import '../design-system/canonical/kova-hifi.css';
+@import './assets/css/onboarding.css';
 
 /* Cluster 12 — accessibility CSS layer (textSize / reduceMotion / highContrast
    data-attr driven) + lifted .toggle primitive. */
