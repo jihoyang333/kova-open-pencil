@@ -388,3 +388,108 @@
   border-radius: 1px;
   width: 60%;
 }
+
+/* Coming-soon shells (A12) -------------------------------------------- */
+.cs-pane {
+  padding: 56px 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 18px;
+  max-width: 720px;
+  margin: 0 auto;
+  min-height: 480px;
+  justify-content: center;
+}
+.cs-pane .ic-tile {
+  width: 52px;
+  height: 52px;
+  border-radius: var(--r-2xl);
+  background: var(--rail);
+  border: 1px solid var(--line);
+  display: grid;
+  place-items: center;
+  color: var(--ink-2);
+}
+.cs-pane .eyebrow {
+  font-size: 10.5px;
+  color: var(--ink-3);
+}
+.cs-pane h1 {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.012em;
+  color: var(--ink);
+}
+.cs-pane p {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 14px;
+  max-width: 540px;
+  line-height: 1.55;
+}
+.cs-pane .roadmap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  max-width: 520px;
+  margin-top: 8px;
+  padding: 0;
+  list-style: none;
+}
+.cs-pane .roadmap li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-lg);
+  background: var(--page);
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+.cs-pane .roadmap li .ic { width: 14px; height: 14px; color: var(--ink-3); }
+.cs-pane .roadmap li .label {
+  flex: 1;
+  color: var(--ink);
+  font-weight: 500;
+}
+.cs-pane .roadmap li .tag-mono {
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: var(--ink-3);
+  background: var(--fill);
+  border: 1px solid var(--line-2);
+  padding: 1px 6px;
+  border-radius: 3px;
+  text-transform: uppercase;
+}
+.cs-pane .cta-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+}
+.cs-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--line);
+  background: var(--page);
+}
+.cs-tabs .tab {
+  padding: 12px 14px;
+  font-size: 12.5px;
+  color: var(--ink-3);
+  cursor: pointer;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  background: transparent;
+  font-family: inherit;
+}
+.cs-tabs .tab.on {
+  color: var(--ink);
+  border-bottom-color: var(--ink);
+}
