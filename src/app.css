@@ -242,3 +242,15 @@ input[type='number']::-webkit-inner-spin-button,
 input[type='number']::-webkit-outer-spin-button {
   display: none;
 }
+
+/* Cluster 02 T30 — canonical shimmer keyframe for KovaSkeleton + the
+   B7.1 DashboardSkeleton. Duration uses the audit-gate --motion-shimmer
+   token (1400ms). */
+@keyframes shimmer {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
+}
+
+.animate-shimmer {
+  animation: shimmer var(--motion-shimmer) ease-in-out infinite;
+}
