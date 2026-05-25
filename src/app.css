@@ -10,6 +10,7 @@
 @import '../design-system/canonical/kova-hifi.css';
 @import './assets/css/onboarding.css';
 @import './assets/css/dashboard.css';
+@import './assets/css/dashboard-content.css';
 
 /* Cluster 12 — accessibility CSS layer (textSize / reduceMotion / highContrast
    data-attr driven) + lifted .toggle primitive. */
