@@ -32,17 +32,26 @@ function handleShopifyClick(): void {
   selected.value = 'shopify'
 }
 
-// T03 will move this to Bearer-header POST. Keeping current behavior for T02 isolation.
+// PRD 02 §5.4.1 — POST + Bearer header. Token never appears in URL.
 async function handleConnect(): Promise<void> {
   if (!normalizedShop.value) return
   const { data: sessionData } = await supabase.auth.getSession()
-  const token = sessionData.session?.access_token ?? ''
-  const params = new URLSearchParams({
-    shop: normalizedShop.value,
-    brand_id: props.brandId,
-    access_token: token,
+  const token = sessionData.session?.access_token
+  if (!token) return
+  const response = await fetch('/api/shopify/oauth/start', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      shop: normalizedShop.value,
+      brand_id: props.brandId,
+    }),
   })
-  emit('connect-shopify', `/api/shopify/oauth/start?${params.toString()}`)
+  if (!response.ok) return
+  const { redirectUrl } = (await response.json()) as { redirectUrl: string }
+  emit('connect-shopify', redirectUrl)
 }
 </script>
 
