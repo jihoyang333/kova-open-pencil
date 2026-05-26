@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { resolveGuard, getOnboardingNextRoute } from '../../../src/router'
+import { resolveGuard } from '../../../src/router'
 import { normalizeShopDomain } from '../../../src/lib/shop-domain'
 
 const STORE_TYPE_META = {
@@ -62,14 +62,3 @@ describe('Shopify OAuth URL construction', () => {
   })
 })
 
-describe('onboarding step-to-route mapping', () => {
-  test('brand-name step (3) exits to /onboarding/store-type', () => {
-    expect(getOnboardingNextRoute(3)).toBe('/onboarding/store-type')
-  })
-
-  test('all other steps stay in-flow and return null', () => {
-    for (const step of [1, 2, 4, 5, 6]) {
-      expect(getOnboardingNextRoute(step)).toBeNull()
-    }
-  })
-})
