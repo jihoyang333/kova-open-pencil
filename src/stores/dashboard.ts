@@ -12,6 +12,10 @@ export type SortMode = 'recent' | 'name' | 'created'
 export type ViewMode = 'grid' | 'list'
 
 export const useDashboardStore = defineStore('dashboard', () => {
+  // H6 audit fix — call useCanvasesStore() once at setup so the computed
+  // body does not re-invoke Pinia injection on every evaluation.
+  const canvases = useCanvasesStore()
+
   // State
   const searchQuery = ref('')
   const sortMode = ref<SortMode>('recent') // §12 RESOLVED-3 default
@@ -20,7 +24,6 @@ export const useDashboardStore = defineStore('dashboard', () => {
 
   // Getters
   const filteredCanvases = computed<Canvas[]>(() => {
-    const canvases = useCanvasesStore()
     const source = showTrashed.value ? canvases.sortedTrashed : canvases.sortedCanvases
     const q = searchQuery.value.trim().toLowerCase()
     const filtered = q ? source.filter((c) => c.name.toLowerCase().includes(q)) : source
