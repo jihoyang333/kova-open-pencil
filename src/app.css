@@ -136,6 +136,11 @@
   --floating-help-bottom: 14px;
   --floating-help-right: 14px;
   --floating-help-size: 28px;
+
+  /* Cluster 02 W9a M3 audit fix — composer hero wrap max-width promoted
+     from raw 760px (dashboard-content.css .composer + DashboardSkeleton).
+     Single canonical source per the no-raw-visual-values lint protocol. */
+  --composer-max-w: 760px;
 }
 
 /* W8a Cluster 01 — light-theme overrides per audit Q-1 (1A) + L-1.

@@ -29,7 +29,7 @@ const cardCount = 8
       </header>
       <div class="dash-content">
         <div :class="SHIMMER_CLASS" class="h-7 w-64 mx-auto mt-6" />
-        <div :class="SHIMMER_CLASS" class="h-24 w-full max-w-[760px] mx-auto rounded-2xl mt-6" />
+        <div :class="SHIMMER_CLASS" class="h-24 w-full max-w-[var(--composer-max-w)] mx-auto rounded-2xl mt-6" />
         <div class="file-grid mt-10">
           <div
             v-for="i in cardCount"
