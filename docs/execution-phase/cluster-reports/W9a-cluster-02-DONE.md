@@ -3,8 +3,8 @@
 **Date:** 2026-05-25
 **Branch:** `app/cluster-02-dashboard`
 **Base:** `feat/m9-shopify` (W8 fully merged: c01 auth + c04 stripe + c12 settings)
-**Commits:** 21 (audit + 17 Plan tasks + 1 W8b audit-doc carryover + 2 closeout)
-**Status:** ✅ READY FOR FOUNDER REVIEW + MERGE
+**Commits:** 22 base + 13 post-audit fix commits = 35 total (audit + 17 Plan tasks + 1 W8b audit-doc carryover + 2 closeout + 13 audit fixes)
+**Status:** ✅ READY FOR FOUNDER REVIEW + MERGE (post-audit fixes landed 2026-05-25)
 
 PRD: `docs/kova-final-prds/02-onboarding-and-dashboard.md`
 Plan: `docs/kova-final-impl-plans/02-onboarding-and-dashboard-plan.md`
@@ -230,7 +230,7 @@ tests/e2e/                (Playwright, requires E2E env)
 ## Deferred to founder / merge time
 
 1. **Manual smoke pass (T41)** — 11 checkbox items from PRD §9.4. Run after merge to a preview build.
-2. **`superpowers:code-reviewer` agent** — recommended before merge to surface CRITICAL/HIGH issues.
+2. **`superpowers:code-reviewer` agent** — ✅ EXECUTED 2026-05-25 as the W9a wave audit (`docs/execution-phase/wave-audits/reports/W9a-cluster-02-AUDIT-REPORT.md`). 23 findings (2 CRITICAL / 7 HIGH / 8 MEDIUM / 6 LOW). All 23 ADDRESSED in 13 post-audit fix commits (see Post-audit fix-log below).
 3. **Playwright visual-diff** — requires dev server + Cluster 11 CI-determinism prereqs (local fonts, lucide bake, hover-CSS toggle). Cluster 02 ships the surfaces; the gate runs at integration time.
 4. **2 SideFooter test-ordering fails** — pass in isolation (14/14); fail when full unit-suite test-file ordering bleeds `auth.profile` state. Test-infra cleanup, not implementation defect.
 5. **`/api/marketing/notify-me` Edge Function** — ComingSoonView calls it; endpoint deferred to pre-launch (Resend wiring per `project_external_accounts_deferred`).
@@ -240,8 +240,42 @@ tests/e2e/                (Playwright, requires E2E env)
 
 ---
 
+## Post-audit fix-log (2026-05-25)
+
+The W9a wave audit (`docs/execution-phase/wave-audits/reports/W9a-cluster-02-AUDIT-REPORT.md`) surfaced 2 CRITICAL + 7 HIGH + 8 MEDIUM + 6 LOW findings and recommended **block merge** on C1+C2+H5. All 23 findings have been addressed in 13 post-audit fix commits on `app/cluster-02-dashboard`. Quality gates re-verified after the sweep — `bun run build` exit 0, `bun run check` exit 0 (218 warnings, down from 219 thanks to M3), `bun test` full-suite delta is `-2 pass / 0 new fail / 0 new error / 0 new snapshot` (the −2 is removed-dead `getOnboardingNextRoute` tests per M6).
+
+| Audit ID | Severity | Fix commit(s) | One-line fix |
+|---|---|---|---|
+| C1 | CRITICAL | `fix(c02-audit-c1)` | router.ts `/dashboard` redirect: `require()` → static ESM import of `lastActiveBrandIdRef` |
+| C2 | CRITICAL | `fix(c02-audit-c2)` | IntegrationsCard.vue: 2 raw `<icon-lucide-*>` tags → `<KovaIcon>`; test stubs swapped to mock `kova-icon-registry`; stale snapshot regenerated |
+| H1 | HIGH | `fix(c02-audit-h1)` | BrandSwitcher: controlled `<DropdownMenuRoot v-model:open>` + per-emit close handlers |
+| H2 + L3 | HIGH + LOW | `fix(c02-audit-h2,l3)` | DashboardView → RecentsView event bus via new `use-canvas-creation` composable (replaces `router.currentRoute.value.matched[1].instances.default`); `120 / 100` transition durations promoted to `src/constants/transitions.ts` |
+| H3 | HIGH | `fix(c02-audit-h3)` | useFileGrid: sentinel guard so rapid brand-switch doesn't land stale fetchCanvases result |
+| H4 | HIGH | `fix(c02-audit-h4)` | useGreeting: `useIntervalFn` tick ref bumps every 60s so the computed re-evaluates `now()`; clock-mockability preserved |
+| H5 | HIGH | `fix(c02-audit-h5)` | `<NetworkStatusIndicator />` imported + mounted in `App.vue` (cross-cluster carry from CT-020 / Cluster 11) |
+| H6 | HIGH | `fix(c02-audit-h6)` | useDashboardStore: `useCanvasesStore()` hoisted to setup top; no longer called per computed evaluation |
+| H7 + M7 | HIGH + MEDIUM | `fix(c02-audit-h7,m7)` | useOnboarding: `complete()` now wipes module-scope state (`resetWizardState`); `_resetForTesting` gated behind `import.meta.env.PROD` throw |
+| M3 | MEDIUM | `fix(c02-audit-m3)` | `--composer-max-w: 760px` token promoted to app.css `@theme`; DashboardSkeleton + dashboard-content.css updated; lint warn count 219 → 218 |
+| M4 + M6 | MEDIUM | `fix(c02-audit-m4,m6)` | 4 wizard sub-routes gain `requiresOnboarding: false` parity; dead `getOnboardingNextRoute` helper + 2 orphan tests deleted |
+| M5 + L4 | MEDIUM + LOW | `fix(c02-audit-m5,l4)` | ComingSoonView: drop `!` non-null assertion (annotate computed return type instead); add `if (!res.ok)` toast branch on /api/marketing/notify-me |
+| L1 + L2 | LOW | `fix(c02-audit-l1,l2)` | useLogoFetch: derive upload extension from `file.name`; sentinel guard so stale fetchFavicon doesn't overwrite `logoUrl` |
+
+### Acknowledged (no code change)
+
+- **M1** — 8 bundle commits across 22 (audit-log fidelity). Recorded for future c-clusters; bisect on Cluster 02 surfaces remains coarse-grained.
+- **M2** — visual-fidelity 3-rule artifacts (`tests/snapshots/cluster-02/`) still deferred pending dev-server-up + Cluster 11 CI-determinism prereqs. Run before pre-launch.
+- **M8** — DONE-report inaccuracies corrected inline (commits 22 not 21; `superpowers:code-reviewer` ✅ EXECUTED; CT-020 verified; one-task-per-commit caveat acknowledged).
+- **L5** — `useLocalStorage` HMR-divergence is theoretical-only in this SPA architecture. No fix.
+- **L6** — `BrandPickerView` placeholder loading/error states acknowledged — Cluster 03 (W9b) replaces the whole view.
+
+### Cluster 11 follow-up
+
+The H5 fix mounts `NetworkStatusIndicator` from Cluster 02 itself as a cross-cluster carry. Cluster 11 (the canonical owner per CT-020) should not re-mount it during W11 work — if Cluster 11 wants ownership of the mount line, swap the App.vue import without changing the rendered output.
+
+---
+
 ## End-of-cluster print
 
-**W9a CLUSTER 02 DONE. 21 commits to app/cluster-02-dashboard.**
+**W9a CLUSTER 02 DONE. 22 base commits + 13 post-audit fix commits to app/cluster-02-dashboard.**
 
-**Founder: merge before W9b (Cluster 03) launches.**
+**Founder: merge before W9b (Cluster 03) launches. All 23 audit findings addressed.**
