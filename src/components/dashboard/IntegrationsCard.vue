@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 
+import KovaIcon from '@/components/ui/KovaIcon.vue'
 import { normalizeShopDomain } from '@/lib/shop-domain'
 import { useShopifyConnection } from '@/composables/use-shopify-connection'
 
@@ -86,7 +87,7 @@ function handleConnect(): void {
     <!-- Connected -->
     <div v-else-if="state === 'connected'" data-test-id="integrations-connected" class="mt-4">
       <div class="flex items-center gap-2">
-        <icon-lucide-check-circle class="size-4 text-[var(--accent)]" />
+        <KovaIcon name="check-circle" size="sm" class="text-[var(--accent)]" />
         <span data-test-id="integrations-shop-domain" class="text-sm font-medium text-[var(--ink)]">
           {{ connection?.shop_domain }}
         </span>
@@ -152,7 +153,7 @@ function handleConnect(): void {
     <div v-else-if="state === 'reauthorize'" data-test-id="integrations-reauthorize" class="mt-4">
       <div class="rounded-lg border border-[var(--line)] bg-[var(--fill)] p-3">
         <div class="flex items-start gap-2">
-          <icon-lucide-alert-triangle class="mt-0.5 size-4 shrink-0 text-[var(--ink-2)]" />
+          <KovaIcon name="alert-triangle" size="sm" class="mt-0.5 shrink-0 text-[var(--ink-2)]" />
           <div>
             <p class="text-sm font-medium text-[var(--ink)]">Shopify needs to be reauthorized</p>
             <p
