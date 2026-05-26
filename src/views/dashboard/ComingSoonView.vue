@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue'
 
 import KovaIcon from '@/components/ui/KovaIcon.vue'
-import { COMING_SOON } from '@/constants/coming-soon'
+import { COMING_SOON, type ComingSoonSpec } from '@/constants/coming-soon'
 import { toast } from '@/composables/use-toast'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/auth'
@@ -13,7 +13,9 @@ import { useAuthStore } from '@/stores/auth'
 
 const props = defineProps<{ kind: string }>()
 
-const spec = computed(() => COMING_SOON[props.kind] ?? COMING_SOON.calendar!)
+// M5 audit fix — calendar entry is statically present in COMING_SOON so the
+// fallback never returns undefined. Narrow the type instead of using `!`.
+const spec = computed<ComingSoonSpec>(() => COMING_SOON[props.kind] ?? COMING_SOON.calendar)
 const activeTab = ref(0)
 const auth = useAuthStore()
 
@@ -26,7 +28,7 @@ async function onNotifyMe(): Promise<void> {
     return
   }
   try {
-    await fetch('/api/marketing/notify-me', {
+    const res = await fetch('/api/marketing/notify-me', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -34,6 +36,11 @@ async function onNotifyMe(): Promise<void> {
       },
       body: JSON.stringify({ email, surface: props.kind }),
     })
+    // L4 audit fix — surface non-2xx responses instead of swallowing them.
+    if (!res.ok) {
+      toast.show('Could not subscribe. Try again later.', 'error')
+      return
+    }
     toast.show("We'll let you know")
   } catch {
     toast.show('Could not subscribe. Try again later.', 'error')
