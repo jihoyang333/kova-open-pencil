@@ -197,6 +197,28 @@
   --ease-in-out:           ease-in-out;
   --ease-in:               cubic-bezier(0.4, 0, 1, 1);
 
+  /* Cluster 02 W9a additions (founder-approved 2026-05-25 audit gate).
+     ============================================================= */
+
+  /* C02-bucket-1 — warm-white + near-black ink/surface pair for
+     "light-glyph-on-dark-bg" treatments (brand-switch logo,
+     .btn.primary, onb wordmark, fetched-logo placeholder, thumb CTA).
+     Used 10+ times across Cluster 02 + Cluster 12 toggle artifact. */
+  --surface-on-dark:        #ededea;   /* warm-white surface */
+  --surface-on-dark-hover:  #ffffff;   /* hover state */
+  --ink-on-light:           #0d0d0c;   /* near-black ink for warm surfaces */
+
+  /* C02-bucket-2 — card radius alias. Cluster 11 already shipped
+     --r-overlay: 8px for floating overlays; Cluster 02 uses the same
+     8px on dense cards (file-card, empty-card, onb-* etc.) so we alias
+     for semantic clarity rather than introduce a new value. */
+  --r-card:                 var(--r-overlay);
+
+  /* C02-bucket-3 — motion additions on top of Cluster 11's set. */
+  --motion-instant:         100ms;     /* alias of --motion-fast for legibility */
+  --motion-spin:            850ms;     /* go-spin loader rotation cycle */
+  --motion-shimmer:         var(--motion-skeleton);  /* alias for legibility */
+
   /* R-13 — z-scale */
   --z-base:                0;
   --z-popover:             10;

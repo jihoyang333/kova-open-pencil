@@ -28,18 +28,13 @@ export async function authenticateRequest(
     )
   }
 
+  // PRD 02 §5.4.1 — Bearer header is the ONLY accepted credential transport.
+  // URL access_token query fallback removed to keep tokens out of browser
+  // history, referer headers, and server access logs (W9a-T03).
   let token: string | null = null
   const authHeader = req.headers.get('Authorization')
   if (authHeader?.startsWith('Bearer ')) {
     token = authHeader.slice(7)
-  } else {
-    try {
-      const url = new URL(req.url)
-      const urlToken = url.searchParams.get('access_token')
-      if (urlToken) token = urlToken
-    } catch {
-      // malformed URL — falls through to 401
-    }
   }
 
   if (!token) {

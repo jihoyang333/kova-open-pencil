@@ -1,10 +1,20 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
 import { createPinia, setActivePinia } from 'pinia'
-import { useUIStateStore } from '@/stores/ui-state'
+import {
+  useUIStateStore,
+  lastActiveBrandIdRef,
+  lastActiveCanvasIdRef,
+  fileGridViewModeRef,
+} from '@/stores/ui-state'
 
 beforeEach(() => {
   setActivePinia(createPinia())
   window.localStorage.clear()
+  // C-MED8 — module-scope singleton refs need explicit reset across tests
+  // (localStorage.clear() does not re-read in-memory ref state).
+  lastActiveBrandIdRef.value = null
+  lastActiveCanvasIdRef.value = null
+  fileGridViewModeRef.value = 'grid'
 })
 
 describe('useUIStateStore', () => {
@@ -17,6 +27,7 @@ describe('useUIStateStore', () => {
     expect(s.recentColors).toEqual([])
     expect(s.lastActiveBrandId).toBeNull()
     expect(s.lastActiveCanvasId).toBeNull()
+    expect(s.fileGridViewMode).toBe('grid')
     expect(s.dismissedToasts).toEqual([])
   })
 
@@ -59,5 +70,27 @@ describe('useUIStateStore', () => {
     for (const k of keys) {
       expect(k.startsWith('kova:ui:')).toBe(true)
     }
+  })
+
+  // Plan T04 additions — Cluster 02 setters + fileGridViewMode.
+  test('setLastActiveBrandId writes to the singleton ref', () => {
+    const s = useUIStateStore()
+    s.setLastActiveBrandId('brand-123')
+    expect(s.lastActiveBrandId).toBe('brand-123')
+    expect(lastActiveBrandIdRef.value).toBe('brand-123')
+  })
+
+  test('setLastActiveCanvasId writes to the singleton ref', () => {
+    const s = useUIStateStore()
+    s.setLastActiveCanvasId('canvas-9')
+    expect(s.lastActiveCanvasId).toBe('canvas-9')
+    expect(lastActiveCanvasIdRef.value).toBe('canvas-9')
+  })
+
+  test('setFileGridViewMode writes to the singleton ref', () => {
+    const s = useUIStateStore()
+    s.setFileGridViewMode('list')
+    expect(s.fileGridViewMode).toBe('list')
+    expect(fileGridViewModeRef.value).toBe('list')
   })
 })

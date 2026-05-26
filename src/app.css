@@ -8,6 +8,9 @@
    the app stylesheet. Single source of truth shared with the in-repo
    hi-fi mockups. */
 @import '../design-system/canonical/kova-hifi.css';
+@import './assets/css/onboarding.css';
+@import './assets/css/dashboard.css';
+@import './assets/css/dashboard-content.css';
 
 /* Cluster 12 — accessibility CSS layer (textSize / reduceMotion / highContrast
    data-attr driven) + lifted .toggle primitive. */
@@ -89,6 +92,14 @@
   --color-accent-hover: #2563eb;
   --color-modal-backdrop: rgba(0, 0, 0, 0.72);
 
+  /* Cluster 02 W9a additions (founder-approved 2026-05-25 audit gate).
+     bucket-1: warm-white surface + near-black ink for light-glyph-on-dark
+     treatments (brand-switch logo, .btn.primary, onb wordmark, etc.).
+     Used 10+ times across Cluster 02 + the Cluster 12 toggle artifact. */
+  --color-surface-on-dark: #ededea;
+  --color-surface-on-dark-hover: #ffffff;
+  --color-ink-on-light: #0d0d0c;
+
   /* Phase 5b — primitive sizing tokens promoted to canonical (W6 REDO
      post-code-review). */
   --checkbox-size: 14px;
@@ -125,6 +136,11 @@
   --floating-help-bottom: 14px;
   --floating-help-right: 14px;
   --floating-help-size: 28px;
+
+  /* Cluster 02 W9a M3 audit fix — composer hero wrap max-width promoted
+     from raw 760px (dashboard-content.css .composer + DashboardSkeleton).
+     Single canonical source per the no-raw-visual-values lint protocol. */
+  --composer-max-w: 760px;
 }
 
 /* W8a Cluster 01 — light-theme overrides per audit Q-1 (1A) + L-1.
@@ -230,4 +246,16 @@ input[type='number'] {
 input[type='number']::-webkit-inner-spin-button,
 input[type='number']::-webkit-outer-spin-button {
   display: none;
+}
+
+/* Cluster 02 T30 — canonical shimmer keyframe for KovaSkeleton + the
+   B7.1 DashboardSkeleton. Duration uses the audit-gate --motion-shimmer
+   token (1400ms). */
+@keyframes shimmer {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
+}
+
+.animate-shimmer {
+  animation: shimmer var(--motion-shimmer) ease-in-out infinite;
 }

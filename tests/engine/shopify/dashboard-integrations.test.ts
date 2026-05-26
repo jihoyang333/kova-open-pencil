@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, mock, test } from 'bun:test'
-import { nextTick } from 'vue'
+import { defineComponent, h, nextTick } from 'vue'
 import { RouterLinkStub, flushPromises, mount } from '@vue/test-utils'
 
 // ----- Supabase mock (overrides setup-dom.ts global for this file) -----
@@ -31,6 +31,28 @@ mock.module('@/lib/supabase', () => ({
   getSupabase: () => ({ from: mockFrom }),
 }))
 
+// kova-icon-registry pulls in `~icons/lucide/*` virtual modules resolved by
+// Vite. bun:test doesn't load Vite plugins, so we stub the registry with a
+// minimal map covering icons used in IntegrationsCard.
+mock.module('@/components/ui/kova-icon-registry', () => {
+  const stub = (name: string) =>
+    defineComponent({
+      name: `IconStub-${name}`,
+      inheritAttrs: false,
+      setup(_, { attrs }) {
+        return () => h('svg', { ...attrs, 'data-icon': name })
+      },
+    })
+
+  return {
+    KOVA_ICON_REGISTRY: new Map<string, ReturnType<typeof stub>>([
+      ['check-circle', stub('check-circle')],
+      ['alert-triangle', stub('alert-triangle')],
+    ]),
+    KOVA_ICON_SIZE_PX: { xs: 12, sm: 14, md: 16, lg: 20 } as const,
+  }
+})
+
 // ----- Component import (after mock registration) -----
 const { default: IntegrationsCard } = await import(
   '@/components/dashboard/IntegrationsCard.vue'
@@ -41,7 +63,7 @@ function mountCard(brandId = 'brand-test-1') {
   return mount(IntegrationsCard, {
     props: { brandId },
     global: {
-      stubs: { RouterLink: RouterLinkStub, 'icon-lucide-check-circle': true, 'icon-lucide-alert-triangle': true, 'icon-lucide-refresh-cw': true },
+      stubs: { RouterLink: RouterLinkStub },
     },
   })
 }

@@ -3,6 +3,7 @@ import { createRouter } from 'vue-router'
 
 import { IS_BROWSER } from '@/constants'
 import { useAuthStore } from '@/stores/auth'
+import { lastActiveBrandIdRef } from './stores/ui-state'
 
 const DESKTOP_MIN_WIDTH = 1024
 
@@ -20,6 +21,11 @@ const AccountDeletedView = () => import('./views/auth/AccountDeletedView.vue')
 const DashboardView = () => import('./views/DashboardView.vue')
 const OnboardingView = () => import('./views/OnboardingView.vue')
 const StoreTypeStep = () => import('./components/onboarding/StoreTypeStep.vue')
+// Plan T13–T16 — wizard step components, registered now (lazy import) so the
+// router contract from PRD §6.1 is satisfied before T13+ ship the SFCs.
+const BrandIdentityStep = () => import('./components/onboarding/BrandIdentityStep.vue')
+const BrandKitStep = () => import('./components/onboarding/BrandKitStep.vue')
+const SplashStep = () => import('./components/onboarding/SplashStep.vue')
 const EditorView = () => import('./views/EditorView.vue')
 const CanvasGrid = () => import('./views/dashboard/CanvasGrid.vue')
 const TrashView = () => import('./views/dashboard/TrashView.vue')
@@ -30,6 +36,10 @@ const SettingsBrandIntegrationsView = () =>
 const SettingsView = () => import('./views/dashboard/SettingsView.vue')
 const AccountView = () => import('./views/account/AccountView.vue')
 const StripeReturnLanding = () => import('./views/account/StripeReturnLanding.vue')
+// Plan T33–T37 — brand-scoped views, registered now via lazy import.
+const RecentsView = () => import('./views/dashboard/RecentsView.vue')
+const ComingSoonView = () => import('./views/dashboard/ComingSoonView.vue')
+const BrandPickerView = () => import('./views/BrandPickerView.vue')
 
 const ACCOUNT_SECTIONS_RE = '(profile|brands|billing|brand-kit|integrations|danger-zone)?'
 const TokensDebugView = () => import('./views/dev/TokensDebugView.vue')
@@ -61,12 +71,6 @@ export function resolveGuard(
   if (to.meta.requiresOnboarding && !auth.isOnboarded) return '/onboarding'
   if (to.meta.onboardingOnly && auth.isOnboarded) return '/dashboard'
   return true
-}
-
-/** Returns a route to navigate to after the given onboarding step, or null to stay in-flow. */
-export function getOnboardingNextRoute(step: number): string | null {
-  if (step === 3) return '/onboarding/store-type'
-  return null
 }
 
 /** Resolves `/` redirect based on auth state */
@@ -129,51 +133,116 @@ const routes = [
   },
   {
     path: '/onboarding',
+    name: 'onboarding-welcome',
     component: OnboardingView,
-    meta: { requiresAuth: true, requiresOnboarding: false, onboardingOnly: true }
+    meta: { theme: 'dark', requiresAuth: true, requiresOnboarding: false, onboardingOnly: true }
   },
+  // Existing M9 sub-route preserved for backwards-compat deep links.
   {
     path: '/onboarding/store-type',
+    name: 'onboarding-store-type',
     component: StoreTypeStep,
-    meta: { requiresAuth: true, requiresOnboarding: false, onboardingOnly: true }
+    meta: { theme: 'dark', requiresAuth: true, requiresOnboarding: false, onboardingOnly: true }
   },
+  // C-HIGH2 — wizard sub-routes (each step owns its URL for back/forward + deep-link).
+  // M4 audit fix — explicit requiresOnboarding: false parity with the parent
+  // /onboarding meta. Defense-in-depth against future guard changes that
+  // treat undefined as truthy.
+  {
+    path: '/onboarding/brand',
+    name: 'onboarding-brand',
+    component: BrandIdentityStep,
+    meta: { theme: 'dark', requiresAuth: true, requiresOnboarding: false, onboardingOnly: true, wizardStep: 1 }
+  },
+  {
+    path: '/onboarding/shopify',
+    name: 'onboarding-shopify',
+    component: StoreTypeStep,
+    meta: { theme: 'dark', requiresAuth: true, requiresOnboarding: false, onboardingOnly: true, wizardStep: 2 }
+  },
+  {
+    path: '/onboarding/brand-kit',
+    name: 'onboarding-brand-kit',
+    component: BrandKitStep,
+    meta: { theme: 'dark', requiresAuth: true, requiresOnboarding: false, onboardingOnly: true, wizardStep: 3 }
+  },
+  {
+    path: '/onboarding/done',
+    name: 'onboarding-done',
+    component: SplashStep,
+    meta: { theme: 'dark', requiresAuth: true, requiresOnboarding: false, onboardingOnly: true, wizardStep: 4 }
+  },
+  // Plan T12 / PRD §6.1 — /brand/:brandId is the canonical home (CT-002 lock).
+  {
+    path: '/brand/:brandId',
+    name: 'brand-home',
+    component: DashboardView,
+    meta: { theme: 'dark', requiresAuth: true, requiresOnboarding: true },
+    children: [
+      // Default child = Recents (file grid).
+      { path: '', name: 'brand-recents', component: RecentsView },
+      // Phase-2 coming-soon shells (PRD 02 §3.6 — A12 pattern).
+      { path: 'calendar', name: 'brand-calendar', component: ComingSoonView, props: { kind: 'calendar' } },
+      { path: 'swipes', name: 'brand-swipes', component: ComingSoonView, props: { kind: 'swipes' } },
+      { path: 'templates', name: 'brand-templates', component: ComingSoonView, props: { kind: 'templates' } },
+      { path: 'trash', name: 'brand-trash', component: TrashView },
+      // Cluster 05 + 10 placeholders — pending those PRDs.
+      { path: 'products', name: 'brand-products', component: ComingSoonView, props: { kind: 'products' } },
+      { path: 'personalization', name: 'brand-personalization', component: ComingSoonView, props: { kind: 'personalization' } },
+      { path: 'knowledge-base', name: 'brand-kb', component: ComingSoonView, props: { kind: 'knowledge-base' } },
+      { path: 'memories', name: 'brand-memories', component: ComingSoonView, props: { kind: 'memories' } },
+      // Existing brand-scoped sub-routes preserved (M2-era settings/assets).
+      { path: 'settings/integrations', component: SettingsBrandIntegrationsView },
+      { path: 'settings', component: BrandSettingsView },
+      { path: 'assets', component: BrandAssetsView }
+    ]
+  },
+  // Brands picker — Cluster 03 ships full UI; Cluster 02 reserves the route +
+  // ships a placeholder via T34.
+  {
+    path: '/brands',
+    name: 'brands-picker',
+    component: BrandPickerView,
+    meta: { theme: 'dark', requiresAuth: true, requiresOnboarding: true }
+  },
+  // Legacy /dashboard — redirect to /brand/{lastActiveBrandId} or /brands.
+  // Defer to a redirect function so route resolution remains pure and the
+  // store consult happens lazily inside the redirect (after pinia is active).
   {
     path: '/dashboard',
     name: 'dashboard',
-    component: DashboardView,
-    meta: { requiresAuth: true, requiresOnboarding: true },
-    children: [
-      {
-        path: 'trash',
-        component: TrashView,
-        meta: { requiresAuth: true, requiresOnboarding: true }
-      },
-      {
-        path: 'settings',
-        component: SettingsView,
-        meta: { requiresAuth: true, requiresOnboarding: true }
-      },
-      {
-        path: ':brandId/settings/integrations',
-        component: SettingsBrandIntegrationsView,
-        meta: { requiresAuth: true, requiresOnboarding: true }
-      },
-      {
-        path: ':brandId/settings',
-        component: BrandSettingsView,
-        meta: { requiresAuth: true, requiresOnboarding: true }
-      },
-      {
-        path: ':brandId/assets',
-        component: BrandAssetsView,
-        meta: { requiresAuth: true, requiresOnboarding: true }
-      },
-      {
-        path: ':brandId',
-        component: CanvasGrid,
-        meta: { requiresAuth: true, requiresOnboarding: true }
-      }
-    ]
+    redirect: () => {
+      const last = lastActiveBrandIdRef.value
+      return last ? `/brand/${last}` : '/brands'
+    },
+    meta: { requiresAuth: true, requiresOnboarding: true }
+  },
+  // M2-era /dashboard children preserved as top-level so old links keep working.
+  {
+    path: '/dashboard/trash',
+    component: TrashView,
+    meta: { requiresAuth: true, requiresOnboarding: true }
+  },
+  {
+    path: '/dashboard/settings',
+    component: SettingsView,
+    meta: { requiresAuth: true, requiresOnboarding: true }
+  },
+  {
+    path: '/dashboard/:brandId/settings/integrations',
+    redirect: (to) => `/brand/${to.params.brandId}/settings/integrations`
+  },
+  {
+    path: '/dashboard/:brandId/settings',
+    redirect: (to) => `/brand/${to.params.brandId}/settings`
+  },
+  {
+    path: '/dashboard/:brandId/assets',
+    redirect: (to) => `/brand/${to.params.brandId}/assets`
+  },
+  {
+    path: '/dashboard/:brandId',
+    redirect: (to) => `/brand/${to.params.brandId}`
   },
   {
     path: '/account/billing/success',

@@ -1,0 +1,52 @@
+name: Cluster 02 guards
+
+on:
+  push:
+    branches: [main, feat/m9-shopify, 'app/cluster-02-**']
+  pull_request:
+    branches: [main, feat/m9-shopify]
+
+jobs:
+  c02-grep-guards:
+    name: c02 grep guards
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: kova-open-pencil-1
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Security — no access_token in URLs (PRD 02 §5.4.1)
+        run: |
+          if grep -rnE 'access_token=' src/ api/; then
+            echo "::error::access_token= found in URLs — see PRD 02 §5.4.1"
+            exit 1
+          fi
+
+      - name: Theme — M9 surfaces use dark tokens only (PRD 02 §5.6 item 1)
+        run: |
+          if grep -rnE 'bg-white|text-gray-900|text-gray-500|border-gray-200|border-gray-300' \
+             src/components/onboarding/StoreTypeStep.vue \
+             src/components/dashboard/IntegrationsCard.vue; then
+            echo "::error::Light Tailwind classes found in M9 surfaces"
+            exit 1
+          fi
+
+      - name: Tests — bun:test only (no jest/vitest leakage)
+        run: |
+          if grep -rnE '\b(jest|vi)\.(mock|fn|spyOn)\b|\bmockImplementation(Once)?\b|\bmockReturnValue(Once)?\b|\bmockClear\b|\bmockReset\b' tests/ src/; then
+            echo "::error::Vitest/Jest mock API found — use bun:test (mock.module / mock(fn))"
+            exit 1
+          fi
+
+      - name: Retired onboarding components — no live imports
+        run: |
+          # Match real import / component refs, not stale doc-comments.
+          if grep -rnE "^[[:space:]]*import .+ from .+(WelcomeStep|ReviewStep|BrandNameStep|BrandUrlStep|NameStep|ExtractionStep|OnboardingPreview|useOnboardingState|useOnboardingComplete)" src/; then
+            echo "::error::Live import of a retired M9 onboarding component"
+            exit 1
+          fi
+          if grep -rnE "<(WelcomeStep|ReviewStep|BrandNameStep|BrandUrlStep|NameStep|ExtractionStep|OnboardingPreview)[[:space:]/>]" src/; then
+            echo "::error::Template ref to a retired M9 onboarding component"
+            exit 1
+          fi

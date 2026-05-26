@@ -187,13 +187,28 @@ export function useShopifyConnection(brandId: string): UseShopifyConnection {
     void (async () => {
       const { data: sessionData } = await supabase.auth.getSession()
       const token = sessionData.session?.access_token ?? ''
-      const params = new URLSearchParams({
-        shop,
-        brand_id: brandId,
-        access_token: token,
-      })
-      if (popup && !popup.closed) {
-        popup.location.href = `/api/shopify/oauth/start?${params.toString()}`
+      // PRD 02 §5.4.1 — POST + Bearer; never put the JWT in the popup URL.
+      try {
+        const response = await fetch('/api/shopify/oauth/start', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ shop, brand_id: brandId }),
+        })
+        if (!response.ok) {
+          popup?.close()
+          popup = null
+          return
+        }
+        const { redirectUrl } = (await response.json()) as { redirectUrl: string }
+        if (popup && !popup.closed) {
+          popup.location.href = redirectUrl
+        }
+      } catch {
+        popup?.close()
+        popup = null
       }
     })()
 

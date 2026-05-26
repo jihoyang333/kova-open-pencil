@@ -1,5 +1,17 @@
-import { describe, expect, test } from 'bun:test'
+import { describe, expect, test, mock } from 'bun:test'
 import { mount } from '@vue/test-utils'
+
+// Stub supabase before component import — handleConnect reads it on click.
+mock.module('@/lib/supabase', () => ({
+  supabase: {
+    auth: {
+      getSession: async () => ({
+        data: { session: { access_token: 'test-jwt' } },
+        error: null,
+      }),
+    },
+  },
+}))
 
 const { default: StoreTypeStep } = await import(
   '@/components/onboarding/StoreTypeStep.vue'
@@ -12,6 +24,34 @@ function mountStep(props: { brandName?: string; brandId?: string } = {}) {
       brandId: props.brandId ?? 'brand-abc-123',
     },
   })
+}
+
+interface FetchCall { 0: string; 1: RequestInit | undefined }
+
+function mockBearerFetch(redirectUrl: string): {
+  fetchSpy: { calls: FetchCall[] }
+  restore: () => void
+} {
+  const calls: FetchCall[] = []
+  const original = globalThis.fetch
+  globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+    calls.push([String(input), init] as FetchCall)
+    return new Response(JSON.stringify({ redirectUrl }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }) as typeof fetch
+  return {
+    fetchSpy: { calls },
+    restore: () => {
+      globalThis.fetch = original
+    },
+  }
+}
+
+async function flushAsync(): Promise<void> {
+  await new Promise<void>((resolve) => setTimeout(resolve, 0))
+  await new Promise<void>((resolve) => setTimeout(resolve, 0))
 }
 
 describe('StoreTypeStep', () => {
@@ -63,30 +103,46 @@ describe('StoreTypeStep', () => {
     expect(btn.attributes('disabled')).toBeUndefined()
   })
 
-  test('clicking connect emits connect-shopify with OAuth URL containing shop and brand_id', async () => {
-    const wrapper = mountStep({ brandId: 'brand-xyz' })
-    await wrapper.find('[data-test-id="store-type-shopify"]').trigger('click')
-    const input = wrapper.find('[data-test-id="store-type-shop-input"]')
-    await input.setValue('mystore.myshopify.com')
-    await wrapper.find('[data-test-id="store-type-connect"]').trigger('click')
-    const emitted = wrapper.emitted('connect-shopify')
-    expect(emitted).toHaveLength(1)
-    const url = (emitted![0] as [string])[0]
-    expect(url).toContain('/api/shopify/oauth/start')
-    expect(url).toContain('shop=mystore.myshopify.com')
-    expect(url).toContain('brand_id=brand-xyz')
+  test('clicking connect POSTs shop + brand_id with Bearer header and emits returned redirectUrl', async () => {
+    const { fetchSpy, restore } = mockBearerFetch('https://kova.myshopify.com/admin/oauth/authorize?state=abc')
+    try {
+      const wrapper = mountStep({ brandId: 'brand-xyz' })
+      await wrapper.find('[data-test-id="store-type-shopify"]').trigger('click')
+      await wrapper.find('[data-test-id="store-type-shop-input"]').setValue('mystore.myshopify.com')
+      await wrapper.find('[data-test-id="store-type-connect"]').trigger('click')
+      await flushAsync()
+
+      expect(fetchSpy.calls).toHaveLength(1)
+      const [calledUrl, calledInit] = fetchSpy.calls[0]!
+      expect(calledUrl).toBe('/api/shopify/oauth/start')
+      expect(calledInit?.method).toBe('POST')
+      expect(calledInit?.headers).toMatchObject({ Authorization: 'Bearer test-jwt' })
+      const body = JSON.parse(calledInit?.body as string) as { shop: string; brand_id: string }
+      expect(body.shop).toBe('mystore.myshopify.com')
+      expect(body.brand_id).toBe('brand-xyz')
+
+      const emitted = wrapper.emitted('connect-shopify')
+      expect(emitted).toHaveLength(1)
+      expect((emitted![0] as [string])[0]).toContain('admin/oauth/authorize')
+    } finally {
+      restore()
+    }
   })
 
-  test('connect normalizes shop domain before emitting (strips https scheme)', async () => {
-    const wrapper = mountStep({ brandId: 'brand-xyz' })
-    await wrapper.find('[data-test-id="store-type-shopify"]').trigger('click')
-    const input = wrapper.find('[data-test-id="store-type-shop-input"]')
-    await input.setValue('https://mystore.myshopify.com')
-    await wrapper.find('[data-test-id="store-type-connect"]').trigger('click')
-    const emitted = wrapper.emitted('connect-shopify')
-    const url = (emitted![0] as [string])[0]
-    expect(url).toContain('shop=mystore.myshopify.com')
-    expect(url).not.toContain('https%3A%2F%2F')
+  test('connect normalizes shop domain before sending (strips https scheme)', async () => {
+    const { fetchSpy, restore } = mockBearerFetch('https://kova.myshopify.com/admin/oauth/authorize?state=abc')
+    try {
+      const wrapper = mountStep({ brandId: 'brand-xyz' })
+      await wrapper.find('[data-test-id="store-type-shopify"]').trigger('click')
+      await wrapper.find('[data-test-id="store-type-shop-input"]').setValue('https://mystore.myshopify.com')
+      await wrapper.find('[data-test-id="store-type-connect"]').trigger('click')
+      await flushAsync()
+
+      const body = JSON.parse(fetchSpy.calls[0]![1]?.body as string) as { shop: string }
+      expect(body.shop).toBe('mystore.myshopify.com')
+    } finally {
+      restore()
+    }
   })
 
   test('clicking "Something else" emits something-else', async () => {

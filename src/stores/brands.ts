@@ -3,6 +3,10 @@ import { computed, ref } from 'vue'
 
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/auth'
+// C-MED8: consume the module-scope singleton — do NOT call
+// useLocalStorage('kova:ui:last-brand', ...) here. Two separate refs on the
+// same key are not synchronized in-tab.
+import { lastActiveBrandIdRef } from '@/stores/ui-state'
 
 import type { Brand, BrandColors, BrandFonts } from '@/types/kova/database'
 
@@ -22,19 +26,49 @@ export interface ProposedBrandKit {
 export const useBrandsStore = defineStore('brands', () => {
   const brands = ref<Brand[]>([])
   const isLoading = ref(false)
-  const selectedBrandId = ref<string | null>(null)
+  const selectedBrandId = lastActiveBrandIdRef
   const proposedBrandKit = ref<ProposedBrandKit | null>(null)
 
   const sortedBrands = computed(() =>
     [...brands.value].sort((a, b) => a.name.localeCompare(b.name))
   )
 
+  // Most-recent-first, excluding archived. The Brand type does not currently
+  // expose `archived_at`, so this is structural — when the column ships the
+  // filter starts removing archived rows without a code change.
+  const sortedActiveBrands = computed<Brand[]>(() =>
+    [...brands.value]
+      .filter((b) => !isArchived(b))
+      .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+  )
+
   const selectedBrand = computed(
     () => brands.value.find((b) => b.id === selectedBrandId.value) ?? null
   )
 
-  function selectBrand(id: string): void {
+  function isArchived(b: Brand): boolean {
+    const raw = (b as unknown as { archived_at?: string | null }).archived_at
+    return raw != null
+  }
+
+  function selectBrand(id: string | null): void {
     selectedBrandId.value = id
+  }
+
+  // Onboarding + auth-callback fallback: pick the persisted brand if still
+  // valid, otherwise drop to the most-recent active brand. Returns null when
+  // the user has zero brands (caller routes to /onboarding).
+  async function ensureSelectedBrand(): Promise<Brand | null> {
+    if (brands.value.length === 0) {
+      await fetchBrands()
+    }
+    const persisted = brands.value.find((b) => b.id === selectedBrandId.value)
+    if (persisted && !isArchived(persisted)) {
+      return persisted
+    }
+    const fallback = sortedActiveBrands.value[0] ?? null
+    selectedBrandId.value = fallback?.id ?? null
+    return fallback
   }
 
   async function fetchBrands(): Promise<void> {
@@ -225,8 +259,10 @@ export const useBrandsStore = defineStore('brands', () => {
     selectedBrandId,
     proposedBrandKit,
     sortedBrands,
+    sortedActiveBrands,
     selectedBrand,
     selectBrand,
+    ensureSelectedBrand,
     fetchBrands,
     createBrand,
     updateBrand,

@@ -22,22 +22,42 @@ function randomStateHex(): string {
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')
 }
 
+interface StartBody {
+  shop?: unknown
+  brand_id?: unknown
+  brandId?: unknown
+}
+
 export default async function handler(req: Request): Promise<Response> {
-  if (req.method !== 'GET') {
+  // PRD 02 §5.4.1 — Bearer-header POST only. The legacy GET-with-redirect
+  // path leaked the supabase JWT through 302 Location headers, browser
+  // history, and access logs. Closed in W9a-T03.
+  if (req.method !== 'POST') {
     return jsonError(405, 'Method not allowed')
   }
-
-  const url = new URL(req.url)
-  const shopRaw = url.searchParams.get('shop') ?? ''
-  const brandId = url.searchParams.get('brand_id') ?? ''
-
-  const shop = normalizeShopDomain(shopRaw)
-  if (!shop) return jsonError(400, 'Invalid shop domain')
-  if (!BRAND_ID_RE.test(brandId)) return jsonError(400, 'Invalid brand_id')
 
   const authResult = await authenticateRequest(req)
   if (authResult instanceof Response) return authResult
   const { userId } = authResult
+
+  let body: StartBody
+  try {
+    body = (await req.json()) as StartBody
+  } catch {
+    return jsonError(400, 'Invalid JSON body')
+  }
+
+  const shopRaw = typeof body.shop === 'string' ? body.shop : ''
+  const brandIdRaw =
+    typeof body.brand_id === 'string'
+      ? body.brand_id
+      : typeof body.brandId === 'string'
+        ? body.brandId
+        : ''
+
+  const shop = normalizeShopDomain(shopRaw)
+  if (!shop) return jsonError(400, 'Invalid shop domain')
+  if (!BRAND_ID_RE.test(brandIdRaw)) return jsonError(400, 'Invalid brand_id')
 
   const supabaseUrl = process.env.VITE_SUPABASE_URL
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -57,7 +77,7 @@ export default async function handler(req: Request): Promise<Response> {
   const { data: ownedBrand, error: ownedErr } = await admin
     .from('brands')
     .select('id')
-    .eq('id', brandId)
+    .eq('id', brandIdRaw)
     .eq('user_id', userId)
     .maybeSingle()
   if (ownedErr || !ownedBrand) return jsonError(403, 'Forbidden')
@@ -68,17 +88,21 @@ export default async function handler(req: Request): Promise<Response> {
   const { error: stateErr } = await admin.from('shopify_oauth_state').insert({
     state,
     user_id: userId,
-    brand_id: brandId,
+    brand_id: brandIdRaw,
     shop,
   })
   if (stateErr) return jsonError(500, 'Failed to persist OAuth state')
 
-  const redirectUri = `${url.origin}/api/shopify/oauth/callback`
+  const origin = new URL(req.url).origin
+  const redirectUri = `${origin}/api/shopify/oauth/callback`
   const authorize = new URL(`https://${shop}/admin/oauth/authorize`)
   authorize.searchParams.set('client_id', clientId)
   authorize.searchParams.set('scope', SHOPIFY_SCOPES)
   authorize.searchParams.set('redirect_uri', redirectUri)
   authorize.searchParams.set('state', state)
 
-  return Response.redirect(authorize.toString(), 302)
+  return new Response(JSON.stringify({ redirectUrl: authorize.toString() }), {
+    status: 200,
+    headers: JSON_HEADERS,
+  })
 }
