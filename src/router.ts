@@ -3,6 +3,7 @@ import { createRouter } from 'vue-router'
 
 import { IS_BROWSER } from '@/constants'
 import { useAuthStore } from '@/stores/auth'
+import { lastActiveBrandIdRef } from './stores/ui-state'
 
 const DESKTOP_MIN_WIDTH = 1024
 
@@ -70,12 +71,6 @@ export function resolveGuard(
   if (to.meta.requiresOnboarding && !auth.isOnboarded) return '/onboarding'
   if (to.meta.onboardingOnly && auth.isOnboarded) return '/dashboard'
   return true
-}
-
-/** Returns a route to navigate to after the given onboarding step, or null to stay in-flow. */
-export function getOnboardingNextRoute(step: number): string | null {
-  if (step === 3) return '/onboarding/store-type'
-  return null
 }
 
 /** Resolves `/` redirect based on auth state */
@@ -150,29 +145,32 @@ const routes = [
     meta: { theme: 'dark', requiresAuth: true, requiresOnboarding: false, onboardingOnly: true }
   },
   // C-HIGH2 — wizard sub-routes (each step owns its URL for back/forward + deep-link).
+  // M4 audit fix — explicit requiresOnboarding: false parity with the parent
+  // /onboarding meta. Defense-in-depth against future guard changes that
+  // treat undefined as truthy.
   {
     path: '/onboarding/brand',
     name: 'onboarding-brand',
     component: BrandIdentityStep,
-    meta: { theme: 'dark', requiresAuth: true, onboardingOnly: true, wizardStep: 1 }
+    meta: { theme: 'dark', requiresAuth: true, requiresOnboarding: false, onboardingOnly: true, wizardStep: 1 }
   },
   {
     path: '/onboarding/shopify',
     name: 'onboarding-shopify',
     component: StoreTypeStep,
-    meta: { theme: 'dark', requiresAuth: true, onboardingOnly: true, wizardStep: 2 }
+    meta: { theme: 'dark', requiresAuth: true, requiresOnboarding: false, onboardingOnly: true, wizardStep: 2 }
   },
   {
     path: '/onboarding/brand-kit',
     name: 'onboarding-brand-kit',
     component: BrandKitStep,
-    meta: { theme: 'dark', requiresAuth: true, onboardingOnly: true, wizardStep: 3 }
+    meta: { theme: 'dark', requiresAuth: true, requiresOnboarding: false, onboardingOnly: true, wizardStep: 3 }
   },
   {
     path: '/onboarding/done',
     name: 'onboarding-done',
     component: SplashStep,
-    meta: { theme: 'dark', requiresAuth: true, onboardingOnly: true, wizardStep: 4 }
+    meta: { theme: 'dark', requiresAuth: true, requiresOnboarding: false, onboardingOnly: true, wizardStep: 4 }
   },
   // Plan T12 / PRD §6.1 — /brand/:brandId is the canonical home (CT-002 lock).
   {
@@ -214,10 +212,6 @@ const routes = [
     path: '/dashboard',
     name: 'dashboard',
     redirect: () => {
-      // Lazy-import to avoid loading the store at module evaluation time.
-      const { lastActiveBrandIdRef } = require('./stores/ui-state') as {
-        lastActiveBrandIdRef: { value: string | null }
-      }
       const last = lastActiveBrandIdRef.value
       return last ? `/brand/${last}` : '/brands'
     },
