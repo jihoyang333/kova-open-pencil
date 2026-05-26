@@ -88,6 +88,9 @@ export function useOnboarding(): UseOnboarding {
     try {
       const brand = await brands.createBrand(state.brandName)
       sessionStorage.removeItem(DRAFT_KEY)
+      // H7 audit fix — wipe in-memory module-scope wizard state so a second
+      // signup in the same tab does not leak the prior brand's data.
+      resetWizardState()
       await router.push(`/brand/${brand.id}`)
       return { brandId: brand.id }
     } catch (err) {
@@ -144,8 +147,9 @@ export function useOnboarding(): UseOnboarding {
   }
 }
 
-// Test-only escape hatch: reset the module-scope singletons between specs.
-export function _resetForTesting(): void {
+// Internal — shared between production complete() and the DEV-only test
+// helper export. Keeps wizard state reset logic in one place.
+function resetWizardState(): void {
   state.brandName = ''
   state.brandUrl = ''
   state.industry = ''
@@ -153,4 +157,14 @@ export function _resetForTesting(): void {
   step.value = 'brand'
   isFinishing.value = false
   finishError.value = null
+}
+
+// M7 audit fix — guard the escape hatch so a production bundle cannot reset
+// the wizard out from under a user. Vite injects PROD=true in production
+// builds; dev + bun:test envs leave it falsy.
+export function _resetForTesting(): void {
+  if (import.meta.env.PROD) {
+    throw new Error('_resetForTesting is not available in production builds')
+  }
+  resetWizardState()
 }
