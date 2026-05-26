@@ -21,10 +21,14 @@ export function useLogoFetch(urlRef: Ref<string>): UseLogoFetch {
   const isFetching = ref(false)
 
   const debouncedFetch = useDebounceFn(async (raw: string) => {
+    // L2 audit fix — capture the url at fire time so a stale fetch can't
+    // overwrite logoUrl after the user cleared / changed the field.
+    const requested = raw
     try {
-      logoUrl.value = await fetchFavicon(raw)
+      const fetched = await fetchFavicon(requested)
+      if (urlRef.value === requested) logoUrl.value = fetched
     } finally {
-      isFetching.value = false
+      if (urlRef.value === requested) isFetching.value = false
     }
   }, DEBOUNCE_MS)
 
@@ -46,13 +50,25 @@ export function useLogoFetch(urlRef: Ref<string>): UseLogoFetch {
     const auth = useAuthStore()
     const userId = auth.user?.id
     if (!userId) throw new Error('Not authenticated')
-    const path = `${userId}/${crypto.randomUUID()}.png`
+    // L1 audit fix — derive extension from the uploaded file rather than
+    // hardcoding `.png` (PRD §3.1 accepts PNG/JPG).
+    const ext = extensionFromFile(file)
+    const path = `${userId}/${crypto.randomUUID()}.${ext}`
     const { error } = await supabase.storage
       .from('brand-logos')
       .upload(path, file, { upsert: true })
     if (error) throw error
     const { data } = supabase.storage.from('brand-logos').getPublicUrl(path)
     logoUrl.value = data.publicUrl
+  }
+
+  function extensionFromFile(file: File): string {
+    const dot = file.name.lastIndexOf('.')
+    if (dot !== -1 && dot < file.name.length - 1) {
+      return file.name.slice(dot + 1).toLowerCase()
+    }
+    if (file.type === 'image/jpeg') return 'jpg'
+    return 'png'
   }
 
   return { logoUrl, isFetching, manualOverride }
