@@ -4,16 +4,18 @@ import { useRoute, useRouter } from 'vue-router'
 
 import DashboardSidebar from '@/components/dashboard/DashboardSidebar.vue'
 import DashboardTopbar from '@/components/dashboard/DashboardTopbar.vue'
+import { useCanvasCreation } from '@/composables/use-canvas-creation'
 import { useBrandsStore } from '@/stores/brands'
 
 // PRD 02 §3.2 + Plan T35 — dashboard shell.
 // Hosts DashboardSidebar + DashboardTopbar + <router-view> for the brand-
-// scoped children. NetworkStatusIndicator is mounted globally by Cluster 11
-// (CT-020) — no local offline UI here.
+// scoped children. NetworkStatusIndicator is mounted globally in App.vue
+// (CT-020 + H5 audit fix) — no local offline UI here.
 
 const route = useRoute()
 const router = useRouter()
 const brands = useBrandsStore()
+const canvasCreation = useCanvasCreation()
 
 const currentBrand = computed(() => {
   const id = route.params.brandId
@@ -58,15 +60,10 @@ watch(
 )
 
 function onNewCanvas(): void {
-  // RecentsView.onNewCanvas is exposed via defineExpose; reach the active
-  // <router-view> instance through matched routes.
-  const matched = router.currentRoute.value.matched
-  const childInstance = matched[1]?.instances?.default as
-    | { onNewCanvas?: () => Promise<void> }
-    | undefined
-  if (childInstance?.onNewCanvas) {
-    void childInstance.onNewCanvas()
-  }
+  // H2 audit fix — publish via canvas-creation bus instead of reaching into
+  // vue-router internals. The active child view (RecentsView) registers a
+  // handler in onMounted + tears it down in onUnmounted.
+  canvasCreation.requestNewCanvas()
 }
 </script>
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import CanvasCreationTransition from '@/components/dashboard/CanvasCreationTransition.vue'
@@ -9,10 +9,15 @@ import FileGrid from '@/components/dashboard/FileGrid.vue'
 import KovaIcon from '@/components/ui/KovaIcon.vue'
 import SortDropdown from '@/components/dashboard/SortDropdown.vue'
 import ViewToggle from '@/components/dashboard/ViewToggle.vue'
+import { useCanvasCreation } from '@/composables/use-canvas-creation'
 import { useFileGrid } from '@/composables/use-file-grid'
 import { useGreeting } from '@/composables/use-greeting'
 import { useCanvasesStore } from '@/stores/canvases'
 import { useDashboardStore } from '@/stores/dashboard'
+import {
+  CANVAS_CREATE_REVIEW_MS,
+  CANVAS_CREATE_SPLASH_MS,
+} from '@/constants/transitions'
 import { useUIStateStore } from '@/stores/ui-state'
 
 // PRD 02 §3.2 + Plan T33 — recents (default child of /brand/:brandId).
@@ -44,9 +49,9 @@ async function onSubmit(prompt: string): Promise<void> {
   try {
     const canvas = await canvasesStore.createCanvas(brandIdRef.value, prompt || undefined)
     transitionState.value = 'review'
-    await new Promise((r) => setTimeout(r, 120))
+    await new Promise((r) => setTimeout(r, CANVAS_CREATE_REVIEW_MS))
     transitionState.value = 'splash'
-    await new Promise((r) => setTimeout(r, 100))
+    await new Promise((r) => setTimeout(r, CANVAS_CREATE_SPLASH_MS))
     await router.push(`/editor/${canvas.id}`)
   } catch {
     transitionState.value = 'idle'
@@ -61,7 +66,10 @@ function onOpen(canvasId: string): void {
   void router.push(`/editor/${canvasId}`)
 }
 
-defineExpose({ onNewCanvas })
+// H2 audit fix — replaces defineExpose-based router.matched reach-around.
+const canvasCreation = useCanvasCreation()
+onMounted(() => canvasCreation.registerHandler(onNewCanvas))
+onUnmounted(() => canvasCreation.unregisterHandler(onNewCanvas))
 </script>
 
 <template>
