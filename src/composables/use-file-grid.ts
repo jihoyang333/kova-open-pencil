@@ -30,17 +30,20 @@ export function useFileGrid(brandId: Ref<string>): UseFileGrid {
   const ui = useUIStateStore()
   const isLoading = ref(false)
 
+  // H3 audit fix — sentinel guard so rapid brand-switches don't land stale
+  // data or prematurely flip `isLoading` on the first-resolved fetch.
   watch(
     brandId,
     async (next, prev) => {
       if (next === prev) return
       if (!next) return
+      const requested = next
       dash.resetForBrand()
       isLoading.value = true
       try {
-        await canvasesStore.fetchCanvases(next)
+        await canvasesStore.fetchCanvases(requested)
       } finally {
-        isLoading.value = false
+        if (brandId.value === requested) isLoading.value = false
       }
     },
     { immediate: true }
