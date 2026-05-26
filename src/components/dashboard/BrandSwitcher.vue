@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import {
   DropdownMenuContent,
   DropdownMenuItem,
@@ -17,17 +18,33 @@ import type { Brand } from '@/types/kova/database'
 // full A2/A3 modal experience; here we only wire the trigger + popover.
 
 defineProps<{ currentBrand: Brand }>()
-defineEmits<{
+const emit = defineEmits<{
   select: [brandId: string]
   'new-brand': []
   'manage-brands': []
 }>()
 
 const brands = useBrandsStore()
+
+// H1 audit fix — controlled DropdownMenuRoot so emit handlers can dismiss it.
+const open = ref(false)
+
+function onSelectBrand(brandId: string): void {
+  open.value = false
+  emit('select', brandId)
+}
+function onNewBrand(): void {
+  open.value = false
+  emit('new-brand')
+}
+function onManageBrands(): void {
+  open.value = false
+  emit('manage-brands')
+}
 </script>
 
 <template>
-  <DropdownMenuRoot>
+  <DropdownMenuRoot v-model:open="open">
     <DropdownMenuTrigger as-child>
       <button data-test-id="brand-switch" class="brand-switch">
         <div class="logo">{{ currentBrand.name.charAt(0).toUpperCase() }}</div>
@@ -43,7 +60,7 @@ const brands = useBrandsStore()
           v-for="b in brands.sortedActiveBrands"
           :key="b.id"
           :data-test-id="`brand-option-${b.id}`"
-          @click="$emit('select', b.id)"
+          @click="onSelectBrand(b.id)"
         >
           <div class="logo">{{ b.name.charAt(0).toUpperCase() }}</div>
           <span>{{ b.name }}</span>
@@ -51,14 +68,14 @@ const brands = useBrandsStore()
         <DropdownMenuSeparator />
         <DropdownMenuItem
           data-test-id="brand-manage"
-          @click="$emit('manage-brands')"
+          @click="onManageBrands"
         >
           <KovaIcon name="layers" size="sm" />
           <span>Manage brands</span>
         </DropdownMenuItem>
         <DropdownMenuItem
           data-test-id="brand-new"
-          @click="$emit('new-brand')"
+          @click="onNewBrand"
         >
           <KovaIcon name="plus" size="sm" />
           <span>New brand</span>
