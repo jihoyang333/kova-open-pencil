@@ -141,6 +141,25 @@
      from raw 760px (dashboard-content.css .composer + DashboardSkeleton).
      Single canonical source per the no-raw-visual-values lint protocol. */
   --composer-max-w: 760px;
+
+  /* Cluster 06 — radii scale per design.md §1.5 / TOKEN_CANONICAL.md §2.
+     Used by canvas chrome (toolbar shell 10, zoom HUD 8, tool buttons 6,
+     swatches 3, etc.). */
+  --r-xs: 3px;
+  --r-sm: 4px;
+  --r-md: 5px;
+  --r-lg: 6px;
+  --r-xl: 7px;
+  --r-2xl: 10px;
+
+  /* Cluster 06 — elevation shadows extracted from Kova Canvas - Final.html
+     (toolbar L290, zoom HUD inherits page bg). Per Rider §2.7. */
+  --shadow-toolbar: 0 8px 24px -6px rgba(0, 0, 0, 0.6),
+    0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  --shadow-elev-1: 0 1px 0 rgba(255, 255, 255, 0.02),
+    0 20px 60px -30px rgba(0, 0, 0, 0.8);
+  --shadow-elev-2: 0 8px 24px -6px rgba(0, 0, 0, 0.6);
+  --shadow-elev-3: 0 30px 80px -20px rgba(0, 0, 0, 0.8);
 }
 
 /* W8a Cluster 01 — light-theme overrides per audit Q-1 (1A) + L-1.
