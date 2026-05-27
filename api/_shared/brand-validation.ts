@@ -18,8 +18,11 @@ export type ValidationError =
   | 'brand_id_required'
   | 'confirm_required'
 
-const MAX_NAME = 80
-const MAX_DESCRIPTION = 200
+// L1 / M10: shared with the create_brand RPC (length(p_name) > 80, etc.).
+// Bump both when the PRD changes.
+export const MAX_NAME = 80
+export const MAX_DESCRIPTION = 200
+export const MAX_URL = 2048 // mirrors brands_url_length_chk DB constraint
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 export interface CreateBrandInput {
@@ -41,8 +44,12 @@ export function validateCreateBrand(input: Partial<CreateBrandInput>): Validatio
 
   let url: string | null = null
   if (typeof input.url === 'string' && input.url.trim().length > 0) {
+    // M10: sanitizeUrl handles scheme + parse rejection. The DB also enforces
+    // length(url) <= 2048 (M3), but reject here too so a malformed too-long
+    // URL returns a clean 422 instead of an opaque CHECK violation.
     url = sanitizeUrl(input.url)
     if (url === null) return { ok: false, error: 'url_invalid' }
+    if (url.length > MAX_URL) return { ok: false, error: 'url_invalid' }
   }
 
   let description: string | null = null

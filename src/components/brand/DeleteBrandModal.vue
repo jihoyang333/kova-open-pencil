@@ -44,6 +44,9 @@ watch(
 // PRD §6.4 / §12.5: loss-list counts. Pulled from window globals while child
 // stores aren't yet wired in this cluster (Cluster 09 snapshots, Cluster 05
 // brand-kit, etc.). Renders as `—` when undefined.
+// L7 / Plan T35: TODO(C05,C09) — replace with real store reads once the
+// brand-kit + snapshot stores ship. The window globals are a tactical bridge,
+// not a long-term interface.
 function readGlobalCount(key: string): number | null {
   const winRef = (window as unknown as Record<string, unknown>)[key]
   return typeof winRef === 'number' ? winRef : null

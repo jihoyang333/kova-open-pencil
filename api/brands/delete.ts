@@ -1,13 +1,15 @@
 import { writeAudit } from '../_shared/audit'
 import { validateDeleteBrand } from '../_shared/brand-validation'
 import { verifyIdempotency, IdempotencyHttpError } from '../_shared/idempotency'
+import { enforceRateLimit, rateLimitResponse } from '../_shared/rate-limit'
 import { purgeBrandStorageObjects } from '../_shared/storage-sweep'
 import { getAdminClient } from '../_shared/supabase-admin'
 import { verifyAuthFull, UnauthenticatedError } from '../_shared/verify-auth-full'
 
 // W9b Cluster 03 — DELETE /api/brands/delete (Plan 03 Task 14).
 // Typed-confirm + cascade. Storage sweep is best-effort after RPC success.
-// Rate-limited (10 req/min/user) — this is a destructive op.
+// Rate-limited per PRD 03 §5.1.5 (10 req/min/user — aggressive cap on
+// destructive op).
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' } as const
 const ENDPOINT = 'brands.delete'
@@ -53,15 +55,8 @@ export default async function handler(req: Request): Promise<Response> {
 
   const admin = getAdminClient()
 
-  // Rate limit: aggressive cap on destructive endpoint.
-  const { data: rateCount } = await admin.rpc('bump_rate_limit', {
-    p_user_id: auth.userId,
-    p_endpoint: ENDPOINT,
-    p_window_start: new Date(Math.floor(Date.now() / 60_000) * 60_000).toISOString(),
-  })
-  if (typeof rateCount === 'number' && rateCount > RATE_LIMIT_MAX) {
-    return errorResponse('rate_limited', 429)
-  }
+  const rate = await enforceRateLimit(admin, auth.userId, ENDPOINT, RATE_LIMIT_MAX)
+  if (!rate.allowed) return rateLimitResponse()
 
   let idem
   try {
@@ -97,30 +92,39 @@ export default async function handler(req: Request): Promise<Response> {
     return errorResponse('internal_error', 500)
   }
 
-  const summary = data as { name: string; canvas_count: number } | null
+  // M8: narrow the RPC summary at runtime so a future schema drift surfaces
+  // as a logged warning rather than a silent 0-canvas_count audit row.
+  const summaryRaw = data as Record<string, unknown> | null
+  const summaryName = typeof summaryRaw?.name === 'string' ? summaryRaw.name : null
+  const summaryCanvasCount =
+    typeof summaryRaw?.canvas_count === 'number' ? summaryRaw.canvas_count : null
+  if (summaryRaw && summaryCanvasCount === null) {
+    console.warn('[brands/delete] RPC summary missing canvas_count', { summaryRaw })
+  }
+
+  // M9: write the audit row BEFORE the storage sweep so sweep failure cannot
+  // cost us the audit (the brand row is already cascade-deleted; the audit
+  // record is the only durable trace).
+  void writeAudit(admin, {
+    userId: auth.userId,
+    eventType: 'brand.deleted',
+    payload: {
+      brand_id: validation.value.brand_id,
+      name: summaryName,
+      canvas_count: summaryCanvasCount ?? 0,
+    },
+    clusterOwner: '03',
+  })
 
   // Storage sweep is best-effort — brand row already cascade-deleted.
   const sweep = await purgeBrandStorageObjects(admin, validation.value.brand_id, auth.userId)
 
   const resp: ResponseBody = {
     success: true,
-    deleted_brand_name: summary?.name,
+    deleted_brand_name: summaryName ?? undefined,
     storage_sweep: sweep,
   }
   await idem.persist(200, resp)
-
-  void writeAudit(admin, {
-    userId: auth.userId,
-    eventType: 'brand.deleted',
-    payload: {
-      brand_id: validation.value.brand_id,
-      name: summary?.name,
-      canvas_count: summary?.canvas_count ?? 0,
-      storage_swept: sweep.swept,
-      storage_failed: sweep.failed.length,
-    },
-    clusterOwner: '03',
-  })
 
   return jsonResponse(resp, 200)
 }

@@ -1,15 +1,22 @@
-import { writeAudit } from '../_shared/audit'
 import { validateBrandId } from '../_shared/brand-validation'
 import { loadEnvOrSkip } from '../_shared/env'
 import { verifyIdempotency, IdempotencyHttpError } from '../_shared/idempotency'
+import { enforceRateLimit, rateLimitResponse } from '../_shared/rate-limit'
 import { getAdminClient } from '../_shared/supabase-admin'
 import { verifyAuthFull, UnauthenticatedError } from '../_shared/verify-auth-full'
 
 // W9b Cluster 03 — POST /api/brands/restore (Plan 03 Task 13.5).
 // MVP per 2026-05-17 reversal. Honors BRANDS_RESTORE_ENABLED kill-switch.
+// Rate-limited per PRD 03 §5.1.4 (30 req/min/user).
+//
+// W9b audit H3: 'brand.restored' audit is INSERTed inside restore_brand RPC
+// (atomic with the UPDATE) — Edge Function does NOT call writeAudit anymore.
+// This closes the post-commit-crash audit gap. See migration comment for the
+// SECURITY DEFINER bypass rationale.
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' } as const
 const ENDPOINT = 'brands.restore'
+const RATE_LIMIT_MAX = 30
 
 interface ResponseBody {
   brand?: unknown
@@ -57,6 +64,9 @@ export default async function handler(req: Request): Promise<Response> {
 
   const admin = getAdminClient()
 
+  const rate = await enforceRateLimit(admin, auth.userId, ENDPOINT, RATE_LIMIT_MAX)
+  if (!rate.allowed) return rateLimitResponse()
+
   let idem
   try {
     idem = await verifyIdempotency(admin, req, auth.userId, ENDPOINT)
@@ -93,13 +103,6 @@ export default async function handler(req: Request): Promise<Response> {
   const brand = data as { id: string; name: string; archived_at: string | null } | null
   const resp: ResponseBody = { brand }
   await idem.persist(200, resp)
-
-  void writeAudit(admin, {
-    userId: auth.userId,
-    eventType: 'brand.restored',
-    payload: { brand_id: brand?.id, name: brand?.name, archived_at: brand?.archived_at },
-    clusterOwner: '03',
-  })
 
   return jsonResponse(resp, 200)
 }

@@ -21,6 +21,11 @@ const OPTIONS = [
   { value: 'only', label: 'Only archived' },
 ] as const
 
+// M11: { immediate: true } fires on mount with the persisted value (default
+// 'hide'). The fetchArchivedBrands call is correctly skipped when the user
+// hasn't opted into seeing archived rows — only the `change` emit fires —
+// so the parent can sync its initial state from localStorage without an
+// extra network round-trip.
 watch(
   persisted,
   async (v) => {

@@ -29,6 +29,20 @@ export interface CreateBrandInput {
   description: string | null
 }
 
+// M6: lifted from the setup-function body so consumers of createBrandFull can
+// type their inputs at the module boundary instead of synthesising the shape.
+export interface CreateBrandFullInput {
+  name: string
+  colors?: BrandColors | null
+  fonts?: BrandFonts | null
+  logoFile?: File | null
+  logoUrl?: string | null
+  voice?: string | null
+  industry?: string | null
+  url?: string | null
+  description?: string | null
+}
+
 interface ArchiveResult {
   brand: Brand
   nextBrandId: string | null
@@ -43,12 +57,15 @@ async function postBrandApi<TResp>(
   const token = session.data.session?.access_token
   if (!token) throw new Error('Not authenticated')
 
+  // M14: send the canonical UUID form (with dashes). The server idempotency
+  // regex accepts both shapes; stripping dashes saved no bytes and broke the
+  // "this key is a UUID" affordance that downstream debugging needs.
   const res = await fetch(`/api/brands/${endpoint}`, {
     method,
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`,
-      'X-Idempotency-Key': crypto.randomUUID().replace(/-/g, ''),
+      'X-Idempotency-Key': crypto.randomUUID(),
     },
     body: JSON.stringify(body),
   })
@@ -79,6 +96,8 @@ export const useBrandsStore = defineStore('brands', () => {
   const selectedBrandId = lastActiveBrandIdRef
   const proposedBrandKit = ref<ProposedBrandKit | null>(null)
 
+  // L12: legacy alpha sort. Prefer sortedActiveBrands in new code — this
+  // ordering is only kept for downstream callers that already depend on it.
   const sortedBrands = computed(() =>
     [...brands.value].sort((a, b) => a.name.localeCompare(b.name))
   )
@@ -87,6 +106,8 @@ export const useBrandsStore = defineStore('brands', () => {
 
   const archivedBrands = computed<Brand[]>(() => brands.value.filter((b) => isArchived(b)))
 
+  // L12: most-recently-edited active brand first. Use this for picker grids
+  // and selection-on-archive logic; do NOT use sortedBrands above.
   const sortedActiveBrands = computed<Brand[]>(() =>
     [...activeBrands.value].sort(
       (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
@@ -132,21 +153,38 @@ export const useBrandsStore = defineStore('brands', () => {
     }
   }
 
+  // H4: coalesce concurrent fetchArchivedBrands callers. BrandsAccountView
+  // mount, BrandsSegmentedControl select, and BrandsArchivedFilter watch can
+  // all fire near-simultaneously; without an in-flight guard the 60s cache
+  // is racey because two interleaved fetches each pass the cache check
+  // before either resolves.
+  let inflightArchivedFetch: Promise<void> | null = null
+
   async function fetchArchivedBrands(force = false): Promise<void> {
     const FRESH_MS = 60_000
     if (!force && archivedFetchedAt.value && Date.now() - archivedFetchedAt.value < FRESH_MS) {
       return
     }
-    const { data, error } = await supabase.rpc('list_archived_brands')
-    if (error) throw error
-    const rows = (data ?? []) as Brand[]
-    // Merge into brands[] without duplicating active rows.
-    const archivedIds = new Set(rows.map((r) => r.id))
-    brands.value = [
-      ...brands.value.filter((b) => !archivedIds.has(b.id)),
-      ...rows,
-    ]
-    archivedFetchedAt.value = Date.now()
+    if (inflightArchivedFetch) {
+      return inflightArchivedFetch
+    }
+    inflightArchivedFetch = (async () => {
+      const { data, error } = await supabase.rpc('list_archived_brands')
+      if (error) throw error
+      const rows = (data ?? []) as Brand[]
+      // Merge into brands[] without duplicating active rows.
+      const archivedIds = new Set(rows.map((r) => r.id))
+      brands.value = [
+        ...brands.value.filter((b) => !archivedIds.has(b.id)),
+        ...rows,
+      ]
+      archivedFetchedAt.value = Date.now()
+    })()
+    try {
+      await inflightArchivedFetch
+    } finally {
+      inflightArchivedFetch = null
+    }
   }
 
   // ---- LEGACY create — preserved for callers still on .createBrand(name) ----
@@ -224,6 +262,10 @@ export const useBrandsStore = defineStore('brands', () => {
   }
 
   // ---- LEGACY-COMPAT updateBrand: keep until C05 brand-kit takes over ----
+  /** @deprecated bypasses the brand Edge Functions + audit-log. Reach for
+   *  the typed Edge Function endpoints (Cluster 05 brand-kit endpoints in
+   *  particular) once they ship. Kept only for the onboarding logo-upload
+   *  + kit-merge legacy path. */
   async function updateBrand(
     id: string,
     updates: Partial<Omit<Brand, 'id' | 'user_id' | 'created_at' | 'updated_at'>>
@@ -237,18 +279,6 @@ export const useBrandsStore = defineStore('brands', () => {
 
     if (error) throw error
     brands.value = brands.value.map((b) => (b.id === id ? (data as Brand) : b))
-  }
-
-  interface CreateBrandFullInput {
-    name: string
-    colors?: BrandColors | null
-    fonts?: BrandFonts | null
-    logoFile?: File | null
-    logoUrl?: string | null
-    voice?: string | null
-    industry?: string | null
-    url?: string | null
-    description?: string | null
   }
 
   // Onboarding-flow legacy. Reach for createBrandFromInput in new code unless

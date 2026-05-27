@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { useBrandsStore } from '@/stores/brands'
 
 import type { Brand } from '@/types/kova/database'
+import type { ComputedRef, Ref } from 'vue'
 
 // W9b Cluster 03 — new-brand wizard state machine (Plan 03 Task 19).
 //
@@ -15,14 +16,16 @@ export type WizardStep = 'name-url' | 'shopify' | 'brand-kit' | 'done'
 
 const STEP_ORDER: readonly WizardStep[] = ['name-url', 'shopify', 'brand-kit', 'done'] as const
 
+// M5: explicit Ref<T> / ComputedRef<T> instead of ReturnType<typeof ref<T>>.
+// The wrapper form is fragile against Vue's internal type changes.
 interface UseNewBrandFlow {
-  step: ReturnType<typeof ref<WizardStep>>
-  name: ReturnType<typeof ref<string>>
-  url: ReturnType<typeof ref<string>>
-  description: ReturnType<typeof ref<string>>
-  brandId: ReturnType<typeof ref<string | null>>
-  isDirty: ReturnType<typeof computed<boolean>>
-  isCommitting: ReturnType<typeof ref<boolean>>
+  step: Ref<WizardStep>
+  name: Ref<string>
+  url: Ref<string>
+  description: Ref<string>
+  brandId: Ref<string | null>
+  isDirty: ComputedRef<boolean>
+  isCommitting: Ref<boolean>
   advance: () => void
   back: () => void
   goTo: (target: WizardStep) => void

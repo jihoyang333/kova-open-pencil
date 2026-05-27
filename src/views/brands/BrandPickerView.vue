@@ -14,6 +14,8 @@ import RestoreBrandModal from '@/components/brand/RestoreBrandModal.vue'
 import KovaButton from '@/components/ui/KovaButton.vue'
 import KovaIcon from '@/components/ui/KovaIcon.vue'
 import KovaInput from '@/components/ui/KovaInput.vue'
+import KovaSelect from '@/components/ui/KovaSelect.vue'
+import { toast } from '@/composables/use-toast'
 import { useBrandsStore } from '@/stores/brands'
 
 import type { Brand } from '@/types/kova/database'
@@ -27,14 +29,27 @@ const search = ref<string>('')
 const sortMode = useLocalStorage<'updated' | 'name'>('kova:brands:sort-mode', 'updated')
 const archivedFilter = ref<ArchivedFilter>('hide')
 
+// L10: PRD §8.1 calls for a Sort dropdown ("Last edited" / "Name"). The
+// localStorage persistence existed; the UI selector did not.
+const SORT_OPTIONS = [
+  { value: 'updated', label: 'Last edited' },
+  { value: 'name', label: 'Name' },
+] as const
+
 const renameTarget = ref<Brand | null>(null)
 const archiveTarget = ref<Brand | null>(null)
 const restoreTarget = ref<Brand | null>(null)
 const deleteTarget = ref<Brand | null>(null)
 
+// M13: surface fetch failures via toast instead of letting them escape into
+// Vue's unhandledRejection where the user gets no signal.
 onMounted(async () => {
   if (store.brands.length === 0) {
-    await store.fetchBrands()
+    try {
+      await store.fetchBrands()
+    } catch {
+      toast.show("Couldn't load brands. Refresh to retry.", 'error')
+    }
   }
 })
 
@@ -68,16 +83,22 @@ const showEmpty = computed(
 )
 
 function gotoAccount(): void {
-  router.push('/account').catch(() => router.push('/account/coming-soon'))
+  // L9: Cluster 04 ships /account directly; the legacy fallback to
+  // /account/coming-soon is dead code now. void the promise so a navigation
+  // cancellation (e.g. user clicks twice) doesn't leak into unhandledRejection.
+  void router.push('/account')
 }
 
 function gotoNewBrand(): void {
-  router.push('/brands/new')
+  // L5: explicit void — fire-and-forget intent + silenced unhandledRejection.
+  void router.push('/brands/new')
 }
 
 function openBrand(id: string): void {
   store.selectBrand(id)
-  router.push(`/brand/${id}`)
+  // L5: void to silence navigation-cancellation rejections (rapid double-click,
+  // beforeEach cancel, etc.).
+  void router.push(`/brand/${id}`)
 }
 </script>
 
@@ -92,6 +113,7 @@ function openBrand(id: string): void {
           placeholder="Search brands"
           aria-label="Search brands"
         />
+        <KovaSelect v-model="sortMode" :options="SORT_OPTIONS" aria-label="Sort brands" />
         <BrandsArchivedFilter @change="(v) => (archivedFilter = v)" />
         <KovaButton variant="ghost" icon="user" @click="gotoAccount">Account</KovaButton>
         <KovaButton variant="primary" icon="plus" @click="gotoNewBrand">New brand</KovaButton>

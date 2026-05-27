@@ -1,13 +1,16 @@
 import { writeAudit } from '../_shared/audit'
 import { validateRenameBrand } from '../_shared/brand-validation'
 import { verifyIdempotency, IdempotencyHttpError } from '../_shared/idempotency'
+import { enforceRateLimit, rateLimitResponse } from '../_shared/rate-limit'
 import { getAdminClient } from '../_shared/supabase-admin'
 import { verifyAuthFull, UnauthenticatedError } from '../_shared/verify-auth-full'
 
 // W9b Cluster 03 — POST /api/brands/rename (Plan 03 Task 12).
+// Rate-limited per PRD 03 §5.1.2 (60 req/min/user).
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' } as const
 const ENDPOINT = 'brands.rename'
+const RATE_LIMIT_MAX = 60
 
 interface ResponseBody {
   brand?: unknown
@@ -43,6 +46,9 @@ export default async function handler(req: Request): Promise<Response> {
   if (!validation.ok) return errorResponse(validation.error, 422)
 
   const admin = getAdminClient()
+
+  const rate = await enforceRateLimit(admin, auth.userId, ENDPOINT, RATE_LIMIT_MAX)
+  if (!rate.allowed) return rateLimitResponse()
 
   let idem
   try {

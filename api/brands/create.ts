@@ -1,14 +1,17 @@
 import { writeAudit } from '../_shared/audit'
 import { validateCreateBrand } from '../_shared/brand-validation'
 import { verifyIdempotency, IdempotencyHttpError } from '../_shared/idempotency'
+import { enforceRateLimit, rateLimitResponse } from '../_shared/rate-limit'
 import { getAdminClient } from '../_shared/supabase-admin'
 import { verifyAuthFull, UnauthenticatedError } from '../_shared/verify-auth-full'
 
 // W9b Cluster 03 — POST /api/brands/create (Plan 03 Task 11).
 // Calls create_brand RPC (auto-assigns color + slug). Audits + idempotent.
+// Rate-limited per PRD 03 §5.1.1 (30 req/min/user).
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' } as const
 const ENDPOINT = 'brands.create'
+const RATE_LIMIT_MAX = 30
 
 interface ResponseBody {
   brand?: unknown
@@ -46,6 +49,9 @@ export default async function handler(req: Request): Promise<Response> {
 
   const admin = getAdminClient()
 
+  const rate = await enforceRateLimit(admin, auth.userId, ENDPOINT, RATE_LIMIT_MAX)
+  if (!rate.allowed) return rateLimitResponse()
+
   let idem
   try {
     idem = await verifyIdempotency(admin, req, auth.userId, ENDPOINT)
@@ -71,6 +77,15 @@ export default async function handler(req: Request): Promise<Response> {
       const resp: ResponseBody = { error: code, request_id: crypto.randomUUID() }
       await idem.persist(422, resp)
       return jsonResponse(resp, 422)
+    }
+    // H2: create_brand may raise 'slug_collision' (ERRCODE 40001) under
+    // concurrent same-user same-name creates. Surface as 409 so the client
+    // can retry with a fresh idempotency-key — the retry will land a
+    // different slug because the winning row now occupies the previous one.
+    if (code === 'slug_collision') {
+      const resp: ResponseBody = { error: 'slug_collision', request_id: crypto.randomUUID() }
+      await idem.persist(409, resp)
+      return jsonResponse(resp, 409)
     }
     console.error('[brands/create] RPC failed:', error)
     return errorResponse('internal_error', 500)

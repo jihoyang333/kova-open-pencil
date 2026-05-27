@@ -1,15 +1,26 @@
 import { writeAudit } from '../_shared/audit'
 import { validateBrandId } from '../_shared/brand-validation'
 import { verifyIdempotency, IdempotencyHttpError } from '../_shared/idempotency'
+import { enforceRateLimit, rateLimitResponse } from '../_shared/rate-limit'
 import { getAdminClient } from '../_shared/supabase-admin'
 import { verifyAuthFull, UnauthenticatedError } from '../_shared/verify-auth-full'
 
 // W9b Cluster 03 — POST /api/brands/archive (Plan 03 Task 13).
 // Sets archived_at. If archived brand was the user's selected brand, returns
 // next_brand_id so frontend can navigate.
+// Rate-limited per PRD 03 §5.1.3 (30 req/min/user).
+//
+// M7 (next_brand_id semantics): the value returned is the MOST-RECENTLY-EDITED
+// remaining active brand (ORDER BY updated_at DESC LIMIT 1). PRD §5.1.3 names
+// it "oldest active" but the founder-locked UX intent is "drop the user onto
+// the brand they were last working in" — newest-by-updated_at matches that
+// intent and matches the store's `sortedActiveBrands[0]` (the brand the user
+// would see first in their picker). When PRD §5.1.3 is next revised this
+// wording should be corrected.
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' } as const
 const ENDPOINT = 'brands.archive'
+const RATE_LIMIT_MAX = 30
 
 interface BrandRow {
   id: string
@@ -53,6 +64,9 @@ export default async function handler(req: Request): Promise<Response> {
 
   const admin = getAdminClient()
 
+  const rate = await enforceRateLimit(admin, auth.userId, ENDPOINT, RATE_LIMIT_MAX)
+  if (!rate.allowed) return rateLimitResponse()
+
   let idem
   try {
     idem = await verifyIdempotency(admin, req, auth.userId, ENDPOINT)
@@ -88,7 +102,7 @@ export default async function handler(req: Request): Promise<Response> {
 
   const brand = data as BrandRow | null
 
-  // Compute next_brand_id for UI redirect — oldest remaining active brand or null.
+  // M7: most-recently-edited remaining active brand for UI redirect.
   const { data: nextRow } = await auth.supabase
     .from('brands')
     .select('id')
@@ -98,11 +112,16 @@ export default async function handler(req: Request): Promise<Response> {
     .maybeSingle()
   const nextBrandId = (nextRow as { id?: string } | null)?.id ?? null
 
-  // Canvas count snapshot for audit (best-effort).
-  const { count: canvasCount } = await auth.supabase
+  // M8: surface count failures so audit-log under-reporting becomes visible.
+  // Note: canvas_count is a point-in-time snapshot (L8) — later cron edits do
+  // not retroactively update the audit row.
+  const { count: canvasCount, error: countErr } = await auth.supabase
     .from('canvases')
     .select('id', { count: 'exact', head: true })
     .eq('brand_id', validation.value.brand_id)
+  if (countErr) {
+    console.warn('[brands/archive] canvas count failed:', countErr.message)
+  }
 
   const resp: ResponseBody = { brand, next_brand_id: nextBrandId }
   await idem.persist(200, resp)

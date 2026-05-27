@@ -44,9 +44,21 @@ const archiveTarget = ref<Brand | null>(null)
 const restoreTarget = ref<Brand | null>(null)
 const deleteTarget = ref<Brand | null>(null)
 
+// L11: fetchBrands() already pulls all rows (active + archived — no filter
+// on the SELECT). The previous code chained fetchArchivedBrands immediately
+// after, double-fetching archived rows over the network. We only need the
+// dedicated archived RPC when the brands list was already cached and might
+// be stale (e.g. arriving here from /brands without a fresh page load).
 onMounted(async () => {
-  if (store.brands.length === 0) await store.fetchBrands()
-  await store.fetchArchivedBrands()
+  try {
+    if (store.brands.length === 0) {
+      await store.fetchBrands()
+    } else {
+      await store.fetchArchivedBrands()
+    }
+  } catch {
+    // Errors surface in the UI via the empty grid; quiet handling here.
+  }
 })
 
 const visible = computed<Brand[]>(() => {
@@ -60,12 +72,15 @@ const isEmptyArchived = computed(
 )
 
 function gotoNewBrand(): void {
-  router.push('/brands/new')
+  // L5: void the promise so navigation cancellation (e.g. rapid clicks) does
+  // not surface as unhandledRejection.
+  void router.push('/brands/new')
 }
 
 function openBrand(id: string): void {
   store.selectBrand(id)
-  router.push(`/brand/${id}`)
+  // L5: see above.
+  void router.push(`/brand/${id}`)
 }
 </script>
 

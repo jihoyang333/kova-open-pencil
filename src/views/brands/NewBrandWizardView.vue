@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import KovaButton from '@/components/ui/KovaButton.vue'
@@ -36,7 +36,9 @@ function confirmCancel(): void {
   void exitToPicker()
 }
 
-const canContinueName = () => flow.name.value.trim().length > 0
+// M4: computed (not a plain function) so the disabled binding only re-evaluates
+// when flow.name changes instead of on every render.
+const canContinueName = computed(() => flow.name.value.trim().length > 0)
 
 async function commit(): Promise<void> {
   try {
@@ -99,7 +101,7 @@ async function enterBrand(): Promise<void> {
         </div>
         <div class="onb-card__foot">
           <KovaButton variant="ghost" @click="askCancel">Back to brands</KovaButton>
-          <KovaButton variant="primary" :disabled="!canContinueName()" @click="flow.advance">
+          <KovaButton variant="primary" :disabled="!canContinueName" @click="flow.advance">
             Continue
           </KovaButton>
         </div>

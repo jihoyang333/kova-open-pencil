@@ -65,6 +65,10 @@ function onSubmit(): void {
   void save()
 }
 
+// M12: bare Enter already submits via the <form> default. The Cmd/Ctrl+Enter
+// handler stays because the modal's expected next iteration adds a multi-line
+// description textarea (PRD A4.1 Phase 2) where the implicit form submit no
+// longer fires. Keep the seam so the shortcut continues to work.
 function onKey(e: KeyboardEvent): void {
   if ((e.metaKey || e.ctrlKey) && e.code === 'Enter') {
     e.preventDefault()
