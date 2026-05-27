@@ -213,7 +213,7 @@ const topMenus = [
         data-test-id="app-toggle-ui"
         class="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded text-muted transition-colors hover:bg-hover hover:text-surface"
         title="Toggle UI (⌘\)"
-        @click="store.state.showUI = !store.state.showUI"
+        @click="store.setUIVisibility(store.state.showUI === 'hidden' ? 'full' : 'hidden')"
       >
         <icon-lucide-sidebar class="size-3.5" />
       </button>

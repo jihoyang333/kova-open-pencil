@@ -137,7 +137,7 @@ export function useKeyboard() {
 
   // --- Mod + Key ---
   whenever(mod('backslash'), () => {
-    store.state.showUI = !store.state.showUI
+    store.setUIVisibility(store.state.showUI === 'hidden' ? 'full' : 'hidden')
   })
   whenever(mod('keyj'), () => {
     if (isMobile.value) {

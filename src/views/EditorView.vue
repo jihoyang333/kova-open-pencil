@@ -161,7 +161,7 @@ onUnmounted(() => {
 
     <!-- Desktop layout -->
     <SplitterGroup
-      v-if="!isMobile && showChrome && store.state.showUI"
+      v-if="!isMobile && showChrome && store.state.showUI === 'full'"
       :key="activeTab?.id"
       direction="horizontal"
       class="flex-1 overflow-hidden"
@@ -231,7 +231,7 @@ onUnmounted(() => {
 
     <!-- Mobile layout -->
     <div
-      v-else-if="isMobile && showChrome && store.state.showUI"
+      v-else-if="isMobile && showChrome && store.state.showUI === 'full'"
       :key="'mobile-' + activeTab?.id"
       class="flex flex-1 overflow-hidden"
     >
@@ -243,7 +243,7 @@ onUnmounted(() => {
       <MobileDrawer />
     </div>
 
-    <!-- Collapsed UI (showUI=false) -->
+    <!-- Collapsed UI (showUI != 'full') -->
     <div
       v-else-if="showChrome"
       :key="'collapsed-' + activeTab?.id"
@@ -263,7 +263,7 @@ onUnmounted(() => {
             data-test-id="editor-show-ui"
             class="ml-1 flex size-6 cursor-pointer items-center justify-center rounded text-muted transition-colors hover:bg-hover hover:text-surface"
             title="Show UI (⌘\)"
-            @click="store.state.showUI = true"
+            @click="store.setUIVisibility('full')"
           >
             <icon-lucide-sidebar class="size-3.5" />
           </button>
