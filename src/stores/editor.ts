@@ -163,6 +163,7 @@ export function createEditorStore() {
     snapGuides: [] as SnapGuide[],
     rotationPreview: null as { nodeId: string; angle: number } | null,
     dropTargetId: null as string | null,
+    dropTargetAction: null as string | null,
     layoutInsertIndicator: null as {
       parentId: string
       index: number
@@ -190,7 +191,8 @@ export function createEditorStore() {
       y: number
       selection?: string[]
     }>,
-    showUI: true,
+    showUI: 'full' as 'hidden' | 'minimized' | 'full',
+    panelsVisible: { left: true, right: true } as { left: boolean; right: boolean },
     documentName: 'Untitled' as string,
     panX: 0,
     pageColor: { ...CANVAS_BG_COLOR } as Color,
@@ -426,8 +428,33 @@ export function createEditorStore() {
     requestRepaint()
   }
 
-  function setDropTarget(id: string | null) {
+  function setDropTarget(id: string | null, action: string | null = null) {
     state.dropTargetId = id
+    state.dropTargetAction = action
+    requestRepaint()
+  }
+
+  function clearDropTarget() {
+    if (state.dropTargetId === null && state.dropTargetAction === null) return
+    state.dropTargetId = null
+    state.dropTargetAction = null
+    requestRepaint()
+  }
+
+  function setUIVisibility(mode: 'hidden' | 'minimized' | 'full') {
+    if (state.showUI === mode) return
+    state.showUI = mode
+    requestRepaint()
+  }
+
+  function togglePanel(side: 'left' | 'right') {
+    state.panelsVisible[side] = !state.panelsVisible[side]
+    requestRepaint()
+  }
+
+  function setPanelVisible(side: 'left' | 'right', visible: boolean) {
+    if (state.panelsVisible[side] === visible) return
+    state.panelsVisible[side] = visible
     requestRepaint()
   }
 
@@ -2411,6 +2438,10 @@ export function createEditorStore() {
     setRotationPreview,
     setHoveredNode,
     setDropTarget,
+    clearDropTarget,
+    setUIVisibility,
+    togglePanel,
+    setPanelVisible,
     setLayoutInsertIndicator,
     reorderInAutoLayout,
     reparentNodes,
