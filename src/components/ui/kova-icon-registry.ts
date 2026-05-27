@@ -27,12 +27,15 @@ import IconCheck from '~icons/lucide/check'
 import IconCheckCircle from '~icons/lucide/check-circle'
 import IconChevronDown from '~icons/lucide/chevron-down'
 import IconChevronRight from '~icons/lucide/chevron-right'
+import IconCircle from '~icons/lucide/circle'
 import IconCloudOff from '~icons/lucide/cloud-off'
+import IconComponent from '~icons/lucide/component'
 import IconCreditCard from '~icons/lucide/credit-card'
 import IconCrop from '~icons/lucide/crop'
 import IconDownload from '~icons/lucide/download'
 import IconExternalLink from '~icons/lucide/external-link'
 import IconFileQuestion from '~icons/lucide/file-question'
+import IconFrame from '~icons/lucide/frame'
 import IconGlobe from '~icons/lucide/globe'
 import IconHome from '~icons/lucide/home'
 import IconImage from '~icons/lucide/image'
@@ -42,7 +45,9 @@ import IconLink2 from '~icons/lucide/link-2'
 import IconLoader from '~icons/lucide/loader'
 import IconLogOut from '~icons/lucide/log-out'
 import IconMail from '~icons/lucide/mail'
+import IconMousePointer2 from '~icons/lucide/mouse-pointer-2'
 import IconPalette from '~icons/lucide/palette'
+import IconPenTool from '~icons/lucide/pen-tool'
 import IconPlug from '~icons/lucide/plug'
 import IconPlus from '~icons/lucide/plus'
 import IconRefreshCw from '~icons/lucide/refresh-cw'
@@ -51,8 +56,10 @@ import IconRuler from '~icons/lucide/ruler'
 import IconSearch from '~icons/lucide/search'
 import IconShield from '~icons/lucide/shield'
 import IconSparkles from '~icons/lucide/sparkles'
+import IconSquare from '~icons/lucide/square'
 import IconTag from '~icons/lucide/tag'
 import IconTrash2 from '~icons/lucide/trash-2'
+import IconType from '~icons/lucide/type'
 import IconUpload from '~icons/lucide/upload'
 import IconUser from '~icons/lucide/user'
 import IconWifiOff from '~icons/lucide/wifi-off'
@@ -71,12 +78,15 @@ export const KOVA_ICON_REGISTRY: ReadonlyMap<string, Component> = new Map<
   ['check-circle', IconCheckCircle],
   ['chevron-down', IconChevronDown],
   ['chevron-right', IconChevronRight],
+  ['circle', IconCircle],
   ['cloud-off', IconCloudOff],
+  ['component', IconComponent],
   ['credit-card', IconCreditCard],
   ['crop', IconCrop],
   ['download', IconDownload],
   ['external-link', IconExternalLink],
   ['file-question', IconFileQuestion],
+  ['frame', IconFrame],
   ['globe', IconGlobe],
   ['home', IconHome],
   ['image', IconImage],
@@ -86,7 +96,9 @@ export const KOVA_ICON_REGISTRY: ReadonlyMap<string, Component> = new Map<
   ['loader', IconLoader],
   ['log-out', IconLogOut],
   ['mail', IconMail],
+  ['mouse-pointer-2', IconMousePointer2],
   ['palette', IconPalette],
+  ['pen-tool', IconPenTool],
   ['plug', IconPlug],
   ['plus', IconPlus],
   ['refresh-cw', IconRefreshCw],
@@ -95,8 +107,10 @@ export const KOVA_ICON_REGISTRY: ReadonlyMap<string, Component> = new Map<
   ['search', IconSearch],
   ['shield', IconShield],
   ['sparkles', IconSparkles],
+  ['square', IconSquare],
   ['tag', IconTag],
   ['trash-2', IconTrash2],
+  ['type', IconType],
   ['upload', IconUpload],
   ['user', IconUser],
   ['wifi-off', IconWifiOff],

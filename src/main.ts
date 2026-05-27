@@ -12,6 +12,9 @@ import { initBrowserSentry } from '@/sentry'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/auth'
 import { usePreferencesStore } from '@/stores/preferences'
+import { useToolRegistry } from '@/stores/tool-registry'
+import { useRightPanelStore } from '@/stores/right-panel'
+import { useEditorStore } from '@/stores/editor'
 import { applyReducedMotionDefault } from '@/composables/use-reduced-motion-default'
 import { usePreferencesModal } from '@/composables/use-preferences-modal'
 
@@ -27,6 +30,83 @@ const app = createApp(App)
 app.use(pinia).use(router).use(head)
 initBrowserSentry({ app, router })
 registerProductVariantOverlay()
+
+// Cluster 06 Task 4 — register the 8 default bottom-toolbar tools.
+// Slice (frame dropdown) + Measurement (primary slot) are registered by
+// Cluster 07a at app init (canvas-extensions). Per W0-4 lock, ToolDef.icon
+// is a KovaIcon registry name; no `i-lucide-*` / `<icon-lucide-*>` raw tags.
+function registerDefaultTools(): void {
+  const registry = useToolRegistry()
+  const editor = () => useEditorStore()
+  const rightPanel = () => useRightPanelStore()
+
+  registry.register({
+    id: 'move',
+    slot: 'move',
+    icon: 'mouse-pointer-2',
+    label: 'Move',
+    key: 'V',
+    onActivate: () => editor().setTool('SELECT'),
+  })
+  registry.register({
+    id: 'frame',
+    slot: 'frame',
+    icon: 'frame',
+    label: 'Frame',
+    key: 'F',
+    onActivate: () => editor().setTool('FRAME'),
+  })
+  registry.register({
+    id: 'rectangle',
+    slot: 'rectangle',
+    icon: 'square',
+    label: 'Rectangle',
+    key: 'R',
+    onActivate: () => editor().setTool('RECTANGLE'),
+  })
+  registry.register({
+    id: 'ellipse',
+    slot: 'ellipse',
+    icon: 'circle',
+    label: 'Ellipse',
+    key: 'O',
+    onActivate: () => editor().setTool('ELLIPSE'),
+  })
+  registry.register({
+    id: 'pen',
+    slot: 'pen',
+    icon: 'pen-tool',
+    label: 'Pen',
+    key: 'P',
+    onActivate: () => editor().setTool('PEN'),
+  })
+  registry.register({
+    id: 'text',
+    slot: 'text',
+    icon: 'type',
+    label: 'Text',
+    key: 'T',
+    onActivate: () => editor().setTool('TEXT'),
+  })
+  registry.register({
+    id: 'ai',
+    slot: 'ai',
+    icon: 'sparkles',
+    label: 'Ask Kova',
+    onActivate: () => rightPanel().setActiveTab('ai'),
+  })
+  registry.register({
+    id: 'components',
+    slot: 'components',
+    icon: 'component',
+    label: 'Components',
+    disabled: true,
+    tooltip: 'Components — Phase 2',
+    onActivate: () => {},
+  })
+}
+
+registerDefaultTools()
 
 // Initialize auth store before mounting — prevents flash of unauthenticated content.
 // Pinia must be installed via app.use(pinia) before calling useAuthStore().
