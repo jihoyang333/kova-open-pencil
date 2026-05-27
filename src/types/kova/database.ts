@@ -10,6 +10,16 @@ export interface BrandFonts {
   body: string
 }
 
+export type BrandColor = 'coral' | 'violet' | 'sage' | 'sand' | 'graphite'
+
+export const BRAND_COLOR_PALETTE: readonly BrandColor[] = [
+  'coral',
+  'violet',
+  'sage',
+  'sand',
+  'graphite',
+] as const
+
 export interface Brand {
   id: string
   user_id: string
@@ -20,6 +30,12 @@ export interface Brand {
   voice: string | null
   industry: string | null
   url: string | null
+  // Cluster 03 lifecycle + display fields (migration 20260607_03_brands_lifecycle).
+  archived_at: string | null
+  color: BrandColor
+  color_assigned_at: string | null
+  slug: string | null
+  description: string | null
   created_at: string
   updated_at: string
 }

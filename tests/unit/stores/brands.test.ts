@@ -70,22 +70,27 @@ describe('brands store', () => {
     expect(store.sortedBrands[1].name).toBe('Zeta')
   })
 
-  test('createBrand adds brand to store', async () => {
-    const newBrand = { id: 'b3', user_id: 'user-1', name: 'New Brand', colors: null, fonts: null, logo_url: null, voice: null, industry: null, created_at: '2026-01-01', updated_at: '2026-01-01' }
-
-    mockFrom.mockReturnValueOnce({
-      insert: () => ({
-        select: () => ({
-          single: () => Promise.resolve({ data: newBrand, error: null }),
-        }),
-      }),
-    })
+  test('createBrand adds brand to store (via /api/brands/create)', async () => {
+    // W9b Cluster 03 — refactored createBrand calls Edge Function via fetch.
+    const newBrand = {
+      id: 'b3', user_id: 'user-1', name: 'New Brand', colors: null, fonts: null,
+      logo_url: null, voice: null, industry: null, url: null, archived_at: null,
+      color: 'coral', color_assigned_at: '2026-01-01', slug: 'new-brand',
+      description: null, created_at: '2026-01-01', updated_at: '2026-01-01',
+    }
+    const fetchMock = mock(() => Promise.resolve(new Response(JSON.stringify({ brand: newBrand }), { status: 200 })))
+    globalThis.fetch = fetchMock as unknown as typeof fetch
+    // Mock session getter to return a token for the bearer header.
+    const { supabase: sb } = await import('@/lib/supabase')
+    ;(sb.auth as unknown as { getSession: () => Promise<{ data: { session: { access_token: string } | null } }> }).getSession =
+      mock(() => Promise.resolve({ data: { session: { access_token: 'jwt-test' } } }))
 
     const store = useBrandsStore()
     const result = await store.createBrand('New Brand')
 
     expect(result).toEqual(newBrand)
     expect(store.brands).toContainEqual(newBrand)
+    expect(fetchMock).toHaveBeenCalled()
   })
 
   test('updateBrand updates brand in store', async () => {
@@ -115,10 +120,16 @@ describe('brands store', () => {
     expect(store.brands[0].name).toBe('New Name')
   })
 
-  test('deleteBrand removes brand and cleans up thumbnails', async () => {
-    const brand = { id: 'b1', user_id: 'user-1', name: 'Brand', colors: null, fonts: null, logo_url: null, voice: null, industry: null, created_at: '2026-01-01', updated_at: '2026-01-01' }
-
-    // Seed store
+  test('deleteBrand removes brand via /api/brands/delete (server handles cascade + storage sweep)', async () => {
+    // W9b Cluster 03 — refactored deleteBrand routes through Edge Function.
+    // Storage sweep is now server-side (api/_shared/storage-sweep.ts) — client
+    // does not call supabase.storage.remove anymore.
+    const brand = {
+      id: 'b1', user_id: 'user-1', name: 'Brand', colors: null, fonts: null,
+      logo_url: null, voice: null, industry: null, url: null, archived_at: null,
+      color: 'coral', color_assigned_at: '2026-01-01', slug: 'brand',
+      description: null, created_at: '2026-01-01', updated_at: '2026-01-01',
+    }
     mockFrom.mockReturnValueOnce({
       select: () => Promise.resolve({ data: [brand], error: null }),
     })
@@ -126,31 +137,18 @@ describe('brands store', () => {
     const store = useBrandsStore()
     await store.fetchBrands()
 
-    // Mock media lookup for storage cleanup
-    mockFrom.mockReturnValueOnce({
-      select: () => ({
-        eq: () => Promise.resolve({ data: [], error: null }),
-      }),
-    })
+    const fetchMock = mock(() =>
+      Promise.resolve(new Response(JSON.stringify({ success: true, deleted_brand_name: 'Brand' }), { status: 200 }))
+    )
+    globalThis.fetch = fetchMock as unknown as typeof fetch
+    const { supabase: sb } = await import('@/lib/supabase')
+    ;(sb.auth as unknown as { getSession: () => Promise<{ data: { session: { access_token: string } | null } }> }).getSession =
+      mock(() => Promise.resolve({ data: { session: { access_token: 'jwt-test' } } }))
 
-    // Mock canvas lookup for thumbnail cleanup
-    mockFrom.mockReturnValueOnce({
-      select: () => ({
-        eq: () => Promise.resolve({ data: [{ id: 'c1' }, { id: 'c2' }], error: null }),
-      }),
-    })
-
-    // Mock brand delete
-    mockFrom.mockReturnValueOnce({
-      delete: () => ({
-        eq: () => Promise.resolve({ error: null }),
-      }),
-    })
-
-    await store.deleteBrand('b1')
+    await store.deleteBrand('b1', 'Brand')
 
     expect(store.brands).toEqual([])
-    expect(mockStorageFrom).toHaveBeenCalledWith('thumbnails')
+    expect(fetchMock).toHaveBeenCalled()
   })
 
   test('selectBrand sets selectedBrandId', () => {
@@ -185,9 +183,12 @@ describe('brands store', () => {
     expect(store.isLoading).toBe(false)
   })
 
-  test('createBrand throws when not authenticated', async () => {
-    const authStore = useAuthStore()
-    authStore.user = null
+  test('createBrand throws when no session', async () => {
+    // W9b Cluster 03 — refactored createBrand requires a valid session token
+    // to call /api/brands/create. With no session, the helper throws early.
+    const { supabase: sb } = await import('@/lib/supabase')
+    ;(sb.auth as unknown as { getSession: () => Promise<{ data: { session: null } }> }).getSession =
+      mock(() => Promise.resolve({ data: { session: null } }))
 
     const store = useBrandsStore()
     await expect(store.createBrand('Test')).rejects.toThrow('Not authenticated')

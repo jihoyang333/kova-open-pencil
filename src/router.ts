@@ -39,7 +39,10 @@ const StripeReturnLanding = () => import('./views/account/StripeReturnLanding.vu
 // Plan T33–T37 — brand-scoped views, registered now via lazy import.
 const RecentsView = () => import('./views/dashboard/RecentsView.vue')
 const ComingSoonView = () => import('./views/dashboard/ComingSoonView.vue')
-const BrandPickerView = () => import('./views/BrandPickerView.vue')
+// W9b Cluster 03 — full A2 picker replaces C02 placeholder (./views/BrandPickerView.vue).
+const BrandPickerView = () => import('./views/brands/BrandPickerView.vue')
+const NewBrandWizardView = () => import('./views/brands/NewBrandWizardView.vue')
+const NotShippedYet = () => import('./components/ui/NotShippedYet.vue')
 
 const ACCOUNT_SECTIONS_RE = '(profile|brands|billing|brand-kit|integrations|danger-zone)?'
 const TokensDebugView = () => import('./views/dev/TokensDebugView.vue')
@@ -203,6 +206,22 @@ const routes = [
     path: '/brands',
     name: 'brands-picker',
     component: BrandPickerView,
+    meta: { theme: 'dark', requiresAuth: true, requiresOnboarding: true }
+  },
+  // W9b Cluster 03 — new-brand wizard (A3.a-d). Single composite view drives
+  // the state machine; sub-paths reserved for deep-linking in Phase 2.
+  {
+    path: '/brands/new',
+    name: 'brands-new',
+    component: NewBrandWizardView,
+    meta: { theme: 'dark', requiresAuth: true, requiresOnboarding: true }
+  },
+  // PRD §12.7 Account button fallback when PRD 04 not yet shipped in a given env.
+  {
+    path: '/account/coming-soon',
+    name: 'account-coming-soon',
+    component: NotShippedYet,
+    props: { feature: 'Account settings', back: '/brands' },
     meta: { theme: 'dark', requiresAuth: true, requiresOnboarding: true }
   },
   // Legacy /dashboard — redirect to /brand/{lastActiveBrandId} or /brands.
