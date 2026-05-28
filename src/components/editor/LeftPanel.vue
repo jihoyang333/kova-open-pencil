@@ -12,7 +12,7 @@
  * NOTE: Until the LeftPanel is wired into EditorView (T14), Cluster 03's
  * existing PagesPanel chrome continues to render via the M5 editor view.
  */
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, watch } from 'vue'
 import { CollapsibleContent, CollapsibleRoot, CollapsibleTrigger } from 'reka-ui'
 import { useEditorStore } from '@/stores/editor'
 import { useBrandsStore } from '@/stores/brands'
@@ -36,11 +36,15 @@ const props = withDefaults(defineProps<Props>(), {
 
 const editor = useEditorStore()
 const lp = useLeftPanelStore()
-const brands = useBrandsStore()
 const tree = useLayerTree()
-void brands
+useBrandsStore()  // ensure store mount for sub-slots that read brand state
 
-const pageCount = computed(() => editor.graph.getPages().length)
+// editor.graph.getPages() is non-reactive; touch sceneVersion so the
+// count badge re-evaluates on page add/remove/rename (H4 from review).
+const pageCount = computed(() => {
+  void editor.state.sceneVersion
+  return editor.graph.getPages().length
+})
 const layerCount = computed(() => tree.flatRows.value.length)
 
 onMounted(() => {
@@ -48,6 +52,14 @@ onMounted(() => {
     lp.setExpanded('shop', true)
   }
 })
+
+// L10 — if Shopify connection flips on while panel is open, auto-expand once.
+watch(
+  () => props.shopifyConnected,
+  (now, before) => {
+    if (now && !before) lp.setExpanded('shop', true)
+  }
+)
 </script>
 
 <template>

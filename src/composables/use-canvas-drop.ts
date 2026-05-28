@@ -197,20 +197,19 @@ async function handleColorDrop(
   const payload = parsePayload(raw, BrandColorPayloadSchema)
   if (!payload) return
 
+  // dropTargetAction is already set by handleDragOver; do not double-write
+  // during drop (was causing visual jitter — H2 from code review).
   if (ctx.target) {
     if (ctx.modifiers.shift) {
-      editor.setDropTarget(ctx.target.id, 'stroke-replace')
       editor.updateNode(ctx.target.id, {
         strokes: [{ type: 'SOLID', color: hexToColor(payload.hex) }],
       })
     } else if (ctx.modifiers.alt) {
-      editor.setDropTarget(ctx.target.id, 'fill-additive')
       const existing = editor.readFills(ctx.target.id)
       editor.updateNode(ctx.target.id, {
         fills: [...existing, { type: 'SOLID', color: hexToColor(payload.hex) }],
       })
     } else {
-      editor.setDropTarget(ctx.target.id, 'fill-replace')
       editor.updateNode(ctx.target.id, {
         fills: [{ type: 'SOLID', color: hexToColor(payload.hex) }],
       })

@@ -35,13 +35,20 @@ function onToggleExpand(row: LayerRowType): void {
 }
 
 function onToggleVisibility(row: LayerRowType): void {
-  editor.select([row.id])
-  editor.toggleVisibility()
+  // L3 from review — toggle without mutating the user's current selection.
+  // editor.toggleVisibility operates on selectedIds; direct graph update
+  // preserves multi-select state.
+  const node = editor.graph.getNode(row.id)
+  if (!node) return
+  editor.graph.updateNode(row.id, { visible: !node.visible })
+  editor.requestRender()
 }
 
 function onToggleLock(row: LayerRowType): void {
-  editor.select([row.id])
-  editor.toggleLock()
+  const node = editor.graph.getNode(row.id)
+  if (!node) return
+  editor.graph.updateNode(row.id, { locked: !node.locked })
+  editor.requestRender()
 }
 
 function onHover(row: LayerRowType | null): void {

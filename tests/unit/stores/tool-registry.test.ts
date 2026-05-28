@@ -127,4 +127,30 @@ describe('useToolRegistry (Cluster 06 Task 4)', () => {
     r.register(makeMove({ disabled: true }))
     expect(r.toolByKey('V')).toBeUndefined()
   })
+
+  test('M4 regression: Shift+R does NOT match a Rectangle (single-key) shortcut', () => {
+    const r = useToolRegistry()
+    r.register(makeMove({ id: 'rectangle', slot: 'rectangle', icon: 'square', label: 'Rectangle', key: 'R' }))
+    expect(r.toolByKey('R')?.id).toBe('rectangle')
+    expect(r.toolByKey('R', { shift: true })).toBeUndefined()
+    expect(r.toolByKey('R', { meta: true })).toBeUndefined()
+  })
+
+  test('M3 regression: setActive skips tools when when() returns false', () => {
+    const r = useToolRegistry()
+    const visible = ref(false)
+    let activated = false
+    r.register(
+      makeMove({
+        id: 'cond',
+        when: () => visible.value,
+        onActivate: () => (activated = true),
+      })
+    )
+    r.setActive('cond')
+    expect(activated).toBe(false)
+    visible.value = true
+    r.setActive('cond')
+    expect(activated).toBe(true)
+  })
 })

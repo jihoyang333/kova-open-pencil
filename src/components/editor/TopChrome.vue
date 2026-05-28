@@ -38,19 +38,29 @@ const userInitials = computed(() => {
 // primary color set — resolves at runtime via CSS custom property lookup.
 const FALLBACK_ACCENT = 'var(--color-accent)'
 
-const avatarColor = computed(
-  () => brandsStore.selectedBrand?.colors?.primary ?? FALLBACK_ACCENT
-)
+function readBrandPrimary(label: string): string {
+  const primary = brandsStore.selectedBrand?.colors?.primary
+  if (!primary && import.meta.env.DEV && brandsStore.selectedBrand) {
+    console.warn(
+      `[TopChrome] ${label} fell back to --color-accent — selectedBrand.colors.primary missing for brand`,
+      brandsStore.selectedBrandId
+    )
+  }
+  return primary ?? FALLBACK_ACCENT
+}
+
+const avatarColor = computed(() => readBrandPrimary('avatarColor'))
 const brandName = computed(() => brandsStore.selectedBrand?.name ?? 'Brand')
-const brandColor = computed(
-  () => brandsStore.selectedBrand?.colors?.primary ?? FALLBACK_ACCENT
-)
+const brandColor = computed(() => readBrandPrimary('brandColor'))
 const brandId = computed(() => brandsStore.selectedBrandId)
 
 const plan = computed<'Free' | 'Pro' | 'Trial'>(() => 'Free')
 
 function openFileMenu(): void {
   // Cluster 08 mounts the File menu via this anchor event.
+  if (import.meta.env.DEV) {
+    console.warn('[TopChrome] openFileMenu fired — Cluster 08 must wire menu mount')
+  }
 }
 
 function onAccount(): void {
@@ -61,12 +71,13 @@ function onHelp(): void {
 }
 function onShortcuts(): void {
   // Cluster 08 owns the shortcuts dialog mount.
+  if (import.meta.env.DEV) {
+    console.warn('[TopChrome] onShortcuts fired — Cluster 08 must wire shortcuts dialog')
+  }
 }
 function onSignOut(): void {
   void auth.signOut().then(() => router.push('/login'))
 }
-
-void props
 </script>
 
 <template>

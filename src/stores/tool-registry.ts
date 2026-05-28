@@ -109,6 +109,9 @@ export const useToolRegistry = defineStore('tool-registry', () => {
   function setActive(id: string): void {
     const tool = tools.value.get(id)
     if (!tool || tool.disabled) return
+    // M3 — respect when() predicate so conditionally-visible tools can't be
+    // activated when their predicate is false.
+    if (tool.when && !tool.when()) return
     tool.onActivate()
   }
 

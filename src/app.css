@@ -142,6 +142,16 @@
      Single canonical source per the no-raw-visual-values lint protocol. */
   --composer-max-w: 760px;
 
+  /* Cluster 06 — density tokens per design.md §4 / TOKEN_CANONICAL.md §2.
+     Used by canvas chrome (44 topbar, 30 inputs, 36 tools, 28 icon btns). */
+  --h-control: 30px;
+  --h-control-sm: 28px;
+  --h-control-xs: 26px;
+  --h-tool: 36px;
+  --h-icon-btn: 28px;
+  --h-topbar: 44px;
+  --h-tabs: 44px;
+
   /* Cluster 06 — radii scale per design.md §1.5 / TOKEN_CANONICAL.md §2.
      Used by canvas chrome (toolbar shell 10, zoom HUD 8, tool buttons 6,
      swatches 3, etc.). */

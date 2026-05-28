@@ -7,9 +7,8 @@
  * (Slice + Hand + Scale) and Cluster 06 itself for the default 8.
  */
 import { computed } from 'vue'
-import KovaMenu from '@/components/ui/KovaMenu.vue'
+import KovaMenu, { type KovaMenuItem } from '@/components/ui/KovaMenu.vue'
 import { useToolRegistry } from '@/stores/tool-registry'
-import type { KovaMenuItem } from '@/components/ui/menu'
 
 interface Props {
   parent: 'move' | 'frame' | 'pen'

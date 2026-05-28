@@ -13,6 +13,9 @@ import { computed, ref, type ComputedRef } from 'vue'
 import type { InspectorSectionDef } from '@/types/inspector'
 import { useEditorStore } from '@/stores/editor'
 
+// Module-singleton section registry. Same hot-reload + cross-app caveat as
+// useRightPanelTab's listener Set (see that file's M7 note). Cluster 07b
+// registers its sections at app boot via registerInspectorSection().
 const sections = ref<InspectorSectionDef[]>([])
 
 export function registerInspectorSection(def: InspectorSectionDef): void {

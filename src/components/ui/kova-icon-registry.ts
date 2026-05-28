@@ -33,7 +33,11 @@ import IconComponent from '~icons/lucide/component'
 import IconCreditCard from '~icons/lucide/credit-card'
 import IconCrop from '~icons/lucide/crop'
 import IconDownload from '~icons/lucide/download'
+import IconEye from '~icons/lucide/eye'
+import IconEyeOff from '~icons/lucide/eye-off'
 import IconExternalLink from '~icons/lucide/external-link'
+import IconLock from '~icons/lucide/lock'
+import IconUnlock from '~icons/lucide/unlock'
 import IconFileQuestion from '~icons/lucide/file-question'
 import IconFrame from '~icons/lucide/frame'
 import IconGlobe from '~icons/lucide/globe'
@@ -85,6 +89,8 @@ export const KOVA_ICON_REGISTRY: ReadonlyMap<string, Component> = new Map<
   ['crop', IconCrop],
   ['download', IconDownload],
   ['external-link', IconExternalLink],
+  ['eye', IconEye],
+  ['eye-off', IconEyeOff],
   ['file-question', IconFileQuestion],
   ['frame', IconFrame],
   ['globe', IconGlobe],
@@ -94,6 +100,7 @@ export const KOVA_ICON_REGISTRY: ReadonlyMap<string, Component> = new Map<
   ['key', IconKey],
   ['link-2', IconLink2],
   ['loader', IconLoader],
+  ['lock', IconLock],
   ['log-out', IconLogOut],
   ['mail', IconMail],
   ['mouse-pointer-2', IconMousePointer2],
@@ -111,6 +118,7 @@ export const KOVA_ICON_REGISTRY: ReadonlyMap<string, Component> = new Map<
   ['tag', IconTag],
   ['trash-2', IconTrash2],
   ['type', IconType],
+  ['unlock', IconUnlock],
   ['upload', IconUpload],
   ['user', IconUser],
   ['wifi-off', IconWifiOff],

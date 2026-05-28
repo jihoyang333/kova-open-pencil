@@ -41,6 +41,9 @@ export const useRightPanelStore = defineStore('right-panel', () => {
   const isAiActive = computed(() => activeTab.value === 'ai')
 
   function setActiveTab(tab: RightPanelTab): void {
+    // L12 — runtime guard against external callers (storage corruption,
+    // devtools, future migration paths). TypeScript prevents in-source
+    // 'prototype' calls; this catches anything that slips through.
     if (tab !== 'design' && tab !== 'ai') {
       throw new Error(`invalid_tab: ${tab}`)
     }

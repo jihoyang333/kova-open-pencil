@@ -5,9 +5,17 @@
  * focusAiComposer + a listener registry so Cluster 10's <ChatPanel> can subscribe
  * to focus-composer requests fired by the bottom-toolbar AI button.
  */
+import type { Ref } from 'vue'
 import { storeToRefs } from 'pinia'
-import { useRightPanelStore } from '@/stores/right-panel'
+import { useRightPanelStore, type RightPanelTab } from '@/stores/right-panel'
 
+// Module-singleton listener registry. Survives hot-reload (intentional —
+// keeps subscribers alive across HMR cycles in dev) but means every
+// subscriber must call the unsubscribe function returned from
+// onFocusRequest() on unmount, otherwise stale handlers leak.
+// H6 from code review — promote to provide/inject if we ever run multiple
+// Vue app instances in the same JS realm (SSR, Storybook, dual-window
+// Tauri). For now, single-app assumption holds.
 const focusListeners = new Set<() => void>()
 
 /** Test-only: clear focus listeners between tests. */
@@ -16,7 +24,7 @@ export function __resetRightPanelTabListeners(): void {
 }
 
 export interface UseRightPanelTab {
-  activeTab: ReturnType<typeof storeToRefs>['activeTab']
+  activeTab: Ref<RightPanelTab>
   switchToDesign: () => void
   switchToAi: () => void
   focusAiComposer: () => void

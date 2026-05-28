@@ -25,27 +25,32 @@ export interface LayerRow {
   isLocked: boolean
 }
 
-// Expansion state is per-instance — one map per composable consumer.
-function createExpansionState() {
-  const state = ref<Map<string, boolean>>(new Map())
+// Expansion state is SHARED across all useLayerTree() consumers so the layers
+// panel header count, drag-reorder targets, and any future search panel all
+// agree on which subtrees are open (H3 from code review). Singleton module
+// state — survives HMR in dev intentionally so the tree doesn't collapse
+// during reloads.
+const expansionState = ref<Map<string, boolean>>(new Map())
 
-  function isExpanded(nodeId: string): boolean {
-    return state.value.has(nodeId) ? state.value.get(nodeId)! : true
-  }
+function isExpandedInternal(nodeId: string): boolean {
+  return expansionState.value.has(nodeId) ? expansionState.value.get(nodeId)! : true
+}
 
-  function toggle(nodeId: string): void {
-    const next = new Map(state.value)
-    next.set(nodeId, !isExpanded(nodeId))
-    state.value = next
-  }
+function toggleInternal(nodeId: string): void {
+  const next = new Map(expansionState.value)
+  next.set(nodeId, !isExpandedInternal(nodeId))
+  expansionState.value = next
+}
 
-  function set(nodeId: string, expanded: boolean): void {
-    const next = new Map(state.value)
-    next.set(nodeId, expanded)
-    state.value = next
-  }
+function setInternal(nodeId: string, expanded: boolean): void {
+  const next = new Map(expansionState.value)
+  next.set(nodeId, expanded)
+  expansionState.value = next
+}
 
-  return { isExpanded, toggle, set }
+/** Test-only: reset expansion state between tests. */
+export function __resetLayerTreeExpansion(): void {
+  expansionState.value = new Map()
 }
 
 export interface UseLayerTree {
@@ -58,21 +63,20 @@ export interface UseLayerTree {
 
 export function useLayerTree(): UseLayerTree {
   const editor = useEditorStore()
-  const expansion = createExpansionState()
 
   const flatRows = computed<LayerRow[]>(() => {
     // Touch sceneVersion to subscribe to graph mutations.
     void editor.state.sceneVersion
     const pageId = editor.state.currentPageId
-    return buildRows(editor.graph, pageId, expansion.isExpanded)
+    return buildRows(editor.graph, pageId, isExpandedInternal)
   })
 
   function toggleExpand(nodeId: string): void {
-    expansion.toggle(nodeId)
+    toggleInternal(nodeId)
   }
 
   function setExpanded(nodeId: string, expanded: boolean): void {
-    expansion.set(nodeId, expanded)
+    setInternal(nodeId, expanded)
   }
 
   function reorderLayer(nodeId: string, parentId: string, insertIndex: number): void {

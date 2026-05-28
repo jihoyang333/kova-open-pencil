@@ -66,7 +66,7 @@ const maskIconName = computed(() => {
 
 const rowClass = computed(() => {
   const base = [
-    'flex items-center gap-[7px] py-[5px] px-2 h-7 text-[12.5px] rounded-md transition-colors group',
+    'flex items-center gap-[7px] py-[5px] px-2 h-7 text-[12.5px] rounded-md transition-colors group focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent',
   ]
   if (props.selected) {
     base.push('bg-accent-soft text-ink')
@@ -78,7 +78,13 @@ const rowClass = computed(() => {
   return base.join(' ')
 })
 
-const indentStyle = computed(() => ({ paddingLeft: `${props.row.indent * 16}px` }))
+// L4 from review — hi-fi indent steps are 24px / 40px (base 24 + 16 per
+// nesting level), NOT a flat 16px-per-level. `.kc .left .indent-1 {
+// padding-left: 24px } / .indent-2 { padding-left: 40px }` (lines 214-215).
+const indentStyle = computed(() => {
+  const px = props.row.indent === 0 ? 8 : 24 + (props.row.indent - 1) * 16
+  return { paddingLeft: `${px}px` }
+})
 </script>
 
 <template>
@@ -89,9 +95,12 @@ const indentStyle = computed(() => ({ paddingLeft: `${props.row.indent * 16}px` 
     :data-layer-type="row.type"
     :data-selected="selected"
     role="treeitem"
+    tabindex="0"
     :aria-selected="selected"
     :aria-expanded="row.hasChildren ? row.isExpanded : undefined"
     @click="(ev) => $emit('click', row, ev)"
+    @keydown.enter.prevent="(ev) => $emit('click', row, ev as unknown as MouseEvent)"
+    @keydown.space.prevent="(ev) => $emit('click', row, ev as unknown as MouseEvent)"
     @pointerenter="$emit('hover', row)"
     @pointerleave="$emit('hover', null)"
   >
@@ -142,23 +151,23 @@ const indentStyle = computed(() => ({ paddingLeft: `${props.row.indent * 16}px` 
     <button
       type="button"
       class="grid place-items-center text-ink-3 hover:text-ink flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-      :class="selected ? 'opacity-100' : ''"
+      :class="(selected || !row.isVisible) ? 'opacity-100' : ''"
       :aria-label="row.isVisible ? 'Hide layer' : 'Show layer'"
       data-testid="layer-row-vis"
       @click.stop="$emit('toggleVisibility', row)"
     >
-      <KovaIcon :name="row.isVisible ? 'check' : 'x'" size="xs" />
+      <KovaIcon :name="row.isVisible ? 'eye' : 'eye-off'" size="xs" />
     </button>
 
     <button
-      v-if="row.isLocked"
       type="button"
-      class="grid place-items-center text-ink-3 hover:text-ink flex-shrink-0"
-      aria-label="Unlock layer"
+      class="grid place-items-center text-ink-3 hover:text-ink flex-shrink-0 transition-opacity"
+      :class="row.isLocked ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'"
+      :aria-label="row.isLocked ? 'Unlock layer' : 'Lock layer'"
       data-testid="layer-row-lock"
       @click.stop="$emit('toggleLock', row)"
     >
-      <KovaIcon name="key" size="xs" />
+      <KovaIcon :name="row.isLocked ? 'lock' : 'unlock'" size="xs" />
     </button>
   </div>
 </template>

@@ -11,6 +11,10 @@
  *   a new index in the rootId.childIds list.
  * - duplicatePage(pageId): deep-clones the CANVAS subtree (new ids) and
  *   appends as a new page with " copy" suffix.
+ *
+ * UNDO: these wrappers do not push entries to the editor's undo stack — the
+ * existing addPage/deletePage in editor.ts are also undo-less; per PRD §12.2
+ * RATIFIED, page-level undo is deferred to Cluster 08 if/when needed.
  */
 import { useEditorStore } from '@/stores/editor'
 

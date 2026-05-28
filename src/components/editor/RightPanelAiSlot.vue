@@ -21,6 +21,19 @@ const ChatPanel = defineAsyncComponent({
     template:
       '<div class="px-[14px] py-4 text-ink-3 text-[12px]" data-testid="chat-panel-loading">Loading chat…</div>',
   },
+  onError(error, retry, fail, attempts) {
+    // H5 from code review — log failures so silent mount errors don't hide
+    // production breakage. Sentry hook lives in main.ts initBrowserSentry.
+    console.error('[RightPanelAiSlot] ChatPanel mount failed', {
+      attempts,
+      error,
+    })
+    if (attempts <= 2) {
+      retry()
+    } else {
+      fail()
+    }
+  },
 })
 </script>
 
