@@ -2,7 +2,7 @@
 
 **Branch:** `app/cluster-05-brand-kit` (worktree `/Users/jihoyang/kova-build-c05`)
 **Base:** `origin/feat/m9-shopify` @ 975a9a64
-**Commits:** 8 (see `git log app/cluster-05-brand-kit`)
+**Commits:** 13 (see `git log app/cluster-05-brand-kit`)
 
 ---
 
@@ -71,17 +71,33 @@ pass / 0 fail (baseline was 1982 — zero regressions). test:dupes 1.25% (<3%).*
 
 | Gate | Status |
 |---|---|
-| All Plan tasks committed | ✅ (8 commits) |
+| All Plan tasks committed | ✅ (13 commits) |
 | `bun run test:unit` | ✅ **2121 pass / 0 fail** |
 | `bun run test:dupes` | ✅ 1.25% lines / 1.59% tokens (<3%) |
 | `bun run check` / `build` | ⚠️ RED from **pre-existing baseline** (89 lint errors on `origin/feat/m9-shopify` before c05). c05 files add only 15 `define-props-destructuring` (matching 38 pre-existing instances of the same rule); no new error categories. |
 | Supabase migration RLS + RPCs verified | ⏳ **Docker not available** in this env → local Supabase can't start. Migration + search_path lock verified by runnable test; integration suite ready to run when Docker is up. |
 | database-reviewer | ✅ **PASS** after fixes. Initial review FAILed with 4 CRITICAL + HIGH (real bugs in the PRD §4.1 verbatim SQL — incl. H-4 `row_number() OVER()` runtime crash, C-4 reorder array corruption). All fixed (`fix(c05-review)` commits) + re-reviewed: all CRITICAL/HIGH resolved, no new blockers. **PRD §4.1 should be patched with these fixes.** |
-| code-reviewer PASS | ⏳ not run (recommend running on the TS/Vue layer before merge). |
+| code-reviewer | ✅ **PASS-WITH-FIXES**. Backend/API + guardrail + stores rated merge-quality. 3 HIGH found in Vue layer; **HIGH-2 + HIGH-3 fixed** (`fix(c05-review)`). HIGH-1 (inline `style=` across ~14 components vs CLAUDE.md "Tailwind only") deferred to the styling pass — see findings below. |
 | e2e-runner (drag flows) | ⛔ **Blocked on Cluster 06** — the canvas drop *dispatcher* is c06-owned and unmerged; drag-to-canvas E2E needs c06's receiver wired to `resolveBrandKitDrop`. Settings-page CRUD/voice-draft E2E need the running app + auth fixtures. |
 | Playwright visual diff (≤2%) | ⏳ Needs running dev server + screenshots (cannot close headless). Founder browser smoke is the final pre-SHIPPED gate (per `feedback_browser_smoke_test_before_done`). |
 
 ---
+
+## Open code-review findings (for the styling pass)
+
+- **HIGH-1**: pervasive inline `style=` across ~14 brand-kit components — convert
+  static inline styles to Tailwind/design-system classes (keep legitimate dynamic
+  `:style` bindings like swatch `background: color.hex`). Pairs naturally with the
+  visual-diff fidelity pass.
+- **MEDIUM-2**: optimistic font/kb rows store client `file.type`; use server-sniffed
+  mime from the endpoint response.
+- **MEDIUM-3**: edge functions emit a Realtime *broadcast* but the client subscribes
+  via *postgres_changes* — drop the dead broadcast or switch the client.
+- **MEDIUM-4**: rate-limit bump happens before idempotency check (a replay can 429);
+  check the idempotency cache first.
+- **LOW-1**: `VoiceDraftConfirmModal` uses a `×` glyph — switch to `<KovaIcon name="x">`.
+- **LOW-3** / Task 6 remainder: color-edit + color-add-popover + logo-upload handlers
+  in `VisualsTab` are TODO stubs (colors/logo not yet functional end-to-end).
 
 ## Follow-ups before SHIPPED
 
@@ -98,4 +114,4 @@ pass / 0 fail (baseline was 1982 — zero regressions). test:dupes 1.25% (<3%).*
 
 ---
 
-**W11a CLUSTER 05 DONE. 8 commits on app/cluster-05-brand-kit.**
+**W11a CLUSTER 05 DONE. 13 commits on app/cluster-05-brand-kit.**
