@@ -188,20 +188,30 @@ DECLARE
   v_new jsonb := '[]'::jsonb;
   v_id uuid;
   v_idx int := 0;
+  v_elem jsonb;
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'unauthenticated' USING ERRCODE = '28000'; END IF;
   IF NOT EXISTS (SELECT 1 FROM public.brands WHERE id = p_brand_id AND user_id = auth.uid()) THEN
     RAISE EXCEPTION 'forbidden' USING ERRCODE = '42501';
   END IF;
 
-  SELECT tone_snippets INTO v_current FROM public.brands WHERE id = p_brand_id;
+  SELECT tone_snippets INTO v_current FROM public.brands WHERE id = p_brand_id FOR UPDATE;
+
+  -- p_ordered_ids must be a full permutation of existing ids — otherwise a
+  -- partial list would silently drop items (db-review C-3).
+  IF COALESCE(array_length(p_ordered_ids, 1), 0) <> jsonb_array_length(v_current) THEN
+    RAISE EXCEPTION 'invalid_reorder' USING ERRCODE = '22023';
+  END IF;
 
   FOREACH v_id IN ARRAY p_ordered_ids LOOP
-    v_new := v_new || (
-      SELECT jsonb_set(s, '{order}', to_jsonb(v_idx))
-      FROM jsonb_array_elements(v_current) s
-      WHERE (s->>'id')::uuid = v_id
-    );
+    -- Unknown id → no row → guard against jsonb || NULL nuking the array (db-review C-4).
+    SELECT jsonb_set(s, '{order}', to_jsonb(v_idx)) INTO v_elem
+    FROM jsonb_array_elements(v_current) s
+    WHERE (s->>'id')::uuid = v_id;
+    IF v_elem IS NULL THEN
+      RAISE EXCEPTION 'invalid_reorder' USING ERRCODE = '22023';
+    END IF;
+    v_new := v_new || v_elem;
     v_idx := v_idx + 1;
   END LOOP;
 
@@ -294,16 +304,23 @@ $$;
 CREATE OR REPLACE FUNCTION public.reorder_saved_blocks(p_brand_id uuid, p_ordered_ids uuid[])
 RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp
 AS $$
-DECLARE v_current jsonb; v_new jsonb := '[]'::jsonb; v_id uuid; v_idx int := 0;
+DECLARE v_current jsonb; v_new jsonb := '[]'::jsonb; v_id uuid; v_idx int := 0; v_elem jsonb;
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'unauthenticated' USING ERRCODE = '28000'; END IF;
   IF NOT EXISTS (SELECT 1 FROM public.brands WHERE id = p_brand_id AND user_id = auth.uid()) THEN
     RAISE EXCEPTION 'forbidden' USING ERRCODE = '42501';
   END IF;
-  SELECT saved_blocks INTO v_current FROM public.brands WHERE id = p_brand_id;
+  SELECT saved_blocks INTO v_current FROM public.brands WHERE id = p_brand_id FOR UPDATE;
+  IF COALESCE(array_length(p_ordered_ids, 1), 0) <> jsonb_array_length(v_current) THEN
+    RAISE EXCEPTION 'invalid_reorder' USING ERRCODE = '22023';  -- partial list would drop items (db-review C-3)
+  END IF;
   FOREACH v_id IN ARRAY p_ordered_ids LOOP
-    v_new := v_new || (SELECT jsonb_set(s, '{order}', to_jsonb(v_idx))
-                       FROM jsonb_array_elements(v_current) s WHERE (s->>'id')::uuid = v_id);
+    SELECT jsonb_set(s, '{order}', to_jsonb(v_idx)) INTO v_elem
+    FROM jsonb_array_elements(v_current) s WHERE (s->>'id')::uuid = v_id;
+    IF v_elem IS NULL THEN  -- unknown id → guard against jsonb || NULL (db-review C-4)
+      RAISE EXCEPTION 'invalid_reorder' USING ERRCODE = '22023';
+    END IF;
+    v_new := v_new || v_elem;
     v_idx := v_idx + 1;
   END LOOP;
   UPDATE public.brands SET saved_blocks = v_new WHERE id = p_brand_id;
@@ -342,7 +359,9 @@ BEGIN
   IF p_card_key NOT IN ('about', 'voice', 'story') THEN
     RAISE EXCEPTION 'invalid_card_key' USING ERRCODE = '22023';
   END IF;
-  v_word_count := COALESCE(array_length(regexp_split_to_array(trim(p_content), '\s+'), 1), 0);
+  -- trim('') splits to ['' ] (length 1); treat empty content as 0 words (db-review H-3).
+  v_word_count := CASE WHEN trim(p_content) = '' THEN 0
+                       ELSE array_length(regexp_split_to_array(trim(p_content), '\s+'), 1) END;
 
   UPDATE public.brands
      SET identity = jsonb_set(
@@ -364,13 +383,16 @@ $$;
 CREATE OR REPLACE FUNCTION public.confirm_voice_draft(p_draft_id uuid)
 RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp
 AS $$
-DECLARE v_brand_id uuid; v_payload jsonb; v_voice text; v_snips jsonb;
+DECLARE v_brand_id uuid; v_payload jsonb; v_voice text; v_snips jsonb; v_existing int; v_room int;
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'unauthenticated' USING ERRCODE = '28000'; END IF;
 
+  -- FOR UPDATE locks the draft row so concurrent confirms can't both pass the
+  -- unresolved guard and double-append (db-review C-1).
   SELECT brand_id, draft_payload INTO v_brand_id, v_payload
   FROM public.voice_drafts
-  WHERE id = p_draft_id AND confirmed_at IS NULL AND discarded_at IS NULL;
+  WHERE id = p_draft_id AND confirmed_at IS NULL AND discarded_at IS NULL
+  FOR UPDATE;
 
   IF v_brand_id IS NULL THEN
     RAISE EXCEPTION 'draft_not_found_or_already_resolved' USING ERRCODE = 'P0002';
@@ -382,7 +404,13 @@ BEGIN
   v_voice := v_payload->'voice'->>'content';
   v_snips := COALESCE(v_payload->'tone_snippets', '[]'::jsonb);
 
-  -- Write voice → brands.identity.voice (with word-count); append tone_snippets (with fresh uuids + order)
+  -- Respect the 50-snippet cap on the confirm path too (db-review C-2): only
+  -- append up to the remaining room.
+  SELECT jsonb_array_length(tone_snippets) INTO v_existing FROM public.brands WHERE id = v_brand_id;
+  v_room := GREATEST(50 - v_existing, 0);
+
+  -- Write voice → brands.identity.voice (with word-count); append tone_snippets (fresh uuids + order).
+  -- WITH ORDINALITY yields the row index without an illegal window function inside jsonb_agg (db-review H-4).
   UPDATE public.brands SET
     identity = jsonb_set(
       COALESCE(identity, '{}'::jsonb), '{voice}',
@@ -390,19 +418,21 @@ BEGIN
         'content', v_voice,
         'last_edited_at', to_jsonb(now()),
         'last_edited_by', to_jsonb(auth.uid()),
-        'word_count', COALESCE(array_length(regexp_split_to_array(trim(v_voice),'\s+'), 1), 0)
+        'word_count', CASE WHEN trim(COALESCE(v_voice, '')) = '' THEN 0
+                           ELSE array_length(regexp_split_to_array(trim(v_voice), '\s+'), 1) END
       ),
       true
     ),
     tone_snippets = tone_snippets || (
       SELECT COALESCE(jsonb_agg(jsonb_build_object(
         'id', gen_random_uuid(),
-        'label', s->>'label',
-        'category', COALESCE(s->>'category', 'CUSTOM'),
-        'content', s->>'content',
-        'order', jsonb_array_length(tone_snippets) + (row_number() OVER () - 1)::int
-      )), '[]'::jsonb)
-      FROM jsonb_array_elements(v_snips) s
+        'label', s.elem->>'label',
+        'category', COALESCE(s.elem->>'category', 'CUSTOM'),
+        'content', s.elem->>'content',
+        'order', v_existing + (s.rn - 1)::int
+      ) ORDER BY s.rn), '[]'::jsonb)
+      FROM jsonb_array_elements(v_snips) WITH ORDINALITY AS s(elem, rn)
+      WHERE s.rn <= v_room
     )
    WHERE id = v_brand_id;
 
@@ -416,7 +446,7 @@ AS $$
 DECLARE v_brand_id uuid;
 BEGIN
   IF auth.uid() IS NULL THEN RAISE EXCEPTION 'unauthenticated' USING ERRCODE = '28000'; END IF;
-  SELECT brand_id INTO v_brand_id FROM public.voice_drafts WHERE id = p_draft_id AND confirmed_at IS NULL AND discarded_at IS NULL;
+  SELECT brand_id INTO v_brand_id FROM public.voice_drafts WHERE id = p_draft_id AND confirmed_at IS NULL AND discarded_at IS NULL FOR UPDATE;
   IF v_brand_id IS NULL THEN RAISE EXCEPTION 'draft_not_found_or_already_resolved' USING ERRCODE = 'P0002'; END IF;
   IF NOT EXISTS (SELECT 1 FROM public.brands WHERE id = v_brand_id AND user_id = auth.uid()) THEN
     RAISE EXCEPTION 'forbidden' USING ERRCODE = '42501';
@@ -437,38 +467,62 @@ TO authenticated;
 -- RLS policies (PRD §4.2) — same transaction so schema + policy ship atomically
 -- ============================================================
 
+-- Notes (db-review):
+--  * Policies wrap auth.uid() as (SELECT auth.uid()) so it evaluates once per
+--    statement, not once per row (M-1, Supabase RLS perf best practice).
+--  * DROP POLICY IF EXISTS precedes each CREATE so re-runs are idempotent (H-1;
+--    PostgreSQL has no CREATE POLICY IF NOT EXISTS).
+--  * No UPDATE policy on brand_fonts / brand_kb_sources is DELIBERATE: font/KB
+--    rows are immutable (replace = delete + re-upload); extracted_text is
+--    written by the service role only. FORCE ROW LEVEL SECURITY closes the gap
+--    if UPDATE is ever granted directly (H-2/M-3).
+
 -- brand_fonts policies
 ALTER TABLE public.brand_fonts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.brand_fonts FORCE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS brand_fonts_select ON public.brand_fonts;
 CREATE POLICY brand_fonts_select ON public.brand_fonts FOR SELECT TO authenticated
-  USING (brand_id IN (SELECT id FROM public.brands WHERE user_id = auth.uid()));
+  USING (brand_id IN (SELECT id FROM public.brands WHERE user_id = (SELECT auth.uid())));
 
+DROP POLICY IF EXISTS brand_fonts_insert ON public.brand_fonts;
 CREATE POLICY brand_fonts_insert ON public.brand_fonts FOR INSERT TO authenticated
   WITH CHECK (
-    brand_id IN (SELECT id FROM public.brands WHERE user_id = auth.uid())
-    AND uploaded_by = auth.uid()
+    brand_id IN (SELECT id FROM public.brands WHERE user_id = (SELECT auth.uid()))
+    AND uploaded_by = (SELECT auth.uid())
     AND license_attested = true
   );
 
+DROP POLICY IF EXISTS brand_fonts_delete ON public.brand_fonts;
 CREATE POLICY brand_fonts_delete ON public.brand_fonts FOR DELETE TO authenticated
-  USING (brand_id IN (SELECT id FROM public.brands WHERE user_id = auth.uid()));
+  USING (brand_id IN (SELECT id FROM public.brands WHERE user_id = (SELECT auth.uid())));
 
 -- brand_kb_sources policies
 ALTER TABLE public.brand_kb_sources ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.brand_kb_sources FORCE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS brand_kb_sources_select ON public.brand_kb_sources;
 CREATE POLICY brand_kb_sources_select ON public.brand_kb_sources FOR SELECT TO authenticated
-  USING (brand_id IN (SELECT id FROM public.brands WHERE user_id = auth.uid()));
+  USING (brand_id IN (SELECT id FROM public.brands WHERE user_id = (SELECT auth.uid())));
+DROP POLICY IF EXISTS brand_kb_sources_insert ON public.brand_kb_sources;
 CREATE POLICY brand_kb_sources_insert ON public.brand_kb_sources FOR INSERT TO authenticated
-  WITH CHECK (brand_id IN (SELECT id FROM public.brands WHERE user_id = auth.uid()) AND uploaded_by = auth.uid());
+  WITH CHECK (brand_id IN (SELECT id FROM public.brands WHERE user_id = (SELECT auth.uid())) AND uploaded_by = (SELECT auth.uid()));
+DROP POLICY IF EXISTS brand_kb_sources_delete ON public.brand_kb_sources;
 CREATE POLICY brand_kb_sources_delete ON public.brand_kb_sources FOR DELETE TO authenticated
-  USING (brand_id IN (SELECT id FROM public.brands WHERE user_id = auth.uid()));
+  USING (brand_id IN (SELECT id FROM public.brands WHERE user_id = (SELECT auth.uid())));
 
 -- voice_drafts policies — service-role insert, owner select, RPC-only resolution
 ALTER TABLE public.voice_drafts ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY voice_drafts_select ON public.voice_drafts FOR SELECT TO authenticated
-  USING (brand_id IN (SELECT id FROM public.brands WHERE user_id = auth.uid()));
+-- Non-partial index for historical-draft SELECTs (the partial index above only
+-- covers unresolved rows) (db-review M-4).
+CREATE INDEX IF NOT EXISTS idx_voice_drafts_brand ON public.voice_drafts(brand_id);
 
+DROP POLICY IF EXISTS voice_drafts_select ON public.voice_drafts;
+CREATE POLICY voice_drafts_select ON public.voice_drafts FOR SELECT TO authenticated
+  USING (brand_id IN (SELECT id FROM public.brands WHERE user_id = (SELECT auth.uid())));
+
+DROP POLICY IF EXISTS voice_drafts_service_insert ON public.voice_drafts;
 CREATE POLICY voice_drafts_service_insert ON public.voice_drafts FOR INSERT TO service_role
   WITH CHECK (true);
 
