@@ -75,9 +75,9 @@ pass / 0 fail (baseline was 1982 — zero regressions). test:dupes 1.25% (<3%).*
 | `bun run test:unit` | ✅ **2121 pass / 0 fail** |
 | `bun run test:dupes` | ✅ 1.25% lines / 1.59% tokens (<3%) |
 | `bun run check` / `build` | ⚠️ RED from **pre-existing baseline** (89 lint errors on `origin/feat/m9-shopify` before c05). c05 files add only 15 `define-props-destructuring` (matching 38 pre-existing instances of the same rule); no new error categories. |
-| Supabase migration RLS + RPCs verified | ⏳ **Docker not available** in this env → local Supabase can't start. Migration written verbatim from PRD; search_path lock verified by runnable test; integration suite ready to run when Docker is up. |
-| database-reviewer PASS | ⏳ not run (recommend running on the migration before merge). |
-| code-reviewer PASS | ⏳ not run (recommend running before merge). |
+| Supabase migration RLS + RPCs verified | ⏳ **Docker not available** in this env → local Supabase can't start. Migration + search_path lock verified by runnable test; integration suite ready to run when Docker is up. |
+| database-reviewer | ✅ **PASS** after fixes. Initial review FAILed with 4 CRITICAL + HIGH (real bugs in the PRD §4.1 verbatim SQL — incl. H-4 `row_number() OVER()` runtime crash, C-4 reorder array corruption). All fixed (`fix(c05-review)` commits) + re-reviewed: all CRITICAL/HIGH resolved, no new blockers. **PRD §4.1 should be patched with these fixes.** |
+| code-reviewer PASS | ⏳ not run (recommend running on the TS/Vue layer before merge). |
 | e2e-runner (drag flows) | ⛔ **Blocked on Cluster 06** — the canvas drop *dispatcher* is c06-owned and unmerged; drag-to-canvas E2E needs c06's receiver wired to `resolveBrandKitDrop`. Settings-page CRUD/voice-draft E2E need the running app + auth fixtures. |
 | Playwright visual diff (≤2%) | ⏳ Needs running dev server + screenshots (cannot close headless). Founder browser smoke is the final pre-SHIPPED gate (per `feedback_browser_smoke_test_before_done`). |
 
