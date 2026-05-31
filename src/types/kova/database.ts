@@ -1,3 +1,5 @@
+import type { IdentityCards, SavedBlock, ToneSnippet, WritingRules } from '@/types/brand-kit'
+
 export interface BrandColors {
   primary: string
   secondary: string
@@ -22,6 +24,11 @@ export interface Brand {
   url: string | null
   created_at: string
   updated_at: string
+  // Cluster 05 Brand Kit JSONB columns (20260615_05_brand_kit.sql).
+  tone_snippets?: ToneSnippet[]
+  saved_blocks?: SavedBlock[]
+  writing_rules?: WritingRules
+  identity?: IdentityCards
 }
 
 export interface Canvas {
