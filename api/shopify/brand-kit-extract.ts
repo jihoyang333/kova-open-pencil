@@ -6,6 +6,7 @@ import {
   extractBrandKitFromThemeSettings,
   type ExtractedBrandKit,
 } from '../_shared/shopify-brand-kit'
+import { inferAndPersistVoiceDraft } from '../_shared/voice-draft-inference'
 
 export const config = { runtime: 'edge' as const } as const
 export const maxDuration = 30
@@ -161,8 +162,31 @@ export default async function handler(req: Request): Promise<Response> {
 
   const kit: ExtractedBrandKit = extractBrandKitFromThemeSettings(parsed)
 
-  return new Response(JSON.stringify({ brand_id: body.brand_id, kit }), {
-    status: 200,
-    headers: JSON_HEADERS,
-  })
+  // ── Cluster 05 extension (PRD §5.1.5) — brand-voice inference ───────────
+  // ADDS voice + tone-snippet inference ALONGSIDE the existing visual kit.
+  // Best-effort + confirm-before-write: the result is persisted only to
+  // voice_drafts (NEVER brands.*) and is null when ANTHROPIC_API_KEY is unset
+  // or no storefront content is available — leaving the M9 behavior intact.
+  const voiceDraft = await inferAndPersistVoiceDraft(
+    admin,
+    body.brand_id,
+    userId,
+    connection.shop_domain
+  )
+
+  return new Response(
+    JSON.stringify({
+      // Existing M9 fields — retained verbatim for backward compatibility.
+      brand_id: body.brand_id,
+      kit,
+      // Cluster 05 additions (PRD §5.1.5).
+      extracted: kit,
+      draft_id: voiceDraft?.draft_id ?? null,
+      draft_payload: voiceDraft?.draft_payload ?? null,
+    }),
+    {
+      status: 200,
+      headers: JSON_HEADERS,
+    }
+  )
 }

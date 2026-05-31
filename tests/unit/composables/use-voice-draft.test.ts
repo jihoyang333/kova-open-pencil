@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, mock, test } from 'bun:test'
+import { afterAll, beforeEach, describe, expect, mock, test } from 'bun:test'
 
 const maybeSingleResult = { data: null as unknown, error: null as unknown }
 
@@ -30,6 +30,7 @@ mock.module('@/lib/supabase', () => ({
 }))
 
 const { useVoiceDraft } = await import('@/composables/use-voice-draft')
+const realFetch = globalThis.fetch
 globalThis.fetch = fetchMock as unknown as typeof fetch
 
 const sampleDraft = {
@@ -44,6 +45,10 @@ const sampleDraft = {
 }
 
 describe('useVoiceDraft', () => {
+  afterAll(() => {
+    globalThis.fetch = realFetch
+  })
+
   beforeEach(() => {
     fetchMock.mockClear()
     maybeSingleResult.data = null

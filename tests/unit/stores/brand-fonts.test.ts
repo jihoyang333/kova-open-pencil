@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, mock, test } from 'bun:test'
+import { afterAll, beforeEach, describe, expect, mock, test } from 'bun:test'
 import { createPinia, setActivePinia } from 'pinia'
 
 const postWithProgressMock = mock(
@@ -30,9 +30,14 @@ mock.module('@/lib/supabase', () => ({
 }))
 
 const { useBrandFontsStore } = await import('@/stores/brand-fonts')
+const realFetch = globalThis.fetch
 globalThis.fetch = fetchMock as unknown as typeof fetch
 
 describe('useBrandFontsStore', () => {
+  afterAll(() => {
+    globalThis.fetch = realFetch
+  })
+
   beforeEach(() => {
     setActivePinia(createPinia())
     postWithProgressMock.mockClear()
