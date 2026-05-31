@@ -1,18 +1,17 @@
 import { beforeEach, describe, expect, mock, test } from 'bun:test'
-import { createPinia, setActivePinia } from 'pinia'
 
-mock.module('@/lib/supabase', () => ({
-  supabase: {
-    from: () => ({}),
-    auth: {
-      getSession: () => Promise.resolve({ data: { session: null }, error: null }),
-      onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+// Self-contained: mock @/stores/brands directly so this file is immune to
+// global mock.module leakage from other test files (bun shares one process).
+let selectedBrand: { id: string } | null = { id: 'b1' }
+mock.module('@/stores/brands', () => ({
+  useBrandsStore: () => ({
+    get selectedBrand() {
+      return selectedBrand
     },
-  },
+  }),
 }))
 
 const { useBrandKitDrag } = await import('@/composables/brand-kit/use-brand-kit-drag')
-const { useBrandsStore } = await import('@/stores/brands')
 const { BRAND_KIT_MIME } = await import('@/composables/brand-kit/brand-kit-dnd')
 
 class FakeDataTransfer {
@@ -30,16 +29,9 @@ function makeEvent(): DragEvent {
   return { dataTransfer: new FakeDataTransfer() } as unknown as DragEvent
 }
 
-function seedBrand(): void {
-  const brands = useBrandsStore()
-  brands.brands = [{ id: 'b1', name: 'Nike' }] as never
-  brands.selectBrand('b1')
-}
-
 describe('useBrandKitDrag', () => {
   beforeEach(() => {
-    setActivePinia(createPinia())
-    seedBrand()
+    selectedBrand = { id: 'b1' }
   })
 
   test('onColorDragStart writes color MIME + payload', () => {
@@ -100,9 +92,7 @@ describe('useBrandKitDrag', () => {
   })
 
   test('throws when no brand selected', () => {
-    const brands = useBrandsStore()
-    brands.brands = []
-    brands.selectBrand('none')
+    selectedBrand = null
     const { onColorDragStart } = useBrandKitDrag()
     expect(() => onColorDragStart({ id: 'c', hex: '#000', label: 'k', order: 0 }, makeEvent())).toThrow(
       'no_selected_brand',
