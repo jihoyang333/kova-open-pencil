@@ -406,7 +406,9 @@ BEGIN
 
   -- Respect the 50-snippet cap on the confirm path too (db-review C-2): only
   -- append up to the remaining room.
-  SELECT jsonb_array_length(tone_snippets) INTO v_existing FROM public.brands WHERE id = v_brand_id;
+  -- Lock the brands row before reading the count so concurrent confirms of
+  -- different drafts for the same brand can't both pass the cap (db-review re-review).
+  SELECT jsonb_array_length(tone_snippets) INTO v_existing FROM public.brands WHERE id = v_brand_id FOR UPDATE;
   v_room := GREATEST(50 - v_existing, 0);
 
   -- Write voice → brands.identity.voice (with word-count); append tone_snippets (fresh uuids + order).
