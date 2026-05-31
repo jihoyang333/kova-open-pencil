@@ -13,10 +13,17 @@ import BrandLogoRow from './visuals/BrandLogoRow.vue'
 import FontUploadDropzone from './visuals/FontUploadDropzone.vue'
 import { useBrandKitStore } from '@/stores/brand-kit'
 import { useBrandFontsStore } from '@/stores/brand-fonts'
+import { useFontUpload } from '@/composables/brand-kit/use-font-upload'
 import type { BrandColor } from '@/types/brand-kit'
 
 const brandKitStore = useBrandKitStore()
 const fontsStore = useBrandFontsStore()
+const fontUpload = useFontUpload()
+
+// Dropzone expects progress 0–100; useFontUpload exposes 0–1 (code-review MEDIUM-1).
+const fontUploadProgress = computed(() =>
+  fontUpload.progress.value > 0 ? Math.round(fontUpload.progress.value * 100) : undefined,
+)
 
 const loading = ref(true)
 const error = ref<string | null>(null)
@@ -47,9 +54,10 @@ const fonts = computed(() =>
 async function onFontUpload(file: File, familyName: string, licenseAttested: boolean): Promise<void> {
   if (!brandId.value) return
   try {
-    await fontsStore.uploadFont(brandId.value, file, familyName, licenseAttested)
+    // Route through useFontUpload so its progress/error reactive views (bound on
+    // the dropzone) surface the failure to the user (code-review HIGH-2).
+    await fontUpload.upload(brandId.value, file, familyName, licenseAttested)
   } catch (e) {
-    // User-facing error is surfaced via uploadErrors in FontUploadDropzone.
     console.warn('[brand-kit] font upload failed', e)
   }
 }
@@ -122,6 +130,8 @@ function onColorEdit(_color: BrandColor): void {
         <div style="margin-top: 8px">
           <FontUploadDropzone
             :brand-id="brandId ?? ''"
+            :progress="fontUploadProgress"
+            :error="fontUpload.error.value ?? undefined"
             @upload="onFontUpload"
           />
         </div>

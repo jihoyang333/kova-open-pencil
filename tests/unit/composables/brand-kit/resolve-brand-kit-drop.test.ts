@@ -59,6 +59,21 @@ describe('resolveBrandKitDrop', () => {
     expect(resolveBrandKitDrop(d as unknown as DataTransfer)).toBeNull()
   })
 
+  test('returns null when required fields are missing/wrong type (HIGH-3)', () => {
+    // color missing hex
+    expect(resolveBrandKitDrop(dt({ [BRAND_KIT_MIME.color]: { swatchId: 'c', brandId: 'b' } }))).toBeNull()
+    // asset with invalid kind
+    expect(
+      resolveBrandKitDrop(dt({ [BRAND_KIT_MIME.asset]: { assetId: 'a', kind: 'banner', url: 'u', brandId: 'b' } })),
+    ).toBeNull()
+    // savedBlock missing blockData fields
+    expect(
+      resolveBrandKitDrop(dt({ [BRAND_KIT_MIME.savedBlock]: { blockId: 's', brandId: 'b', blockData: { label: 'L' } } })),
+    ).toBeNull()
+    // font with non-string family
+    expect(resolveBrandKitDrop(dt({ [BRAND_KIT_MIME.font]: { family: 42, brandId: 'b' } }))).toBeNull()
+  })
+
   test('saved-block wins when multiple MIME present (most specific first)', () => {
     const drop = resolveBrandKitDrop(
       dt({

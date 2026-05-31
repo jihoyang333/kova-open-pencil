@@ -50,9 +50,11 @@ export function resolveBrandKitDrop(dataTransfer: DataTransfer | null): BrandKit
   for (const { mime, kind } of MIME_ORDER) {
     const raw = dataTransfer.getData(mime)
     if (!raw) continue
-    const payload = safeParse(raw)
-    if (payload === null) return null
-    return { kind, payload } as unknown as BrandKitDrop
+    const obj = safeParse(raw)
+    if (obj === null) return null
+    // Validate required fields per kind before handing to the Cluster 06
+    // dispatcher, which trusts the typed shape (code-review HIGH-3).
+    return narrow(kind, obj)
   }
   return null
 }
@@ -64,6 +66,54 @@ function safeParse(raw: string): Record<string, unknown> | null {
   } catch {
     return null
   }
+}
+
+type Obj = Record<string, unknown>
+const isStr = (v: unknown): v is string => typeof v === 'string'
+
+const VALIDATORS: { [K in BrandKitDrop['kind']]: (o: Obj) => BrandKitDrop | null } = {
+  color: (o) =>
+    isStr(o['hex']) && isStr(o['swatchId']) && isStr(o['brandId'])
+      ? { kind: 'color', payload: { hex: o['hex'], swatchId: o['swatchId'], brandId: o['brandId'] } }
+      : null,
+  font: (o) =>
+    isStr(o['family']) && isStr(o['brandId'])
+      ? {
+          kind: 'font',
+          payload: {
+            family: o['family'],
+            brandId: o['brandId'],
+            ...(isStr(o['fontId']) ? { fontId: o['fontId'] } : {}),
+            ...(isStr(o['fontFileUrl']) ? { fontFileUrl: o['fontFileUrl'] } : {}),
+          },
+        }
+      : null,
+  asset: (o) => {
+    const k = o['kind']
+    const validKind = k === 'logo' || k === 'wordmark' || k === 'image'
+    return isStr(o['assetId']) && validKind && isStr(o['url']) && isStr(o['brandId'])
+      ? { kind: 'asset', payload: { assetId: o['assetId'], kind: k, url: o['url'], brandId: o['brandId'] } }
+      : null
+  },
+  savedBlock: (o) => {
+    const bd = o['blockData']
+    if (typeof bd !== 'object' || bd === null) return null
+    const b = bd as Obj
+    return isStr(o['blockId']) && isStr(o['brandId']) && isStr(b['label']) && isStr(b['content']) && isStr(b['type'])
+      ? ({ kind: 'savedBlock', payload: { blockId: o['blockId'], brandId: o['brandId'], blockData: b } } as Extract<
+          BrandKitDrop,
+          { kind: 'savedBlock' }
+        >)
+      : null
+  },
+  toneSnippet: (o) =>
+    isStr(o['snippetId']) && isStr(o['content']) && isStr(o['brandId'])
+      ? { kind: 'toneSnippet', payload: { snippetId: o['snippetId'], content: o['content'], brandId: o['brandId'] } }
+      : null,
+}
+
+function narrow(kind: BrandKitDrop['kind'], o: Obj): BrandKitDrop | null {
+  return VALIDATORS[kind](o)
 }
 
 /**
