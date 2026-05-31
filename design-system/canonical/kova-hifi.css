@@ -1542,3 +1542,294 @@ section.block .intro { color: var(--ink-2); margin: 0; max-width: 820px; }
 .menu .item[data-highlighted="true"] { background: var(--line-2); }
 .menu .item.destructive[data-highlighted],
 .menu .item.destructive[data-highlighted="true"] { background: var(--warn-soft); color: var(--warn); }
+
+/* ========================================================================
+   Cluster 05 — Brand Kit component classes
+   Lifted VERBATIM from:
+     A7  = design-system/hifi/account-stripe/Kova Hi-Fi A7 Account Page - Dark.html
+     B3  = design-system/hifi/brand-kit/Kova Hi-Fi B3 Brand Kit CRUD Modals - Dark.html
+     B8  = design-system/hifi/states/Kova Hi-Fi B8 Upload States - Dark.html
+   Append-only. Zero new :root tokens.
+   ======================================================================== */
+
+/* ---- Brand Kit two-column layout (A7.3) ---- */
+.bk-wrap { display: grid; grid-template-columns: 188px 1fr; gap: 24px; }
+.bk-subnav {
+  display: flex; flex-direction: column; gap: 1px;
+  position: sticky; top: 16px; align-self: start;
+}
+/* Mockup uses .it; shell ships with .bk-subnav-item — both lifted */
+.bk-subnav .it,
+.bk-subnav-item {
+  display: flex; align-items: center; gap: 9px;
+  padding: 6px 10px; border-radius: 5px;
+  color: var(--ink-2); cursor: pointer; font-size: 12.5px;
+  background: transparent; border: none; text-align: left; width: 100%;
+}
+.bk-subnav .it:hover,
+.bk-subnav-item:hover { background: var(--line-2); color: var(--ink); }
+/* Mockup active = .active; shell ships .is-active */
+.bk-subnav .it.active,
+.bk-subnav-item.is-active { background: var(--fill); color: var(--ink); font-weight: 500; }
+.bk-subnav .it .ic,
+.bk-subnav-item .ic { width: 13px; height: 13px; opacity: .8; }
+.bk-subnav .head { font-size: 10px; color: var(--ink-3); padding: 0 10px 6px; font-weight: 500; }
+.bk-pane { min-width: 0; display: flex; flex-direction: column; gap: 18px; }
+
+/* ---- Color swatch list (A7.3.1) ---- */
+.sw-list { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+.sw-item {
+  border: 1px solid var(--line); border-radius: 6px; overflow: hidden;
+  background: var(--page); display: flex; flex-direction: column;
+  cursor: pointer; transition: border-color .1s ease;
+}
+.sw-item:hover { border-color: var(--ink-3); }
+.sw-item .fill { height: 56px; border-bottom: 1px solid var(--line-2); }
+.sw-item .body { padding: 6px 8px 8px; }
+.sw-item .nm { font-size: 11.5px; font-weight: 500; }
+.sw-item .hex { font-size: 10px; color: var(--ink-3); }
+.sw-add {
+  border: 1px dashed var(--line); border-radius: 6px;
+  display: grid; place-items: center; color: var(--ink-3);
+  cursor: pointer; min-height: 88px; transition: border-color .1s ease, color .1s ease;
+  font-size: 11.5px; background: transparent; border-width: 1px; border-style: dashed;
+}
+.sw-add:hover { border-color: var(--ink-3); color: var(--ink); }
+
+/* ---- Font row (A7.3.1) ---- */
+.font-row {
+  display: grid; grid-template-columns: 1fr auto auto;
+  gap: 16px; align-items: center;
+  padding: 14px 16px;
+  background: var(--page); border: 1px solid var(--line);
+  border-radius: 7px;
+}
+.font-row + .font-row { margin-top: 8px; }
+.font-row .preview { font-size: 22px; line-height: 1.1; letter-spacing: -0.01em; }
+.font-row .meta { font-size: 11.5px; color: var(--ink-3); display: flex; gap: 10px; align-items: center; }
+.font-row .meta .mono { font-size: 10.5px; }
+
+/* ---- row-stack (A7 general) ---- */
+.row-stack { display: flex; flex-direction: column; gap: 0; }
+.row-stack .row { border-radius: 0; border-top-width: 0; }
+.row-stack .row:first-child {
+  border-top-width: 1px;
+  border-top-left-radius: 7px; border-top-right-radius: 7px;
+}
+.row-stack .row:last-child {
+  border-bottom-left-radius: 7px; border-bottom-right-radius: 7px;
+}
+
+/* ---- Identity narrative cards (A7.3.2) ---- */
+.nar-card {
+  border: 1px solid var(--line); border-radius: 8px;
+  background: var(--page); padding: 16px 18px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.nar-card + .nar-card { margin-top: 10px; }
+.nar-card .hd {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+}
+.nar-card .hd .tt { font-size: 14px; font-weight: 600; letter-spacing: -0.005em; }
+.nar-card .body {
+  font-size: 13px; color: var(--ink-2); line-height: 1.55;
+  background: var(--bg); border: 1px solid var(--line-2);
+  border-radius: 6px; padding: 12px 14px; max-height: 88px; overflow: hidden;
+  position: relative;
+}
+.nar-card .body.empty { color: var(--ink-3); font-style: italic; padding: 20px 14px; max-height: none; }
+.nar-card .ft {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 10.5px; color: var(--ink-3);
+}
+
+/* ---- Snippet / saved-block list rows (A7.3.3/4, B3) ---- */
+.list-row {
+  display: grid; grid-template-columns: 24px 200px 1fr auto;
+  gap: 14px; align-items: start;
+  padding: 12px 16px;
+  border-top: 1px solid var(--line-2);
+}
+.list-row:first-child { border-top: 0; }
+.list-row .grip { color: var(--ink-3); padding-top: 2px; cursor: grab; }
+.list-row .lbl-col {
+  font-weight: 500; font-size: 13px; color: var(--ink);
+  letter-spacing: -0.005em; padding-top: 1px;
+}
+.list-row .lbl-col .tag-mono { margin-top: 4px; display: inline-block; }
+.list-row .content-col { font-size: 12.5px; color: var(--ink-2); line-height: 1.5; min-width: 0; }
+.list-row .actions-col { display: flex; gap: 4px; color: var(--ink-3); }
+.list-row .actions-col .ac {
+  width: 26px; height: 26px; border-radius: 4px;
+  display: grid; place-items: center; cursor: pointer;
+  background: transparent; border: none; color: inherit;
+}
+.list-row .actions-col .ac:hover { background: var(--fill); color: var(--ink); }
+
+/* ---- Writing rules toggles (A7.3.5) ---- */
+.wr-stack { display: flex; flex-direction: column; gap: 0; }
+.wr-stack .row { grid-template-columns: 1fr auto; padding: 11px 16px; }
+.wr-row {
+  display: grid; grid-template-columns: 1fr auto;
+  gap: 14px; align-items: center;
+  padding: 11px 16px;
+  border-top: 1px solid var(--line-2);
+  background: var(--page);
+}
+.wr-row:first-child { border-top: 0; }
+.wr-row .lbl { font-size: 13px; font-weight: 500; color: var(--ink); }
+.wr-row .lbl .sub { display: block; color: var(--ink-3); font-size: 11.5px; font-weight: 400; margin-top: 2px; }
+
+/* ---- Drag handle ---- */
+.drag-handle {
+  color: var(--ink-3); cursor: grab; display: grid; place-items: center;
+  padding-top: 2px;
+}
+.drag-handle:active { cursor: grabbing; }
+
+/* ---- Memories rows (A7.3.6) ---- */
+.mem-row {
+  display: grid; grid-template-columns: 90px 1fr auto;
+  gap: 14px; align-items: center;
+  padding: 11px 16px;
+  border-top: 1px solid var(--line-2);
+  font-size: 12.5px;
+}
+.mem-row:first-child { border-top: 0; }
+.mem-row .type { font-size: 10px; color: var(--ink-3); }
+.mem-row .body { color: var(--ink); line-height: 1.45; }
+.mem-row .body .src { color: var(--ink-3); font-size: 11px; margin-top: 2px; }
+.mem-row .ac { color: var(--ink-3); padding: 4px; border-radius: 4px; cursor: pointer; background: transparent; border: none; }
+.mem-row .ac:hover { background: var(--fill); color: var(--ink); }
+
+/* ---- Knowledge-base grid + rows (A7.3.7) ---- */
+.kb-grid { display: grid; grid-template-columns: 40% 1fr; gap: 12px; }
+.kb-sources, .kb-viewer {
+  border: 1px solid var(--line); border-radius: 7px;
+  background: var(--page); display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.kb-sources .hd, .kb-viewer .hd {
+  padding: 10px 14px; border-bottom: 1px solid var(--line-2);
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--rail); font-size: 12px; color: var(--ink);
+}
+.kb-list { overflow: auto; flex: 1; }
+.kb-src-row {
+  display: grid; grid-template-columns: 16px 1fr auto;
+  gap: 10px; align-items: center;
+  padding: 10px 14px;
+  border-top: 1px solid var(--line-2);
+  cursor: pointer; font-size: 12.5px;
+}
+.kb-src-row:first-child { border-top: 0; }
+.kb-src-row:hover { background: var(--rail); }
+.kb-src-row .ttl { font-weight: 500; color: var(--ink); }
+.kb-src-row .meta { font-size: 10px; color: var(--ink-3); margin-top: 2px; }
+.kb-src-row .sz { font-size: 10px; color: var(--ink-3); }
+
+/* ---- Upload zone (B8.1 — 2px dashed, explicit exception to ban 6) ---- */
+.upl-zone {
+  width: 100%;
+  border: 2px dashed var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  padding: 32px 24px;
+  display: flex; flex-direction: column;
+  align-items: center; gap: 8px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color .12s ease, background .12s ease;
+}
+.upl-zone:hover,
+.upl-zone.drag-over { border-color: var(--ink-3); background: var(--fill); }
+.upl-zone .ic-tile {
+  width: 40px; height: 40px; border-radius: 8px;
+  background: var(--fill); color: var(--ink-3);
+  display: grid; place-items: center;
+  margin-bottom: 4px;
+}
+.upl-zone .h { font-size: 13px; color: var(--ink); font-weight: 500; letter-spacing: -0.003em; }
+.upl-zone .h .browse { color: var(--accent); cursor: pointer; font-weight: 500; }
+.upl-zone .types { font-size: 11px; color: var(--ink-3); }
+
+/* ---- Upload progress bar (B8.4) ---- */
+.upl-bar-panel {
+  width: 100%;
+  background: var(--page); border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 14px 16px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.upl-bar-panel .row1 { display: flex; align-items: center; gap: 10px; }
+.upl-bar-panel .file-glyph {
+  width: 28px; height: 28px; border-radius: 5px;
+  background: var(--fill); color: var(--ink-2);
+  display: grid; place-items: center; flex-shrink: 0;
+}
+.upl-bar-panel .meta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.upl-bar-panel .meta .nm {
+  font-size: 12.5px; color: var(--ink); font-weight: 500;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.upl-bar-panel .meta .sub { font-size: 11px; color: var(--ink-3); }
+.upl-bar-panel .cancel {
+  width: 22px; height: 22px; border-radius: 4px;
+  color: var(--ink-3); cursor: pointer;
+  display: grid; place-items: center; flex-shrink: 0;
+  background: transparent; border: none;
+}
+.upl-bar-panel .cancel:hover { color: var(--ink); background: var(--line-2); }
+.upl-bar-track {
+  height: 4px; width: 100%;
+  background: var(--fill); border-radius: 999px; overflow: hidden;
+}
+.upl-bar-fill {
+  height: 100%; background: var(--accent);
+  border-radius: 999px; transition: width .2s ease-out;
+}
+
+/* ---- Multi-state upload list (B8.7) ---- */
+.upl-list { border: 1px solid var(--line); border-radius: 7px; overflow: hidden; background: var(--page); }
+.upl-list-row {
+  display: grid;
+  grid-template-columns: 24px 1fr 90px auto auto;
+  gap: 12px; align-items: center;
+  padding: 9px 14px;
+  border-top: 1px solid var(--line-2);
+  font-size: 12.5px;
+  min-height: 36px;
+}
+.upl-list-row:first-child { border-top: 0; }
+.upl-list-row .file-ic { width: 18px; height: 18px; color: var(--ink-3); display: grid; place-items: center; }
+.upl-list-row .nm {
+  color: var(--ink); font-weight: 500;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.upl-list-row .sz { color: var(--ink-3); font-size: 11px; text-align: right; }
+.upl-list-row .status {
+  display: inline-flex; align-items: center; gap: 6px;
+  color: var(--ink-3); font-size: 11px;
+}
+.upl-list-row .status .st-ic { width: 13px; height: 13px; }
+.upl-list-row .status.success { color: var(--ink-2); }
+.upl-list-row .status.success .st-ic { color: var(--accent); }
+.upl-list-row .status.in-progress { color: var(--ink-2); }
+.upl-list-row .status.in-progress .st-ic { color: var(--accent); }
+.upl-list-row .status.error { color: var(--warn); }
+.upl-list-row .status.error .st-ic { color: var(--warn); }
+.upl-list-row .remove {
+  width: 22px; height: 22px; border-radius: 4px;
+  color: var(--ink-3); cursor: pointer;
+  display: grid; place-items: center;
+  background: transparent; border: none;
+}
+.upl-list-row .remove:hover { color: var(--ink); background: var(--line-2); }
+.upl-list-row .row-prog {
+  grid-column: 2 / 5; grid-row: 2;
+  height: 3px; width: 100%;
+  background: var(--fill); border-radius: 999px; overflow: hidden;
+  margin-top: 4px;
+}
+.upl-list-row .row-prog > i { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
+.upl-list-row.has-prog { grid-template-rows: auto auto; row-gap: 0; }

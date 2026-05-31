@@ -2,10 +2,22 @@
 // PRD 04 §6.4.1 / Phase 10 — Brand Kit section shell.
 // Cluster 04 ships shell + brand-picker + 7-tab nav rail. Cluster 05 fills tabs.
 
-import { ref } from 'vue'
+import { defineAsyncComponent, ref } from 'vue'
 
 import AccountSectionHeader from '@/components/account/AccountSectionHeader.vue'
 import BrandPicker from '@/components/account/BrandPicker.vue'
+import KovaSkeleton from '@/components/ui/KovaSkeleton.vue'
+
+// Lazy-load each tab to keep initial bundle lean
+const VisualsTab = defineAsyncComponent(() => import('@/components/brand-kit/VisualsTab.vue'))
+const IdentityTab = defineAsyncComponent(() => import('@/components/brand-kit/IdentityTab.vue'))
+const ToneSnippetsTab = defineAsyncComponent(() => import('@/components/brand-kit/ToneSnippetsTab.vue'))
+const SavedBlocksTab = defineAsyncComponent(() => import('@/components/brand-kit/SavedBlocksTab.vue'))
+const WritingRulesTab = defineAsyncComponent(() => import('@/components/brand-kit/WritingRulesTab.vue'))
+const MemoriesTab = defineAsyncComponent(() => import('@/components/brand-kit/MemoriesTab.vue'))
+const KbSourcesTab = defineAsyncComponent(() => import('@/components/brand-kit/KbSourcesTab.vue'))
+
+import type { Component } from 'vue'
 
 type BrandKitTab =
   | 'visuals'
@@ -27,6 +39,16 @@ const TABS: readonly TabDef[] = [
   { key: 'memories', label: 'Memories' },
   { key: 'knowledge-base', label: 'Knowledge base' },
 ] as const
+
+const TAB_COMPONENT: Record<BrandKitTab, Component> = {
+  'visuals': VisualsTab,
+  'identity': IdentityTab,
+  'tone-snippets': ToneSnippetsTab,
+  'saved-blocks': SavedBlocksTab,
+  'writing-rules': WritingRulesTab,
+  'memories': MemoriesTab,
+  'knowledge-base': KbSourcesTab,
+}
 
 const activeTab = ref<BrandKitTab>('visuals')
 </script>
@@ -58,10 +80,12 @@ const activeTab = ref<BrandKitTab>('visuals')
         </button>
       </nav>
       <div class="bk-pane">
-        <div class="acc-stub" role="status">
-          <p>Brand Kit tab content ships with Cluster 05.</p>
-          <p class="mono">Active: {{ activeTab }}</p>
-        </div>
+        <Suspense>
+          <component :is="TAB_COMPONENT[activeTab]" />
+          <template #fallback>
+            <KovaSkeleton height="200px" variant="card" />
+          </template>
+        </Suspense>
       </div>
     </div>
   </section>

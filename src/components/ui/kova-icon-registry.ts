@@ -19,30 +19,41 @@
 
 import type { Component } from 'vue'
 
+import IconAlertCircle from '~icons/lucide/alert-circle'
 import IconAlertTriangle from '~icons/lucide/alert-triangle'
 import IconArrowLeft from '~icons/lucide/arrow-left'
 import IconArrowRight from '~icons/lucide/arrow-right'
 import IconBell from '~icons/lucide/bell'
+import IconBook from '~icons/lucide/book'
+import IconBookOpen from '~icons/lucide/book-open'
+import IconBrain from '~icons/lucide/brain'
 import IconCheck from '~icons/lucide/check'
 import IconCheckCircle from '~icons/lucide/check-circle'
 import IconChevronDown from '~icons/lucide/chevron-down'
 import IconChevronRight from '~icons/lucide/chevron-right'
+import IconClock from '~icons/lucide/clock'
 import IconCloudOff from '~icons/lucide/cloud-off'
 import IconCreditCard from '~icons/lucide/credit-card'
 import IconCrop from '~icons/lucide/crop'
 import IconDownload from '~icons/lucide/download'
+import IconEdit2 from '~icons/lucide/edit-2'
 import IconExternalLink from '~icons/lucide/external-link'
+import IconEye from '~icons/lucide/eye'
 import IconFileQuestion from '~icons/lucide/file-question'
+import IconFileText from '~icons/lucide/file-text'
 import IconGlobe from '~icons/lucide/globe'
+import IconGripVertical from '~icons/lucide/grip-vertical'
 import IconHome from '~icons/lucide/home'
 import IconImage from '~icons/lucide/image'
 import IconInfo from '~icons/lucide/info'
 import IconKey from '~icons/lucide/key'
 import IconLink2 from '~icons/lucide/link-2'
 import IconLoader from '~icons/lucide/loader'
+import IconLoader2 from '~icons/lucide/loader-2'
 import IconLogOut from '~icons/lucide/log-out'
 import IconMail from '~icons/lucide/mail'
 import IconPalette from '~icons/lucide/palette'
+import IconPencil from '~icons/lucide/pencil'
 import IconPlug from '~icons/lucide/plug'
 import IconPlus from '~icons/lucide/plus'
 import IconRefreshCw from '~icons/lucide/refresh-cw'
@@ -53,7 +64,9 @@ import IconShield from '~icons/lucide/shield'
 import IconSparkles from '~icons/lucide/sparkles'
 import IconTag from '~icons/lucide/tag'
 import IconTrash2 from '~icons/lucide/trash-2'
+import IconType from '~icons/lucide/type'
 import IconUpload from '~icons/lucide/upload'
+import IconUploadCloud from '~icons/lucide/upload-cloud'
 import IconUser from '~icons/lucide/user'
 import IconWifiOff from '~icons/lucide/wifi-off'
 import IconX from '~icons/lucide/x'
@@ -63,30 +76,41 @@ export const KOVA_ICON_REGISTRY: ReadonlyMap<string, Component> = new Map<
   string,
   Component
 >([
+  ['alert-circle', IconAlertCircle],
   ['alert-triangle', IconAlertTriangle],
   ['arrow-left', IconArrowLeft],
   ['arrow-right', IconArrowRight],
   ['bell', IconBell],
+  ['book', IconBook],
+  ['book-open', IconBookOpen],
+  ['brain', IconBrain],
   ['check', IconCheck],
   ['check-circle', IconCheckCircle],
   ['chevron-down', IconChevronDown],
   ['chevron-right', IconChevronRight],
+  ['clock', IconClock],
   ['cloud-off', IconCloudOff],
   ['credit-card', IconCreditCard],
   ['crop', IconCrop],
   ['download', IconDownload],
+  ['edit-2', IconEdit2],
   ['external-link', IconExternalLink],
+  ['eye', IconEye],
   ['file-question', IconFileQuestion],
+  ['file-text', IconFileText],
   ['globe', IconGlobe],
+  ['grip-vertical', IconGripVertical],
   ['home', IconHome],
   ['image', IconImage],
   ['info', IconInfo],
   ['key', IconKey],
   ['link-2', IconLink2],
   ['loader', IconLoader],
+  ['loader-2', IconLoader2],
   ['log-out', IconLogOut],
   ['mail', IconMail],
   ['palette', IconPalette],
+  ['pencil', IconPencil],
   ['plug', IconPlug],
   ['plus', IconPlus],
   ['refresh-cw', IconRefreshCw],
@@ -97,7 +121,9 @@ export const KOVA_ICON_REGISTRY: ReadonlyMap<string, Component> = new Map<
   ['sparkles', IconSparkles],
   ['tag', IconTag],
   ['trash-2', IconTrash2],
+  ['type', IconType],
   ['upload', IconUpload],
+  ['upload-cloud', IconUploadCloud],
   ['user', IconUser],
   ['wifi-off', IconWifiOff],
   ['x', IconX],
