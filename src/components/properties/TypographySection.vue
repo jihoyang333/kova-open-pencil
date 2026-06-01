@@ -4,6 +4,7 @@ import { computed, onMounted } from 'vue'
 import AppSelect from '@/components/AppSelect.vue'
 import FontPicker from '@/components/FontPicker.vue'
 import ScrubInput from '@/components/ScrubInput.vue'
+import VerticalTextAlignRow from '@/components/inspector/VerticalTextAlignRow.vue'
 import { useNodeFontStatus } from '@/composables/use-font-status'
 import { useNodeProps } from '@/composables/use-node-props'
 import { loadFont } from '@/engine/fonts'
@@ -28,6 +29,15 @@ const currentWeightLabel = computed(
 )
 
 type TextAlign = 'LEFT' | 'CENTER' | 'RIGHT'
+type TextVertical = 'TOP' | 'CENTER' | 'BOTTOM'
+
+// 07b §11.7 — vertical text align (additive; no prior control existed).
+const verticalAlign = computed<TextVertical>(() => node.value.textAlignVertical ?? 'TOP')
+
+function setVerticalAlign(align: TextVertical) {
+  store.updateNodeWithUndo(node.value.id, { textAlignVertical: align }, 'Change vertical alignment')
+  store.requestRender()
+}
 
 async function selectFamily(family: string) {
   await loadFont(family, currentWeightLabel.value)
@@ -201,6 +211,11 @@ onMounted(async () => {
           <icon-lucide-strikethrough class="size-3.5" />
         </button>
       </div>
+    </div>
+
+    <!-- 07b: vertical text align (additive row) -->
+    <div data-test="vertical-text-align-row" class="mt-1.5">
+      <VerticalTextAlignRow :model-value="verticalAlign" @update:model-value="setVerticalAlign" />
     </div>
   </div>
 </template>
