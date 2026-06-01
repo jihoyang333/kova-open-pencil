@@ -23,6 +23,7 @@ import IconAlertTriangle from '~icons/lucide/alert-triangle'
 import IconArrowLeft from '~icons/lucide/arrow-left'
 import IconArrowRight from '~icons/lucide/arrow-right'
 import IconBell from '~icons/lucide/bell'
+import IconBox from '~icons/lucide/box'
 import IconCheck from '~icons/lucide/check'
 import IconCheckCircle from '~icons/lucide/check-circle'
 import IconChevronDown from '~icons/lucide/chevron-down'
@@ -43,6 +44,7 @@ import IconExternalLink from '~icons/lucide/external-link'
 import IconLock from '~icons/lucide/lock'
 import IconUnlock from '~icons/lucide/unlock'
 import IconFileQuestion from '~icons/lucide/file-question'
+import IconFolder from '~icons/lucide/folder'
 import IconFrame from '~icons/lucide/frame'
 import IconGlobe from '~icons/lucide/globe'
 import IconGripVertical from '~icons/lucide/grip-vertical'
@@ -83,6 +85,7 @@ export const KOVA_ICON_REGISTRY: ReadonlyMap<string, Component> = new Map<
   ['arrow-left', IconArrowLeft],
   ['arrow-right', IconArrowRight],
   ['bell', IconBell],
+  ['box', IconBox],
   ['check', IconCheck],
   ['check-circle', IconCheckCircle],
   ['chevron-down', IconChevronDown],
@@ -101,6 +104,7 @@ export const KOVA_ICON_REGISTRY: ReadonlyMap<string, Component> = new Map<
   ['eye', IconEye],
   ['eye-off', IconEyeOff],
   ['file-question', IconFileQuestion],
+  ['folder', IconFolder],
   ['frame', IconFrame],
   ['globe', IconGlobe],
   ['grip-vertical', IconGripVertical],
