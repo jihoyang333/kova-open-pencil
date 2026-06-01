@@ -8,7 +8,7 @@ import KovaIcon from '@/components/ui/KovaIcon.vue'
 import { useBrandKitDrag } from '@/composables/brand-kit/use-brand-kit-drag'
 import type { BrandAssetKind } from '@/composables/brand-kit/brand-kit-dnd'
 
-const props = defineProps<{
+const { kind, label, url, assetId } = defineProps<{
   kind: BrandAssetKind
   label: string
   url: string | null
@@ -22,8 +22,8 @@ const emit = defineEmits<{
 const { onLogoDragStart } = useBrandKitDrag()
 
 function onDragStart(event: DragEvent): void {
-  if (!props.url || !props.assetId) return
-  onLogoDragStart({ assetId: props.assetId, kind: props.kind, url: props.url }, event)
+  if (!url || !assetId) return
+  onLogoDragStart({ assetId, kind, url }, event)
 }
 </script>
 

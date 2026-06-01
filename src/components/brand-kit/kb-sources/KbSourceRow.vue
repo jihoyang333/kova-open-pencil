@@ -7,7 +7,7 @@ import type { BrandKbSource } from '@/types/brand-kit'
 
 type RowState = 'success' | 'in-progress' | 'error' | 'queued'
 
-const props = defineProps<{
+const { source, state, progress, errorMsg } = defineProps<{
   source: BrandKbSource
   state?: RowState
   progress?: number
@@ -45,7 +45,7 @@ function stateLabel(state: RowState | undefined): string {
   }
 }
 
-const resolvedState = (props.state ?? 'success') as RowState
+const resolvedState = (state ?? 'success') as RowState
 </script>
 
 <template>

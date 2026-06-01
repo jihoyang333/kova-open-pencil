@@ -6,7 +6,7 @@
 import KovaIcon from '@/components/ui/KovaIcon.vue'
 import type { BrandMemory } from '@/types/kova/brand-memory'
 
-const props = defineProps<{
+const { memory } = defineProps<{
   memory: BrandMemory
 }>()
 

@@ -10,7 +10,7 @@ const ALLOWED_TYPES = ['application/pdf', 'text/plain', 'text/markdown']
 const ALLOWED_EXTS = ['.pdf', '.txt', '.md']
 const MAX_BYTES = 10 * 1024 * 1024
 
-const props = defineProps<{
+const { compact } = defineProps<{
   /** compact = single-line zone shown when list has rows */
   compact?: boolean
 }>()

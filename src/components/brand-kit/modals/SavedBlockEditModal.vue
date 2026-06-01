@@ -16,7 +16,7 @@ const TYPE_OPTIONS = [
   { value: 'footer', label: 'Footer' },
 ]
 
-const props = defineProps<{
+const { open, block, saving } = defineProps<{
   open: boolean
   block: SavedBlock | null
   saving?: boolean
@@ -34,7 +34,7 @@ const content = ref('')
 const blockType = ref<SavedBlockType>('text')
 
 watch(
-  () => props.block,
+  () => block,
   (b) => {
     if (b) {
       label.value = b.label
@@ -53,19 +53,19 @@ function onClose(): void {
 }
 
 function onSave(): void {
-  if (!canSave.value || !props.block) return
-  emit('save', props.block.id, label.value.trim(), category.value.trim(), content.value.trim(), blockType.value)
+  if (!canSave.value || !block) return
+  emit('save', block.id, label.value.trim(), category.value.trim(), content.value.trim(), blockType.value)
 }
 
 function onDelete(): void {
-  if (!props.block) return
-  emit('delete', props.block.id)
+  if (!block) return
+  emit('delete', block.id)
 }
 </script>
 
 <template>
   <KovaModal
-    :open="props.open"
+    :open="open"
     title="Edit saved block"
     size="md"
     @update:open="(v) => { if (!v) onClose() }"

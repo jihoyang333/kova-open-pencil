@@ -6,7 +6,7 @@ import KovaIcon from '@/components/ui/KovaIcon.vue'
 import { useBrandKitDrag } from '@/composables/brand-kit/use-brand-kit-drag'
 import type { BrandColor } from '@/types/brand-kit'
 
-const props = defineProps<{
+const { color } = defineProps<{
   color: BrandColor
 }>()
 
@@ -17,7 +17,7 @@ const emit = defineEmits<{
 const { onColorDragStart } = useBrandKitDrag()
 
 function onDragStart(event: DragEvent): void {
-  onColorDragStart(props.color, event)
+  onColorDragStart(color, event)
 }
 </script>
 

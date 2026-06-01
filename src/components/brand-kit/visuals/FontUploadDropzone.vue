@@ -12,7 +12,7 @@ const ALLOWED_TYPES = ['font/woff2', 'font/ttf', 'font/otf']
 const ALLOWED_EXTS = ['.woff2', '.ttf', '.otf']
 const MAX_BYTES = 5 * 1024 * 1024
 
-const props = defineProps<{
+const { brandId, progress, error } = defineProps<{
   brandId: string
   /** upload progress 0–100; undefined = idle */
   progress?: number
@@ -120,8 +120,8 @@ function doUpload(): void {
       {{ validationError }}
     </div>
 
-    <div v-if="props.error" class="bk-err" role="alert">
-      {{ props.error }}
+    <div v-if="error" class="bk-err" role="alert">
+      {{ error }}
     </div>
 
     <div v-if="progress !== undefined" class="upl-bar-panel bk-mt-8">

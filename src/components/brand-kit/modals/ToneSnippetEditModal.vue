@@ -9,7 +9,7 @@ import KovaField from '@/components/ui/KovaField.vue'
 import KovaModal from '@/components/ui/KovaModal.vue'
 import type { ToneSnippet } from '@/types/brand-kit'
 
-const props = defineProps<{
+const { open, snippet, saving } = defineProps<{
   open: boolean
   snippet: ToneSnippet | null
   saving?: boolean
@@ -26,7 +26,7 @@ const category = ref('')
 const content = ref('')
 
 watch(
-  () => props.snippet,
+  () => snippet,
   (s) => {
     if (s) {
       label.value = s.label
@@ -44,19 +44,19 @@ function onClose(): void {
 }
 
 function onSave(): void {
-  if (!canSave.value || !props.snippet) return
-  emit('save', props.snippet.id, label.value.trim(), category.value.trim(), content.value.trim())
+  if (!canSave.value || !snippet) return
+  emit('save', snippet.id, label.value.trim(), category.value.trim(), content.value.trim())
 }
 
 function onDelete(): void {
-  if (!props.snippet) return
-  emit('delete', props.snippet.id)
+  if (!snippet) return
+  emit('delete', snippet.id)
 }
 </script>
 
 <template>
   <KovaModal
-    :open="props.open"
+    :open="open"
     title="Edit tone snippet"
     size="md"
     @update:open="(v) => { if (!v) onClose() }"

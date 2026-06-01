@@ -8,7 +8,7 @@ import KovaButton from '@/components/ui/KovaButton.vue'
 import KovaField from '@/components/ui/KovaField.vue'
 import KovaModal from '@/components/ui/KovaModal.vue'
 
-const props = defineProps<{
+const { open, saving } = defineProps<{
   open: boolean
   saving?: boolean
 }>()
@@ -43,7 +43,7 @@ function onSave(): void {
 
 <template>
   <KovaModal
-    :open="props.open"
+    :open="open"
     title="Add tone snippet"
     description="A voice exemplar that guides the AI's tone."
     size="md"

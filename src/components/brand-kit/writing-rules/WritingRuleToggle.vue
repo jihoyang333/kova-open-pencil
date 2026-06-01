@@ -4,7 +4,7 @@
 
 import KovaToggle from '@/components/ui/KovaToggle.vue'
 
-const props = defineProps<{
+const { ruleKey, label, helpText, enabled, saving } = defineProps<{
   ruleKey: string
   label: string
   helpText?: string

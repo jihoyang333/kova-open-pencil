@@ -22,7 +22,7 @@ const TYPE_HELP: Record<SavedBlockType, string> = {
   footer: 'Bottom-of-canvas section',
 }
 
-const props = defineProps<{
+const { open, saving } = defineProps<{
   open: boolean
   saving?: boolean
 }>()
@@ -59,7 +59,7 @@ function onSave(): void {
 
 <template>
   <KovaModal
-    :open="props.open"
+    :open="open"
     title="Add saved block"
     description="Reusable copy block that can be dragged onto the canvas."
     size="md"

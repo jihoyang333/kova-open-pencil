@@ -14,7 +14,7 @@ const CARD_LABELS: Record<IdentityCardKey, string> = {
   story: 'Story & origin',
 }
 
-const props = defineProps<{
+const { cardKey, card, saving } = defineProps<{
   cardKey: IdentityCardKey
   card?: IdentityCard
   saving?: boolean
@@ -27,10 +27,10 @@ const emit = defineEmits<{
 const isEditing = ref(false)
 const draft = ref('')
 
-const label = computed(() => CARD_LABELS[props.cardKey])
+const label = computed(() => CARD_LABELS[cardKey])
 
 function startEdit(): void {
-  draft.value = props.card?.content ?? ''
+  draft.value = card?.content ?? ''
   isEditing.value = true
 }
 
@@ -40,7 +40,7 @@ function cancelEdit(): void {
 }
 
 async function saveEdit(): Promise<void> {
-  emit('save', props.cardKey, draft.value)
+  emit('save', cardKey, draft.value)
   isEditing.value = false
 }
 

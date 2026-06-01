@@ -16,7 +16,7 @@ import { useVoiceDraft } from '@/composables/use-voice-draft'
 import { toast } from '@/composables/use-toast'
 import type { VoiceDraftPayload } from '@/types/brand-kit'
 
-const props = defineProps<{
+const { open, showSkip } = defineProps<{
   open: boolean
   /** True = onboarding context; shows "Skip for now" text link */
   showSkip?: boolean
@@ -101,7 +101,7 @@ function onClose(): void {
 
 <template>
   <KovaModal
-    :open="props.open"
+    :open="open"
     title="Confirm brand voice draft"
     description="We analyzed your storefront and drafted a brand voice and a few tone snippets. Review and confirm before saving."
     size="md"

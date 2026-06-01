@@ -9,7 +9,7 @@ import KovaField from '@/components/ui/KovaField.vue'
 import KovaModal from '@/components/ui/KovaModal.vue'
 import { isValidHexColor } from '@/utils/onboarding-validators'
 
-const props = defineProps<{
+const { open, slotLabel, initialHex, mode, saving } = defineProps<{
   open: boolean
   slotLabel: string
   initialHex: string
@@ -25,9 +25,9 @@ const emit = defineEmits<{
 const hex = ref('#000000')
 
 watch(
-  () => props.open,
+  () => open,
   (isOpen) => {
-    if (isOpen) hex.value = props.initialHex || '#000000'
+    if (isOpen) hex.value = initialHex || '#000000'
   },
   { immediate: true },
 )
@@ -51,7 +51,7 @@ function onNativeInput(event: Event): void {
 
 <template>
   <KovaModal
-    :open="props.open"
+    :open="open"
     :title="mode === 'add' ? 'Add brand color' : 'Edit brand color'"
     size="sm"
     @update:open="(v) => { if (!v) onClose() }"

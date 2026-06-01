@@ -5,7 +5,7 @@
 
 import KovaIcon from '@/components/ui/KovaIcon.vue'
 
-const props = defineProps<{
+const { rowId, label, category, contentExcerpt, typeBadge, draggable } = defineProps<{
   rowId: string
   label: string
   category: string
@@ -22,7 +22,7 @@ const emit = defineEmits<{
 }>()
 
 function onDragStart(event: DragEvent): void {
-  emit('dragstart', event, props.rowId)
+  emit('dragstart', event, rowId)
 }
 </script>
 

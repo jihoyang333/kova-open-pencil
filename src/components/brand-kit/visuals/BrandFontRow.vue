@@ -6,7 +6,7 @@ import KovaButton from '@/components/ui/KovaButton.vue'
 import { useBrandKitDrag } from '@/composables/brand-kit/use-brand-kit-drag'
 import type { BrandFont } from '@/types/brand-kit'
 
-const props = defineProps<{
+const { font, progress, error } = defineProps<{
   font: BrandFont
   /** upload-progress 0–100, undefined = not uploading */
   progress?: number
@@ -20,7 +20,7 @@ const emit = defineEmits<{
 const { onFontDragStart } = useBrandKitDrag()
 
 function onDragStart(event: DragEvent): void {
-  onFontDragStart({ family: props.font.family_name, fontId: props.font.id }, event)
+  onFontDragStart({ family: font.family_name, fontId: font.id }, event)
 }
 
 function formatBytes(bytes: number): string {
