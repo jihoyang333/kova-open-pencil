@@ -530,4 +530,25 @@ CREATE POLICY voice_drafts_service_insert ON public.voice_drafts FOR INSERT TO s
 
 -- No UPDATE / DELETE policies for authenticated — only RPCs (which run as SECURITY DEFINER) can resolve.
 
+-- Realtime — deliver brand_fonts row changes to subscribed clients via
+-- `postgres_changes` (the client store subscribes to postgres_changes, not
+-- broadcast, so no server-side emit is needed — code-review MED-3). REPLICA
+-- IDENTITY FULL so DELETE events still carry brand_id for the client's
+-- `brand_id=eq.{id}` filter. Guarded: only act if the Supabase realtime
+-- publication exists and brand_fonts is not already a member.
+ALTER TABLE public.brand_fonts REPLICA IDENTITY FULL;
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime')
+     AND NOT EXISTS (
+       SELECT 1 FROM pg_publication_tables
+       WHERE pubname = 'supabase_realtime'
+         AND schemaname = 'public'
+         AND tablename = 'brand_fonts'
+     )
+  THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.brand_fonts;
+  END IF;
+END $$;
+
 COMMIT;

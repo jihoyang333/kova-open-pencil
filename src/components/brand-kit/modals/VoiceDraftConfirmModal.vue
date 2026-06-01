@@ -10,6 +10,7 @@
 import { computed, ref, watch } from 'vue'
 
 import KovaButton from '@/components/ui/KovaButton.vue'
+import KovaIcon from '@/components/ui/KovaIcon.vue'
 import KovaModal from '@/components/ui/KovaModal.vue'
 import { useVoiceDraft } from '@/composables/use-voice-draft'
 import { toast } from '@/composables/use-toast'
@@ -153,7 +154,7 @@ function onClose(): void {
               :aria-label="`Remove snippet ${idx + 1}`"
               @click="removeSnippet(idx)"
             >
-              ×
+              <KovaIcon name="x" size="sm" />
             </button>
           </div>
           <textarea

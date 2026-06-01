@@ -4,7 +4,14 @@ import { createPinia, setActivePinia } from 'pinia'
 const postWithProgressMock = mock(
   (_url: string, _form: FormData, _token: string, onProgress: (f: number) => void) => {
     onProgress(1)
-    return Promise.resolve({ font_id: 'f-new', file_path: 'brand-fonts/b1/f-new.woff2', family_name: 'Brand' })
+    // Endpoint returns SERVER-sniffed mime_type + file_size_bytes (MED-2).
+    return Promise.resolve({
+      font_id: 'f-new',
+      file_path: 'brand-fonts/b1/f-new.woff2',
+      family_name: 'Brand',
+      mime_type: 'font/woff2',
+      file_size_bytes: 4242,
+    })
   },
 )
 
@@ -63,6 +70,15 @@ describe('useBrandFontsStore', () => {
     expect(store.fonts).toHaveLength(1)
     expect(postWithProgressMock).toHaveBeenCalled()
     expect(store.uploadProgress.size).toBe(0) // cleared after success
+  })
+
+  test('uploadFont trusts SERVER mime/size over the browser file.type (MED-2)', async () => {
+    const store = useBrandFontsStore()
+    // Browser reports octet-stream (lies); server sniffed font/woff2 + real size.
+    const file = new File([new Uint8Array(10)], 'brand.woff2', { type: 'application/octet-stream' })
+    const font = await store.uploadFont('b1', file, 'Brand', true)
+    expect(font.mime_type).toBe('font/woff2')
+    expect(font.file_size_bytes).toBe(4242)
   })
 
   test('uploadFont records error + rethrows on failure', async () => {

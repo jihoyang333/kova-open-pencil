@@ -20,8 +20,8 @@ import { verifyIdempotency, IdempotencyHttpError } from '../_shared/idempotency'
 //   6. license_attested === 'true'.
 //   7..9. Generate font_id, upload bytes to brand-fonts/{brand_id}/{font_id}.{ext}.
 //   10. INSERT brand_fonts; unique (brand_id, family_name) → delete object + 409.
-//   11. Realtime emit brand:{brand_id}:fonts font_added.
-//   12. 200 { font_id, file_path, family_name }.
+//   11. postgres_changes delivers the INSERT to subscribed clients (no broadcast).
+//   12. 200 { font_id, file_path, family_name, mime_type, file_size_bytes }.
 
 export const config = { runtime: 'nodejs' as const, maxDuration: 30 } as const
 
@@ -152,13 +152,9 @@ export default async function handler(req: Request): Promise<Response> {
     .maybeSingle()
   if (!ownedBrand) return jsonResponse(403, { error: 'forbidden' })
 
-  // 3. Rate-limit.
-  const count = await bumpRateLimit(admin, userId)
-  if (count > RATE_LIMIT_MAX) {
-    return jsonResponse(429, { error: 'rate_limited', retry_after_seconds: 60 })
-  }
-
-  // 4. Idempotency.
+  // 3. Idempotency — check the cache BEFORE bumping the rate limit so a
+  // replayed request returns the cached response instead of burning quota
+  // (code-review MED-4).
   let idem
   try {
     idem = await verifyIdempotency(admin, req, userId, ENDPOINT)
@@ -170,6 +166,12 @@ export default async function handler(req: Request): Promise<Response> {
   }
   if (idem.cached) {
     return new Response(JSON.stringify(idem.body), { status: idem.status, headers: JSON_HEADERS })
+  }
+
+  // 4. Rate-limit — only after a cache miss, so replays never burn quota.
+  const count = await bumpRateLimit(admin, userId)
+  if (count > RATE_LIMIT_MAX) {
+    return jsonResponse(429, { error: 'rate_limited', retry_after_seconds: 60 })
   }
 
   // 413 before reading bytes into memory beyond the cap.
@@ -234,40 +236,18 @@ export default async function handler(req: Request): Promise<Response> {
   }
   void inserted
 
-  // 11. Realtime emit — best-effort, never block the response.
-  await emitFontAdded(admin, parsed.brandId, {
-    id: fontId,
-    family_name: parsed.familyName,
+  // 11. Realtime: the INSERT above is delivered to subscribed clients via
+  // `postgres_changes` (brand_fonts is in the `supabase_realtime` publication —
+  // see migration). No server-side broadcast: the client store subscribes to
+  // postgres_changes, not broadcast, so an explicit emit would be dead code
+  // (code-review MED-3).
+  const body = {
+    font_id: fontId,
     file_path: filePath,
-  })
-
-  const body = { font_id: fontId, file_path: filePath, family_name: parsed.familyName }
+    family_name: parsed.familyName,
+    mime_type: sniff.mime,
+    file_size_bytes: bytes.byteLength,
+  }
   await idem.persist(200, body)
   return jsonResponse(200, body)
-}
-
-interface FontPayload {
-  id: string
-  family_name: string
-  file_path: string
-}
-
-async function emitFontAdded(
-  admin: SupabaseClient,
-  brandId: string,
-  font: FontPayload
-): Promise<void> {
-  try {
-    // Channel name matches the client store subscription (src/stores/brand-fonts.ts):
-    // `brand:{brand_id}:fonts` per PRD §5.1.1.
-    const channel = admin.channel(`brand:${brandId}:fonts`)
-    await channel.send({
-      type: 'broadcast',
-      event: 'font_added',
-      payload: { event: 'font_added', font },
-    })
-    await admin.removeChannel(channel)
-  } catch (err) {
-    console.error('[brand-fonts/upload] realtime emit failed (best-effort):', err)
-  }
 }

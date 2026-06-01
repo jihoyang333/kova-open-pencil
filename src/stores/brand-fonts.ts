@@ -76,14 +76,22 @@ export const useBrandFontsStore = defineStore('brand-fonts', () => {
       const body = await postWithProgress('/api/brand-fonts/upload', form, token, (p) =>
         setProgress(key, p),
       )
-      const result = body as { font_id: string; file_path: string; family_name: string }
+      const result = body as {
+        font_id: string
+        file_path: string
+        family_name: string
+        mime_type: BrandFont['mime_type']
+        file_size_bytes: number
+      }
       const font: BrandFont = {
         id: result.font_id,
         brand_id: brandId,
         family_name: result.family_name,
         file_path: result.file_path,
-        file_size_bytes: file.size,
-        mime_type: file.type as BrandFont['mime_type'],
+        // Server-sniffed values, not the browser's unreliable file.type/size
+        // (code-review MED-2).
+        file_size_bytes: result.file_size_bytes,
+        mime_type: result.mime_type,
         license_attested: true,
         uploaded_at: new Date().toISOString(),
         uploaded_by: '',

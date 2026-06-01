@@ -73,14 +73,22 @@ export const useBrandKbSourcesStore = defineStore('brand-kb-sources', () => {
       const body = await postWithProgress('/api/brand-kb-sources/upload', form, token, (p) =>
         setProgress(key, p),
       )
-      const result = body as { source_id: string; file_path: string; file_name: string }
+      const result = body as {
+        source_id: string
+        file_path: string
+        file_name: string
+        mime_type: BrandKbSource['mime_type']
+        file_size_bytes: number
+      }
       const source: BrandKbSource = {
         id: result.source_id,
         brand_id: brandId,
         file_name: result.file_name,
         file_path: result.file_path,
-        file_size_bytes: file.size,
-        mime_type: file.type as BrandKbSource['mime_type'],
+        // Server-sniffed values, not the browser's unreliable file.type/size
+        // (code-review MED-2).
+        file_size_bytes: result.file_size_bytes,
+        mime_type: result.mime_type,
         uploaded_at: new Date().toISOString(),
         uploaded_by: '',
         extracted_text: null,

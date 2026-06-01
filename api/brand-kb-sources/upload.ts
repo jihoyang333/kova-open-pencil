@@ -141,11 +141,8 @@ export default async function handler(req: Request): Promise<Response> {
     .maybeSingle()
   if (!ownedBrand) return jsonResponse(403, { error: 'forbidden' })
 
-  const count = await bumpRateLimit(admin, userId)
-  if (count > RATE_LIMIT_MAX) {
-    return jsonResponse(429, { error: 'rate_limited', retry_after_seconds: 60 })
-  }
-
+  // Idempotency BEFORE rate-limit so a replay returns the cached response
+  // instead of burning quota (code-review MED-4).
   let idem
   try {
     idem = await verifyIdempotency(admin, req, userId, ENDPOINT)
@@ -157,6 +154,11 @@ export default async function handler(req: Request): Promise<Response> {
   }
   if (idem.cached) {
     return new Response(JSON.stringify(idem.body), { status: idem.status, headers: JSON_HEADERS })
+  }
+
+  const count = await bumpRateLimit(admin, userId)
+  if (count > RATE_LIMIT_MAX) {
+    return jsonResponse(429, { error: 'rate_limited', retry_after_seconds: 60 })
   }
 
   if (parsed.file.size > MAX_BYTES) {
@@ -193,7 +195,13 @@ export default async function handler(req: Request): Promise<Response> {
     return jsonResponse(500, { error: 'internal_error', request_id: crypto.randomUUID() })
   }
 
-  const body = { source_id: sourceId, file_path: filePath, file_name: parsed.fileName }
+  const body = {
+    source_id: sourceId,
+    file_path: filePath,
+    file_name: parsed.fileName,
+    mime_type: sniff.mime,
+    file_size_bytes: bytes.byteLength,
+  }
   await idem.persist(200, body)
   return jsonResponse(200, body)
 }

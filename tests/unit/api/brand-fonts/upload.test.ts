@@ -257,4 +257,20 @@ describe('POST /api/brand-fonts/upload', () => {
     expect(res.status).toBe(200)
     expect((await res.json()).font_id).toBe('cached')
   })
+
+  it('cached replay returns 200 even when over rate quota — idempotency is checked first (MED-4)', async () => {
+    idemState.mode = 'cached'
+    db.rateCount = 6 // would 429 if rate-limit ran before the idempotency check
+    const res = await handler(multipart(validFields, validFile, { 'X-Idempotency-Key': '0123456789abcdef0123' }))
+    expect(res.status).toBe(200)
+    expect((await res.json()).font_id).toBe('cached')
+  })
+
+  it('200 response carries server-sniffed mime_type + file_size_bytes (MED-2)', async () => {
+    const res = await handler(multipart(validFields, validFile, { 'X-Idempotency-Key': '0123456789abcdef0123' }))
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.mime_type).toBe('font/woff2')
+    expect(typeof body.file_size_bytes).toBe('number')
+  })
 })
