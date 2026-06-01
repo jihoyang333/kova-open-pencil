@@ -8,6 +8,9 @@ import { isFontLoaded, DEFAULT_FONT_FAMILY } from '@open-pencil/core'
 import { useImportImages } from '@/composables/use-import-images'
 import { useKeyboard } from '@/composables/use-keyboard'
 import { useShortcutRegistration } from '@/composables/use-shortcut-registration'
+import { useFindSearch } from '@/composables/use-find-search'
+import { useCameraPan } from '@/composables/use-camera-pan'
+import { registerInspectorSections } from '@/inspector/register-inspector-sections'
 import { useMenu } from '@/composables/use-menu'
 import { useCollab, COLLAB_KEY } from '@/composables/use-collab'
 import { connectAutomation } from '@/automation/server'
@@ -62,6 +65,15 @@ useKeyboard()
 useMenu()
 // 07b: register inspector/find/boolean/pixel-grid shortcuts (Phase-A fallback, PRD §12.5/12.7/12.12)
 useShortcutRegistration()
+// 07b CT-022: bring the find-search + camera-pan watchers alive. The store's
+// setQuery()/focusNode() only write state; these composables hold the watchers
+// that turn a query into matchedNodeIds and a single match into a camera pan.
+// Without instantiating them here the find panel is inert (audit C1).
+useFindSearch()
+useCameraPan()
+// 07b: populate the InspectorRouter registry so the desktop right-panel renders the
+// inspector sections (PRD 06 §12.15). Idempotent — safe across editor re-mounts.
+registerInspectorSections()
 
 // Canvas integration (only for non-demo routes with canvasId)
 const router = useRouter()

@@ -48,8 +48,9 @@ const cameraStyle = computed(() => ({
       <FindOverlay v-if="findStore.active" />
     </div>
 
-    <!-- Screen-space overlays -->
-    <PixelGridOverlay v-if="editor.state.overlays.pixelGrid" />
+    <!-- Screen-space overlays. PixelGridOverlay self-gates (manual toggle OR
+         auto-show > 800%); do NOT double-gate the mount here (audit H3). -->
+    <PixelGridOverlay />
     <EyedropperCrosshair />
   </div>
 </template>

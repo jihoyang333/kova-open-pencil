@@ -71,24 +71,34 @@ export const useClipboardStore = defineStore('clipboard', () => {
     })
   }
 
-  // C-LOW07b.4: paste only the fields the target node already supports —
-  // silently drop incompatible fields (e.g. cornerRadius onto a TEXT node).
-  function pasteProps(targetNodes: SceneNode[]): void {
+  // C-LOW07b.4: build the per-target change set, keeping only the fields the
+  // target node already supports — incompatible fields (e.g. cornerRadius onto a
+  // TEXT node) are silently dropped. Pure: never mutates the target nodes. The
+  // caller routes these changes through the engine (editor.updateNodeWithUndo) so
+  // the paste emits node:updated, bumps sceneVersion, repaints, persists, and is
+  // undoable — see useCopyPasteProps (audit C3: no direct scene-node mutation).
+  function buildPasteChanges(
+    targetNodes: SceneNode[]
+  ): Array<{ id: string; changes: Partial<SceneNode> }> {
     const payload = copiedProps.value
-    if (!payload) return
+    if (!payload) return []
+    const out: Array<{ id: string; changes: Partial<SceneNode> }> = []
     for (const target of targetNodes) {
       const t = target as unknown as Record<string, unknown>
+      const changes: Record<string, unknown> = {}
       for (const [field, value] of Object.entries(payload.props)) {
-        if (field in t) {
-          t[field] = structuredClone(value)
-        }
+        if (field in t) changes[field] = structuredClone(value)
+      }
+      if (Object.keys(changes).length > 0) {
+        out.push({ id: target.id, changes: changes as Partial<SceneNode> })
       }
     }
+    return out
   }
 
   function clear(): void {
     copiedProps.value = null
   }
 
-  return { copiedProps, copyProps, pasteProps, clear }
+  return { copiedProps, copyProps, buildPasteChanges, clear }
 })

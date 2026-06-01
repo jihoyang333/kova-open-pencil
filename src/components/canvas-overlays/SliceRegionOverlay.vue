@@ -8,16 +8,22 @@ import { OVERLAY_Z, OVERLAY_COLOR } from '@/constants/overlays'
 
 const editor = useEditorStore()
 
+// Whole-subtree walk (audit M1): slices nested inside frames/groups are export
+// targets too, positioned at their absolute canvas coords.
 const slices = computed<SceneNode[]>(() => {
   void editor.state.sceneVersion
-  return editor.graph.getChildren(editor.state.currentPageId).filter((n) => n.type === 'SLICE')
+  return editor.graph
+    .flattenTree(editor.state.currentPageId)
+    .map((e) => e.node)
+    .filter((n) => n.type === 'SLICE')
 })
 
 function regionStyle(s: SceneNode) {
+  const abs = editor.graph.getAbsolutePosition(s.id)
   return {
     position: 'absolute' as const,
-    left: `${s.x}px`,
-    top: `${s.y}px`,
+    left: `${abs.x}px`,
+    top: `${abs.y}px`,
     width: `${s.width}px`,
     height: `${s.height}px`,
     border: `1px dashed ${OVERLAY_COLOR.SLICE_DASH}`,
@@ -27,10 +33,11 @@ function regionStyle(s: SceneNode) {
 }
 
 function labelStyle(s: SceneNode) {
+  const abs = editor.graph.getAbsolutePosition(s.id)
   return {
     position: 'absolute' as const,
-    left: `${s.x}px`,
-    top: `${s.y - 18}px`,
+    left: `${abs.x}px`,
+    top: `${abs.y - 18}px`,
     background: OVERLAY_COLOR.SLICE_LABEL_BG,
     zIndex: OVERLAY_Z.FRAME_LABEL,
     pointerEvents: 'none' as const

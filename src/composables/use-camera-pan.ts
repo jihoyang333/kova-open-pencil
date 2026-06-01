@@ -15,13 +15,6 @@ import { useFindStore } from '@/stores/find'
 const MIN_ZOOM = 0.02
 const MAX_ZOOM = 256
 
-const animating = ref(false)
-let currentRAF: number | null = null
-let cancelToken = 0
-// Resolves the in-flight pan so a superseding pan (whose cancel() stops the RAF before
-// the next step runs) never leaves the previous promise dangling.
-let pendingResolve: (() => void) | null = null
-
 // cubic-bezier(0.4, 0, 0.2, 1) ≈ ease-out cubic
 function easeOutCubic(t: number): number {
   return 1 - Math.pow(1 - t, 3)
@@ -34,6 +27,17 @@ function clampZoom(zoom: number): number {
 export function useCameraPan() {
   const editor = useEditorStore()
   const findStore = useFindStore()
+
+  // Per-instance animation state (audit L3 — was module-level, fragile if ever
+  // instantiated more than once). EditorView creates exactly one, but keeping the
+  // state local makes the composable reentrant by construction.
+  const animating = ref(false)
+  let currentRAF: number | null = null
+  let cancelToken = 0
+  // Resolves the in-flight pan so a superseding pan (whose cancel() stops the RAF
+  // before the next step runs) never leaves the previous promise dangling.
+  let pendingResolve: (() => void) | null = null
+
   const isAnimating = computed(() => animating.value)
 
   function cancel(): void {

@@ -11,11 +11,14 @@ import DimLayerOverlay from './DimLayerOverlay.vue'
 const editor = useEditorStore()
 const findStore = useFindStore()
 
+// Dim the whole page subtree minus matches (audit M2): useFindSearch matches via
+// full DFS, so a top-level-only dim set leaks focus on nested non-matching nodes.
 const dimmedNodeIds = computed<string[]>(() => {
   void editor.state.sceneVersion
   const matched = new Set(findStore.matchedNodeIds)
   return editor.graph
-    .getChildren(editor.state.currentPageId)
+    .flattenTree(editor.state.currentPageId)
+    .map((e) => e.node)
     .filter((n) => !matched.has(n.id))
     .map((n) => n.id)
 })

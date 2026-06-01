@@ -73,13 +73,41 @@ const globals = [
   'Storage',
   'localStorage',
   'sessionStorage',
+  'StorageEvent',
   'matchMedia',
+  // Routing + layout-observer globals some components touch on mount (vue-router needs
+  // history; reka-ui Popover/ColorPicker construct a ResizeObserver). Missing in the
+  // base happy-dom global set, so copy them through when present.
+  'history',
+  'location',
+  'PointerEvent',
+  'WheelEvent',
+  'DragEvent',
+  'ResizeObserver',
+  'IntersectionObserver',
+  'HTMLCanvasElement',
+  'HTMLImageElement',
 ] as const
 
 for (const key of globals) {
   if (key in window) {
     ;(globalThis as Record<string, unknown>)[key] = (window as Record<string, unknown>)[key]
   }
+}
+
+// happy-dom does not implement ResizeObserver/IntersectionObserver; reka-ui's
+// Popover/Select/ColorPicker construct one on mount. Provide inert no-op classes so those
+// components mount under `bun test` (otherwise "ResizeObserver is not defined" at mount).
+class NoopObserver {
+  observe(): void {}
+  unobserve(): void {}
+  disconnect(): void {}
+}
+if (typeof (globalThis as Record<string, unknown>).ResizeObserver !== 'function') {
+  ;(globalThis as Record<string, unknown>).ResizeObserver = NoopObserver
+}
+if (typeof (globalThis as Record<string, unknown>).IntersectionObserver !== 'function') {
+  ;(globalThis as Record<string, unknown>).IntersectionObserver = NoopObserver
 }
 
 // --- Canvas & Image API mocks (not supported by happy-dom) ---

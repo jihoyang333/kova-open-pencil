@@ -31,10 +31,11 @@ describe('useClipboardStore', () => {
       layoutMode: 'NONE',
     } as unknown as SceneNode
     store.copyProps(node)
-    expect(store.copiedProps).not.toBeNull()
-    expect(store.copiedProps!.sourceNodeId).toBe('n1')
-    expect(store.copiedProps!.props.strokeWeight).toBe(2)
-    expect(store.copiedProps!.props.strokeAlign).toBe('INSIDE')
+    const copied = store.copiedProps
+    expect(copied).not.toBeNull()
+    expect(copied?.sourceNodeId).toBe('n1')
+    expect(copied?.props.strokeWeight).toBe(2)
+    expect(copied?.props.strokeAlign).toBe('INSIDE')
   })
 
   it('clear resets copiedProps to null', () => {
@@ -44,8 +45,8 @@ describe('useClipboardStore', () => {
     expect(store.copiedProps).toBeNull()
   })
 
-  // C-LOW07b.4: pasteProps must skip fields the target node type does not support
-  it('pasteProps skips incompatible fields when source/target node types differ', () => {
+  // C-LOW07b.4: buildPasteChanges must drop fields the target node type does not support
+  it('buildPasteChanges drops incompatible fields when source/target node types differ', () => {
     const store = useClipboardStore()
     const src = {
       id: 'rect-1',
@@ -54,7 +55,7 @@ describe('useClipboardStore', () => {
       strokes: [],
       strokeWeight: 4,
       strokeAlign: 'CENTER',
-      cornerRadius: 12, // rectangle-only — TextNode should NOT receive this
+      cornerRadius: 12, // rectangle-only — TEXT target should NOT receive this
       opacity: 0.5,
       effects: [],
       blendMode: 'NORMAL',
@@ -69,15 +70,24 @@ describe('useClipboardStore', () => {
       fontSize: 14,
       // NOTE: no `cornerRadius` field on TEXT — paste must skip it
     } as Record<string, unknown>
-    store.pasteProps([tgt as unknown as SceneNode])
-    // compatible fields applied
-    expect(tgt.fills).toEqual((src as unknown as Record<string, unknown>).fills)
-    expect(tgt.opacity).toBe(0.5)
-    // incompatible (rectangle-only) field NOT introduced on target
-    expect('cornerRadius' in tgt).toBe(false)
+    const tgtBefore = structuredClone(tgt)
+
+    const changes = store.buildPasteChanges([tgt as unknown as SceneNode])
+
+    expect(changes).toHaveLength(1)
+    expect(changes[0].id).toBe('text-1')
+    // compatible fields present in the change set
+    expect((changes[0].changes as Record<string, unknown>).fills).toEqual(
+      (src as unknown as Record<string, unknown>).fills
+    )
+    expect((changes[0].changes as Record<string, unknown>).opacity).toBe(0.5)
+    // incompatible (rectangle-only) field NOT in the change set
+    expect('cornerRadius' in changes[0].changes).toBe(false)
+    // PURE: the target node itself is never mutated (audit C3 — no direct mutation)
+    expect(tgt).toEqual(tgtBefore)
   })
 
-  it('pasteProps preserves text-only fields when overwriting text→text', () => {
+  it('buildPasteChanges keeps only Q23 fields for text→text', () => {
     const store = useClipboardStore()
     const src = {
       id: 'text-a',
@@ -96,20 +106,20 @@ describe('useClipboardStore', () => {
       fills: [],
       opacity: 1,
     } as Record<string, unknown>
-    store.pasteProps([tgt as unknown as SceneNode])
-    // fontSize is not in the Q23 paste set — verify it stays unchanged
-    expect(tgt.fontSize).toBe(12)
-    // content is intentionally NOT in the Q23 paste set — verify it stays unchanged
-    expect(tgt.content).toBe('B')
-    // fills IS in the Q23 set — empty array copied over
-    expect(tgt.fills).toEqual([])
+
+    const changes = store.buildPasteChanges([tgt as unknown as SceneNode])
+    const applied = changes[0].changes as Record<string, unknown>
+
+    // fontSize / content are NOT in the Q23 paste set — absent from the change set
+    expect('fontSize' in applied).toBe(false)
+    expect('content' in applied).toBe(false)
+    // fills IS in the Q23 set
+    expect(applied.fills).toEqual([])
   })
 
-  it('pasteProps is a no-op when clipboard is empty', () => {
+  it('buildPasteChanges returns [] when clipboard is empty', () => {
     const store = useClipboardStore()
     const tgt = { id: 'n1', type: 'RECTANGLE', fills: [], opacity: 1 } as Record<string, unknown>
-    const before = { ...tgt }
-    store.pasteProps([tgt as unknown as SceneNode])
-    expect(tgt).toEqual(before)
+    expect(store.buildPasteChanges([tgt as unknown as SceneNode])).toEqual([])
   })
 })

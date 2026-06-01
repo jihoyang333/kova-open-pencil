@@ -4,6 +4,7 @@ import { useFindStore } from '@/stores/find'
 import { useEyedropper } from '@/composables/use-eyedropper'
 import { useCopyPasteProps } from '@/composables/use-copy-paste-props'
 import { makeFigmaFromStore } from '@/automation/figma-factory'
+import { colorToFill } from '@open-pencil/core'
 import { useShortcutsFallback, type ShortcutBinding } from '@/composables/use-shortcuts-fallback'
 
 type BooleanOpKind = 'UNION' | 'SUBTRACT' | 'INTERSECT' | 'EXCLUDE'
@@ -43,7 +44,18 @@ export function useShortcutRegistration(): ShortcutBinding[] {
     {
       id: 'tool.eyedropper',
       keys: SHORTCUTS.EYEDROPPER,
-      action: () => (eyedropper.activate(() => undefined), true)
+      action: () => {
+        // Sample a canvas pixel, then apply it as the selection's solid fill
+        // through the engine (repaint + undo + persist). Snapshot the selection
+        // now so the async sample applies to what was selected on activation.
+        const sel = editor.selectedNodes.value
+        eyedropper.activate((hex) => {
+          for (const n of sel) {
+            editor.updateNodeWithUndo(n.id, { fills: [colorToFill(hex)] }, 'Eyedropper fill')
+          }
+        })
+        return true
+      }
     },
     {
       id: 'view.pixelGrid',

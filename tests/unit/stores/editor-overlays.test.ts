@@ -24,9 +24,11 @@ describe('useEditorStore overlays (Cluster 07b Task 1.5)', () => {
     expect(store.state.overlays.layoutGuides).toBe(true)
   })
 
-  test('overlays.pixelGrid defaults true', () => {
+  // pixelGrid is the manual Shift+' override (audit H3), not a master enable: it
+  // defaults OFF and PixelGridOverlay auto-shows above 800% via a separate zoom gate.
+  test('overlays.pixelGrid defaults false (manual toggle; auto-show is zoom-gated)', () => {
     const store = useEditorStore()
-    expect(store.state.overlays.pixelGrid).toBe(true)
+    expect(store.state.overlays.pixelGrid).toBe(false)
   })
 
   test('overlays.maskOutlines / hoverContour / measurements default true', () => {

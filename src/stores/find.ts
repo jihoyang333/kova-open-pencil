@@ -16,12 +16,9 @@ export const useFindStore = defineStore('find', () => {
 
   const isFocused = computed(() => focusedNodeId.value !== null || matchedNodeIds.value.length === 1)
 
-  const dimmedNodeIds = computed(() => {
-    if (!active.value) return []
-    // Thin here: DimLayerOverlay does the scene-graph traversal (with viewport
-    // culling) against figma.currentPage.children minus these matched IDs.
-    return matchedNodeIds.value
-  })
+  // The dim set (page subtree minus matches) is derived in FindOverlay, which has the
+  // scene-graph access; the store stays decoupled from the graph (audit M3 removed a
+  // stale getter that returned matchedNodeIds and referenced a fictional figma API).
 
   function open(): void {
     active.value = true
@@ -60,7 +57,6 @@ export const useFindStore = defineStore('find', () => {
     focusedNodeId,
     isMultiMatch,
     isFocused,
-    dimmedNodeIds,
     open,
     close,
     setQuery,

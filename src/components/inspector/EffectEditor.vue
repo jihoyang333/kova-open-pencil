@@ -35,7 +35,7 @@ const num = (event: Event): number => Number((event.target as HTMLInputElement).
 </script>
 
 <template>
-  <div class="flex w-[248px] flex-col gap-2 rounded border border-border bg-panel p-2">
+  <div class="flex w-64 flex-col gap-2 rounded border border-border bg-panel p-2">
     <div class="flex items-center justify-between text-xs">
       <span class="font-medium text-ink">{{ TYPE_LABELS[modelValue.type] }}</span>
       <button

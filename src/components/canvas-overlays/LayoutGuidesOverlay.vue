@@ -20,9 +20,13 @@ interface LayoutGrid {
 
 const editor = useEditorStore()
 
+// Whole-subtree walk + absolute position (audit M1): nested frames carry guides too.
 const frames = computed<SceneNode[]>(() => {
   void editor.state.sceneVersion
-  return editor.graph.getChildren(editor.state.currentPageId).filter((n) => n.type === 'FRAME')
+  return editor.graph
+    .flattenTree(editor.state.currentPageId)
+    .map((e) => e.node)
+    .filter((n) => n.type === 'FRAME')
 })
 
 function gridsOf(frame: SceneNode): LayoutGrid[] {
@@ -30,10 +34,11 @@ function gridsOf(frame: SceneNode): LayoutGrid[] {
 }
 
 function bandStyle(frame: SceneNode) {
+  const abs = editor.graph.getAbsolutePosition(frame.id)
   return {
     position: 'absolute' as const,
-    left: `${frame.x}px`,
-    top: `${frame.y}px`,
+    left: `${abs.x}px`,
+    top: `${abs.y}px`,
     width: `${frame.width}px`,
     height: `${frame.height}px`,
     background: OVERLAY_COLOR.LAYOUT_GUIDE_RED,

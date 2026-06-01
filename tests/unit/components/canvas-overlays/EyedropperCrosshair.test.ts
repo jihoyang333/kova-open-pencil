@@ -15,11 +15,21 @@ describe('EyedropperCrosshair', () => {
     )
   })
 
-  it('shows the magnifier when the eyedropper is active', () => {
+  it('shows the magnifier and capture layer when the eyedropper is active', () => {
     const store = useEyedropperStore()
     store.activate(() => {})
-    expect(mount(EyedropperCrosshair).find('[data-test="eyedropper-magnifier"]').exists()).toBe(
-      true
-    )
+    const wrapper = mount(EyedropperCrosshair)
+    expect(wrapper.find('[data-test="eyedropper-magnifier"]').exists()).toBe(true)
+    // capture layer receives the pointer + click (audit C2 — sampling is wired)
+    expect(wrapper.find('[data-test="eyedropper-capture"]').exists()).toBe(true)
+  })
+
+  it('Escape cancels the active eyedropper', async () => {
+    const store = useEyedropperStore()
+    mount(EyedropperCrosshair)
+    store.activate(() => {})
+    await Promise.resolve()
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Escape' }))
+    expect(store.active).toBe(false)
   })
 })

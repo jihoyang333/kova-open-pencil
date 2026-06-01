@@ -21,4 +21,11 @@ describe('PixelGridOverlay', () => {
     store.state.zoom = 9
     expect(mount(PixelGridOverlay).find('[data-test="pixel-grid"]').exists()).toBe(true)
   })
+
+  // Audit H3: the Shift+' manual toggle must work at normal zoom (no double-gate).
+  it('is visible at normal zoom when manually toggled on', () => {
+    store.state.zoom = 1
+    store.state.overlays.pixelGrid = true
+    expect(mount(PixelGridOverlay).find('[data-test="pixel-grid"]').exists()).toBe(true)
+  })
 })

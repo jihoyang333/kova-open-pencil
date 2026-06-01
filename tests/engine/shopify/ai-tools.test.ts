@@ -42,23 +42,19 @@ const makeQuery = (): ChainableQuery => {
   return q
 }
 
+// Inject stub deps via createKovaTools(store, deps) instead of mock.module (audit item 10
+// — Bun's mock.module is process-global and irreversible, so module mocks here leaked
+// stubs of @open-pencil/core + figma-factory into later test files and poisoned the 07b
+// component tests). No global mocking → no leak.
+const stubDeps = {
+  db: { from: (_table: string) => makeQuery() },
+  makeFigma: (_store: unknown) => ({
+    getNodeById: (_id: string) => figmaMock.nodeResult,
+    createImage: (_bytes: Uint8Array) => ({ hash: 'img-hash-1' }),
+  }),
+} as unknown as Parameters<KovaToolsModule['createKovaTools']>[1]
+
 beforeAll(async () => {
-  mock.module('@/lib/supabase', () => ({
-    supabase: { from: (_table: string) => makeQuery() },
-    getSupabase: () => ({ from: (_table: string) => makeQuery() }),
-  }))
-
-  mock.module('@/automation/figma-factory', () => ({
-    makeFigmaFromStore: () => ({
-      getNodeById: (_id: string) => figmaMock.nodeResult,
-      createImage: (_bytes: Uint8Array) => ({ hash: 'img-hash-1' }),
-    }),
-  }))
-
-  mock.module('@open-pencil/core', () => ({
-    computeAllLayouts: () => {},
-  }))
-
   const mod = await import('../../../src/ai/kova-tools')
   createKovaTools = mod.createKovaTools
   searchProductsSchema = mod.searchProductsSchema
@@ -115,7 +111,7 @@ type AnyExecute = { execute: (args: Record<string, unknown>) => Promise<Record<s
 
 describe('shopify AI tools — brand-scoped Supabase queries + output shape', () => {
   it('search_products: queries brand_id from activeBrandId() and returns { products }', async () => {
-    const tools = createKovaTools({ activeBrandId: () => 'brand-abc' } as never)
+    const tools = createKovaTools({ activeBrandId: () => 'brand-abc' } as never, stubDeps)
     const result = await (tools as Record<string, AnyExecute>)['search_products'].execute({ query: 'tee' })
 
     expect(
@@ -127,7 +123,7 @@ describe('shopify AI tools — brand-scoped Supabase queries + output shape', ()
   })
 
   it('get_collection: queries brand_id from activeBrandId() and returns { collection, products }', async () => {
-    const tools = createKovaTools({ activeBrandId: () => 'brand-abc' } as never)
+    const tools = createKovaTools({ activeBrandId: () => 'brand-abc' } as never, stubDeps)
     const result = await (tools as Record<string, AnyExecute>)['get_collection'].execute({ collection_id: 'col-1' })
 
     expect(
@@ -139,7 +135,7 @@ describe('shopify AI tools — brand-scoped Supabase queries + output shape', ()
   })
 
   it('get_variant: queries brand_id from activeBrandId() and returns { variant }', async () => {
-    const tools = createKovaTools({ activeBrandId: () => 'brand-abc' } as never)
+    const tools = createKovaTools({ activeBrandId: () => 'brand-abc' } as never, stubDeps)
     const result = await (tools as Record<string, AnyExecute>)['get_variant'].execute({ variant_id: 'var-1' })
 
     expect(
@@ -150,7 +146,7 @@ describe('shopify AI tools — brand-scoped Supabase queries + output shape', ()
   })
 
   it('get_active_discounts: queries brand_id from activeBrandId() and returns { discounts }', async () => {
-    const tools = createKovaTools({ activeBrandId: () => 'brand-abc' } as never)
+    const tools = createKovaTools({ activeBrandId: () => 'brand-abc' } as never, stubDeps)
     const result = await (tools as Record<string, AnyExecute>)['get_active_discounts'].execute({})
 
     expect(
@@ -162,7 +158,7 @@ describe('shopify AI tools — brand-scoped Supabase queries + output shape', ()
   })
 
   it('get_shop_context: queries brand_id from activeBrandId() and returns { currency, timezone, topCollections }', async () => {
-    const tools = createKovaTools({ activeBrandId: () => 'brand-abc' } as never)
+    const tools = createKovaTools({ activeBrandId: () => 'brand-abc' } as never, stubDeps)
     const result = await (tools as Record<string, AnyExecute>)['get_shop_context'].execute({})
 
     expect(
@@ -191,7 +187,9 @@ describe('placeMediaImage — execute paths', () => {
 
   const makeStore = () => ({
     state: { currentPageId: 'page-1' },
-    graph: {},
+    // Minimal graph so the real computeAllLayouts (no longer mocked — see header) finds
+    // no page node and early-returns instead of throwing.
+    graph: { getNode: () => null, getChildren: () => [] },
     snapshotPage: () => ({ snap: true }),
     requestRender: () => {},
     pushUndoEntry: (_entry: unknown) => {},
@@ -200,7 +198,7 @@ describe('placeMediaImage — execute paths', () => {
   })
 
   it('returns error for non-Supabase image URL', async () => {
-    const tools = createKovaTools(makeStore() as never)
+    const tools = createKovaTools(makeStore() as never, stubDeps)
     const result = await (tools as Record<string, PlaceExecute>)['placeMediaImage'].execute({
       node_id: 'n1', image_url: 'https://evil.com/img.png',
     })
@@ -210,7 +208,7 @@ describe('placeMediaImage — execute paths', () => {
   it('returns error when node is not found in the scene graph', async () => {
     figmaMock.nodeResult = null
     globalThis.fetch = mock(() => Promise.resolve(new Response(new Uint8Array([1, 2, 3]).buffer, { status: 200 }))) as typeof fetch
-    const tools = createKovaTools(makeStore() as never)
+    const tools = createKovaTools(makeStore() as never, stubDeps)
     const result = await (tools as Record<string, PlaceExecute>)['placeMediaImage'].execute({
       node_id: 'missing-node', image_url: SUPABASE_IMG_URL,
     })
@@ -220,7 +218,7 @@ describe('placeMediaImage — execute paths', () => {
 
   it('returns error when fetch returns a non-ok status', async () => {
     globalThis.fetch = mock(() => Promise.resolve(new Response(null, { status: 503 }))) as typeof fetch
-    const tools = createKovaTools(makeStore() as never)
+    const tools = createKovaTools(makeStore() as never, stubDeps)
     const result = await (tools as Record<string, PlaceExecute>)['placeMediaImage'].execute({
       node_id: 'n1', image_url: SUPABASE_IMG_URL,
     })
@@ -230,7 +228,7 @@ describe('placeMediaImage — execute paths', () => {
 
   it('returns error when fetch throws a network error', async () => {
     globalThis.fetch = (() => Promise.reject(new Error('network down'))) as typeof fetch
-    const tools = createKovaTools(makeStore() as never)
+    const tools = createKovaTools(makeStore() as never, stubDeps)
     const result = await (tools as Record<string, PlaceExecute>)['placeMediaImage'].execute({
       node_id: 'n1', image_url: SUPABASE_IMG_URL,
     })
@@ -240,7 +238,7 @@ describe('placeMediaImage — execute paths', () => {
 
   it('happy path: places image fill and returns success', async () => {
     globalThis.fetch = mock(() => Promise.resolve(new Response(new Uint8Array([1, 2, 3]).buffer, { status: 200 }))) as typeof fetch
-    const tools = createKovaTools(makeStore() as never)
+    const tools = createKovaTools(makeStore() as never, stubDeps)
     const result = await (tools as Record<string, PlaceExecute>)['placeMediaImage'].execute({
       node_id: 'n1', image_url: SUPABASE_IMG_URL, scale_mode: 'FIT',
     })

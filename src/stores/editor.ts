@@ -204,7 +204,10 @@ export function createEditorStore() {
     overlays: {
       frameOutlines: true,
       maskOutlines: true,
-      pixelGrid: true,
+      // pixelGrid is the manual Shift+' override, not a master enable: off by
+      // default, auto-shown above 800% by PixelGridOverlay's separate zoom gate
+      // (audit H3 — visible = overlays.pixelGrid || zoom > THRESHOLD).
+      pixelGrid: false,
       layoutGuides: true, // Q24-locked default ON
       hoverContour: true,
       measurements: true,

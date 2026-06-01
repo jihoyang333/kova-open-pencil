@@ -8,7 +8,13 @@ import { OVERLAY_Z, OVERLAY_COLOR, PIXEL_GRID_ZOOM_THRESHOLD } from '@/constants
 
 const editor = useEditorStore()
 
-const visible = computed(() => editor.state.zoom > PIXEL_GRID_ZOOM_THRESHOLD)
+// Auto-show above 800% OR when the user toggled it on via Shift+' (PRD §12.7).
+// Single OR-gate — the parent no longer double-gates on overlays.pixelGrid, so the
+// manual toggle works at any zoom (audit H3). Figma shows the grid regardless of zoom
+// once toggled; auto-show is the separate zoom condition.
+const visible = computed(
+  () => editor.state.overlays.pixelGrid || editor.state.zoom > PIXEL_GRID_ZOOM_THRESHOLD
+)
 
 const gridStyle = computed(() => {
   const cell = editor.state.zoom

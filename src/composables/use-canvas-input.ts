@@ -11,6 +11,7 @@ import {
   DEFAULT_TEXT_HEIGHT
 } from '@/constants'
 import { computeSelectionBounds, computeSnap, degToRad } from '@open-pencil/core'
+import { measurementSides } from '@/composables/measurement-geometry'
 
 import type { EditorStore, Tool } from '@/stores/editor'
 import type { NodeType, Rect, SceneNode, Vector } from '@open-pencil/core'
@@ -96,7 +97,10 @@ const TOOL_TO_NODE: Partial<Record<Tool, NodeType>> = {
   LINE: 'LINE',
   POLYGON: 'POLYGON',
   STAR: 'STAR',
-  TEXT: 'TEXT'
+  TEXT: 'TEXT',
+  // 07b: the slice tool draws a region exactly like a rectangle (audit H2 — gives the
+  // user a way to create SLICE nodes so the "Export N slices" button can appear).
+  SLICE: 'SLICE'
 }
 
 const HANDLE_CURSORS: Record<HandlePosition, string> = {
@@ -281,6 +285,9 @@ export function useCanvasInput(
   let lastClickX = 0
   let lastClickY = 0
   let clickCount = 0
+  // 07b measurement tool: first click stores an anchor node; second click on a different
+  // node creates the node→node measurement (audit H2).
+  let pendingMeasureNodeId: string | null = null
   const MULTI_CLICK_DELAY = 500
   const MULTI_CLICK_RADIUS = 5
 
@@ -618,6 +625,11 @@ export function useCanvasInput(
       return
     }
 
+    if (tool === 'MEASUREMENT') {
+      handleMeasurementDown(cx, cy)
+      return
+    }
+
     const nodeType = TOOL_TO_NODE[tool]
     if (!nodeType) return
 
@@ -625,6 +637,43 @@ export function useCanvasInput(
     store.select([nodeId])
 
     drag.value = { type: 'draw', startX: cx, startY: cy, nodeId }
+  }
+
+  // 07b two-click node→node measurement (audit H2). First click anchors a node; second
+  // click on a distinct node creates the measurement, with sides derived from geometry so
+  // the engine's same-axis pair constraint always holds. Empty click resets.
+  function handleMeasurementDown(cx: number, cy: number): void {
+    const node = hitTestInScope(cx, cy, false)
+    if (!node) {
+      pendingMeasureNodeId = null
+      return
+    }
+    if (!pendingMeasureNodeId) {
+      pendingMeasureNodeId = node.id
+      return
+    }
+    if (node.id === pendingMeasureNodeId) return // need two distinct nodes
+    const a = store.graph.getNode(pendingMeasureNodeId)
+    if (a) {
+      const aAbs = store.graph.getAbsolutePosition(a.id)
+      const bAbs = store.graph.getAbsolutePosition(node.id)
+      const { startSide, endSide } = measurementSides(
+        { x: aAbs.x, y: aAbs.y, width: a.width, height: a.height },
+        { x: bAbs.x, y: bAbs.y, width: node.width, height: node.height }
+      )
+      try {
+        store.graph.addMeasurement(
+          store.state.currentPageId,
+          { nodeId: a.id, side: startSide },
+          { nodeId: node.id, side: endSide }
+        )
+        store.requestRender()
+      } catch {
+        // Engine rejected the pair (e.g. cross-axis) — drop and reset.
+        if (import.meta.env.DEV) console.warn('[measurement] pair rejected by engine')
+      }
+    }
+    pendingMeasureNodeId = null
   }
 
   function updateHoverCursor(e: MouseEvent) {

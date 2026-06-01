@@ -82,8 +82,11 @@ export function useCanvas(canvasRef: Ref<HTMLCanvasElement | null>, store: Edito
   function makeGLSurface(canvas: HTMLCanvasElement) {
     if (!ck) return null
     if (!glContext) {
-      const isTest = new URLSearchParams(window.location.search).has('test')
-      const glAttrs = isTest ? { preserveDrawingBuffer: 1 } : undefined
+      // preserveDrawingBuffer keeps the GL backbuffer readable after compositing so
+      // the canvas-only eyedropper (07b §12.9 / audit C2) can drawImage/getImageData
+      // the pixel under the cursor at any time. Modest cost (defeats one buffer-swap
+      // optimization); acceptable for a design surface and required for sampling.
+      const glAttrs = { preserveDrawingBuffer: 1 }
       const handle = ck.GetWebGLContext(canvas, glAttrs)
       if (!handle) return null
       glContext = ck.MakeGrContext(handle)

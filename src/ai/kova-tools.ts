@@ -2,8 +2,8 @@ import { valibotSchema } from '@ai-sdk/valibot'
 import { tool } from 'ai'
 import * as v from 'valibot'
 
-import { makeFigmaFromStore } from '@/automation/figma-factory'
-import { supabase } from '@/lib/supabase'
+import { makeFigmaFromStore as _makeFigmaFromStore } from '@/automation/figma-factory'
+import { supabase as _supabase } from '@/lib/supabase'
 import { useBrandMemoriesStore } from '@/stores/brand-memories'
 import { useBrandsStore } from '@/stores/brands'
 import { computeAllLayouts } from '@open-pencil/core'
@@ -56,7 +56,21 @@ export const getVariantSchema = v.object({ variant_id: v.string() })
 export const getActiveDiscountsSchema = v.object({})
 export const getShopContextSchema = v.object({})
 
-export function createKovaTools(store: StoreWithBrandId) {
+/**
+ * Optional dependency injection so tests can supply a stub Supabase client and figma
+ * factory WITHOUT a process-global mock.module (audit item 10 — module mocks leaked into
+ * later test files in Bun). Production passes nothing and gets the real modules.
+ */
+export interface KovaToolsDeps {
+  db?: typeof _supabase
+  makeFigma?: typeof _makeFigmaFromStore
+}
+
+export function createKovaTools(store: StoreWithBrandId, deps: KovaToolsDeps = {}) {
+  // Local bindings shadow the module imports; the tool closures below reference these.
+  const supabase = deps.db ?? _supabase
+  const makeFigmaFromStore = deps.makeFigma ?? _makeFigmaFromStore
+
   const activeBrandId = (): string =>
     store.activeBrandId?.() ?? useBrandsStore().selectedBrand?.id ?? ''
 

@@ -11,16 +11,23 @@ import { OVERLAY_Z, OVERLAY_COLOR } from '@/constants/overlays'
 
 const editor = useEditorStore()
 
+// Walk the whole page subtree (audit M1): nested frames must outline too, and at
+// their absolute canvas position — not the parent-local x/y, which mispositions
+// any frame that is not a direct page child.
 const frames = computed<SceneNode[]>(() => {
   void editor.state.sceneVersion // re-run when the scene changes
-  return editor.graph.getChildren(editor.state.currentPageId).filter((n) => n.type === 'FRAME')
+  return editor.graph
+    .flattenTree(editor.state.currentPageId)
+    .map((e) => e.node)
+    .filter((n) => n.type === 'FRAME')
 })
 
 function frameStyle(f: SceneNode) {
+  const abs = editor.graph.getAbsolutePosition(f.id)
   return {
     position: 'absolute' as const,
-    left: `${f.x}px`,
-    top: `${f.y}px`,
+    left: `${abs.x}px`,
+    top: `${abs.y}px`,
     width: `${f.width}px`,
     height: `${f.height}px`,
     border: `1px solid ${OVERLAY_COLOR.FRAME_OUTLINE}`,

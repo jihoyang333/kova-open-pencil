@@ -8,16 +8,23 @@ import { OVERLAY_Z, OVERLAY_COLOR } from '@/constants/overlays'
 
 const editor = useEditorStore()
 
+// Whole-subtree walk + absolute position (audit M1): masks are usually nested
+// inside frames/groups, so the top-level-only filter missed most of them and the
+// parent-local x/y mispositioned the corner glyph.
 const masks = computed<SceneNode[]>(() => {
   void editor.state.sceneVersion
-  return editor.graph.getChildren(editor.state.currentPageId).filter((n) => n.isMask)
+  return editor.graph
+    .flattenTree(editor.state.currentPageId)
+    .map((e) => e.node)
+    .filter((n) => n.isMask)
 })
 
 function maskStyle(m: SceneNode) {
+  const abs = editor.graph.getAbsolutePosition(m.id)
   return {
     position: 'absolute' as const,
-    left: `${m.x}px`,
-    top: `${m.y}px`,
+    left: `${abs.x}px`,
+    top: `${abs.y}px`,
     width: `${m.width}px`,
     height: `${m.height}px`,
     border: `1.5px solid ${OVERLAY_COLOR.MASK_GREEN}`,
@@ -28,10 +35,11 @@ function maskStyle(m: SceneNode) {
 }
 
 function glyphStyle(m: SceneNode) {
+  const abs = editor.graph.getAbsolutePosition(m.id)
   return {
     position: 'absolute' as const,
-    left: `${m.x + m.width - 14}px`,
-    top: `${m.y - 14}px`,
+    left: `${abs.x + m.width - 14}px`,
+    top: `${abs.y - 14}px`,
     width: '14px',
     height: '14px',
     background: OVERLAY_COLOR.MASK_GLYPH_BG,
