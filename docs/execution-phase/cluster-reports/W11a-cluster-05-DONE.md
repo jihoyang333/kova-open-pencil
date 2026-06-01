@@ -115,3 +115,40 @@ pass / 0 fail (baseline was 1982 — zero regressions). test:dupes 1.25% (<3%).*
 ---
 
 **W11a CLUSTER 05 DONE. 13 commits on app/cluster-05-brand-kit.**
+
+---
+
+## W11a Audit-Fix update — 2026-05-31 (+5 commits, 18 total)
+
+The W11a audit was run as an **audit-AND-fix** pass. Every open finding above is now
+closed; full report at
+`docs/execution-phase/wave-audits/reports/W11a-cluster-05-AUDIT-REPORT.md`.
+
+**Gates now (re-run):**
+| Gate | Status |
+|---|---|
+| `bun run test:unit` | ✅ 2139 pass / 0 fail (+18; was 2121) |
+| `bun run test:dupes` | ✅ 1.24% / 1.58% (<3%) |
+| **DB integration suite** | ✅ **31 pass / 0 fail** — ran against a local Supabase (Docker up); the c05 migration applied via `psql` to bypass a pre-existing repo-wide migration-version-prefix collision |
+| Migration on real Postgres | ✅ both files COMMIT clean |
+| Render smoke (`/dev/cluster-05`) | ✅ all primitives render at 1440px |
+| code-reviewer (fix delta) | ✅ no CRITICAL/HIGH/MEDIUM; 2 LOW (1 fixed, 1 tracked) |
+
+**Open findings — resolved:**
+- **HIGH-1** inline styles → ✅ converted to canonical `kova-hifi.css` classes (zero new tokens).
+- **MED-2/3/4, LOW-1** → ✅ fixed (server mime; realtime publication + dead-broadcast removal; idempotency-before-rate-limit; KovaIcon).
+- **LOW-3 / Task-6** color + logo handlers → ✅ **built**: `updateBrandColor` (4-slot edit/add via `useBrandsStore.updateBrand`, no new RPC) + `useLogoUpload` (primary mark → `brand-logos` bucket). Wordmark + arbitrary-add stay Cluster-03-schema Phase-2.
+- **15 `define-props-destructuring`** → ✅ destructured across 16 components.
+- **PRD §4.1** → ✅ patched with all SQL fixes (amendment block) incl. the UNIQUE-index fix.
+
+**NEW finding caught + fixed this pass (first-ever integration run):**
+- 🔴 **CRITICAL** — `idx_voice_drafts_brand_unconfirmed` was non-unique; the
+  single-open-draft invariant was unenforced. Now `CREATE UNIQUE INDEX` + dedupe pre-step.
+- Two never-run integration tests were broken (called a non-existent `public.sql` RPC;
+  used a hardcoded unseeded brand_id) → repaired to assert real behavior.
+
+**Still genuinely cross-cluster (handoff, not undone):** drag-to-canvas E2E (c06 receiver,
+actively wiring); color-ADD-beyond-4-slots + wordmark (c03 schema); logo server-side MIME
+sniff (post-MVP, LOW-1); pixel visual-diff vs mockups (founder browser gate).
+
+**W11a AUDIT-FIX COMPLETE — verdict PASS.**
