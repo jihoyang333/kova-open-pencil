@@ -99,7 +99,7 @@ const ruleToggle = ref(false)
         <h2 class="mt-0 mb-4 text-[15px] font-semibold text-[var(--ink)]">
           Color swatches (.sw-list / .sw-item / .sw-add)
         </h2>
-        <div class="sw-list" style="max-width: 560px">
+        <div class="sw-list bk-mw-560">
           <BrandColorSwatch
             v-for="c in SAMPLE_COLORS"
             :key="c.id"
@@ -115,9 +115,9 @@ const ruleToggle = ref(false)
         <h2 class="mt-0 mb-4 text-[15px] font-semibold text-[var(--ink)]">
           Font row (.font-row) + upload dropzone
         </h2>
-        <div style="max-width: 560px">
+        <div class="bk-mw-560">
           <BrandFontRow :font="SAMPLE_FONT" />
-          <div style="margin-top: 12px">
+          <div class="bk-mt-12">
             <FontUploadDropzone brand-id="b1" @upload="() => {}" />
           </div>
         </div>
@@ -128,9 +128,9 @@ const ruleToggle = ref(false)
         <h2 class="mt-0 mb-4 text-[15px] font-semibold text-[var(--ink)]">
           Logo row (.font-row logo variant)
         </h2>
-        <div style="max-width: 560px">
+        <div class="bk-mw-560">
           <BrandLogoRow kind="logo" label="Primary mark" :url="null" @upload="() => {}" />
-          <BrandLogoRow kind="wordmark" label="Wordmark" :url="null" style="margin-top: 8px" @upload="() => {}" />
+          <BrandLogoRow kind="wordmark" label="Wordmark" :url="null" class="bk-mt-8" @upload="() => {}" />
         </div>
       </section>
 
@@ -139,7 +139,7 @@ const ruleToggle = ref(false)
         <h2 class="mt-0 mb-4 text-[15px] font-semibold text-[var(--ink)]">
           Identity card (.nar-card) — empty + filled
         </h2>
-        <div style="max-width: 620px">
+        <div class="bk-mw-620">
           <IdentityCard card-key="about" :card="undefined" @save="() => {}" />
           <IdentityCard
             card-key="voice"
@@ -154,7 +154,7 @@ const ruleToggle = ref(false)
         <h2 class="mt-0 mb-4 text-[15px] font-semibold text-[var(--ink)]">
           List rows (.list-stack / .list-row)
         </h2>
-        <div class="list-stack" style="max-width: 720px">
+        <div class="list-stack bk-mw-720">
           <BrandKitListRow
             row-id="r1"
             label="Welcome opener"
@@ -184,7 +184,7 @@ const ruleToggle = ref(false)
         <h2 class="mt-0 mb-4 text-[15px] font-semibold text-[var(--ink)]">
           Writing rule toggle (.wr-row)
         </h2>
-        <div class="list-stack wr-stack" style="max-width: 480px">
+        <div class="list-stack wr-stack bk-mw-480">
           <WritingRuleToggle
             rule-key="no_exclamation"
             label="No exclamation marks"
@@ -207,7 +207,7 @@ const ruleToggle = ref(false)
         <h2 class="mt-0 mb-4 text-[15px] font-semibold text-[var(--ink)]">
           Memory row (.mem-row)
         </h2>
-        <div class="list-stack" style="max-width: 600px">
+        <div class="list-stack bk-mw-600">
           <MemoryRow :memory="SAMPLE_MEMORY" @delete="() => {}" />
         </div>
       </section>
@@ -217,7 +217,7 @@ const ruleToggle = ref(false)
         <h2 class="mt-0 mb-4 text-[15px] font-semibold text-[var(--ink)]">
           KB source row (.upl-list-row) — all 4 states
         </h2>
-        <div class="upl-list" style="max-width: 600px">
+        <div class="upl-list bk-mw-600">
           <KbSourceRow :source="SAMPLE_KB_SOURCE" state="success" @delete="() => {}" @retry="() => {}" />
           <KbSourceRow :source="SAMPLE_KB_SOURCE" state="in-progress" :progress="45" @delete="() => {}" @retry="() => {}" />
           <KbSourceRow :source="SAMPLE_KB_SOURCE" state="error" @delete="() => {}" @retry="() => {}" />
@@ -230,7 +230,7 @@ const ruleToggle = ref(false)
         <h2 class="mt-0 mb-4 text-[15px] font-semibold text-[var(--ink)]">
           KB source dropzone (.upl-zone)
         </h2>
-        <div style="max-width: 480px">
+        <div class="bk-mw-480">
           <KbSourceDropzone @upload="() => {}" />
         </div>
       </section>
@@ -240,7 +240,7 @@ const ruleToggle = ref(false)
         <h2 class="mt-0 mb-4 text-[15px] font-semibold text-[var(--ink)]">
           Modals (B3.1 / B3.3 / VoiceDraftConfirm)
         </h2>
-        <div style="display: flex; gap: 10px; flex-wrap: wrap">
+        <div class="bk-row-wrap">
           <button type="button" class="btn sm" @click="showToneSnippetAdd = true">
             Open ToneSnippetAddModal (B3.1)
           </button>

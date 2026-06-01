@@ -93,7 +93,7 @@ function triggerPicker(): void {
       </div>
       <div v-if="!compact" class="types">{{ ALLOWED_EXTS.join(', ') }} · max 10 MB</div>
     </div>
-    <div v-if="validationError" role="alert" style="margin-top: 6px; font-size: 12px; color: var(--warn)">
+    <div v-if="validationError" role="alert" class="bk-err">
       {{ validationError }}
     </div>
   </div>

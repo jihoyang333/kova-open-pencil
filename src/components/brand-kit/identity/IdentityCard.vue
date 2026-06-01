@@ -71,12 +71,11 @@ function formatDate(iso: string): string {
     <div v-if="isEditing">
       <textarea
         v-model="draft"
-        class="input"
+        class="input bk-textarea"
         rows="5"
-        style="width: 100%; resize: vertical; font: inherit; font-size: 13px"
         :aria-label="`Edit ${label}`"
       />
-      <div style="display: flex; gap: 8px; margin-top: 10px; justify-content: flex-end">
+      <div class="bk-row-end">
         <KovaButton variant="ghost" size="sm" :disabled="saving" @click="cancelEdit">
           Discard
         </KovaButton>

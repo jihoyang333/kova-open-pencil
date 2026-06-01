@@ -108,49 +108,45 @@ function onClose(): void {
     :close-on-backdrop="false"
     @update:open="(v) => { if (!v) onClose() }"
   >
-    <div style="display: flex; flex-direction: column; gap: 18px">
+    <div class="bk-form-col--wide">
       <!-- Voice description -->
       <div class="fld">
         <label for="vd-voice">Voice description</label>
         <textarea
           id="vd-voice"
           v-model="voiceContent"
-          class="input"
+          class="input bk-textarea"
           rows="4"
-          style="width: 100%; resize: vertical; font: inherit; font-size: 13px"
           aria-label="Voice description"
         />
       </div>
 
       <!-- Tone snippet candidates -->
       <div v-if="snippets.length > 0">
-        <div style="font-size: 12.5px; color: var(--ink-2); margin-bottom: 8px; font-weight: 500">
+        <div class="bk-subhead">
           Tone snippet candidates ({{ snippets.length }})
         </div>
         <div
           v-for="(snip, idx) in snippets"
           :key="idx"
-          style="border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; margin-bottom: 6px; background: var(--page)"
+          class="bk-snip-card"
         >
-          <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px">
+          <div class="bk-snip-row">
             <input
               v-model="snip.label"
-              class="input"
-              style="flex: 1; font-size: 12.5px; padding: 4px 8px"
+              class="input bk-snip-label-input"
               :aria-label="`Snippet ${idx + 1} label`"
               placeholder="Label"
             />
             <input
               v-model="snip.category"
-              class="input"
-              style="width: 100px; font-size: 12px; padding: 4px 8px"
+              class="input bk-snip-cat-input"
               :aria-label="`Snippet ${idx + 1} category`"
               placeholder="Category"
             />
             <button
               type="button"
-              class="btn ghost sm"
-              style="padding: 4px 6px"
+              class="btn ghost sm bk-snip-remove"
               :aria-label="`Remove snippet ${idx + 1}`"
               @click="removeSnippet(idx)"
             >
@@ -159,18 +155,17 @@ function onClose(): void {
           </div>
           <textarea
             v-model="snip.content"
-            class="input"
+            class="input bk-snip-content"
             rows="2"
-            style="width: 100%; font-size: 12px; resize: vertical"
             :aria-label="`Snippet ${idx + 1} content`"
           />
         </div>
       </div>
 
       <!-- Privacy disclosure -->
-      <p style="font-size: 11.5px; color: var(--ink-3); line-height: 1.5; margin: 0">
+      <p class="bk-privacy-note">
         Storefront content was analyzed via Anthropic (Claude).
-        See <a href="/privacy" style="color: var(--accent)">privacy policy</a>
+        See <a href="/privacy" class="bk-link">privacy policy</a>
         for our sub-processor disclosure.
       </p>
     </div>

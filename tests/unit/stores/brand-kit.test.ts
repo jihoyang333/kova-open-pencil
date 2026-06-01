@@ -151,4 +151,43 @@ describe('useBrandKitStore', () => {
     const store = useBrandKitStore()
     await expect(store.addToneSnippet('a', 'b', 'c')).rejects.toThrow('no_selected_brand')
   })
+
+  // --- color edit / add (Task 6 overbuild) ---
+
+  test('nextEmptyColorSlot returns the first unset slot', () => {
+    seedBrand() // accent is ''
+    const store = useBrandKitStore()
+    expect(store.nextEmptyColorSlot).toBe('accent')
+  })
+
+  test('nextEmptyColorSlot is null when all four slots are filled', () => {
+    const brands = useBrandsStore()
+    brands.brands = [
+      { ...structuredClone(baseBrand), colors: { primary: '#1', secondary: '#2', accent: '#3', background: '#4' } },
+    ] as never
+    brands.selectBrand('b1')
+    const store = useBrandKitStore()
+    expect(store.nextEmptyColorSlot).toBeNull()
+  })
+
+  test('updateBrandColor optimistically sets the slot via brands.updateBrand', async () => {
+    seedBrand()
+    const brands = useBrandsStore()
+    const updateMock = mock(() => Promise.resolve())
+    brands.updateBrand = updateMock as never
+    const store = useBrandKitStore()
+    await store.updateBrandColor('accent', '#0f0')
+    expect(updateMock).toHaveBeenCalledWith('b1', { colors: { primary: '#111', secondary: '#222', accent: '#0f0', background: '#fff' } })
+    expect(store.brandColors.find((c) => c.id === 'accent')?.hex).toBe('#0f0')
+  })
+
+  test('updateBrandColor rolls back when the write fails', async () => {
+    seedBrand()
+    const brands = useBrandsStore()
+    brands.updateBrand = mock(() => Promise.reject(new Error('forbidden'))) as never
+    const store = useBrandKitStore()
+    await expect(store.updateBrandColor('accent', '#0f0')).rejects.toThrow('forbidden')
+    // accent reverts to empty → not present in derived brandColors
+    expect(store.brandColors.find((c) => c.id === 'accent')).toBeUndefined()
+  })
 })

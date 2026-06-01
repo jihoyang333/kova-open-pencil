@@ -35,7 +35,7 @@ function onDragStart(event: DragEvent): void {
     <div class="lbl-col">
       {{ label }}
       <span v-if="category" class="tag-mono">{{ category }}</span>
-      <span v-if="typeBadge" class="tag-mono" style="margin-left: 4px">{{ typeBadge }}</span>
+      <span v-if="typeBadge" class="tag-mono bk-ml-4">{{ typeBadge }}</span>
     </div>
 
     <div class="content-col">{{ contentExcerpt }}</div>

@@ -116,15 +116,15 @@ function doUpload(): void {
       <div class="types">{{ ALLOWED_EXTS.join(', ') }} · max 5 MB</div>
     </div>
 
-    <div v-if="validationError" class="err-inline" role="alert" style="margin-top: 6px; font-size: 12px; color: var(--warn)">
+    <div v-if="validationError" class="bk-err" role="alert">
       {{ validationError }}
     </div>
 
-    <div v-if="props.error" class="err-inline" role="alert" style="margin-top: 6px; font-size: 12px; color: var(--warn)">
+    <div v-if="props.error" class="bk-err" role="alert">
       {{ props.error }}
     </div>
 
-    <div v-if="progress !== undefined" class="upl-bar-panel" style="margin-top: 8px">
+    <div v-if="progress !== undefined" class="upl-bar-panel bk-mt-8">
       <div class="row1">
         <div class="file-glyph">
           <KovaIcon name="file-text" size="sm" aria-hidden="true" />
@@ -139,8 +139,8 @@ function doUpload(): void {
       </div>
     </div>
 
-    <div v-else-if="pendingFile" style="margin-top: 10px">
-      <label class="checkbox-row" style="margin-bottom: 10px">
+    <div v-else-if="pendingFile" class="bk-mt-10">
+      <label class="checkbox-row bk-mb-10">
         <input
           v-model="licenseChecked"
           type="checkbox"

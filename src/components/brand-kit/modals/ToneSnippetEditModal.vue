@@ -61,7 +61,7 @@ function onDelete(): void {
     size="md"
     @update:open="(v) => { if (!v) onClose() }"
   >
-    <div style="display: flex; flex-direction: column; gap: 14px">
+    <div class="bk-form-col">
       <KovaField
         v-model="label"
         label="Label"
@@ -78,9 +78,8 @@ function onDelete(): void {
         <textarea
           id="ts-edit-content"
           v-model="content"
-          class="input"
+          class="input bk-textarea"
           rows="5"
-          style="width: 100%; resize: vertical; font: inherit; font-size: 13px"
         />
       </div>
     </div>
@@ -88,8 +87,7 @@ function onDelete(): void {
     <template #foot-left>
       <button
         type="button"
-        class="btn ghost sm"
-        style="color: var(--warn)"
+        class="btn ghost sm bk-warn"
         :disabled="saving"
         @click="onDelete"
       >

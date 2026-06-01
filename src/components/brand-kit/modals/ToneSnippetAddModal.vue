@@ -49,7 +49,7 @@ function onSave(): void {
     size="md"
     @update:open="(v) => { if (!v) onClose() }"
   >
-    <div style="display: flex; flex-direction: column; gap: 14px">
+    <div class="bk-form-col">
       <KovaField
         v-model="label"
         label="Label"
@@ -66,10 +66,9 @@ function onSave(): void {
         <textarea
           id="ts-add-content"
           v-model="content"
-          class="input"
+          class="input bk-textarea"
           rows="5"
           placeholder="Paste an example snippet of brand copy…"
-          style="width: 100%; resize: vertical; font: inherit; font-size: 13px"
         />
       </div>
     </div>

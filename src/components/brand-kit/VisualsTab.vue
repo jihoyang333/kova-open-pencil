@@ -6,6 +6,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 
 import EmptyState from '@/components/ui/EmptyState.vue'
 import KovaSkeleton from '@/components/ui/KovaSkeleton.vue'
+import BrandColorEditModal from './modals/BrandColorEditModal.vue'
 import BrandColorAddTile from './visuals/BrandColorAddTile.vue'
 import BrandColorSwatch from './visuals/BrandColorSwatch.vue'
 import BrandFontRow from './visuals/BrandFontRow.vue'
@@ -14,11 +15,14 @@ import FontUploadDropzone from './visuals/FontUploadDropzone.vue'
 import { useBrandKitStore } from '@/stores/brand-kit'
 import { useBrandFontsStore } from '@/stores/brand-fonts'
 import { useFontUpload } from '@/composables/brand-kit/use-font-upload'
+import { useLogoUpload } from '@/composables/brand-kit/use-logo-upload'
+import { toast } from '@/composables/use-toast'
 import type { BrandColor } from '@/types/brand-kit'
 
 const brandKitStore = useBrandKitStore()
 const fontsStore = useBrandFontsStore()
 const fontUpload = useFontUpload()
+const logoUpload = useLogoUpload()
 
 // Dropzone expects progress 0–100; useFontUpload exposes 0–1 (code-review MEDIUM-1).
 const fontUploadProgress = computed(() =>
@@ -70,8 +74,72 @@ async function onFontDelete(fontId: string): Promise<void> {
   }
 }
 
-function onColorEdit(_color: BrandColor): void {
-  // TODO: color picker popover — deferred to next sub-task
+// --- color edit / add (fixed 4-slot model) ---
+
+const colorModalOpen = ref(false)
+const colorModalMode = ref<'edit' | 'add'>('edit')
+const editingSlotKey = ref<string>('primary')
+const editingSlotLabel = ref<string>('Primary')
+const editingHex = ref<string>('')
+const colorSaving = ref(false)
+
+function onColorEdit(color: BrandColor): void {
+  colorModalMode.value = 'edit'
+  editingSlotKey.value = color.id
+  editingSlotLabel.value = color.label
+  editingHex.value = color.hex
+  colorModalOpen.value = true
+}
+
+function onColorAdd(): void {
+  const slot = brandKitStore.nextEmptyColorSlot
+  if (!slot) return
+  const meta = brandKitStore.colorSlots.find((s) => s.key === slot)
+  colorModalMode.value = 'add'
+  editingSlotKey.value = slot
+  editingSlotLabel.value = meta?.label ?? slot
+  editingHex.value = ''
+  colorModalOpen.value = true
+}
+
+async function onColorSave(hex: string): Promise<void> {
+  colorSaving.value = true
+  try {
+    await brandKitStore.updateBrandColor(
+      editingSlotKey.value as Parameters<typeof brandKitStore.updateBrandColor>[0],
+      hex,
+    )
+    colorModalOpen.value = false
+  } catch (e) {
+    toast.show(e instanceof Error ? e.message : 'Failed to save color', 'error')
+  } finally {
+    colorSaving.value = false
+  }
+}
+
+// --- logo upload (primary mark only; wordmark needs a Cluster 03 column) ---
+
+const logoFileInput = ref<HTMLInputElement | null>(null)
+
+function onLogoUpload(kind: 'logo' | 'wordmark'): void {
+  if (kind === 'wordmark') {
+    toast.show('Wordmark upload is coming soon.')
+    return
+  }
+  logoFileInput.value?.click()
+}
+
+async function onLogoFileChange(event: Event): Promise<void> {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = '' // allow re-selecting the same file
+  if (!file || !brandId.value) return
+  try {
+    await logoUpload.upload(brandId.value, file)
+    toast.show('Logo updated.')
+  } catch {
+    toast.show(logoUpload.error.value ?? 'Logo upload failed', 'error')
+  }
 }
 </script>
 
@@ -95,9 +163,7 @@ function onColorEdit(_color: BrandColor): void {
     <template v-else>
       <!-- Brand colors -->
       <section aria-label="Brand colors">
-        <div style="font-size: 12px; font-weight: 600; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px">
-          Colors
-        </div>
+        <div class="bk-section-label">Colors</div>
         <div class="sw-list">
           <BrandColorSwatch
             v-for="color in brandKitStore.brandColors"
@@ -105,7 +171,10 @@ function onColorEdit(_color: BrandColor): void {
             :color="color"
             @edit="onColorEdit"
           />
-          <BrandColorAddTile @open="() => {}" />
+          <BrandColorAddTile
+            v-if="brandKitStore.nextEmptyColorSlot"
+            @open="onColorAdd"
+          />
         </div>
         <EmptyState
           v-if="brandKitStore.brandColors.length === 0"
@@ -118,16 +187,14 @@ function onColorEdit(_color: BrandColor): void {
 
       <!-- Brand fonts -->
       <section aria-label="Brand fonts">
-        <div style="font-size: 12px; font-weight: 600; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px">
-          Fonts
-        </div>
+        <div class="bk-section-label">Fonts</div>
         <BrandFontRow
           v-for="font in fonts"
           :key="font.id"
           :font="font"
           @delete="onFontDelete"
         />
-        <div style="margin-top: 8px">
+        <div class="bk-mt-8">
           <FontUploadDropzone
             :brand-id="brandId ?? ''"
             :progress="fontUploadProgress"
@@ -139,23 +206,39 @@ function onColorEdit(_color: BrandColor): void {
 
       <!-- Logo -->
       <section aria-label="Brand logo">
-        <div style="font-size: 12px; font-weight: 600; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px">
-          Logo
-        </div>
+        <div class="bk-section-label">Logo</div>
         <BrandLogoRow
           kind="logo"
           label="Primary mark"
           :url="brandKitStore.brandLogoUrl"
-          @upload="() => {}"
+          @upload="() => onLogoUpload('logo')"
         />
         <BrandLogoRow
           kind="wordmark"
           label="Wordmark"
           :url="null"
-          style="margin-top: 8px"
-          @upload="() => {}"
+          class="bk-mt-8"
+          @upload="() => onLogoUpload('wordmark')"
+        />
+        <input
+          ref="logoFileInput"
+          type="file"
+          accept="image/png,image/jpeg,image/svg+xml,image/webp"
+          class="bk-visually-hidden"
+          aria-hidden="true"
+          tabindex="-1"
+          @change="onLogoFileChange"
         />
       </section>
+
+      <BrandColorEditModal
+        v-model:open="colorModalOpen"
+        :slot-label="editingSlotLabel"
+        :initial-hex="editingHex"
+        :mode="colorModalMode"
+        :saving="colorSaving"
+        @save="onColorSave"
+      />
     </template>
   </div>
 </template>

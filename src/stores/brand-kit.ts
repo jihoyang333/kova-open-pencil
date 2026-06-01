@@ -24,12 +24,21 @@ import type { Brand } from '@/types/kova/database'
  * actions that roll back on RPC error (per PRD §6.2).
  */
 
-const COLOR_SLOTS: ReadonlyArray<{ key: keyof NonNullable<Brand['colors']>; label: string }> = [
+type ColorSlotKey = keyof NonNullable<Brand['colors']>
+
+const COLOR_SLOTS: ReadonlyArray<{ key: ColorSlotKey; label: string }> = [
   { key: 'primary', label: 'Primary' },
   { key: 'secondary', label: 'Secondary' },
   { key: 'accent', label: 'Accent' },
   { key: 'background', label: 'Background' },
 ]
+
+const EMPTY_COLORS: NonNullable<Brand['colors']> = {
+  primary: '',
+  secondary: '',
+  accent: '',
+  background: '',
+}
 
 export const useBrandKitStore = defineStore('brand-kit', () => {
   const brandsStore = useBrandsStore()
@@ -60,6 +69,19 @@ export const useBrandKitStore = defineStore('brand-kit', () => {
   })
 
   const brandLogoUrl = computed<string | null>(() => brandsStore.selectedBrand?.logo_url ?? null)
+
+  // First color slot still empty, or null when all 4 are filled (the schema is
+  // a fixed 4-slot object, not an append list — palette/append is Phase 2 per
+  // PRD §10). Drives whether the "+ Add color" tile shows.
+  const nextEmptyColorSlot = computed<ColorSlotKey | null>(() => {
+    const colors = brandsStore.selectedBrand?.colors
+    for (const { key } of COLOR_SLOTS) {
+      if (!colors || !colors[key]) return key
+    }
+    return null
+  })
+
+  const colorSlots = COLOR_SLOTS
 
   // --- internal: immutable optimistic patch of the selected brand row ---
 
@@ -259,6 +281,23 @@ export const useBrandKitStore = defineStore('brand-kit', () => {
     await brandsStore.fetchBrands()
   }
 
+  // --- brand colors (fixed 4-slot object on brands.colors) ---
+  // Colors + logo live on the brand row, so the write goes through Cluster 03's
+  // `useBrandsStore.updateBrand` (same path onboarding/Shopify-merge use) — no
+  // dedicated RPC. Optimistic patch + rollback to match the other actions.
+  async function updateBrandColor(slot: ColorSlotKey, hex: string): Promise<void> {
+    const id = requireBrandId()
+    const current = brandsStore.selectedBrand?.colors ?? EMPTY_COLORS
+    const nextColors = { ...current, [slot]: hex }
+    const previous = patchSelected({ colors: nextColors })
+    try {
+      await brandsStore.updateBrand(id, { colors: nextColors })
+    } catch (e) {
+      rollback(previous)
+      throw e
+    }
+  }
+
   return {
     brandId,
     toneSnippets,
@@ -267,6 +306,9 @@ export const useBrandKitStore = defineStore('brand-kit', () => {
     identity,
     brandColors,
     brandLogoUrl,
+    nextEmptyColorSlot,
+    colorSlots,
+    updateBrandColor,
     addToneSnippet,
     updateToneSnippet,
     deleteToneSnippet,

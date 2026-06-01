@@ -33,24 +33,24 @@ function onDragStart(event: DragEvent): void {
     :draggable="!!url && !!assetId"
     @dragstart="onDragStart"
   >
-    <div style="display: flex; align-items: center; gap: 12px">
+    <div class="bk-logo-main">
       <div
         v-if="url"
-        style="width: 48px; height: 48px; border-radius: 6px; border: 1px solid var(--line); overflow: hidden; background: var(--fill); flex-shrink: 0"
+        class="bk-logo-thumb"
       >
-        <img :src="url" :alt="label" style="width: 100%; height: 100%; object-fit: contain" />
+        <img :src="url" :alt="label" class="bk-logo-img" />
       </div>
       <div
         v-else
-        style="width: 48px; height: 48px; border-radius: 6px; border: 1px solid var(--line); display: grid; place-items: center; background: var(--fill); flex-shrink: 0"
+        class="bk-logo-thumb bk-logo-thumb--empty"
       >
         <KovaIcon name="image" size="md" aria-hidden="true" />
       </div>
       <div>
-        <div class="preview" style="font-size: 13px">{{ label }}</div>
+        <div class="preview bk-logo-name">{{ label }}</div>
         <div class="meta">
           <span v-if="url">Uploaded</span>
-          <span v-else style="color: var(--ink-3)">Not uploaded</span>
+          <span v-else class="bk-muted">Not uploaded</span>
         </div>
       </div>
     </div>

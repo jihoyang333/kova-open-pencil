@@ -41,9 +41,9 @@ function formatBytes(bytes: number): string {
         <span>{{ formatBytes(font.file_size_bytes) }}</span>
         <span v-if="font.license_attested" class="mono">License attested</span>
       </div>
-      <div v-if="error" class="meta" style="color: var(--warn)">{{ error }}</div>
+      <div v-if="error" class="meta bk-warn">{{ error }}</div>
     </div>
-    <div v-if="progress !== undefined" class="upl-bar-track" style="width: 120px">
+    <div v-if="progress !== undefined" class="upl-bar-track bk-w-120">
       <div class="upl-bar-fill" :style="{ width: `${progress}%` }" />
     </div>
     <KovaButton
