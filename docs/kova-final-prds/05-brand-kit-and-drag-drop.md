@@ -228,6 +228,43 @@ Tokens referenced: `--page`, `--ink`, `--ink-3`, `--line`, `--line-2`, `--accent
 
 Single migration file: `kova-open-pencil-1/supabase/migrations/20260615_05_brand_kit.sql`.
 
+> **§4.1 SQL amendment — 2026-05-31 (W11a build + audit).** The SQL listing
+> below is the original spec draft and carried bugs that `database-reviewer`
+> caught during the Cluster 05 build. **The shipped migration file is canonical**
+> — it diverges from this listing by the following fixes (all green against the
+> search-path-lock test + the integration suite):
+>
+> - **C-1 (race):** `confirm_voice_draft` / `discard_voice_draft` now `SELECT … FOR UPDATE`
+>   on the draft row so two concurrent confirms can't both pass the unresolved
+>   guard and double-append.
+> - **C-2 (cap bypass):** the confirm path enforces the 50-snippet cap — it reads
+>   `jsonb_array_length(tone_snippets) FOR UPDATE` on the brands row and appends
+>   only `GREATEST(50 - existing, 0)` snippets.
+> - **C-3 (silent drop):** `reorder_tone_snippets` / `reorder_saved_blocks` require
+>   `p_ordered_ids` to be a **full permutation** (`array_length <> jsonb_array_length`
+>   ⇒ `RAISE EXCEPTION 'invalid_reorder'`), else a partial list silently drops items.
+> - **C-4 (array corruption):** the same reorder RPCs reject an unknown id — an
+>   id with no matching element yields `NULL`, and `jsonb || NULL` nukes the whole
+>   array. Each element is selected `INTO v_elem` with a `NULL` guard.
+> - **H-4 (runtime crash):** `confirm_voice_draft` replaced the illegal
+>   `row_number() OVER ()` inside `jsonb_agg(...)` with
+>   `jsonb_array_elements(...) WITH ORDINALITY` (window functions can't nest in an
+>   aggregate — the original would crash at runtime).
+> - **H-3 (off-by-one word count):** `word_count` is `0` for empty/whitespace
+>   content (`trim('')` splits to a length-1 array); `update_brand_identity` +
+>   confirm both use the `CASE WHEN trim(...) = '' THEN 0` form.
+> - **H-1 (re-run safety):** every policy is `DROP POLICY IF EXISTS` before
+>   `CREATE` (PostgreSQL has no `CREATE POLICY IF NOT EXISTS`).
+> - **H-2 / M-3 (defense-in-depth):** `FORCE ROW LEVEL SECURITY` on
+>   `brand_fonts` + `brand_kb_sources`; the absent UPDATE policy is deliberate
+>   (rows are immutable; replace = delete + re-upload).
+> - **M-1 (RLS perf):** all RLS/storage policies wrap `auth.uid()` as
+>   `(SELECT auth.uid())` so it evaluates once per statement, not once per row.
+> - **M-4 (index):** added non-partial `idx_voice_drafts_brand` for historical-draft SELECTs.
+> - **MED-3 (realtime):** appended `brand_fonts` to the `supabase_realtime`
+>   publication + `REPLICA IDENTITY FULL` so the client's `postgres_changes`
+>   subscription fires (the upload Edge Function emits no broadcast).
+
 ```sql
 -- ============================================================
 -- Migration 20260615_05_brand_kit.sql
