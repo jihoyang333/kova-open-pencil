@@ -20,12 +20,13 @@ const supabase = SHOULD_RUN
   : (null as never)
 
 d('20260615000001_09_canvas_snapshots migration', () => {
-  it('creates canvas_snapshots with all 14 columns', async () => {
+  it('creates canvas_snapshots with all base + claimed_at columns', async () => {
     const { data, error } = await supabase.rpc('pg_get_columns', { p_table: 'canvas_snapshots' })
     expect(error).toBeNull()
     const names = (data as Array<{ name: string }>).map((c) => c.name).sort()
+    // 14 base columns + claimed_at (added by Task 19b for cron-safe prune claiming).
     expect(names).toEqual([
-      'brand_id', 'canvas_id', 'description', 'format_version', 'id', 'kind',
+      'brand_id', 'canvas_id', 'claimed_at', 'description', 'format_version', 'id', 'kind',
       'label', 'parent_snapshot_id', 'retention_class', 'scene_blob_path',
       'scene_size_bytes', 'taken_at', 'thumbnail_path', 'user_id',
     ])
@@ -53,13 +54,23 @@ d('20260615000001_09_canvas_snapshots migration', () => {
 
   it('creates the 5 expected indexes', async () => {
     const { data } = await supabase.rpc('pg_get_indexes', { p_table: 'canvas_snapshots' })
-    const names = (data as Array<{ indexname: string }>).map((i) => i.indexname).sort()
-    expect(names).toEqual([
+    const names = (data as Array<{ indexname: string }>).map((i) => i.indexname)
+    // Base indexes from the canvas_snapshots migration (Task 19b adds a 6th prune-candidates index).
+    for (const expected of [
       'canvas_snapshots_pkey',
       'idx_canvas_snapshots_brand',
       'idx_canvas_snapshots_canvas_taken',
       'idx_canvas_snapshots_prune',
       'idx_canvas_snapshots_user_for_account_cascade',
-    ])
+    ]) {
+      expect(names).toContain(expected)
+    }
+  })
+
+  it('adds initial_state_blob_path column to canvases (W4 C-HIGH7)', async () => {
+    const { data, error } = await supabase.rpc('pg_get_columns', { p_table: 'canvases' })
+    expect(error).toBeNull()
+    const names = (data as Array<{ name: string }>).map((c) => c.name)
+    expect(names).toContain('initial_state_blob_path')
   })
 })
