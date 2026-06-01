@@ -5,19 +5,20 @@
 
 -- (3) Add user_id to compliance log for audit trail durability
 ALTER TABLE shopify_compliance_log
-  ADD COLUMN user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL;
+  ADD COLUMN IF NOT EXISTS user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL;
 
 -- (1)+(2) Drop and recreate all policies with (SELECT auth.uid())
-DROP POLICY "users_own_brand_shopify_products"            ON shopify_products;
-DROP POLICY "users_own_brand_shopify_variants"            ON shopify_variants;
-DROP POLICY "users_own_brand_shopify_variant_prices"      ON shopify_variant_prices;
-DROP POLICY "users_own_brand_shopify_media"               ON shopify_media;
-DROP POLICY "users_own_brand_shopify_metafields"          ON shopify_metafields;
-DROP POLICY "users_own_brand_shopify_collections"         ON shopify_collections;
-DROP POLICY "users_own_brand_shopify_collection_products" ON shopify_collection_products;
-DROP POLICY "users_own_brand_shopify_discounts"           ON shopify_discounts;
-DROP POLICY "users_own_brand_shopify_orders_agg"          ON shopify_orders_agg;
-DROP POLICY "users_own_brand_shopify_compliance_log"      ON shopify_compliance_log;
+DROP POLICY IF EXISTS "users_own_brand_shopify_products"            ON shopify_products;
+DROP POLICY IF EXISTS "users_own_brand_shopify_variants"            ON shopify_variants;
+DROP POLICY IF EXISTS "users_own_brand_shopify_variant_prices"      ON shopify_variant_prices;
+DROP POLICY IF EXISTS "users_own_brand_shopify_media"               ON shopify_media;
+DROP POLICY IF EXISTS "users_own_brand_shopify_metafields"          ON shopify_metafields;
+DROP POLICY IF EXISTS "users_own_brand_shopify_collections"         ON shopify_collections;
+DROP POLICY IF EXISTS "users_own_brand_shopify_collection_products" ON shopify_collection_products;
+DROP POLICY IF EXISTS "users_own_brand_shopify_discounts"           ON shopify_discounts;
+DROP POLICY IF EXISTS "users_own_brand_shopify_orders_agg"          ON shopify_orders_agg;
+DROP POLICY IF EXISTS "users_own_brand_shopify_compliance_log"        ON shopify_compliance_log;
+DROP POLICY IF EXISTS "users_own_brand_shopify_compliance_log_select" ON shopify_compliance_log;
 
 CREATE POLICY "users_own_brand_shopify_products" ON shopify_products
   FOR ALL USING (

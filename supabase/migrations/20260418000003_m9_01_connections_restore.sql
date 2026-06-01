@@ -2,7 +2,7 @@
 -- This migration re-applies the content of 20260418_m9_01_connections.sql
 -- on the correct project.
 
-CREATE TABLE shopify_connections (
+CREATE TABLE IF NOT EXISTS shopify_connections (
   id                     uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   brand_id               uuid NOT NULL UNIQUE REFERENCES brands(id) ON DELETE CASCADE,
   shop_domain            text NOT NULL,
@@ -19,7 +19,7 @@ CREATE TABLE shopify_connections (
   updated_at             timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE TABLE shopify_webhook_log (
+CREATE TABLE IF NOT EXISTS shopify_webhook_log (
   webhook_id   text PRIMARY KEY,
   brand_id     uuid REFERENCES brands(id) ON DELETE SET NULL,
   topic        text NOT NULL,
@@ -28,10 +28,10 @@ CREATE TABLE shopify_webhook_log (
   status       text NOT NULL DEFAULT 'received'
 );
 
-CREATE INDEX shopify_webhook_log_brand_received_idx
+CREATE INDEX IF NOT EXISTS shopify_webhook_log_brand_received_idx
   ON shopify_webhook_log (brand_id, received_at DESC);
 
-CREATE TABLE shopify_oauth_state (
+CREATE TABLE IF NOT EXISTS shopify_oauth_state (
   state       text PRIMARY KEY,
   user_id     uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   brand_id    uuid NOT NULL REFERENCES brands(id) ON DELETE CASCADE,
@@ -40,19 +40,22 @@ CREATE TABLE shopify_oauth_state (
   expires_at  timestamptz NOT NULL DEFAULT now() + interval '10 minutes'
 );
 
-CREATE INDEX shopify_oauth_state_expires_at_idx
+CREATE INDEX IF NOT EXISTS shopify_oauth_state_expires_at_idx
   ON shopify_oauth_state (expires_at);
 
 ALTER TABLE shopify_connections   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE shopify_webhook_log   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE shopify_oauth_state   ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "users_own_brand_shopify_connections" ON shopify_connections;
 CREATE POLICY "users_own_brand_shopify_connections" ON shopify_connections
   FOR ALL USING (brand_id IN (SELECT id FROM brands WHERE user_id = (SELECT auth.uid())));
 
+DROP POLICY IF EXISTS "users_own_brand_shopify_webhook_log" ON shopify_webhook_log;
 CREATE POLICY "users_own_brand_shopify_webhook_log" ON shopify_webhook_log
   FOR ALL USING (brand_id IN (SELECT id FROM brands WHERE user_id = (SELECT auth.uid())));
 
+DROP POLICY IF EXISTS "users_own_brand_shopify_oauth_state" ON shopify_oauth_state;
 CREATE POLICY "users_own_brand_shopify_oauth_state" ON shopify_oauth_state
   FOR ALL USING (
     user_id = (SELECT auth.uid())

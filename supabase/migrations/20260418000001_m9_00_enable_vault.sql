@@ -12,5 +12,6 @@ BEGIN
   IF v_val <> 'kova_vault_smoke_test_value' THEN
     RAISE EXCEPTION 'Vault smoke test failed: decrypted value mismatch';
   END IF;
-  PERFORM vault.delete_secret(v_id);
+  -- vault.delete_secret() was removed in newer supabase_vault; delete the row directly.
+  DELETE FROM vault.secrets WHERE id = v_id;
 END $$;
