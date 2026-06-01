@@ -8,7 +8,7 @@
  * Per Q16 + PRD §2.1: 5 items — User header / Account / Help / Keyboard
  * shortcuts / Sign out. NO Brand picker (Q17 reversed). NO What's new (Phase 2).
  */
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import KovaMenu, { type KovaMenuItem } from '@/components/ui/KovaMenu.vue'
 
 interface Props {
@@ -19,6 +19,10 @@ interface Props {
 }
 
 const props = defineProps<Props>()
+
+// KovaMenu binds DropdownMenuRoot's `open` (controlled), so consumers must own
+// the open state or the trigger can't toggle it. Manage it locally here.
+const open = ref(false)
 
 const emit = defineEmits<{
   'open-account': []
@@ -56,7 +60,7 @@ const items = computed<KovaMenuItem[]>(() => [
 </script>
 
 <template>
-  <KovaMenu :items="items" align="end" :side-offset="8">
+  <KovaMenu v-model:open="open" :items="items" align="end" :side-offset="8">
     <template #trigger>
       <button
         type="button"

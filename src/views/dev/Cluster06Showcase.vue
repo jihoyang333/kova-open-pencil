@@ -13,6 +13,15 @@ import BottomToolbar from '@/components/editor/BottomToolbar.vue'
 import LeftPanel from '@/components/editor/LeftPanel.vue'
 import RightPanel from '@/components/editor/RightPanel.vue'
 import TopChrome from '@/components/editor/TopChrome.vue'
+import { createEditorStore, setActiveEditorStore } from '@/stores/editor'
+import { useRightPanelStore } from '@/stores/right-panel'
+
+// The chrome components read the active per-tab editor store via useEditorStore.
+// On the real /canvas route EditorView's createTab() provides it; the showcase
+// has no tab, so bootstrap a standalone store here. AI tab is default-active
+// per §12.13 (initFor with no persisted localStorage key).
+setActiveEditorStore(createEditorStore())
+useRightPanelStore().initFor('cluster-06-showcase')
 
 const FILE_NAME = 'Untitled — Cluster 06 showcase'
 const FILE_META = 'auto-saved · just now'
