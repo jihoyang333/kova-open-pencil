@@ -1,4 +1,4 @@
-import { SNAPSHOT_FORMAT_VERSION, type DecodedPage } from './use-snapshot-codec'
+import { SNAPSHOT_FORMAT_VERSION, type DecodedPage } from './snapshot-format'
 
 // Snapshot-format migration registry (W4 C-LOW09.11).
 //
@@ -12,7 +12,7 @@ import { SNAPSHOT_FORMAT_VERSION, type DecodedPage } from './use-snapshot-codec'
 
 export type SnapshotMigration = (pages: DecodedPage[]) => DecodedPage[]
 
-export const SNAPSHOT_MIGRATIONS: Record<number, { to: number; migrate: SnapshotMigration }> = {
+export const SNAPSHOT_MIGRATIONS: Partial<Record<number, { to: number; migrate: SnapshotMigration }>> = {
   // Example for a future v2 bump:
   // 1: { to: 2, migrate: (pages) => pages },
 }

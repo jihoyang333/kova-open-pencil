@@ -1,5 +1,9 @@
 import { deflateSync, inflateSync } from 'fflate'
+import { SNAPSHOT_FORMAT_VERSION, type DecodedPage } from './snapshot-format'
 import { isFormatVersionRegistered, migratePages } from './snapshot-migration-registry'
+
+export { SNAPSHOT_FORMAT_VERSION } from './snapshot-format'
+export type { DecodedPage } from './snapshot-format'
 
 // Snapshot codec: packs a canvas's per-page Yjs updates into a single compressed
 // blob and unpacks it back.
@@ -19,17 +23,11 @@ export interface SnapshotEditorAPI {
   snapshotPage: (pageId: string) => Uint8Array
 }
 
-export interface DecodedPage {
-  pageId: string
-  bytes: Uint8Array
-}
-
 export interface DecodedSnapshot {
   format_version: number
   pages: DecodedPage[]
 }
 
-export const SNAPSHOT_FORMAT_VERSION = 1
 const MAGIC = new Uint8Array([0x4b, 0x4f, 0x56, 0x41]) // "KOVA"
 
 export async function encodeCanvasSnapshot(
