@@ -42,6 +42,8 @@ export const OVERLAY_COLOR = {
   EYEDROPPER_HEX_CHIP_BG: '#2c2c2c',
   FIND_DIM: 'rgba(0, 0, 0, 0.6)', // PRD §12.12 founder decision — dim backdrop over non-matching nodes during find
   AI_KOVA_BLUE: '#5a7dff', // EXCLUSIVE to AI assist panel — never used elsewhere
+  SLICE_DASH: 'rgba(126,126,121,0.7)', // slice region dashed border (B8 slice export regions)
+  SLICE_LABEL_BG: 'rgba(126,126,121,0.92)', // slice name tag background
 } as const
 
 /**
