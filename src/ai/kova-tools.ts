@@ -47,7 +47,8 @@ export const searchProductsSchema = v.object({
       collection_id: v.optional(v.string())
     })
   ),
-  sort: v.optional(v.picklist(['bestsellers', 'newest', 'price_asc', 'price_desc'])),
+  // `bestsellers` dropped per Shopify spec §5.2 / D6 (product-reference rework).
+  sort: v.optional(v.picklist(['newest', 'price_asc', 'price_desc'])),
   limit: v.optional(v.pipe(v.number(), v.minValue(1), v.maxValue(50)))
 })
 export const getCollectionSchema = v.object({ collection_id: v.string() })
