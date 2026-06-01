@@ -36,6 +36,8 @@ import LeftPanel from '@/components/editor/LeftPanel.vue'
 import RightPanel from '@/components/editor/RightPanel.vue'
 import BottomToolbar from '@/components/editor/BottomToolbar.vue'
 import CanvasOverlayHost from '@/components/editor/CanvasOverlayHost.vue'
+import CanvasOverlayLayer from '@/components/canvas-overlays/CanvasOverlayLayer.vue'
+import SearchPanel from '@/components/find/SearchPanel.vue'
 import ZoomHud from '@/components/editor/ZoomHud.vue'
 import MissingFontsPill from '@/components/editor/MissingFontsPill.vue'
 import ShopPanel from '@/components/editor/sidebar/ShopPanel.vue'
@@ -205,7 +207,9 @@ onUnmounted(() => {
       class="flex min-h-0 flex-1 flex-col"
     >
       <TopChrome :file-name="store.state.documentName" />
-      <div class="flex min-h-0 flex-1">
+      <div class="relative flex min-h-0 flex-1">
+        <!-- 07b: find panel slides in over the layers panel when find active (PRD §12.12) -->
+        <SearchPanel />
         <LeftPanel
           v-show="store.state.panelsVisible.left"
           :file-name="store.state.documentName"
@@ -226,7 +230,9 @@ onUnmounted(() => {
           data-testid="canvas-viewport"
         >
           <EditorCanvas />
-          <CanvasOverlayHost />
+          <CanvasOverlayHost>
+            <CanvasOverlayLayer />
+          </CanvasOverlayHost>
           <MissingFontsPill
             :missing-count="missingFontsCount"
             @open-font-manager="onOpenFontManager"
