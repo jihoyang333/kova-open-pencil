@@ -59,6 +59,25 @@ No blockers. Proceeding.
 
 ---
 
+## 1b. Engine type-mapping addendum (plan-vs-core reconciliation)
+
+Pre-flight (Task 0.1) revealed the plan imports Figma-idealized type names that the
+real OpenPencil core (`@open-pencil/core`, read-only) does NOT export. Core is ground
+truth. The capability exists in every case — only names differ. Mapping applied
+throughout Phases 1/3/5 (translate, don't copy-verbatim per IMPLEMENTATION_PROMPT §0):
+
+| Plan name (Figma-ideal) | Real core export | Notes |
+|---|---|---|
+| `Paint` / `GradientPaint` / `SolidPaint` | `Fill` | One interface, discriminated by `type: FillType` (`SOLID` / `GRADIENT_LINEAR` / `GRADIENT_RADIAL` / `GRADIENT_ANGULAR` / `GRADIENT_DIAMOND` / `IMAGE`). Gradient stops via `Fill.gradientStops: GradientStop[]`, transform via `Fill.gradientTransform`. |
+| `ImagePaint` | `Fill` w/ `type:'IMAGE'` | `imageHash`, `imageScaleMode`, `imageTransform` fields on `Fill`. |
+| `ScaleMode` | `ImageScaleMode` | `'FILL' \| 'FIT' \| 'CROP' \| 'TILE'` — values already matched plan. |
+| `Effect` | `Effect` | ✓ exact match (5 types: DROP_SHADOW/INNER_SHADOW/LAYER_BLUR/BACKGROUND_BLUR/FOREGROUND_BLUR). |
+| `GradientStop`, `BlendMode`, `Stroke`, `SceneNode` | same | ✓ re-exported from index. |
+| `BooleanOperation` (type) | — (no type) | Boolean ops are core **tools**: `booleanUnion` / `booleanSubtract` / `booleanIntersect` / `booleanExclude` (`tools/registry.ts`), invoked via tool/RPC. BooleanOpsRow dispatches these; 07b defines a local `BooleanOpKind = 'UNION'\|'SUBTRACT'\|'INTERSECT'\|'EXCLUDE'` UI enum, NOT a core type. |
+
+**Rule:** never deep-import `packages/core` internals (kiwi codec `Paint` etc.); consume
+only the public index re-exports above. Task 10.2 grep-gate enforces this.
+
 ## 2. Execution plan (phase → tasks → commit)
 
 One commit per task. Commit prefixes: `feat(c07b-tNN)` · `test(c07b)` · `fix(c07b-review)`.
