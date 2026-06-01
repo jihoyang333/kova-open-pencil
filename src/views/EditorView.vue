@@ -7,6 +7,7 @@ import { isFontLoaded, DEFAULT_FONT_FAMILY } from '@open-pencil/core'
 
 import { useImportImages } from '@/composables/use-import-images'
 import { useKeyboard } from '@/composables/use-keyboard'
+import { useShortcutRegistration } from '@/composables/use-shortcut-registration'
 import { useMenu } from '@/composables/use-menu'
 import { useCollab, COLLAB_KEY } from '@/composables/use-collab'
 import { connectAutomation } from '@/automation/server'
@@ -59,6 +60,8 @@ if (route.meta.demo && !('test' in params)) {
 useHead({ title: route.meta.demo ? 'Demo' : undefined })
 useKeyboard()
 useMenu()
+// 07b: register inspector/find/boolean/pixel-grid shortcuts (Phase-A fallback, PRD §12.5/12.7/12.12)
+useShortcutRegistration()
 
 // Canvas integration (only for non-demo routes with canvasId)
 const router = useRouter()
