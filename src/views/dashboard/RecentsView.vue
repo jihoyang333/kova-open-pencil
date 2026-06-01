@@ -52,7 +52,7 @@ async function onSubmit(prompt: string): Promise<void> {
     await new Promise((r) => setTimeout(r, CANVAS_CREATE_REVIEW_MS))
     transitionState.value = 'splash'
     await new Promise((r) => setTimeout(r, CANVAS_CREATE_SPLASH_MS))
-    await router.push(`/editor/${canvas.id}`)
+    await router.push(`/canvas/${canvas.id}`)
   } catch {
     transitionState.value = 'idle'
   }
@@ -63,7 +63,7 @@ async function onNewCanvas(): Promise<void> {
 }
 
 function onOpen(canvasId: string): void {
-  void router.push(`/editor/${canvasId}`)
+  void router.push(`/canvas/${canvasId}`)
 }
 
 // H2 audit fix — replaces defineExpose-based router.matched reach-around.

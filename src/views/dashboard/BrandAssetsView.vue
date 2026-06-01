@@ -161,7 +161,7 @@ function importToCanvas(canvasId: string): void {
   sessionStorage.setItem('kova-import-images', JSON.stringify(selectedImages))
   showCanvasPicker.value = false
   clearSelection()
-  void router.push(`/editor/${canvasId}`)
+  void router.push(`/canvas/${canvasId}`)
 }
 
 async function executeBulkDelete(): Promise<void> {

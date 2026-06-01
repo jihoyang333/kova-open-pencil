@@ -291,9 +291,30 @@ const routes = [
     redirect: '/dashboard'
   },
   {
-    path: '/editor/:canvasId',
+    // Canonical canvas route per PRD 06 §6.1 (CT-002 + W5a fix). Desktop-only
+    // (viewport guard → /mobile-fallback). Brand-ownership verified in the
+    // beforeEnter guard via Cluster 02's useCanvasesStore.verifyOwnership.
+    path: '/canvas/:canvasId',
+    name: 'canvas',
     component: EditorView,
-    meta: { requiresAuth: true, requiresOnboarding: true }
+    meta: { requiresAuth: true, requiresOnboarding: true, desktopOnly: true, theme: 'dark' },
+    beforeEnter: async (to) => {
+      const canvasId = to.params.canvasId
+      if (typeof canvasId !== 'string') return '/dashboard'
+      const { useCanvasesStore } = await import('@/stores/canvases')
+      const owned = await useCanvasesStore().verifyOwnership(canvasId)
+      if (!owned) return '/dashboard'
+      // Reset layers-tree expansion so stale subtree state from a previously
+      // opened canvas doesn't leak across the switch (use-layer-tree lifecycle).
+      const { resetForCanvas } = await import('@/composables/use-layer-tree')
+      resetForCanvas(canvasId)
+      return true
+    }
+  },
+  {
+    // Preserve old /editor/:canvasId links → canonical /canvas/:canvasId.
+    path: '/editor/:canvasId',
+    redirect: (to) => ({ name: 'canvas', params: { canvasId: to.params.canvasId } })
   },
   {
     path: '/demo',

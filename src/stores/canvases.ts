@@ -147,6 +147,22 @@ export const useCanvasesStore = defineStore('canvases', () => {
     }
   }
 
+  /**
+   * Cluster 02 contract — used by the /canvas/:canvasId route guard (Cluster 06
+   * Task 17) to confirm the active user may open this canvas. RLS already scopes
+   * `canvases` to brands the user owns, so a foreign canvas returns no row.
+   * A trashed canvas is not openable in the editor (restore from Trash first).
+   */
+  async function verifyOwnership(canvasId: string): Promise<boolean> {
+    const { data, error } = await supabase
+      .from('canvases')
+      .select('id, trashed_at')
+      .eq('id', canvasId)
+      .maybeSingle()
+    if (error || !data) return false
+    return data.trashed_at == null
+  }
+
   return {
     canvases,
     trashedCanvases,
@@ -154,6 +170,7 @@ export const useCanvasesStore = defineStore('canvases', () => {
     canvasToTrash,
     sortedCanvases,
     sortedTrashed,
+    verifyOwnership,
     fetchCanvases,
     createCanvas,
     renameCanvas,

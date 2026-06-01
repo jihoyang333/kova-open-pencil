@@ -31,14 +31,14 @@ watch(
 async function handleNewCanvas(): Promise<void> {
   try {
     const canvas = await canvasesStore.createCanvas(brandId())
-    void router.push(`/editor/${canvas.id}`)
+    void router.push(`/canvas/${canvas.id}`)
   } catch (error) {
     console.error('Failed to create canvas:', error)
   }
 }
 
 function handleOpenCanvas(canvas: Canvas): void {
-  void router.push(`/editor/${canvas.id}`)
+  void router.push(`/canvas/${canvas.id}`)
 }
 
 async function handleRename(id: string, name: string): Promise<void> {
