@@ -1,9 +1,28 @@
 # W11b — Cluster 07b (Canvas Inspector + Overlays) — PROGRESS / Continuation Handoff
 
 **Branch:** `app/cluster-07b-inspector` (worktree `/Users/jihoyang/kova-build-c07b`, off c06 `ccf02903`)
-**Status:** **PARTIAL — Phase 0 + Phase 1 + Phase 2 (2.1–2.6, 2.9) shipped. Phase 2.7/2.8 (export) + 2.11–2.14 + Phases 3→10 remain.**
-**Date:** 2026-05-31
-**Commits so far:** 18 (`5528ae59` exec-doc → `a2e9efbd` eyedropper lint fix)
+**Status:** **PARTIAL — Phase 0/1/2 COMPLETE; Phase 3 (3.1–3.4) shipped. Phase 3.5–3.10 + Phases 4→10 remain.**
+**Date:** 2026-05-31 (Session 3: 2026-06-01)
+**Commits so far:** 24 (`5528ae59` exec-doc → Session-3 BooleanOpsRow)
+
+### Session 3 (2026-06-01) — Phase 2 finished + Phase 3 started
+
+| Task | What | Tests | Adaptation |
+|---|---|---|---|
+| 2.7/2.8 | `useExportPipeline` — slice export | 3 | **R9**: no `figma.exportAsync`; uses editor `renderExportImage` (extended w/ optional `quality`); slices via `graph.getChildren`. Phase-B ZIP dropped (gate literal-false = dead code + jszip not a dep). Quality 0–1 UI → 0–100 engine. |
+| 2.11/2.12 | `useFindSearch` — query→matches | 6 | no `figma.currentPage.findAll`; page-subtree DFS over real graph, match name OR TEXT `.text`, debounce + RESULTS_MAX cap. |
+| 2.13/2.14 | `useCameraPan` — animated focus pan | 6 | no `figma.viewport`; tweens editor `state.{panX,panY,zoom}` + `requestRepaint`; ease-out cubic; **fixed latent plan bug** (superseded promise dangled → track `pendingResolve`, resolve on cancel). |
+| 3.1 | `VerticalTextAlignRow` | 3 | real token classes (`border-accent bg-accent text-white` / inactive bordered-input), not plan's fake `bg-accent-soft text-accent-ink`. |
+| 3.2 | `StrokeAlignRow` | 3 | same segmented pattern. |
+| 3.3 | `JpgQualityDropdown` | 3 | **on AppSelect (Reka)**, not native `<select>` (codebase convention); test asserts `options` prop. |
+| 3.4 | `BooleanOpsRow` | 7 | **R2**: no `figma.booleanOperation(op)` singleton — real is `FigmaAPI.booleanOperation(op, ids)` via `makeFigmaFromStore`; local `BooleanOpKind` enum; shortcuts **⌥⇧U/S/I/E** (W5a, not ⌘⌥); disabled <2 sel; **R6** real store not mock.module. |
+
+**New adaptation rules discovered this session:**
+- **R11 — `editor.selectedNodes` is a ComputedRef → use `.value`** (`editor.selectedNodes.value.length`). Same for any store-exposed computed.
+- **R12 — `useEditorStore()` returns a forwarding Proxy.** To `spyOn` a store method in tests, spy the concrete object from `createEditorStore()` (held in a `let store`), which the proxy forwards reads to — spying the proxy is a no-op.
+- **R13 — Inspector segmented buttons:** active=`border-accent bg-accent text-white`, inactive=`border-border bg-input text-muted hover:bg-hover hover:text-surface` (copied from `TypographySection.vue`). Disabled=`text-ink-4 opacity-60 cursor-not-allowed`.
+- **R14 — KovaIcon registry has 50 icons** (`src/components/ui/kova-icon-registry.ts`); any new lucide name must be added (import + Map entry) or `<KovaIcon>` renders nothing + DEV-warns. Phase 3.1–3.4 used text labels → no additions needed yet.
+- **R15 — `preferences.ts` already holds overlay visibility toggles** (`showPixelGrid/showFrameOutlines/showSlices/showMaskOutlines/showLayoutGuide/showRuler`) — Phase 4 overlays should read these, not invent new state.
 
 This cluster's plan is a **skeleton, not paste-ready**. The plan's code snippets were
 written against an idealized Figma-style API and a Pinia editor store that do NOT match
