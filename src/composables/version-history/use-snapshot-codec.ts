@@ -1,4 +1,5 @@
 import { deflateSync, inflateSync } from 'fflate'
+import { isFormatVersionRegistered, migratePages } from './snapshot-migration-registry'
 
 // Snapshot codec: packs a canvas's per-page Yjs updates into a single compressed
 // blob and unpacks it back.
@@ -80,7 +81,7 @@ export async function decodeCanvasSnapshot(compressed: Uint8Array): Promise<Deco
   off += MAGIC.byteLength
   const fv = view.getUint8(off)
   off += 1
-  if (fv !== SNAPSHOT_FORMAT_VERSION) throw new Error('format_version_unsupported')
+  if (!isFormatVersionRegistered(fv)) throw new Error('format_version_unsupported')
   const pageCount = view.getUint32(off, false)
   off += 4
   const dec = new TextDecoder()
@@ -96,5 +97,7 @@ export async function decodeCanvasSnapshot(compressed: Uint8Array): Promise<Deco
     off += byteLen
     pages.push({ pageId, bytes })
   }
-  return { format_version: fv, pages }
+  // Forward-migrate older snapshots to the current format (no-op at v1).
+  const migrated = fv === SNAPSHOT_FORMAT_VERSION ? pages : migratePages(fv, pages)
+  return { format_version: SNAPSHOT_FORMAT_VERSION, pages: migrated }
 }

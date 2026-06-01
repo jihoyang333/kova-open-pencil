@@ -44,3 +44,8 @@ jobs:
 
       - name: Copy-paste detection
         run: bun run test:dupes
+
+      - name: Snapshot-format / Kiwi-schema lockstep guard (W4 C-LOW09.11)
+        run: bun scripts/lint/snapshot-format-registry.ts
+        env:
+          GITHUB_BASE_REF: ${{ github.base_ref }}
