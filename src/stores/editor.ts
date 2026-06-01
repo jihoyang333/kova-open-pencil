@@ -954,13 +954,18 @@ export function createEditorStore() {
   async function renderExportImage(
     nodeIds: string[],
     scale: number,
-    format: ExportFormat
+    format: ExportFormat,
+    quality?: number
   ): Promise<Uint8Array | null> {
     if (!_ck || !_renderer) return null
     const ids =
       nodeIds.length > 0 ? nodeIds : graph.getChildren(state.currentPageId).map((n) => n.id)
     if (ids.length === 0) return null
-    return renderNodesToImage(_ck, _renderer, graph, state.currentPageId, ids, { scale, format })
+    return renderNodesToImage(_ck, _renderer, graph, state.currentPageId, ids, {
+      scale,
+      format,
+      quality
+    })
   }
 
   function exportImageExtension(format: ExportFormat): string {
