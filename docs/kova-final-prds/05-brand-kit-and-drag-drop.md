@@ -264,6 +264,13 @@ Single migration file: `kova-open-pencil-1/supabase/migrations/20260615_05_brand
 > - **MED-3 (realtime):** appended `brand_fonts` to the `supabase_realtime`
 >   publication + `REPLICA IDENTITY FULL` so the client's `postgres_changes`
 >   subscription fires (the upload Edge Function emits no broadcast).
+> - **CRIT-IDX (single-open-draft):** `idx_voice_drafts_brand_unconfirmed` was
+>   `CREATE INDEX` (non-unique) — it did NOT enforce the one-open-draft-per-brand
+>   invariant that §3 #7 + §12.13 require (and that the re-scrape REPLACE flow's
+>   conflict semantics depend on). Surfaced by the first run of the DB
+>   integration suite (W11a fix). Now `CREATE UNIQUE INDEX`; the extract Edge
+>   Function already discards the prior open draft before inserting, so the index
+>   is the race-safety net rather than a normal-path constraint.
 
 ```sql
 -- ============================================================
@@ -353,7 +360,7 @@ CREATE TABLE IF NOT EXISTS public.voice_drafts (
   CHECK (confirmed_at IS NULL OR discarded_at IS NULL)
 );
 
-CREATE INDEX IF NOT EXISTS idx_voice_drafts_brand_unconfirmed
+CREATE UNIQUE INDEX IF NOT EXISTS idx_voice_drafts_brand_unconfirmed
   ON public.voice_drafts(brand_id) WHERE confirmed_at IS NULL AND discarded_at IS NULL;
 
 COMMENT ON TABLE public.voice_drafts IS

@@ -86,7 +86,14 @@ CREATE TABLE IF NOT EXISTS public.voice_drafts (
   CHECK (confirmed_at IS NULL OR discarded_at IS NULL)
 );
 
-CREATE INDEX IF NOT EXISTS idx_voice_drafts_brand_unconfirmed
+-- UNIQUE so at most one OPEN (unconfirmed, undiscarded) draft can exist per
+-- brand — the DB-level enforcement of the single-open-draft invariant the
+-- voice-draft guardrail + re-scrape REPLACE flow rely on (PRD §3 #7, §12.13).
+-- The extract Edge Function discards the prior open draft before inserting, so
+-- the normal path never conflicts; this index is the race-safety net.
+-- DROP first so a re-run upgrades a previously non-unique index in place.
+DROP INDEX IF EXISTS public.idx_voice_drafts_brand_unconfirmed;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_voice_drafts_brand_unconfirmed
   ON public.voice_drafts(brand_id) WHERE confirmed_at IS NULL AND discarded_at IS NULL;
 
 COMMENT ON TABLE public.voice_drafts IS

@@ -132,7 +132,10 @@ export async function createAuthenticatedClient(): Promise<
   const anon = createClient(
     process.env['SUPABASE_URL']!,
     process.env['SUPABASE_ANON_KEY'] ?? process.env['VITE_SUPABASE_ANON_KEY']!,
-    { auth: { persistSession: false } },
+    // Unique storageKey per client so parallel test files don't clobber each
+    // other's session under the shared default `sb-…-auth-token` key (which
+    // would intermittently sign a client in as the wrong user).
+    { auth: { persistSession: false, storageKey: `sb-test-${crypto.randomUUID()}` } },
   ) as unknown as TestSupabaseClient
 
   const signIn = await anon.auth.signInWithPassword({ email, password })

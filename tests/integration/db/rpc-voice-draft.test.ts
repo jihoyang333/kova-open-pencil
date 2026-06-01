@@ -11,7 +11,7 @@ suite('voice_draft RPCs', () => {
   test('confirm_voice_draft writes identity.voice + appends tone_snippets atomically', async () => {
     const { service, client, brandId, userId } = await seedBrandForUser()
     // Insert draft via service-role (RLS permits)
-    const draftId = '00000000-0000-0000-0000-000000000020'
+    const draftId = crypto.randomUUID()
     await service.from('voice_drafts').insert({
       id: draftId,
       brand_id: brandId,
@@ -46,7 +46,7 @@ suite('voice_draft RPCs', () => {
 
   test('confirm_voice_draft is idempotent — second call returns draft_not_found_or_already_resolved', async () => {
     const { service, client, brandId, userId } = await seedBrandForUser()
-    const draftId = '00000000-0000-0000-0000-000000000021'
+    const draftId = crypto.randomUUID()
     await service.from('voice_drafts').insert({
       id: draftId,
       brand_id: brandId,
@@ -61,7 +61,7 @@ suite('voice_draft RPCs', () => {
 
   test('discard_voice_draft marks discarded without writing brands.*', async () => {
     const { service, client, brandId, userId } = await seedBrandForUser()
-    const draftId = '00000000-0000-0000-0000-000000000022'
+    const draftId = crypto.randomUUID()
     await service.from('voice_drafts').insert({
       id: draftId,
       brand_id: brandId,

@@ -8,6 +8,7 @@
 import { beforeAll, describe, expect, test } from 'bun:test'
 import {
   createServerClient,
+  seedBrandForUser,
   SHOULD_RUN,
   type TestSupabaseClient,
 } from '../../helpers/brand-kit-supabase'
@@ -21,18 +22,21 @@ suite('migration 20260615_05_brand_kit', () => {
     supabase = await createServerClient()
   })
 
-  test('brands has new JSONB columns with NOT NULL defaults', async () => {
-    const { data, error } = await supabase.rpc('sql', {
-      query: `SELECT column_name, data_type, is_nullable, column_default
-              FROM information_schema.columns
-              WHERE table_schema = 'public' AND table_name = 'brands'
-                AND column_name IN ('tone_snippets', 'saved_blocks', 'writing_rules', 'identity')
-              ORDER BY column_name;`,
-    })
+  test('brands JSONB columns are NOT NULL and default to empty values', async () => {
+    // Behavioral check (PostgREST can't introspect information_schema): a freshly
+    // seeded brand inserts only user_id + name, so the four JSONB columns must
+    // come back populated by their NOT NULL DEFAULTs ([] for lists, {} for maps).
+    const { brandId } = await seedBrandForUser()
+    const { data, error } = await supabase
+      .from('brands')
+      .select('tone_snippets, saved_blocks, writing_rules, identity')
+      .eq('id', brandId)
+      .single()
     expect(error).toBeNull()
-    const cols = data as { data_type: string; is_nullable: string }[]
-    expect(cols).toHaveLength(4)
-    expect(cols.every((c) => c.data_type === 'jsonb' && c.is_nullable === 'NO')).toBe(true)
+    expect(data?.['tone_snippets']).toEqual([])
+    expect(data?.['saved_blocks']).toEqual([])
+    expect(data?.['writing_rules']).toEqual({})
+    expect(data?.['identity']).toEqual({})
   })
 
   test('brand_fonts table exists with CHECK on license_attested', async () => {
@@ -62,24 +66,22 @@ suite('migration 20260615_05_brand_kit', () => {
   })
 
   test('voice_drafts partial unique index allows one open draft per brand', async () => {
-    const brandId = '00000000-0000-0000-0000-000000000010'
-    const userId = '00000000-0000-0000-0000-000000000011'
-    // Seed brand + user out-of-band (helper not shown; use existing test seed)
-    const draft1 = await supabase.from('voice_drafts').insert({
+    const { service, brandId, userId } = await seedBrandForUser()
+    const draft1 = await service.from('voice_drafts').insert({
       brand_id: brandId,
       user_id: userId,
       source: 'shopify_extract',
       draft_payload: { voice: { content: 'V1' }, tone_snippets: [] },
     })
     expect(draft1.error).toBeNull()
-    const draft2 = await supabase.from('voice_drafts').insert({
+    // A second OPEN draft (confirmed_at/discarded_at both NULL) for the same
+    // brand must violate the partial unique index.
+    const draft2 = await service.from('voice_drafts').insert({
       brand_id: brandId,
       user_id: userId,
       source: 'shopify_extract',
       draft_payload: { voice: { content: 'V2' }, tone_snippets: [] },
     })
-    // partial unique index → second open draft for same brand should violate
-    // (run cleanup setup so partial-index has nothing to match prior to this insert)
-    expect(draft2.error?.code === '23505' || draft2.error === null).toBe(true)
+    expect(draft2.error?.code).toBe('23505')
   })
 })
