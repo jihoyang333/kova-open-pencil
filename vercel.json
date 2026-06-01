@@ -10,6 +10,8 @@
     { "path": "/api/shopify/cron/purge-worker",    "schedule": "30 3 * * *" },
     { "path": "/api/cron/idempotency-cleanup",     "schedule": "0 4 * * *" },
     { "path": "/api/cron/delete-account",          "schedule": "0 3 * * *" },
-    { "path": "/api/stripe/reconcile",             "schedule": "0 5 * * 1" }
+    { "path": "/api/stripe/reconcile",             "schedule": "0 5 * * 1" },
+    { "path": "/api/cron/snapshot-prune",          "schedule": "0 4 * * *" },
+    { "path": "/api/cron/snapshot-storage-sweep",  "schedule": "0 5 * * 0" }
   ]
 }
