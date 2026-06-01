@@ -1,11 +1,7 @@
 import { computed } from 'vue'
+import { IS_TAURI } from '@open-pencil/core'
 import { useEyedropperStore } from '@/stores/eyedropper'
 import { EYEDROPPER_NATIVE_TAURI } from '@/config/feature-flags'
-
-/** Tauri v2 exposes this global in the desktop runtime only. */
-function isTauriRuntime(): boolean {
-  return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
-}
 
 /**
  * Eyedropper UI composable. MVP path is canvas-only via the store (Q20 lock).
@@ -19,7 +15,7 @@ export function useEyedropper() {
   const sampledHex = computed(() => store.sampledHex)
 
   function activate(onSample: (hex: string) => void): void {
-    if (EYEDROPPER_NATIVE_TAURI && isTauriRuntime()) {
+    if (EYEDROPPER_NATIVE_TAURI && IS_TAURI) {
       void sampleNative(onSample)
       return
     }
