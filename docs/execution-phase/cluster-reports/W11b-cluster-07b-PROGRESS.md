@@ -1,9 +1,25 @@
 # W11b — Cluster 07b (Canvas Inspector + Overlays) — PROGRESS / Continuation Handoff
 
 **Branch:** `app/cluster-07b-inspector` (worktree `/Users/jihoyang/kova-build-c07b`, off c06 `ccf02903`)
-**Status:** **PARTIAL — Phase 0/1/2 COMPLETE; Phase 3 (3.1–3.4) shipped. Phase 3.5–3.10 + Phases 4→10 remain.**
+**Status:** **PARTIAL — Phases 0/1/2/3/4 COMPLETE. Phases 5→10 remain (section wiring, DnD, shortcuts, integration/E2E tests, gates/PR).**
 **Date:** 2026-05-31 (Session 3: 2026-06-01)
-**Commits so far:** 24 (`5528ae59` exec-doc → Session-3 BooleanOpsRow)
+**Commits so far:** ~48 (`5528ae59` exec-doc → Session-3 Phase-4 mount). Session 3 added 94 passing tests across 26 files.
+
+### Session 3 — Phase 4 COMPLETE (canvas overlays + find UI)
+
+All 10 overlays + wrapper + find panels shipped, each TDD + own commit:
+- 4.1 CanvasOverlayLayer (camera-transformed layer for node-bound overlays + screen-space layer for pixel-grid/eyedropper)
+- 4.2 FrameOutlines · 4.3 MaskOutlines · 4.4 SliceRegion · 4.5 PixelGrid · 4.6 LayoutGuides · 4.7 HoverContour · 4.8 SnapIndicators · 4.9 DimLayer · 4.10 FindOverlay · 4.11 EyedropperCrosshair · 4.11b MeasurementAnnotations
+- 4.12 SearchPanel · 4.13 SearchResultRow · 4.14 mount (CanvasOverlayLayer in CanvasOverlayHost slot + SearchPanel left-overlay in EditorView)
+
+**Phase-4 adaptation rules:**
+- **R16 — overlays read the real `editor.graph`, NEVER `figma.currentPage.children` / mock.module core.** Mocking `@open-pencil/core` is process-global in Bun and poisons the editor store. Overlay tests seed real nodes via `graph.createNode` + assert element counts.
+- **R17 — overlay coordinate model:** node-bound overlays draw in **canvas coords**; `CanvasOverlayLayer` applies ONE camera transform (`translate(panX,panY) scale(zoom)`). Screen-space overlays (PixelGrid, EyedropperCrosshair) live outside that transform.
+- **R18 — core gaps handled forward-compatibly:** no `layoutGrids` field on SceneNode (LayoutGuides reads it as optional, renders nothing today); measurements via `graph.getMeasurements(canvasId)` (07a page-level model, not a NodeType); snap via `editor.state.snapGuides` (SnapGuide `{axis,position,from,to}`); hover via `editor.state.hoveredNodeId`.
+- **R19 — `editor.state.overlays`** holds the visibility flags (frameOutlines/maskOutlines/pixelGrid/layoutGuides/hoverContour/measurements); read via `editor.state.overlays.X`.
+- **R20 — registry icons added this session:** diamond, move-right, pie-chart, pipette, grip-vertical, box, folder.
+
+⚠️ **Phase 5 caution:** modifies `src/components/properties/*Section.vue` + `ColorPicker.vue` — CLAUDE.md lists the properties panel under "Never modify," but 07b's founder-ratified PRD/plan (§5.1–5.6) IS the authorization to extend the inspector. Keep edits additive (wire the new rows in), never rewrite existing rows.
 
 ### Session 3 (2026-06-01) — Phase 2 finished + Phase 3 started
 
