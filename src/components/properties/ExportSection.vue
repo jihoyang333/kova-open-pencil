@@ -2,15 +2,22 @@
 import { ref, computed, watch, onUnmounted } from 'vue'
 
 import AppSelect from '@/components/AppSelect.vue'
+import JpgQualityDropdown from '@/components/inspector/JpgQualityDropdown.vue'
 import { useEditorStore } from '@/stores/editor'
+import { useExportPipeline } from '@/composables/use-export-pipeline'
+import { JPG_QUALITY } from '@/constants/overlays'
 
 import type { ExportFormat } from '@open-pencil/core'
 
+type QualityKey = 'high' | 'medium' | 'low'
+
 const store = useEditorStore()
+const { exportAllSlices: runExportAllSlices } = useExportPipeline()
 
 interface ExportSetting {
   scale: number
   format: ExportFormat
+  qualityKey?: QualityKey
 }
 
 const settings = ref<ExportSetting[]>([{ scale: 1, format: 'PNG' }])
@@ -47,11 +54,33 @@ async function doExport() {
   exporting.value = true
   try {
     for (const setting of settings.value) {
-      await store.exportSelection(setting.scale, setting.format)
+      const quality =
+        setting.format === 'JPG' ? JPG_QUALITY[setting.qualityKey ?? 'high'] : undefined
+      await store.exportSelection(setting.scale, setting.format, quality)
     }
   } finally {
     exporting.value = false
   }
+}
+
+// 07b §Export — slice batch export (additive).
+const sliceCount = computed(() => {
+  void store.state.sceneVersion
+  return store.graph.getChildren(store.state.currentPageId).filter((n) => n.type === 'SLICE').length
+})
+
+function clampScale(scale: number): 1 | 2 | 3 {
+  if (scale >= 3) return 3
+  if (scale >= 2) return 2
+  return 1
+}
+
+async function exportSlices() {
+  const first = settings.value[0]
+  const format = first?.format === 'JPG' ? 'JPG' : 'PNG'
+  const scale = clampScale(first?.scale ?? 1)
+  const quality = format === 'JPG' ? JPG_QUALITY[first?.qualityKey ?? 'high'] : undefined
+  await runExportAllSlices({ format, scale, quality })
 }
 
 const PREVIEW_WIDTH = 480
@@ -126,6 +155,12 @@ onUnmounted(() => {
         @update:model-value="setting.format = $event as ExportFormat"
       />
 
+      <JpgQualityDropdown
+        v-if="setting.format === 'JPG'"
+        :model-value="setting.qualityKey ?? 'high'"
+        @update:model-value="setting.qualityKey = $event"
+      />
+
       <button
         class="flex size-5 shrink-0 cursor-pointer items-center justify-center rounded border-none bg-transparent text-sm leading-none text-muted hover:bg-hover hover:text-surface"
         @click="removeSetting(i)"
@@ -133,6 +168,15 @@ onUnmounted(() => {
         −
       </button>
     </div>
+
+    <button
+      v-if="sliceCount > 0"
+      data-test="export-all-slices"
+      class="mt-1.5 w-full cursor-pointer truncate rounded bg-accent px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-hover"
+      @click="exportSlices"
+    >
+      Export {{ sliceCount }} {{ sliceCount === 1 ? 'slice' : 'slices' }}
+    </button>
 
     <button
       v-if="settings.length > 0"

@@ -990,7 +990,7 @@ export function createEditorStore() {
     }
   }
 
-  async function exportSelection(scale: number, format: ExportFormat) {
+  async function exportSelection(scale: number, format: ExportFormat, quality?: number) {
     const ids = [...state.selectedIds]
 
     if (format === 'SVG') {
@@ -1007,7 +1007,9 @@ export function createEditorStore() {
       return
     }
 
-    const data = await renderExportImage(ids, scale, format)
+    // quality arrives 0–1 (JPG_QUALITY domain); renderNodesToImage expects 0–100.
+    const engineQuality = quality === undefined ? undefined : Math.round(quality * 100)
+    const data = await renderExportImage(ids, scale, format, engineQuality)
     if (!data) {
       console.error(
         `Export failed: renderExportImage returned null for format=${format} scale=${scale}`
