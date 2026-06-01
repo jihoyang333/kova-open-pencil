@@ -32,7 +32,11 @@ import IconCloudOff from '~icons/lucide/cloud-off'
 import IconComponent from '~icons/lucide/component'
 import IconCreditCard from '~icons/lucide/credit-card'
 import IconCrop from '~icons/lucide/crop'
+import IconDiamond from '~icons/lucide/diamond'
 import IconDownload from '~icons/lucide/download'
+import IconMoveRight from '~icons/lucide/move-right'
+import IconPieChart from '~icons/lucide/pie-chart'
+import IconPipette from '~icons/lucide/pipette'
 import IconEye from '~icons/lucide/eye'
 import IconEyeOff from '~icons/lucide/eye-off'
 import IconExternalLink from '~icons/lucide/external-link'
@@ -87,7 +91,11 @@ export const KOVA_ICON_REGISTRY: ReadonlyMap<string, Component> = new Map<
   ['component', IconComponent],
   ['credit-card', IconCreditCard],
   ['crop', IconCrop],
+  ['diamond', IconDiamond],
   ['download', IconDownload],
+  ['move-right', IconMoveRight],
+  ['pie-chart', IconPieChart],
+  ['pipette', IconPipette],
   ['external-link', IconExternalLink],
   ['eye', IconEye],
   ['eye-off', IconEyeOff],

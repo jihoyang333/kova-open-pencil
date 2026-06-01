@@ -26,6 +26,7 @@ function isOuter(index: number): boolean {
       v-for="(stop, index) in stops"
       :key="index"
       data-test="stop-row"
+      :data-stop="index"
       class="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-xs"
       :class="index === selectedIndex ? 'bg-fill-2 ring-1 ring-accent' : 'hover:bg-fill-2'"
       @click="emit('update:selectedIndex', index)"
