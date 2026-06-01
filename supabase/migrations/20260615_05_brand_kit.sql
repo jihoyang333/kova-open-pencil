@@ -92,6 +92,19 @@ CREATE TABLE IF NOT EXISTS public.voice_drafts (
 -- The extract Edge Function discards the prior open draft before inserting, so
 -- the normal path never conflicts; this index is the race-safety net.
 -- DROP first so a re-run upgrades a previously non-unique index in place.
+-- Pre-step: if an earlier (non-unique) version of this index let a brand
+-- accumulate >1 open draft, discard all but the newest so the UNIQUE build
+-- can't fail on existing duplicates (code-review LOW-2).
+UPDATE public.voice_drafts vd
+   SET discarded_at = now()
+ WHERE vd.confirmed_at IS NULL AND vd.discarded_at IS NULL
+   AND vd.id <> (
+     SELECT v2.id FROM public.voice_drafts v2
+      WHERE v2.brand_id = vd.brand_id
+        AND v2.confirmed_at IS NULL AND v2.discarded_at IS NULL
+      ORDER BY v2.created_at DESC, v2.id DESC
+      LIMIT 1
+   );
 DROP INDEX IF EXISTS public.idx_voice_drafts_brand_unconfirmed;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_voice_drafts_brand_unconfirmed
   ON public.voice_drafts(brand_id) WHERE confirmed_at IS NULL AND discarded_at IS NULL;
