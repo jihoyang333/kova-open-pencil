@@ -223,7 +223,9 @@ describe('GET /api/shopify/cron/purge-worker', () => {
     expect(tablesDeleted).toContain('shopify_collections')
     expect(tablesDeleted).toContain('shopify_collection_products')
     expect(tablesDeleted).toContain('shopify_discounts')
-    expect(tablesDeleted).toContain('shopify_orders_agg')
+    // shopify_orders_agg dropped with the analytics cut (Shopify spec §5.1);
+    // purge-worker no longer targets it.
+    expect(tablesDeleted).not.toContain('shopify_orders_agg')
     expect(tablesDeleted).toContain('shopify_compliance_log')
     expect(tablesDeleted).toContain('shopify_connections')
   })

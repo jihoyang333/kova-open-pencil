@@ -88,7 +88,8 @@ async function purgeOneBrand(
   // Delete all tables that have direct brand_id columns
   const directTables = [
     'shopify_metafields',
-    'shopify_orders_agg',
+    // shopify_orders_agg dropped with the analytics cut (Shopify spec §5.1);
+    // a .delete() against the missing table would throw.
     'shopify_media',
     'shopify_variants',
     'shopify_products',

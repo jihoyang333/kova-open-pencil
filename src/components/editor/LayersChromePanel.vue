@@ -25,7 +25,7 @@ function isSelected(id: string): boolean {
   return editor.state.selectedIds.has(id)
 }
 
-function onRowClick(row: LayerRowType, ev: MouseEvent): void {
+function onRowClick(row: LayerRowType, ev: MouseEvent | KeyboardEvent): void {
   const additive = ev.shiftKey || ev.metaKey || ev.ctrlKey
   editor.select([row.id], additive)
 }

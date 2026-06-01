@@ -147,28 +147,33 @@ describe('createCanvasDropHandlers — color MIME', () => {
     expect(calls[0]).toEqual([200, 100, 200, 200, '#0066FF']) // x-100, y-100, w, h, hex
   })
 
-  test('invalid color payload rejected silently', async () => {
+  test('invalid color payload → no editor mutation + onParseError fires', async () => {
     const adapter = makeAdapter({
       hitTestAt: mock(() => ({ id: 'frame-1', type: 'FRAME' })),
     })
-    const { handleDrop } = createCanvasDropHandlers(adapter)
+    const onParseError = mock(() => {})
+    const { handleDrop } = createCanvasDropHandlers(adapter, { onParseError })
     const evt = makeDropEvent([DRAG_MIME.COLOR], {
       [DRAG_MIME.COLOR]: JSON.stringify({ wrong: 'shape' }),
     })
     await handleDrop(evt)
     expect((adapter.updateNode as ReturnType<typeof mock>).mock.calls).toHaveLength(0)
     expect((adapter.spawnRect as ReturnType<typeof mock>).mock.calls).toHaveLength(0)
+    expect(onParseError.mock.calls).toHaveLength(1)
+    expect(onParseError.mock.calls[0]).toEqual([DRAG_MIME.COLOR])
   })
 
-  test('truncated JSON rejected silently (C-MED18)', async () => {
+  test('truncated JSON rejected (C-MED18) → onParseError fires, no crash', async () => {
     const adapter = makeAdapter()
-    const { handleDrop } = createCanvasDropHandlers(adapter)
+    const onParseError = mock(() => {})
+    const { handleDrop } = createCanvasDropHandlers(adapter, { onParseError })
     const evt = makeDropEvent([DRAG_MIME.COLOR], {
       [DRAG_MIME.COLOR]: '{"hex":"#FA5400","swat',
     })
     await handleDrop(evt)
     expect((adapter.updateNode as ReturnType<typeof mock>).mock.calls).toHaveLength(0)
     expect((adapter.spawnRect as ReturnType<typeof mock>).mock.calls).toHaveLength(0)
+    expect(onParseError.mock.calls).toHaveLength(1)
   })
 })
 

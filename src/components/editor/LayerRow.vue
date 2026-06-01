@@ -22,7 +22,7 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 defineEmits<{
-  click: [row: LayerRowType, ev: MouseEvent]
+  click: [row: LayerRowType, ev: MouseEvent | KeyboardEvent]
   toggleExpand: [row: LayerRowType]
   toggleVisibility: [row: LayerRowType]
   toggleLock: [row: LayerRowType]
@@ -99,8 +99,8 @@ const indentStyle = computed(() => {
     :aria-selected="selected"
     :aria-expanded="row.hasChildren ? row.isExpanded : undefined"
     @click="(ev) => $emit('click', row, ev)"
-    @keydown.enter.prevent="(ev) => $emit('click', row, ev as unknown as MouseEvent)"
-    @keydown.space.prevent="(ev) => $emit('click', row, ev as unknown as MouseEvent)"
+    @keydown.enter.prevent="(ev) => $emit('click', row, ev)"
+    @keydown.space.prevent="(ev) => $emit('click', row, ev)"
     @pointerenter="$emit('hover', row)"
     @pointerleave="$emit('hover', null)"
   >

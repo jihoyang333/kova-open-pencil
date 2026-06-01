@@ -46,6 +46,7 @@ const NotShippedYet = () => import('./components/ui/NotShippedYet.vue')
 
 const ACCOUNT_SECTIONS_RE = '(profile|brands|billing|brand-kit|integrations|danger-zone)?'
 const TokensDebugView = () => import('./views/dev/TokensDebugView.vue')
+const Cluster06Showcase = () => import('./views/dev/Cluster06Showcase.vue')
 const Cluster11Showcase = () => import('./views/dev/Cluster11Showcase.vue')
 const Cluster12Showcase = () => import('./views/dev/Cluster12Showcase.vue')
 const NotFoundView = () => import('./views/error/NotFoundView.vue')
@@ -302,6 +303,11 @@ const routes = [
   {
     path: '/dev/tokens',
     component: TokensDebugView,
+    meta: { demo: true, requiresAuth: false, publicOnly: false }
+  },
+  {
+    path: '/dev/cluster-06',
+    component: Cluster06Showcase,
     meta: { demo: true, requiresAuth: false, publicOnly: false }
   },
   {

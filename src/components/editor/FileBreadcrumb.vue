@@ -9,6 +9,7 @@
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import KovaIcon from '@/components/ui/KovaIcon.vue'
+import { useToastStore } from '@/stores/toast'
 
 interface Props {
   brandId: string | null
@@ -19,6 +20,7 @@ interface Props {
 
 const props = defineProps<Props>()
 const router = useRouter()
+const toast = useToastStore()
 
 defineEmits<{
   'open-file-menu': []
@@ -27,9 +29,11 @@ defineEmits<{
 const brandSwatchStyle = computed(() => ({ backgroundColor: props.brandColor }))
 
 function onBrandClick(): void {
-  if (props.brandId) {
-    void router.push(`/brand/${props.brandId}`)
-  }
+  if (!props.brandId) return
+  router.push(`/brand/${props.brandId}`).catch((err) => {
+    console.error('[FileBreadcrumb] brand navigation failed', err)
+    toast.show({ variant: 'error', message: 'Could not open brand page' })
+  })
 }
 </script>
 

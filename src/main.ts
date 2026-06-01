@@ -7,7 +7,6 @@ import './app.css'
 import { IS_TAURI } from '@/constants'
 import { preloadFonts } from '@/engine/fonts'
 import { createAppRouter } from '@/router'
-import { registerProductVariantOverlay } from '@/canvas-extensions/product-variant/register'
 import { initBrowserSentry } from '@/sentry'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/auth'
@@ -29,7 +28,6 @@ const app = createApp(App)
 
 app.use(pinia).use(router).use(head)
 initBrowserSentry({ app, router })
-registerProductVariantOverlay()
 
 // Cluster 06 Task 4 — register the 8 default bottom-toolbar tools.
 // Slice (frame dropdown) + Measurement (primary slot) are registered by

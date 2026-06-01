@@ -13,7 +13,7 @@
 - **9 unit-test files** covering 108 cluster-06 tests (all green)
 - **~5,000 lines added** across src/, tests/, docs/
 - **0 modifications to `packages/core/`** (lift-the-lock policy honored)
-- **0 new `<style>` blocks, 0 raw hex literals in production code, 0 `<icon-lucide-*>` tags** (CLAUDE.md hard rules respected)
+- **0 new `<style>` blocks, 0 `<icon-lucide-*>` tags** (CLAUDE.md hard rules respected). One hex literal (`#1a1a18` CTA wrap fill in `use-canvas-drop.ts`) is scene-data, not chrome — declared as the `CTA_WRAP_FILL_HEX` module constant + documented in `cluster-06/tokens-used.md §1.5` (hi-fi-exempt; CSS vars cannot bind into engine Paint.color RGBA).
 - **All 6 founder ratifications wired with explicit code references** (§12.1 / §12.2 / §12.3 / §12.13 / §12.14 / §12.15)
 - **Phase 1 audit gate PASSED** — zero ⚠️ MISSING tokens (KOVA_AUDIT.md + tokens-used.md committed)
 - **superpowers:code-reviewer ran end-to-end** — 7 HIGH + 10 MEDIUM + 12 LOW findings, ALL addressed (`fix(c06-review)`)

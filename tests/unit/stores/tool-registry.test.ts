@@ -136,6 +136,41 @@ describe('useToolRegistry (Cluster 06 Task 4)', () => {
     expect(r.toolByKey('R', { meta: true })).toBeUndefined()
   })
 
+  test('Cluster 07a slot contract: measurement lands between text and ai', () => {
+    const r = useToolRegistry()
+    const frame: ToolDef = { id: 'frame', slot: 'frame', icon: 'frame', label: 'Frame', key: 'F', onActivate: () => {} }
+    const rectangle: ToolDef = { id: 'rectangle', slot: 'rectangle', icon: 'square', label: 'Rectangle', key: 'R', onActivate: () => {} }
+    const ellipse: ToolDef = { id: 'ellipse', slot: 'ellipse', icon: 'circle', label: 'Ellipse', key: 'O', onActivate: () => {} }
+    const pen: ToolDef = { id: 'pen', slot: 'pen', icon: 'pen-tool', label: 'Pen', key: 'P', onActivate: () => {} }
+    const text: ToolDef = { id: 'text', slot: 'text', icon: 'type', label: 'Text', key: 'T', onActivate: () => {} }
+    const ai: ToolDef = { id: 'ai', slot: 'ai', icon: 'sparkles', label: 'Ask Kova', onActivate: () => {} }
+    const components: ToolDef = { id: 'components', slot: 'components', icon: 'component', label: 'Components', disabled: true, onActivate: () => {} }
+
+    // Intentionally register in scrambled order to prove sort is stable.
+    r.register(ai)
+    r.register(measurement)
+    r.register(text)
+    r.register(rectangle)
+    r.register(makeMove())
+    r.register(components)
+    r.register(frame)
+    r.register(ellipse)
+    r.register(pen)
+
+    const slots = r.primaryTools.map((t) => t.slot)
+    expect(slots).toEqual([
+      'move',
+      'frame',
+      'rectangle',
+      'ellipse',
+      'pen',
+      'text',
+      'measurement',
+      'ai',
+      'components',
+    ])
+  })
+
   test('M3 regression: setActive skips tools when when() returns false', () => {
     const r = useToolRegistry()
     const visible = ref(false)

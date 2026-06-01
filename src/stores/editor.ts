@@ -52,6 +52,8 @@ import type {
 } from '@open-pencil/core'
 import type { CanvasKit } from 'canvaskit-wasm'
 
+export type ShowUIMode = 'hidden' | 'minimized' | 'full'
+
 export type Tool =
   | 'SELECT'
   | 'FRAME'
@@ -191,7 +193,7 @@ export function createEditorStore() {
       y: number
       selection?: string[]
     }>,
-    showUI: 'full' as 'hidden' | 'minimized' | 'full',
+    showUI: 'full' as ShowUIMode,
     panelsVisible: { left: true, right: true } as { left: boolean; right: boolean },
     documentName: 'Untitled' as string,
     panX: 0,
@@ -441,7 +443,7 @@ export function createEditorStore() {
     requestRepaint()
   }
 
-  function setUIVisibility(mode: 'hidden' | 'minimized' | 'full') {
+  function setUIVisibility(mode: ShowUIMode) {
     if (state.showUI === mode) return
     state.showUI = mode
     requestRepaint()

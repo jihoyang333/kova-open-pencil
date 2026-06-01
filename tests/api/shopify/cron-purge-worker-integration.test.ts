@@ -103,10 +103,7 @@ function seedDb(): Record<string, Row[]> {
       { id: 'disc-1', brand_id: BRAND_ID },
       { id: 'disc-other', brand_id: OTHER_BRAND },
     ],
-    shopify_orders_agg: [
-      { id: 'ord-1', brand_id: BRAND_ID, qty_sold: 5 },
-      { id: 'ord-other', brand_id: OTHER_BRAND, qty_sold: 2 },
-    ],
+    // shopify_orders_agg dropped with the analytics cut (Shopify spec §5.1).
     shopify_compliance_log: [
       { id: 'comp-1', brand_id: BRAND_ID },
       { id: 'comp-other', brand_id: OTHER_BRAND },
@@ -147,7 +144,6 @@ describe('purge-worker integration — seeded in-memory store', () => {
       'shopify_media',
       'shopify_metafields',
       'shopify_discounts',
-      'shopify_orders_agg',
       'shopify_compliance_log',
     ]
     for (const table of directTables) {
@@ -178,7 +174,6 @@ describe('purge-worker integration — seeded in-memory store', () => {
       'shopify_media',
       'shopify_metafields',
       'shopify_discounts',
-      'shopify_orders_agg',
       'shopify_compliance_log',
     ]
     for (const table of directTables) {

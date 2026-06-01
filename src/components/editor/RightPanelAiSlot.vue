@@ -8,19 +8,51 @@
  * Per PRD 06 §6.4.5, the slot host is OWNED by Cluster 06; the component
  * itself is provided by Cluster 10. If Cluster 10 hasn't shipped yet, the
  * placeholder copy below renders.
+ *
+ * Placeholder ARIA: loading state uses role=status / aria-live=polite so
+ * screen readers announce the lazy-load transition; error state uses
+ * role=alert / aria-live=assertive so the failure is announced immediately.
  */
-import { defineAsyncComponent } from 'vue'
+import { defineAsyncComponent, defineComponent, h } from 'vue'
+
+const ChatPanelLoading = defineComponent({
+  name: 'ChatPanelLoading',
+  setup() {
+    return () =>
+      h(
+        'div',
+        {
+          class: 'px-[14px] py-4 text-ink-3 text-[12px]',
+          'data-testid': 'chat-panel-loading',
+          role: 'status',
+          'aria-live': 'polite',
+        },
+        'Loading chat…',
+      )
+  },
+})
+
+const ChatPanelError = defineComponent({
+  name: 'ChatPanelError',
+  setup() {
+    return () =>
+      h(
+        'div',
+        {
+          class: 'px-[14px] py-4 text-ink-3 text-[12px]',
+          'data-testid': 'chat-panel-error',
+          role: 'alert',
+          'aria-live': 'assertive',
+        },
+        'ChatPanel failed to load.',
+      )
+  },
+})
 
 const ChatPanel = defineAsyncComponent({
   loader: () => import('@/components/ChatPanel.vue'),
-  errorComponent: {
-    template:
-      '<div class="px-[14px] py-4 text-ink-3 text-[12px]" data-testid="chat-panel-error">ChatPanel failed to load.</div>',
-  },
-  loadingComponent: {
-    template:
-      '<div class="px-[14px] py-4 text-ink-3 text-[12px]" data-testid="chat-panel-loading">Loading chat…</div>',
-  },
+  errorComponent: ChatPanelError,
+  loadingComponent: ChatPanelLoading,
   onError(error, retry, fail, attempts) {
     // H5 from code review — log failures so silent mount errors don't hide
     // production breakage. Sentry hook lives in main.ts initBrowserSentry.

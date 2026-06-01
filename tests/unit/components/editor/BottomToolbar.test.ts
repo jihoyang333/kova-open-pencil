@@ -135,6 +135,20 @@ describe('<BottomToolbar> (Cluster 06 Task 10)', () => {
     ])
   })
 
+  test('divider absent when no AI/Components tools registered (L9 regression)', () => {
+    setActivePinia(createPinia())
+    setActiveEditorStore(createEditorStore())
+    const r = useToolRegistry()
+    // Register drawing tools only — no AI, no Components.
+    const drawingOnly: ToolDef[] = [
+      { id: 'move', slot: 'move', icon: 'mouse-pointer-2', label: 'Move', key: 'V', onActivate: () => {} },
+      { id: 'frame', slot: 'frame', icon: 'frame', label: 'Frame', key: 'F', onActivate: () => {} },
+    ]
+    drawingOnly.forEach((t) => r.register(t))
+    const wrapper = mount(BottomToolbar)
+    expect(wrapper.find('[data-testid="toolbar-divider"]').exists()).toBe(false)
+  })
+
   test('toolbar root has correct ARIA + data-testid', () => {
     const wrapper = mount(BottomToolbar)
     const root = wrapper.find('[data-testid="bottom-toolbar"]')

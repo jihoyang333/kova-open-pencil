@@ -54,10 +54,14 @@ onMounted(() => {
 })
 
 // L10 — if Shopify connection flips on while panel is open, auto-expand once.
+// L7 from review — if connection flips OFF (disconnect), collapse the Shop
+// section so the empty-state CTA does not stay sticky-expanded from a
+// previously-connected session.
 watch(
   () => props.shopifyConnected,
   (now, before) => {
     if (now && !before) lp.setExpanded('shop', true)
+    else if (!now && before) lp.setExpanded('shop', false)
   }
 )
 </script>

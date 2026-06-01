@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, provide, ref, watch } from 'vue'
+import { onMounted, onUnmounted, provide, ref, computed, watch } from 'vue'
 import { useBreakpoints, useEventListener, useUrlSearchParams, watchDebounced } from '@vueuse/core'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { useHead } from '@unhead/vue'
-import { SplitterGroup, SplitterPanel, SplitterResizeHandle } from 'reka-ui'
+import { isFontLoaded, DEFAULT_FONT_FAMILY } from '@open-pencil/core'
 
-import { useCanvasBindingsPersistence } from '@/composables/useCanvasBindingsPersistence'
 import { useImportImages } from '@/composables/use-import-images'
 import { useKeyboard } from '@/composables/use-keyboard'
 import { useMenu } from '@/composables/use-menu'
@@ -17,23 +16,30 @@ import { createDemoShapes } from '@/demo'
 import { useBrandsStore } from '@/stores/brands'
 import { useCanvasesStore } from '@/stores/canvases'
 import { useEditorStore } from '@/stores/editor'
+import { useShopifyProductsStore } from '@/stores/shopify-products'
 import { captureThumbnail } from '@/utils/capture-thumbnail'
 import { createTab, activeTab, getActiveStore } from '@/stores/tabs'
 
-import CollabPanel from '@/components/CollabPanel.vue'
 import EditorCanvas from '@/components/EditorCanvas.vue'
-import LayersPanel from '@/components/LayersPanel.vue'
 import MobileDrawer from '@/components/MobileDrawer.vue'
 import MobileHud from '@/components/MobileHud.vue'
-import PropertiesPanel from '@/components/PropertiesPanel.vue'
 import SafariBanner from '@/components/SafariBanner.vue'
 import TabBar from '@/components/TabBar.vue'
 import MediaLibraryPanel from '@/components/media/MediaLibraryPanel.vue'
 import Toolbar from '@/components/Toolbar.vue'
-import ChatPopup from '@/components/chat/ChatPopup.vue'
-import ShopBuildPrompt from '@/components/editor/ShopBuildPrompt.vue'
+import PagesPanel from '@/components/PagesPanel.vue'
+
+// Cluster 06 chrome (replaces the OpenPencil Toolbar / LayersPanel /
+// PropertiesPanel in the desktop "full" editing surface).
+import TopChrome from '@/components/editor/TopChrome.vue'
+import LeftPanel from '@/components/editor/LeftPanel.vue'
+import RightPanel from '@/components/editor/RightPanel.vue'
+import BottomToolbar from '@/components/editor/BottomToolbar.vue'
+import CanvasOverlayHost from '@/components/editor/CanvasOverlayHost.vue'
+import ZoomHud from '@/components/editor/ZoomHud.vue'
+import MissingFontsPill from '@/components/editor/MissingFontsPill.vue'
 import ShopPanel from '@/components/editor/sidebar/ShopPanel.vue'
-import { useShopDrop } from '@/composables/use-shop-drop'
+import type { SelectedProduct } from '@/components/editor/sidebar/ShopPanelProducts.vue'
 
 const route = useRoute()
 const params = useUrlSearchParams('history')
@@ -56,13 +62,13 @@ useMenu()
 const router = useRouter()
 const canvasId = route.params.canvasId as string | undefined
 const brandsStore = useBrandsStore()
+const shopProducts = useShopifyProductsStore()
 
 if (canvasId) {
   const canvasesStore = useCanvasesStore()
 
   // Track the initially loaded name to prevent redundant sync on mount
   let loadedName = ''
-  let saveBindings: (() => Promise<void>) | null = null
 
   onMounted(async () => {
     // Fetch canvas record directly (search active + trashed)
@@ -79,13 +85,11 @@ if (canvasId) {
     loadedName = data.name
     store.state.documentName = data.name
 
-    // Load the associated brand
+    // Load the associated brand + its Shopify catalog (for the Shop section)
     await brandsStore.fetchBrands()
     if (data.brand_id) {
       brandsStore.selectBrand(data.brand_id)
-      const persistence = useCanvasBindingsPersistence(canvasId, data.brand_id as string)
-      await persistence.loadBindings()
-      saveBindings = persistence.saveBindings
+      void shopProducts.loadForBrand(data.brand_id as string)
     }
   })
 
@@ -104,9 +108,8 @@ if (canvasId) {
     { debounce: 500 }
   )
 
-  // Capture thumbnail and save bindings on leave (non-blocking)
+  // Capture thumbnail on leave (non-blocking)
   onBeforeRouteLeave(() => {
-    if (saveBindings) void saveBindings()
     void captureThumbnail(canvasId)
   })
 
@@ -122,8 +125,44 @@ provide(TOGGLE_MEDIA_PANEL_KEY, () => {
   showMediaPanel.value = !showMediaPanel.value
 })
 
-const leftPanel = ref<'layers' | 'shop'>('layers')
-const { handleCanvasDrop, confirmBuildAround, dismissBuildPrompt, buildPromptVisible, buildPromptTitle } = useShopDrop()
+// ── Cluster 06 chrome bindings ───────────────────────────────────────
+const brandId = computed(() => brandsStore.selectedBrandId)
+const productCount = computed(() => shopProducts.productsById.size)
+// A populated catalog is a reliable proxy for "this brand has Shopify
+// connected" without spinning up the heavier useShopifyConnection poller here.
+const shopifyConnected = computed(() => productCount.value > 0)
+const fileMeta = computed(() => (store.state.documentName ? 'Auto-saved' : ''))
+
+// Aggregate missing-font count across the current page's TEXT nodes; drives
+// the MissingFontsPill (C-LOW06.4). Touches sceneVersion for reactivity.
+const missingFontsCount = computed(() => {
+  void store.state.sceneVersion
+  const families = new Set<string>()
+  for (const node of store.graph.flattenTree(store.state.currentPageId)) {
+    if (node.type !== 'TEXT') continue
+    families.add(node.fontFamily || DEFAULT_FONT_FAMILY)
+  }
+  return [...families].filter((f) => !isFontLoaded(f)).length
+})
+
+function onImportProducts(products: SelectedProduct[]): void {
+  // Cluster 10 owns useChatProductReferencesStore.importProducts; the chrome
+  // emits the selection and the wave-merge wires it to the real chat-refs
+  // store (Shopify spec §4.1 / PRD 06 §12.19).
+  if (import.meta.env.DEV) {
+    console.warn(
+      '[EditorView] import products → Cluster 10 chat refs',
+      products.map((p) => p.id)
+    )
+  }
+}
+
+function onOpenFontManager(): void {
+  // Cluster 05 owns the Brand Kit fonts route; wired at wave-merge.
+  if (import.meta.env.DEV) {
+    console.warn('[EditorView] open font manager — Cluster 05 Brand Kit fonts tab')
+  }
+}
 
 useEventListener(
   document,
@@ -159,75 +198,44 @@ onUnmounted(() => {
     <SafariBanner />
     <TabBar />
 
-    <!-- Desktop layout -->
-    <SplitterGroup
+    <!-- Desktop "full" editing surface — Cluster 06 chrome -->
+    <div
       v-if="!isMobile && showChrome && store.state.showUI === 'full'"
       :key="activeTab?.id"
-      direction="horizontal"
-      class="flex-1 overflow-hidden"
-      auto-save-id="editor-layout"
+      class="flex min-h-0 flex-1 flex-col"
     >
-      <SplitterPanel :default-size="18" :min-size="10" :max-size="30" class="flex">
-        <div class="flex min-w-0 flex-1 flex-col overflow-hidden">
-          <!-- Shop/Layers tab strip (only when brand is connected) -->
-          <div
-            v-if="brandsStore.selectedBrandId"
-            class="flex h-7 shrink-0 items-stretch border-b border-r border-border bg-panel"
-          >
-            <button
-              data-test-id="left-panel-tab-layers"
-              class="flex-1 text-[10px] font-medium tracking-wide uppercase transition-colors"
-              :class="leftPanel === 'layers' ? 'text-surface' : 'text-muted hover:text-surface'"
-              @click="leftPanel = 'layers'"
-            >
-              Layers
-            </button>
-            <button
-              data-test-id="left-panel-tab-shop"
-              class="flex-1 text-[10px] font-medium tracking-wide uppercase transition-colors"
-              :class="leftPanel === 'shop' ? 'text-surface' : 'text-muted hover:text-surface'"
-              @click="leftPanel = 'shop'"
-            >
-              Shop
-            </button>
-          </div>
-          <LayersPanel v-if="leftPanel !== 'shop' || !brandsStore.selectedBrandId" />
-          <ShopPanel
-            v-else
-            :brand-id="brandsStore.selectedBrandId"
-            class="flex-1"
-          />
-        </div>
-      </SplitterPanel>
-      <SplitterResizeHandle
-        data-test-id="left-splitter-handle"
-        class="group relative z-10 -mx-1 w-2 cursor-col-resize"
-      >
-        <div class="pointer-events-none absolute inset-y-0 left-1/2 w-px -translate-x-1/2" />
-      </SplitterResizeHandle>
-      <SplitterPanel :default-size="64" :min-size="30" class="flex">
-        <div
-          class="relative flex min-w-0 flex-1"
-          @dragover.prevent
-          @drop.prevent="handleCanvasDrop"
+      <TopChrome :file-name="store.state.documentName" />
+      <div class="flex min-h-0 flex-1">
+        <LeftPanel
+          v-show="store.state.panelsVisible.left"
+          :file-name="store.state.documentName"
+          :file-meta="fileMeta"
+          :product-count="productCount"
+          :shopify-connected="shopifyConnected"
+        >
+          <template #pages>
+            <PagesPanel />
+          </template>
+          <template #shop>
+            <ShopPanel v-if="brandId" :brand-id="brandId" @import="onImportProducts" />
+          </template>
+        </LeftPanel>
+
+        <main
+          class="relative flex min-h-0 min-w-0 flex-1 overflow-hidden"
+          data-testid="canvas-viewport"
         >
           <EditorCanvas />
-          <Toolbar />
+          <CanvasOverlayHost />
+          <MissingFontsPill :missing-count="missingFontsCount" @open-font-manager="onOpenFontManager" />
+          <BottomToolbar />
+          <ZoomHud />
           <MediaLibraryPanel v-if="showMediaPanel" @close="showMediaPanel = false" />
-        </div>
-      </SplitterPanel>
-      <SplitterResizeHandle class="group relative z-10 -mx-1 w-2 cursor-col-resize">
-        <div class="pointer-events-none absolute inset-y-0 left-1/2 w-px -translate-x-1/2" />
-      </SplitterResizeHandle>
-      <SplitterPanel :default-size="18" :min-size="10" :max-size="30" class="flex flex-col">
-        <div
-          class="flex shrink-0 items-center gap-2 border-b border-border px-1.5 py-1.5"
-        >
-          <CollabPanel />
-        </div>
-        <PropertiesPanel />
-      </SplitterPanel>
-    </SplitterGroup>
+        </main>
+
+        <RightPanel v-show="store.state.panelsVisible.right" />
+      </div>
+    </div>
 
     <!-- Mobile layout -->
     <div
@@ -277,20 +285,5 @@ onUnmounted(() => {
         <EditorCanvas />
       </div>
     </div>
-
-    <!-- Chat popup overlay (always rendered, manages its own visibility) -->
-    <ChatPopup
-      v-if="canvasId && brandsStore.selectedBrandId"
-      :canvas-id="canvasId"
-      :brand-id="brandsStore.selectedBrandId"
-    />
-
-    <!-- Shop drop: build-around prompt -->
-    <ShopBuildPrompt
-      :visible="buildPromptVisible"
-      :product-title="buildPromptTitle"
-      @confirm="confirmBuildAround"
-      @dismiss="dismissBuildPrompt"
-    />
   </div>
 </template>

@@ -53,6 +53,25 @@ export const useToolRegistry = defineStore('tool-registry', () => {
   }
 
   function register(tool: ToolDef): void {
+    if (import.meta.env.DEV && tool.key) {
+      const wantsModless = !tool.keySequence || tool.keySequence.length === 0
+      for (const existing of tools.value.values()) {
+        if (existing.id === tool.id) continue
+        if (existing.disabled) continue
+        const existingModless = !existing.keySequence || existing.keySequence.length === 0
+        if (
+          existing.key &&
+          existing.key.toUpperCase() === tool.key.toUpperCase() &&
+          wantsModless &&
+          existingModless
+        ) {
+          console.warn(
+            `[tool-registry] shortcut "${tool.key}" conflicts — "${existing.id}" already owns it. ` +
+              `"${tool.id}" will not match via toolByKey (first registered wins).`,
+          )
+        }
+      }
+    }
     tools.value = new Map(tools.value).set(tool.id, tool)
   }
 

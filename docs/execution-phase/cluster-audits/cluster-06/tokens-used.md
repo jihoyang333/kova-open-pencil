@@ -61,6 +61,7 @@
 | `.kc .zoom` shell `background: #1a1a1d` L314 | `#1a1a1d` | Same. `bg-page`. |
 | `.kc .center .canvas-grid` `rgba(255,255,255,0.025)` L223 | rgba | Canvas grid dot. Used via Tailwind arbitrary `bg-[radial-gradient(circle,rgba(255,255,255,0.025)_1px,transparent_1px)]` OR via a CSS variable `--canvas-grid-dot: rgba(255,255,255,0.025)` added to app.css `@theme`. **Decision (auto-approve):** add as `--color-canvas-grid-dot` to `@theme` next time tokens regenerate. For T16 CanvasOverlayHost: use inline Tailwind arbitrary value, comment `/* hi-fi Final.html L223 — canvas grid dot, not a chrome token */`. Acceptable hi-fi-exempt. |
 | `.kc .toolbar` box-shadow `0 8px 24px -6px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.04) inset` L290 | rgba | Toolbar elevation. **AUTO-APPROVED**: map to existing `--shadow-elev-2` or add hi-fi-exempt inline shadow. Resolve via Rider §2.7 `--shadow-elev-1/2/3` lookup at T10 implementation. |
+| Final.html L348 CTA-button background `#1a1a18` | `#1a1a18` | **Scene-data value**, not chrome token. Stored in canvas Paint.color RGBA at drop time by `use-canvas-drop.ts → CTA_WRAP_FILL_HEX`. CSS variables cannot bind into scene data (engine stores numeric RGBA floats), so the hex literal is exempt. Documented as `CTA_WRAP_FILL_HEX` module constant with hi-fi line reference. Acceptable hi-fi-exempt. |
 
 ## 2. Spacing / sizing tokens
 

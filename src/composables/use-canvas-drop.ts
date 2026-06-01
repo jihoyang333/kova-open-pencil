@@ -17,6 +17,7 @@ import { ref, type Ref } from 'vue'
 import * as v from 'valibot'
 
 import type { EditorStore } from '@/stores/editor'
+import { useToastStore } from '@/stores/toast'
 import {
   DRAG_MIME,
   BrandColorPayloadSchema,
@@ -49,6 +50,17 @@ const FILL_SUPPORTING_TYPES = new Set([
   'TEXT',
   'VECTOR',
 ])
+
+/**
+ * CTA wrap fill — matches the "Edit text" CTA-button background in
+ * `Kova Canvas - Final.html` (compressed-figma-canvas-ui PNG tree, L348).
+ * This value lives in canvas scene data (Paint.color RGBA), not CSS, so it
+ * cannot reference a `--token` CSS variable. Documented in
+ * `docs/execution-phase/cluster-audits/cluster-06/tokens-used.md §1.5`.
+ */
+const CTA_WRAP_FILL_HEX = '#1a1a18' // token-exempt: scene-data value, hi-fi-exact
+
+const MALFORMED_DROP_MESSAGE = 'Drop ignored — invalid payload'
 
 export interface CanvasDropContext {
   /** Pointer position in canvas coordinates (after screenToCanvas). */
@@ -97,10 +109,21 @@ export interface DropEditorAdapter {
   clearDropTarget: () => void
 }
 
+export interface CanvasDropOptions {
+  canvasRef?: Ref<HTMLCanvasElement | null>
+  /**
+   * Called once per malformed payload (JSON parse failure OR valibot schema
+   * failure). DOM-wired entry point passes a toast emitter; tests pass a spy.
+   */
+  onParseError?: (mime: string) => void
+}
+
 export function createCanvasDropHandlers(
   editor: DropEditorAdapter,
-  options: { canvasRef?: Ref<HTMLCanvasElement | null> } = {}
+  options: CanvasDropOptions = {}
 ): CanvasDropHandlers {
+  const notifyParseError = options.onParseError ?? (() => {})
+
   function buildContext(e: DragEvent): CanvasDropContext {
     let sx = e.clientX
     let sy = e.clientY
@@ -126,23 +149,23 @@ export function createCanvasDropHandlers(
     // Dispatch on first matching MIME type. Order matters only for ambiguous
     // drops; in practice each drop carries exactly one Kova MIME.
     if (types.includes(DRAG_MIME.COLOR)) {
-      await handleColorDrop(e, editor, buildContext(e))
+      await handleColorDrop(e, editor, buildContext(e), notifyParseError)
       return
     }
     if (types.includes(DRAG_MIME.FONT)) {
-      await handleFontDrop(e, editor, buildContext(e))
+      await handleFontDrop(e, editor, buildContext(e), notifyParseError)
       return
     }
     if (types.includes(DRAG_MIME.ASSET)) {
-      await handleAssetDrop(e, editor, buildContext(e))
+      await handleAssetDrop(e, editor, buildContext(e), notifyParseError)
       return
     }
     if (types.includes(DRAG_MIME.SAVED_BLOCK)) {
-      await handleSavedBlockDrop(e, editor, buildContext(e))
+      await handleSavedBlockDrop(e, editor, buildContext(e), notifyParseError)
       return
     }
     if (types.includes(DRAG_MIME.TONE_SNIPPET)) {
-      await handleToneSnippetDrop(e, editor, buildContext(e))
+      await handleToneSnippetDrop(e, editor, buildContext(e), notifyParseError)
       return
     }
     // No Kova MIME matched — caller handles file-drop fallback.
@@ -191,11 +214,15 @@ export function createCanvasDropHandlers(
 async function handleColorDrop(
   e: DragEvent,
   editor: DropEditorAdapter,
-  ctx: CanvasDropContext
+  ctx: CanvasDropContext,
+  notifyParseError: (mime: string) => void
 ): Promise<void> {
   const raw = e.dataTransfer?.getData(DRAG_MIME.COLOR) ?? ''
   const payload = parsePayload(raw, BrandColorPayloadSchema)
-  if (!payload) return
+  if (!payload) {
+    notifyParseError(DRAG_MIME.COLOR)
+    return
+  }
 
   // dropTargetAction is already set by handleDragOver; do not double-write
   // during drop (was causing visual jitter — H2 from code review).
@@ -223,11 +250,15 @@ async function handleColorDrop(
 async function handleFontDrop(
   e: DragEvent,
   editor: DropEditorAdapter,
-  ctx: CanvasDropContext
+  ctx: CanvasDropContext,
+  notifyParseError: (mime: string) => void
 ): Promise<void> {
   const raw = e.dataTransfer?.getData(DRAG_MIME.FONT) ?? ''
   const payload = parsePayload(raw, BrandFontPayloadSchema)
-  if (!payload) return
+  if (!payload) {
+    notifyParseError(DRAG_MIME.FONT)
+    return
+  }
 
   if (ctx.target && ctx.target.type === 'TEXT') {
     editor.updateNode(ctx.target.id, { fontFamily: payload.family })
@@ -240,11 +271,15 @@ async function handleFontDrop(
 async function handleAssetDrop(
   e: DragEvent,
   editor: DropEditorAdapter,
-  ctx: CanvasDropContext
+  ctx: CanvasDropContext,
+  notifyParseError: (mime: string) => void
 ): Promise<void> {
   const raw = e.dataTransfer?.getData(DRAG_MIME.ASSET) ?? ''
   const payload = parsePayload(raw, BrandAssetPayloadSchema)
-  if (!payload) return
+  if (!payload) {
+    notifyParseError(DRAG_MIME.ASSET)
+    return
+  }
 
   if (ctx.target && FILL_SUPPORTING_TYPES.has(ctx.target.type)) {
     editor.updateNode(ctx.target.id, {
@@ -259,18 +294,22 @@ async function handleAssetDrop(
 async function handleSavedBlockDrop(
   e: DragEvent,
   editor: DropEditorAdapter,
-  ctx: CanvasDropContext
+  ctx: CanvasDropContext,
+  notifyParseError: (mime: string) => void
 ): Promise<void> {
   const raw = e.dataTransfer?.getData(DRAG_MIME.SAVED_BLOCK) ?? ''
   const payload = parsePayload(raw, SavedBlockPayloadSchema)
-  if (!payload) return
+  if (!payload) {
+    notifyParseError(DRAG_MIME.SAVED_BLOCK)
+    return
+  }
 
   const blockType = payload.blockData.type
   const content = payload.blockData.content
 
   if (blockType === 'cta') {
     // Wrap CTA in a button-shaped RECT with the text as a child.
-    const wrapId = editor.spawnRect(ctx.x - 100, ctx.y - 20, 200, 40, '#1a1a18')
+    const wrapId = editor.spawnRect(ctx.x - 100, ctx.y - 20, 200, 40, CTA_WRAP_FILL_HEX)
     editor.spawnText(0, 0, content, { parentId: wrapId })
   } else if (blockType === 'footer') {
     // Snap to bottom of the nearest containing FRAME if any.
@@ -286,11 +325,15 @@ async function handleSavedBlockDrop(
 async function handleToneSnippetDrop(
   e: DragEvent,
   editor: DropEditorAdapter,
-  ctx: CanvasDropContext
+  ctx: CanvasDropContext,
+  notifyParseError: (mime: string) => void
 ): Promise<void> {
   const raw = e.dataTransfer?.getData(DRAG_MIME.TONE_SNIPPET) ?? ''
   const payload = parsePayload(raw, ToneSnippetPayloadSchema)
-  if (!payload) return
+  if (!payload) {
+    notifyParseError(DRAG_MIME.TONE_SNIPPET)
+    return
+  }
 
   if (ctx.target && ctx.target.type === 'TEXT') {
     editor.updateNode(ctx.target.id, { characters: payload.content })
@@ -331,7 +374,12 @@ function hexToColor(hex: string): { r: number; g: number; b: number; a: number }
 export function useCanvasDrop(canvasRef: Ref<HTMLCanvasElement | null>, store: EditorStore) {
   const isDraggingOver = ref(false)
   const adapter = makeEditorAdapter(store)
-  const handlers = createCanvasDropHandlers(adapter, { canvasRef })
+  const toast = useToastStore()
+  const handlers = createCanvasDropHandlers(adapter, {
+    canvasRef,
+    onParseError: () =>
+      toast.show({ variant: 'error', message: MALFORMED_DROP_MESSAGE }),
+  })
 
   useEventListener(canvasRef, 'dragover', (e: DragEvent) => {
     const types = e.dataTransfer ? Array.from(e.dataTransfer.types) : []
