@@ -45,6 +45,7 @@ import IconUnlock from '~icons/lucide/unlock'
 import IconFileQuestion from '~icons/lucide/file-question'
 import IconFrame from '~icons/lucide/frame'
 import IconGlobe from '~icons/lucide/globe'
+import IconGripVertical from '~icons/lucide/grip-vertical'
 import IconHome from '~icons/lucide/home'
 import IconImage from '~icons/lucide/image'
 import IconInfo from '~icons/lucide/info'
@@ -102,6 +103,7 @@ export const KOVA_ICON_REGISTRY: ReadonlyMap<string, Component> = new Map<
   ['file-question', IconFileQuestion],
   ['frame', IconFrame],
   ['globe', IconGlobe],
+  ['grip-vertical', IconGripVertical],
   ['home', IconHome],
   ['image', IconImage],
   ['info', IconInfo],
