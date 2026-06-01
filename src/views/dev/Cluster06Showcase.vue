@@ -32,18 +32,18 @@ const FILE_META = 'auto-saved · just now'
        Cluster 06 chrome showcase — placeholder canvas surface intentionally
        uses raw px / arbitrary Tailwind values. Not shipped to end users. -->
   <div
-    class="flex flex-col h-screen w-screen bg-page text-ink overflow-hidden"
+    class="flex h-screen w-screen flex-col overflow-hidden bg-page text-ink"
     data-testid="cluster-06-showcase"
   >
     <TopChrome :file-name="FILE_NAME" />
-    <div class="flex flex-1 min-h-0">
+    <div class="flex min-h-0 flex-1">
       <LeftPanel :file-name="FILE_NAME" :file-meta="FILE_META" />
       <main
-        class="flex-1 min-h-0 relative bg-canvas overflow-hidden"
+        class="relative min-h-0 flex-1 overflow-hidden bg-canvas"
         data-testid="cluster-06-canvas-surface"
       >
         <div
-          class="absolute inset-0 flex items-center justify-center text-ink-3 text-[12.5px] pointer-events-none select-none"
+          class="pointer-events-none absolute inset-0 flex items-center justify-center text-[12.5px] text-ink-3 select-none"
         >
           Placeholder canvas — engine mounts via EditorView (T14)
         </div>

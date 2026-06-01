@@ -1,8 +1,29 @@
-# W10 — Cluster 06 (Canvas Editor Core Chrome) — Progress Report
+# W10 — Cluster 06 (Canvas Editor Core Chrome) — DONE Report
 
-**Branch:** `app/cluster-06-canvas-chrome` (16 commits ahead of `feat/m9-shopify`)
-**Status:** **PARTIAL — Tasks 1-11 + 15 + audit gate + code-review remediation shipped. Tasks 12, 13, 14, 16-22 remain.**
-**Date:** 2026-05-27
+**Branch:** `app/cluster-06-canvas-chrome`
+**Status:** **COMPLETE — all build tasks shipped (T1–T20, T22). Only T21 (founder
+manual browser smoke, PRD §9.4) remains as a founder action.**
+**Date:** 2026-05-27 (T1–11/15) · finished 2026-05-31 (T12–14, T16–T20, T22)
+
+---
+
+## Wave-finish session (2026-05-31)
+
+The 2026-05-27 progress report below captured the PARTIAL state. The remaining
+tasks were completed in a finishing pass; see the addendum at the foot of this
+file ("Wave-finish addendum — 2026-05-31") for the full breakdown. Summary:
+
+| Task | Outcome |
+|---|---|
+| T11 tests | LeftPanel + LayerRow + LayersChromePanel + useLeftPanelStore — 29 tests |
+| T12 | Shop panel reworked to product-only multi-select + Import-to-chat |
+| T13+T14 | M9 product-variant drag-place RIP + surgical EditorView chrome mount (lockstep) |
+| T16 | CanvasOverlayHost + ZoomHud |
+| T17 | `/canvas/:canvasId` route + auth/viewport/ownership guards |
+| T18+T19 | tool-registration + drop-receiver integration tests |
+| T20 | 14 E2E specs (6 live on /dev/cluster-06, 8 fixme pending seeded env) |
+| T22 | quality gates green |
+| T21 | **founder action** — manual 15-step browser smoke (PRD §9.4) |
 
 ---
 
@@ -147,3 +168,86 @@ df7d70f9 feat(c06-t3): useRightPanelStore — AI-default tab + sticky-on-selecti
 ```
 
 — End W10 Cluster 06 progress report —
+
+---
+
+## Wave-finish addendum — 2026-05-31
+
+### Tasks completed this session
+
+- **T11 tests** (`test(c06-t11)`): LeftPanel, LayerRow, LayersChromePanel, and
+  useLeftPanelStore — 29 tests. Closes the carry-forward "no T11 tests" risk.
+- **T16** (`feat(c06-t16)`): `CanvasOverlayHost` (pointer-events-none z-20 slot
+  host for Cluster 07b overlays) + floating `ZoomHud` (hi-fi `.kc .zoom`,
+  reads `editor.state.zoom`). CanvasSurface drop listeners already live in the
+  existing `EditorCanvas` via `useCanvasDrop` — no new wiring needed.
+- **T12** (`refactor(c06-t12)`): Shop panel reworked to the product-reference
+  model (Shopify spec §4.1/§5.2) — product-only (no tabs), 2-col multi-select
+  grid, price-range, sticky "Import N to chat" + Clear, drag-place removed,
+  Kova chrome tokens + KovaIcon. `search_products` sort picklist drops
+  `bestsellers` (D6). Import emits → forwarded by EditorView to Cluster 10.
+- **T13+T14** (`refactor(c06-t13+t14)`, lockstep): RIP of the M9 product-variant
+  drag-place model (11 source files + 2 crons + 11 tests) per Shopify spec §5.1;
+  surgical EditorView refactor mounting the Cluster 06 chrome on the desktop
+  "full" surface while preserving tabs/collab/keyboard/menu/automation/demo/
+  canvas-fetch/thumbnail/image-import/mobile/collapsed/bare paths.
+- **T17** (`feat(c06-t17)`): `/canvas/:canvasId` (auth + onboarding + desktop-only
+  + brand-ownership `beforeEnter`); `/editor/:canvasId` redirects for old links;
+  `useCanvasesStore.verifyOwnership` added; dashboard nav points at `/canvas/`.
+- **T18+T19** (`test(c06-t18+t19)`): tool-registration + drop-receiver (5 MIME
+  types against a real editor store) integration tests.
+- **T20** (`test(c06-t20)`): 14 E2E specs — 6 live against `/dev/cluster-06`
+  (load/render, no-Comments §12.3, 2-tabs/no-Prototype, AI-default §12.13,
+  3 sections §12.1, avatar dropdown), 8 `fixme` pending a seeded auth+canvas
+  fixture (sticky §12.14, tab-persist, AI-tool focus, layer-tree, brand-nav,
+  drag color/saved-block, shop import, missing-fonts anchor).
+- **T22**: quality gates (below).
+
+### Quality gates (2026-05-31)
+
+- `bun run check` (oxlint type-aware): **0 warnings, 0 errors**.
+- `bun run build`: **green** (~2s; 604 PWA precache entries).
+- `bun run test:dupes`: **1.14% lines / 1.48% tokens** (< 3% cap).
+- `bun run test:unit` (`tests/engine` + `tests/unit`): all cluster-06 unit
+  tests green. The ~17–32 failures in this run are **pre-existing** and
+  unrelated — auth-store / dashboard-Shopify-banner / preferences / chat /
+  brand-memories suites that fail on a Supabase/`createRouter` (vue-router
+  node-ESM) test-env issue, confirmed not introduced by this branch.
+- `tests/integration/editor` (separate invocation): **23/23 pass**.
+- E2E `tests/e2e/editor` (`--project=openpencil`): **6 pass + 9 fixme**,
+  browser-verified against the dev server.
+
+### Browser-verified fixes surfaced while writing E2E
+
+- `Cluster06Showcase` now bootstraps an active editor store + AI-default
+  `initFor` — the chrome components read `useEditorStore`, and the showcase had
+  none, so `LeftPanel` threw. (`/dev/cluster-06` now renders fully.)
+- `AvatarDropdown` manages `open` via `v-model:open` — `KovaMenu` binds
+  `DropdownMenuRoot.open` (controlled), so without parent state the trigger
+  could not toggle the menu.
+
+### Caveats / follow-ups (not blockers)
+
+1. **T21 founder smoke** — the manual 15-step browser QA (PRD §9.4) is a founder
+   action; not executable here. The Cluster 06 chrome is wired into the real
+   `/canvas/:canvasId` route for that pass.
+2. **Cross-cluster integration stubs** (wired at wave-merge): the Shop "Import"
+   emit → Cluster 10 `useChatProductReferencesStore.importProducts`; the
+   RightPanel AI slot lazy-mounts Cluster 10 `ChatPanel`; the Design tab's
+   InspectorRouter is empty until Cluster 07b ships its sections (acceptable
+   degradation per PRD §12.6); Slice + Measurement tools appear once Cluster 07a
+   registers them. The `verifyOwnership` guard is Cluster 02 contract-shaped.
+3. **Drop migration deferred** — `purge-worker` no longer targets
+   `shopify_orders_agg` (table dropped with the analytics cut), but the
+   surgical forward-migration that drops `shopify_orders_agg` +
+   `canvas_product_variant_bindings` (Shopify spec §5.4) is a DB task owned
+   outside this code cluster and is **not** in this branch.
+4. **`KovaMenu` controlled-only default** is a Cluster 11 footgun — uncontrolled
+   consumers must pass `v-model:open` or the trigger won't toggle. Flagged for a
+   Cluster 11 follow-up (make it uncontrolled-by-default with optional `open`).
+5. **bun `mock.module` isolation** — `tests/unit` and `tests/integration` both
+   stub the same modules; bun's process-global mocks collide if the two trees
+   are run in a single `bun test` invocation. The project never does this
+   (`test:unit` = `tests/engine` + `tests/unit` only), so no gate is affected.
+
+— End wave-finish addendum —

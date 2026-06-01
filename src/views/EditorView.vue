@@ -227,7 +227,10 @@ onUnmounted(() => {
         >
           <EditorCanvas />
           <CanvasOverlayHost />
-          <MissingFontsPill :missing-count="missingFontsCount" @open-font-manager="onOpenFontManager" />
+          <MissingFontsPill
+            :missing-count="missingFontsCount"
+            @open-font-manager="onOpenFontManager"
+          />
           <BottomToolbar />
           <ZoomHud />
           <MediaLibraryPanel v-if="showMediaPanel" @close="showMediaPanel = false" />

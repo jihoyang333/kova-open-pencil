@@ -14,10 +14,7 @@
 </script>
 
 <template>
-  <div
-    class="pointer-events-none absolute inset-0 z-20"
-    data-testid="canvas-overlay-host"
-  >
+  <div class="pointer-events-none absolute inset-0 z-20" data-testid="canvas-overlay-host">
     <slot />
   </div>
 </template>

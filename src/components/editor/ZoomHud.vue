@@ -24,7 +24,7 @@ const zoomLabel = computed(() => `${Math.round(editor.state.zoom * 100)}%`)
     type="button"
     data-testid="zoom-hud"
     aria-label="Zoom controls"
-    class="absolute bottom-[22px] right-[22px] z-30 flex items-center gap-1.5 rounded-lg border border-line bg-page px-2.5 py-1.5 text-[12px] tracking-[0.01em] text-ink-2 shadow-elev-2 hover:text-ink"
+    class="absolute right-[22px] bottom-[22px] z-30 flex items-center gap-1.5 rounded-lg border border-line bg-page px-2.5 py-1.5 text-[12px] tracking-[0.01em] text-ink-2 shadow-elev-2 hover:text-ink"
   >
     <span data-testid="zoom-hud-label">{{ zoomLabel }}</span>
     <KovaIcon name="chevron-down" size="xs" class="text-ink-3" />

@@ -37,25 +37,25 @@ const items = computed<KovaMenuItem[]>(() => [
   {
     id: 'account',
     label: 'Account',
-    onSelect: () => emit('open-account'),
+    onSelect: () => emit('open-account')
   },
   {
     id: 'help',
     label: 'Help',
-    onSelect: () => emit('open-help'),
+    onSelect: () => emit('open-help')
   },
   {
     id: 'shortcuts',
     label: 'Keyboard shortcuts',
     shortcut: '⇧⌘?',
-    onSelect: () => emit('open-shortcuts'),
+    onSelect: () => emit('open-shortcuts')
   },
   {
     id: 'sign-out',
     label: 'Sign out',
     separatorBefore: true,
-    onSelect: () => emit('sign-out'),
-  },
+    onSelect: () => emit('sign-out')
+  }
 ])
 </script>
 
@@ -64,7 +64,7 @@ const items = computed<KovaMenuItem[]>(() => [
     <template #trigger>
       <button
         type="button"
-        class="w-[26px] h-[26px] rounded-full grid place-items-center text-white font-semibold text-[10.5px] cursor-pointer"
+        class="grid h-[26px] w-[26px] cursor-pointer place-items-center rounded-full text-[10.5px] font-semibold text-white"
         :style="avatarStyle"
         :aria-label="`Account menu — ${userName} (${plan})`"
         data-testid="topbar-avatar"

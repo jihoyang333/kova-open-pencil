@@ -5,10 +5,15 @@
  * registers Slice (frame dropdown) + Measurement (primary slot), and the
  * BottomToolbar reflects them in canonical slot order.
  */
-import { describe, test, expect, beforeEach, mock } from 'bun:test'
+import { describe, test, expect, beforeEach, afterAll, mock } from 'bun:test'
 import { mount } from '@vue/test-utils'
 import { setActivePinia, createPinia } from 'pinia'
 import { defineComponent, h } from 'vue'
+
+// bun's mock.module is process-global; restore after this file so its stubs
+// don't leak into sibling suites that mount the same components (e.g.
+// BottomToolbar.test.ts) when run in a single invocation.
+afterAll(() => mock.restore())
 
 mock.module('@/components/ui/kova-icon-registry', () => ({
   KOVA_ICON_REGISTRY: new Map<string, unknown>(),

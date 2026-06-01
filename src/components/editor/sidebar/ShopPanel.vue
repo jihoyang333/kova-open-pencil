@@ -9,9 +9,7 @@
  * Forwards the product-import emit upward; EditorView wires it to Cluster 10's
  * useChatProductReferencesStore.importProducts.
  */
-import ShopPanelProducts, {
-  type SelectedProduct,
-} from './ShopPanelProducts.vue'
+import ShopPanelProducts, { type SelectedProduct } from './ShopPanelProducts.vue'
 
 defineProps<{ brandId: string }>()
 

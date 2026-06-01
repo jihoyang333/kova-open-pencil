@@ -86,7 +86,7 @@ const rows = computed<ProductRow[]>(() => {
       imageUrl: own.find((v) => v.image_url)?.image_url ?? null,
       minPrice,
       maxPrice,
-      priceLabel,
+      priceLabel
     })
   }
   return out
@@ -139,7 +139,7 @@ function importSelected(): void {
         data-testid="shop-products-search"
         type="search"
         placeholder="Search products…"
-        class="min-w-0 flex-1 rounded-md border border-line bg-fill px-2 py-1 text-[12.5px] text-ink placeholder:text-ink-3 outline-none focus:border-ink-3"
+        class="min-w-0 flex-1 rounded-md border border-line bg-fill px-2 py-1 text-[12.5px] text-ink outline-none placeholder:text-ink-3 focus:border-ink-3"
         :value="searchRaw"
         @input="onSearchInput"
       />
@@ -178,7 +178,7 @@ function importSelected(): void {
         >
           <span
             v-if="isSelected(row.id)"
-            class="absolute right-1.5 top-1.5 z-10 grid size-4 place-items-center rounded-full bg-accent text-ink-on-primary"
+            class="absolute top-1.5 right-1.5 z-10 grid size-4 place-items-center rounded-full bg-accent text-ink-on-primary"
             data-testid="shop-product-check"
             aria-hidden="true"
           >
