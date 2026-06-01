@@ -66,6 +66,10 @@ export type Tool =
   | 'TEXT'
   | 'PEN'
   | 'HAND'
+  // Cluster 07b tools (single source of truth for activeTool):
+  | 'SLICE'
+  | 'MEASUREMENT'
+  | 'EYEDROPPER'
 
 export interface ToolDef {
   key: Tool
@@ -195,6 +199,16 @@ export function createEditorStore() {
     }>,
     showUI: 'full' as ShowUIMode,
     panelsVisible: { left: true, right: true } as { left: boolean; right: boolean },
+    // Cluster 07b: canvas overlay visibility flags. Defaults per PRD 07b (Q24
+    // layout guides ON). Each flag is independently togglable.
+    overlays: {
+      frameOutlines: true,
+      maskOutlines: true,
+      pixelGrid: true,
+      layoutGuides: true, // Q24-locked default ON
+      hoverContour: true,
+      measurements: true,
+    },
     documentName: 'Untitled' as string,
     panX: 0,
     pageColor: { ...CANVAS_BG_COLOR } as Color,
