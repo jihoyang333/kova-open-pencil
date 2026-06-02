@@ -6,6 +6,7 @@ export interface ChatConversation {
   readonly title: string | null
   readonly created_at: string
   readonly updated_at: string
+  readonly product_references: readonly ChatProductReference[]
 }
 
 export interface ChatMessageAttachment {
@@ -26,4 +27,15 @@ export interface ChatMessage {
   readonly attachments: readonly ChatMessageAttachment[]
   readonly tool_calls: readonly Record<string, unknown>[]
   readonly created_at: string
+}
+
+export interface ChatProductReference {
+  readonly product_id: string
+  readonly title: string
+  readonly primary_image_url: string | null
+  readonly price_low: string
+  readonly price_high: string | null
+  readonly currency: string
+  readonly handle: string
+  readonly added_at: string
 }
