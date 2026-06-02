@@ -4,7 +4,12 @@ import { ref } from 'vue'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/auth'
 
-import type { ChatConversation, ChatMessage, ChatMessageAttachment } from '@/types/kova/chat'
+import type {
+  ChatConversation,
+  ChatMessage,
+  ChatMessageAttachment,
+  ChatProductReference
+} from '@/types/kova/chat'
 
 export const useChatStore = defineStore('chat', () => {
   const authStore = useAuthStore()
@@ -118,6 +123,31 @@ export const useChatStore = defineStore('chat', () => {
     )
   }
 
+  /**
+   * W4 C-MED27: SINGLE MUTATION ENTRY for chat_conversations.product_references.
+   * All callers (useChatProductReferencesStore.importProducts / removeReference /
+   * clearReferences; chip UI; Shop-panel import) MUST invoke this action — no direct
+   * `supabase.from('chat_conversations').update({ product_references })` is allowed
+   * anywhere else in the codebase.
+   *
+   * Order: persist to Supabase FIRST, then patch local Pinia state. A failed persist
+   * leaves local state unchanged so the UI never lies about server state.
+   */
+  async function updateProductReferences(
+    conversationId: string,
+    refs: readonly ChatProductReference[]
+  ): Promise<void> {
+    const { error } = await supabase
+      .from('chat_conversations')
+      .update({ product_references: refs })
+      .eq('id', conversationId)
+    if (error) throw new Error(error.message)
+
+    conversations.value = conversations.value.map((c) =>
+      c.id === conversationId ? { ...c, product_references: refs } : c
+    )
+  }
+
   return {
     conversations,
     messages,
@@ -128,6 +158,7 @@ export const useChatStore = defineStore('chat', () => {
     deleteConversation,
     fetchMessages,
     addMessage,
-    updateConversationTitle
+    updateConversationTitle,
+    updateProductReferences
   }
 })

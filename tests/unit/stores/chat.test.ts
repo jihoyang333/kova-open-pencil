@@ -27,6 +27,7 @@ const sampleConversation = {
   title: null,
   created_at: '2026-04-01T00:00:00Z',
   updated_at: '2026-04-01T00:00:00Z',
+  product_references: [],
 }
 
 const sampleMessage = {
@@ -113,5 +114,40 @@ describe('chat store', () => {
     store.conversations = [sampleConversation]
     await store.deleteConversation('conv-1')
     expect(store.conversations).toHaveLength(0)
+  })
+
+  test('updateProductReferences patches local conversations array immutably', async () => {
+    mockFrom.mockReturnValueOnce({
+      update: () => ({
+        eq: () => Promise.resolve({ error: null }),
+      }),
+    })
+
+    const store = useChatStore()
+    store.conversations = [sampleConversation]
+    const prev = store.conversations[0]
+    await store.updateProductReferences('conv-1', [
+      {
+        product_id: 'p1', title: 'Tee', primary_image_url: null,
+        price_low: '29', price_high: null, currency: 'USD',
+        handle: 't', added_at: '2026-06-20T00:00:00Z',
+      },
+    ])
+    expect(store.conversations[0].product_references).toHaveLength(1)
+    expect(store.conversations[0].product_references[0].product_id).toBe('p1')
+    // immutability: original object not mutated
+    expect(prev.product_references).toHaveLength(0)
+  })
+
+  test('updateProductReferences throws on supabase error', async () => {
+    mockFrom.mockReturnValueOnce({
+      update: () => ({
+        eq: () => Promise.resolve({ error: { message: 'denied' } }),
+      }),
+    })
+
+    const store = useChatStore()
+    store.conversations = [sampleConversation]
+    await expect(store.updateProductReferences('conv-1', [])).rejects.toThrow('denied')
   })
 })
