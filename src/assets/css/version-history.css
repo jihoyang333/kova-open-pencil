@@ -281,6 +281,14 @@
   font-size: 11px;
 }
 
+/* Trash-confirm body paragraph (hi-fi 15 · B13.1) */
+.vh-trash-body {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--ink-2);
+  line-height: 1.55;
+}
+
 /* Loading skeleton row (W4 C-LOW09.12) — sits in place of a timeline row */
 .vh-skeleton-row {
   height: 34px;
