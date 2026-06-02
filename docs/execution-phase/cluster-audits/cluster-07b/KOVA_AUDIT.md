@@ -99,7 +99,15 @@ Ran the live app (`/demo`, dark, DPR 2). Screenshots in `screenshots/`.
 3. ✅ **Convention** — `StrokeInspectorSection` used forbidden `<icon-lucide-eye>`; switched to `<KovaIcon>`.
 4. ✅ **E2E spec** — pointed at `/demo` (was `/`, which redirects to /login), seeded the find node via store (off-screen drag created nothing), and activates the Design tab (right panel defaults to AI per §12.13).
 
-### 6b. Minor follow-ups (non-blocking)
+### 6b. Code review (superpowers:code-reviewer, 2026-06-01)
+
+Reviewed `87156a75..50257f14`. Verdict: the three behavior fixes are correct (reactivity fix idiomatic, no double-proxy, no wholesale `state.overlays =` re-break anywhere in `src/`; icon resolver genuinely fixed; C2 readback matches the real sampler + `DEFAULT_SHAPE_FILL`). Findings addressed:
+
+- **HIGH (test reactivity) — FIXED.** M1/C1 seeded via raw `graph.createNode`, which does not bump `sceneVersion` (the overlay computeds' only reactive dep); `waitForRender()` is a bare rAF. Added explicit `store.requestRender()` after each seed so the tests don't rely on an incidental render tick. 7/7 still green.
+- **HIGH (full-suite count) — documented, not a 07b regression.** The icon fix lets ~33 previously *crashing* test files actually load; some then fail in the **full** `bun run test:unit` due to **pre-existing** cross-file `mock.module` leakage in ~18 NON-07b files (`reka-ui` / `vue-router` / `KovaIcon.vue` mocks with no restore — e.g. `tests/unit/views/settings-brand-integrations.test.ts`). Every such test passes in isolation. This is the known baseline (handoff §3.6); it is NOT introduced by 07b and NOT "audit-10 fixed" (that item was the ai-tools leak, fixed separately via DI). NB: the reviewer's suggested `afterAll(() => mock.restore())` does **not** work — Bun's `mock.module` is process-global and irreversible; the real fix is converting those files to local VTU stubs, which is cross-cluster scope.
+- **MEDIUM — accepted.** C2 re-implements the readback inline rather than calling `useEyedropperSampler` (a composable not exposed on `window`); it still guards the GL/DPR assumption that was the actual risk. Global icon stub deliberately resolves all names — `KovaIcon.test.ts`'s local mock still wins (7/7).
+
+### 6c. Minor follow-ups (non-blocking)
 - Boolean-ops row "Exclude" label clips at the 264px panel edge (cosmetic; row is dimmed without multi-selection).
 - InspectorRouter passes `:data-section-id` to section components whose root is a fragment → benign Vue dev-warning; the attr just doesn't bind on those.
 

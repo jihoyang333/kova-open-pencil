@@ -109,6 +109,7 @@ test('C1 — find matches a node by name and pans the camera', async () => {
       height: 80
     })
     store.select([node.id])
+    store.requestRender() // bump sceneVersion so the name index + overlays recompute
   })
   await canvas.waitForRender()
   const panBefore = await page.evaluate(() => window.__OPEN_PENCIL_STORE__!.state.panX)
@@ -172,6 +173,7 @@ test('M1 — nested frame outlines render at absolute (not parent-local) positio
       height: 300
     })
     s.graph.createNode('FRAME', parent.id, { name: 'Child', x: 50, y: 40, width: 120, height: 90 })
+    s.requestRender() // bump sceneVersion so FrameOutlinesOverlay's computed re-runs
   })
   await canvas.waitForRender()
 
