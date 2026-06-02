@@ -48,6 +48,7 @@ const ACCOUNT_SECTIONS_RE = '(profile|brands|billing|brand-kit|integrations|dang
 const TokensDebugView = () => import('./views/dev/TokensDebugView.vue')
 const Cluster11Showcase = () => import('./views/dev/Cluster11Showcase.vue')
 const Cluster12Showcase = () => import('./views/dev/Cluster12Showcase.vue')
+const Cluster09Showcase = () => import('./views/dev/Cluster09Showcase.vue')
 const NotFoundView = () => import('./views/error/NotFoundView.vue')
 const ServerErrorView = () => import('./views/error/ServerErrorView.vue')
 const NetworkUnreachableView = () => import('./views/error/NetworkUnreachableView.vue')
@@ -312,6 +313,11 @@ const routes = [
   {
     path: '/dev/cluster-12',
     component: Cluster12Showcase,
+    meta: { demo: true, requiresAuth: false, publicOnly: false }
+  },
+  {
+    path: '/dev/cluster-09',
+    component: Cluster09Showcase,
     meta: { demo: true, requiresAuth: false, publicOnly: false }
   },
   {
