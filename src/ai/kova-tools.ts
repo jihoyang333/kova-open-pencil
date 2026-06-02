@@ -36,6 +36,46 @@ interface StoreWithBrandId extends EditorStore {
   activeBrandId?: () => string | null
 }
 
+const NO_CONNECTION = {
+  error:
+    'No Shopify connection for this brand. Ask the user to connect a Shopify store via Account → Integrations.',
+  code: 'no_connection'
+} as const
+
+/** True when a `shopify_connections` row exists for the brand. */
+async function hasShopifyConnection(brandId: string): Promise<boolean> {
+  if (!brandId) return false
+  const { data } = await supabase
+    .from('shopify_connections')
+    .select('id')
+    .eq('brand_id', brandId)
+    .maybeSingle()
+  return !!data
+}
+
+// --- Cluster 07a engine-API surfaces (optional; absent until 07a ships) ---
+// Measurement is a page-level method per PRD 07a §7.1b (NOT a NodeType).
+type MeasurementSide = 'TOP' | 'RIGHT' | 'BOTTOM' | 'LEFT'
+
+interface MeasurementAnchor {
+  readonly nodeId: string
+  readonly side: MeasurementSide
+}
+
+interface SliceCapableFigma {
+  createSliceFromSelection?: (opts: { name?: string }) => { id: string } | null
+}
+
+interface MeasurementCapableFigma {
+  currentPage?: {
+    addMeasurement?: (
+      start: MeasurementAnchor,
+      end: MeasurementAnchor,
+      opts?: { offsetType?: 'INNER' | 'OUTER'; offsetValue?: number; freeText?: string }
+    ) => { id: string } | null
+  }
+}
+
 // Raw valibot schemas exported so unit tests can use v.safeParse against them.
 // AI SDK consumes them via valibotSchema() inside each tool definition below.
 export const searchProductsSchema = v.object({
@@ -47,7 +87,7 @@ export const searchProductsSchema = v.object({
       collection_id: v.optional(v.string())
     })
   ),
-  sort: v.optional(v.picklist(['bestsellers', 'newest', 'price_asc', 'price_desc'])),
+  sort: v.optional(v.picklist(['newest', 'price_asc', 'price_desc'])),
   limit: v.optional(v.pipe(v.number(), v.minValue(1), v.maxValue(50)))
 })
 export const getCollectionSchema = v.object({ collection_id: v.string() })
@@ -65,6 +105,7 @@ export function createKovaTools(store: StoreWithBrandId) {
     inputSchema: valibotSchema(searchProductsSchema),
     execute: async (args) => {
       const brandId = activeBrandId()
+      if (!(await hasShopifyConnection(brandId))) return NO_CONNECTION
       let q = supabase
         .from('shopify_products')
         .select('*, shopify_variants(*)')
@@ -80,6 +121,7 @@ export function createKovaTools(store: StoreWithBrandId) {
     inputSchema: valibotSchema(getCollectionSchema),
     execute: async ({ collection_id }) => {
       const brandId = activeBrandId()
+      if (!(await hasShopifyConnection(brandId))) return NO_CONNECTION
       const { data: collection } = await supabase
         .from('shopify_collections')
         .select('*')
@@ -103,6 +145,7 @@ export function createKovaTools(store: StoreWithBrandId) {
     inputSchema: valibotSchema(getVariantSchema),
     execute: async ({ variant_id }) => {
       const brandId = activeBrandId()
+      if (!(await hasShopifyConnection(brandId))) return NO_CONNECTION
       const { data: variant } = await supabase
         .from('shopify_variants')
         .select('*, shopify_products(*), shopify_media(*)')
@@ -118,6 +161,7 @@ export function createKovaTools(store: StoreWithBrandId) {
     inputSchema: valibotSchema(getActiveDiscountsSchema),
     execute: async () => {
       const brandId = activeBrandId()
+      if (!(await hasShopifyConnection(brandId))) return NO_CONNECTION
       const nowIso = new Date().toISOString()
       const { data } = await supabase
         .from('shopify_discounts')
@@ -135,6 +179,7 @@ export function createKovaTools(store: StoreWithBrandId) {
     inputSchema: valibotSchema(getShopContextSchema),
     execute: async () => {
       const brandId = activeBrandId()
+      if (!(await hasShopifyConnection(brandId))) return NO_CONNECTION
       const { data: conn } = await supabase
         .from('shopify_connections')
         .select('currency,timezone,primary_locale')
@@ -280,6 +325,73 @@ export function createKovaTools(store: StoreWithBrandId) {
     }
   })
 
+  const createSliceFromSelection = tool({
+    description:
+      'Create a Slice node covering the current selection. Slices define export regions.',
+    inputSchema: valibotSchema(
+      v.object({
+        name: v.optional(
+          v.pipe(v.string(), v.description('Optional name for the slice (e.g. "hero", "footer")'))
+        )
+      })
+    ),
+    execute: async ({ name }) => {
+      const figma = makeFigmaFromStore(store) as unknown as SliceCapableFigma
+      if (typeof figma.createSliceFromSelection !== 'function') {
+        return { error: 'Slice engine API not available', code: 'engine_unavailable' }
+      }
+      const slice = figma.createSliceFromSelection({ name })
+      return slice
+        ? { success: true, sliceId: slice.id }
+        : { error: 'No selection to slice', code: 'no_selection' }
+    }
+  })
+
+  const addMeasurement = tool({
+    description:
+      'Add a persistent Measurement annotation between two nodes on the current page. ' +
+      'Page-level API per PRD 07a §7.1b (Measurement is NOT a NodeType).',
+    inputSchema: valibotSchema(
+      v.object({
+        canvas_id: v.pipe(v.string(), v.description('Canvas (page) id the measurement lives on')),
+        start_node_id: v.pipe(v.string(), v.description('Source node id')),
+        start_side: v.picklist(['TOP', 'RIGHT', 'BOTTOM', 'LEFT']),
+        end_node_id: v.pipe(v.string(), v.description('Target node id')),
+        end_side: v.picklist(['TOP', 'RIGHT', 'BOTTOM', 'LEFT']),
+        offset_type: v.optional(v.picklist(['INNER', 'OUTER'])),
+        offset_value: v.optional(v.number()),
+        free_text: v.optional(v.string())
+      })
+    ),
+    execute: async ({
+      start_node_id,
+      start_side,
+      end_node_id,
+      end_side,
+      offset_type,
+      offset_value,
+      free_text
+    }) => {
+      const figma = makeFigmaFromStore(store) as unknown as MeasurementCapableFigma
+      const page = figma.currentPage
+      if (!page || typeof page.addMeasurement !== 'function') {
+        return { error: 'Measurement engine API not available', code: 'engine_unavailable' }
+      }
+      try {
+        const m = page.addMeasurement(
+          { nodeId: start_node_id, side: start_side },
+          { nodeId: end_node_id, side: end_side },
+          { offsetType: offset_type, offsetValue: offset_value, freeText: free_text }
+        )
+        return m
+          ? { success: true, measurementId: m.id }
+          : { error: 'Could not create measurement', code: 'invalid_anchors' }
+      } catch {
+        return { error: 'Could not create measurement', code: 'invalid_anchors' }
+      }
+    }
+  })
+
   return {
     placeMediaImage,
     saveBrandMemory,
@@ -287,6 +399,8 @@ export function createKovaTools(store: StoreWithBrandId) {
     get_collection,
     get_variant,
     get_active_discounts,
-    get_shop_context
+    get_shop_context,
+    createSliceFromSelection,
+    addMeasurement
   } as const
 }

@@ -1,6 +1,11 @@
 import { describe, it, expect, mock, beforeAll, beforeEach, afterAll, afterEach } from 'bun:test'
 import * as v from 'valibot'
 
+// Real (canvaskit-free) core constants. `@/constants` imports these by name, so
+// the core mock below must provide them or named-import linking fails before any
+// test runs (pre-existing baseline breakage when only computeAllLayouts is stubbed).
+import * as coreConstants from '../../../packages/core/src/constants'
+
 type KovaToolsModule = typeof import('../../../src/ai/kova-tools')
 type CreateKovaTools = KovaToolsModule['createKovaTools']
 let createKovaTools: CreateKovaTools
@@ -14,6 +19,11 @@ let getShopContextSchema: KovaToolsModule['getShopContextSchema']
 const figmaMock = {
   nodeResult: { fills: [] as unknown[] } as Record<string, unknown> | null,
 }
+
+// Per-test Shopify-connection state. Default = connected so the 5 Shopify
+// tools pass the hasShopifyConnection() guard added in Plan Task 9. The
+// no_connection describe block flips this to null.
+const shopifyConn = { row: { id: 'conn-1' } as { id: string } | null }
 const SUPABASE_IMG_URL = 'https://abc.supabase.co/storage/v1/object/public/media-assets/img.png'
 
 // Tracks every .eq(col, val) call made against the mocked Supabase client.
@@ -23,19 +33,24 @@ const eqArgs: Array<[string, unknown]> = []
 type Thenable = { then: (onFulfilled: (val: { data: unknown[]; error: null; count: number }) => unknown, onRejected?: (err: unknown) => unknown) => Promise<unknown> }
 type ChainableQuery = Record<string, unknown> & Thenable
 
-const makeQuery = (): ChainableQuery => {
+const makeQuery = (table: string): ChainableQuery => {
   const q = {} as ChainableQuery
-  q['select'] = () => makeQuery()
+  q['select'] = () => makeQuery(table)
   q['eq'] = (col: string, val: unknown) => {
     eqArgs.push([col, val])
-    return makeQuery()
+    return makeQuery(table)
   }
-  q['or'] = () => makeQuery()
-  q['textSearch'] = () => makeQuery()
-  q['limit'] = () => makeQuery()
-  q['order'] = () => makeQuery()
-  // maybeSingle() is always terminal — return a direct Promise
-  q['maybeSingle'] = () => Promise.resolve({ data: null, error: null })
+  q['or'] = () => makeQuery(table)
+  q['textSearch'] = () => makeQuery(table)
+  q['limit'] = () => makeQuery(table)
+  q['order'] = () => makeQuery(table)
+  // maybeSingle() is always terminal — return a direct Promise. The
+  // shopify_connections lookup (hasShopifyConnection guard) resolves to the
+  // current per-test connection state; all other tables resolve to null.
+  q['maybeSingle'] = () =>
+    table === 'shopify_connections'
+      ? Promise.resolve({ data: shopifyConn.row, error: null })
+      : Promise.resolve({ data: null, error: null })
   // Make the builder itself awaitable so any call in the chain can be terminal
   q['then'] = (onFulfilled, onRejected) =>
     Promise.resolve({ data: [], error: null, count: 0 }).then(onFulfilled, onRejected)
@@ -44,8 +59,8 @@ const makeQuery = (): ChainableQuery => {
 
 beforeAll(async () => {
   mock.module('@/lib/supabase', () => ({
-    supabase: { from: (_table: string) => makeQuery() },
-    getSupabase: () => ({ from: (_table: string) => makeQuery() }),
+    supabase: { from: (table: string) => makeQuery(table) },
+    getSupabase: () => ({ from: (table: string) => makeQuery(table) }),
   }))
 
   mock.module('@/automation/figma-factory', () => ({
@@ -56,6 +71,7 @@ beforeAll(async () => {
   }))
 
   mock.module('@open-pencil/core', () => ({
+    ...coreConstants,
     computeAllLayouts: () => {},
   }))
 
@@ -72,6 +88,7 @@ afterAll(() => mock.restore())
 
 beforeEach(() => {
   eqArgs.length = 0
+  shopifyConn.row = { id: 'conn-1' }
 })
 
 // ---------------------------------------------------------------------------
@@ -246,5 +263,52 @@ describe('placeMediaImage — execute paths', () => {
     })
     expect(result).toEqual({ success: true, node_id: 'n1', scale_mode: 'FIT' })
   })
+})
+
+// ---------------------------------------------------------------------------
+// Task 8 — search_products.sort picklist drops 'bestsellers' (PRD 10 D6)
+// ---------------------------------------------------------------------------
+
+describe('searchProductsSchema.sort picklist', () => {
+  it('rejects "bestsellers"', () => {
+    expect(v.safeParse(searchProductsSchema, { query: 'x', sort: 'bestsellers' }).success).toBe(false)
+  })
+
+  it('accepts "newest", "price_asc", "price_desc"', () => {
+    expect(v.safeParse(searchProductsSchema, { query: 'x', sort: 'newest' }).success).toBe(true)
+    expect(v.safeParse(searchProductsSchema, { query: 'x', sort: 'price_asc' }).success).toBe(true)
+    expect(v.safeParse(searchProductsSchema, { query: 'x', sort: 'price_desc' }).success).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Task 9 — 5 Shopify tools return {error, code:no_connection} when no
+// shopify_connections row exists for the brand.
+// ---------------------------------------------------------------------------
+
+describe('5 Shopify tools — no_connection error UX', () => {
+  const NO_CONNECTION = {
+    error:
+      'No Shopify connection for this brand. Ask the user to connect a Shopify store via Account → Integrations.',
+    code: 'no_connection',
+  }
+
+  const cases: Array<[string, Record<string, unknown>]> = [
+    ['search_products', { query: 'x' }],
+    ['get_collection', { collection_id: 'c' }],
+    ['get_variant', { variant_id: 'v' }],
+    ['get_active_discounts', {}],
+    ['get_shop_context', {}],
+  ]
+
+  for (const [toolName, args] of cases) {
+    it(`${toolName} returns no_connection when no shopify_connections row`, async () => {
+      shopifyConn.row = null
+      const tools = createKovaTools({ activeBrandId: () => 'brand-abc' } as never)
+      const tool = (tools as Record<string, AnyExecute>)[toolName]
+      const result = await tool.execute(args)
+      expect(result).toEqual(NO_CONNECTION)
+    })
+  }
 })
 
