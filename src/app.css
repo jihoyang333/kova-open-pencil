@@ -92,6 +92,16 @@
   --color-accent-hover: #2563eb;
   --color-modal-backdrop: rgba(0, 0, 0, 0.72);
 
+  /* Cluster 09 W12a additions (founder-approved Phase 1 audit gate 2026-06-01).
+     Destructive-action red (scoped exception to the status-color deferral, for
+     destructive confirm buttons only — matches Figma/Linear/Notion); scrim =
+     panel-tinted modal backdrop per Hi-Fi 15; focus-ring = accent @18%.
+     Mirror into main-main-kova-scope/design-system/kova-hifi.css (design-system owner). */
+  --color-danger: #e5484d;
+  --color-danger-hover: #d93a40;
+  --color-scrim: rgba(26, 26, 29, 0.72);
+  --color-focus-ring: rgba(59, 130, 246, 0.18);
+
   /* Cluster 02 W9a additions (founder-approved 2026-05-25 audit gate).
      bucket-1: warm-white surface + near-black ink for light-glyph-on-dark
      treatments (brand-switch logo, .btn.primary, onb wordmark, etc.).

@@ -70,7 +70,18 @@
 | 15 | z-index | backdrop 5 / dlg 10 / anchor 9 | ✅ literal |
 | 17 | `.more` reveal | `opacity 0→1` on row hover/active | ✅ |
 
-## MISSING summary (founder decisions)
+## RESOLVED (founder, 2026-06-01 Phase 1 gate)
+
+- **Q1 destructive button → RED.** Added `--color-danger: #e5484d` + `--color-danger-hover: #d93a40`
+  (a proper Figma/Linear-style red, not the mockup's warm `#d36a3a`) — scoped to destructive confirm
+  buttons. `.btn.danger` maps to these.
+- **Q2 scrim + focus-ring → NAMED.** Added `--color-scrim: rgba(26,26,29,0.72)` +
+  `--color-focus-ring: rgba(59,130,246,0.18)` to `src/app.css @theme`.
+- Brand avatar `#c24a1e` confirmed dynamic (brand data) — no token.
+
+All MISSING rows resolved. Phase 1 gate GREEN → Vue build (Tasks 13–18) unblocked.
+
+## MISSING summary (original — now all resolved above)
 
 1. **Destructive button hover `#d36a3a`** (`.btn.danger:hover`, Hi-Fi 15 L554). Base is neutral
    (`--warn`=`--ink-2`). → **Q1**: (a) neutral throughout; (b) add `--danger` red token; (c) keep
