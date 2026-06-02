@@ -281,6 +281,11 @@
   font-size: 11px;
 }
 
+/* Empty-state keyboard hint (hi-fi 17.11) */
+.vh-kbd-hint {
+  color: var(--ink-2);
+}
+
 /* Trash-confirm body paragraph (hi-fi 15 · B13.1) */
 .vh-trash-body {
   margin: 0;
