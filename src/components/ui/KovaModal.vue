@@ -76,7 +76,7 @@ function onInteractOutside(event: Event): void {
             </DialogClose>
           </div>
         </slot>
-        <div class="dlg-body">
+        <div v-if="$slots.default" class="dlg-body">
           <slot />
         </div>
         <div v-if="$slots.foot || $slots['foot-left']" class="dlg-foot">

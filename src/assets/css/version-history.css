@@ -1,0 +1,289 @@
+/* ============================================================
+   Cluster 09 — Version history panel local classes.
+   Translated 1:1 from the in-repo hi-fi:
+     design-system/hifi/version-history/chunk-b6/Kova Hi-Fi 17 Version History - Dark.html
+   Hi-fi scopes these under `.kc .right` with the `.kc`-local non-hyphen
+   token aliases (--ink2/--line2/--ink3); here they resolve through the
+   canonical hyphenated tokens (--ink-2/--line-2/--ink-3) per
+   cluster-09-audit.md §1.1. Spacing/type are literal px per the system's
+   colors-and-offsets-only tokenization (see tokens-used.md).
+   ============================================================ */
+
+/* Panel root — fills the canvas right rail (264px) */
+.vh-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Panel header */
+.vh-head {
+  padding: 0 14px;
+  height: 44px;
+  border-bottom: 1px solid var(--line-2);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.vh-head .ttl {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.005em;
+}
+.vh-head .icns {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.vh-head .a {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 5px;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.vh-head .a:hover {
+  background: var(--fill);
+  color: var(--ink);
+}
+.vh-head .a.open {
+  background: var(--fill);
+  color: var(--ink);
+}
+
+/* Instruction strip below header */
+.vh-instructions {
+  padding: 12px 14px;
+  color: var(--ink-3);
+  font-size: 11.5px;
+  line-height: 1.5;
+  border-bottom: 1px solid var(--line-2);
+  flex-shrink: 0;
+}
+.vh-instructions .glyph {
+  color: var(--ink-2);
+  font-feature-settings: "tnum" 1;
+}
+
+/* Scrollable timeline area */
+.vh-body {
+  flex: 1;
+  overflow: auto;
+  padding: 8px 0 16px;
+}
+/* Empty-state variant gets the A11 panel padding instead */
+.vh-body.empty {
+  padding: 14px;
+}
+
+/* Timeline column — the 1px hairline connector running through rows */
+.vh-timeline {
+  position: relative;
+  padding: 0 14px;
+}
+.vh-timeline::before {
+  content: "";
+  position: absolute;
+  top: 18px;
+  bottom: 12px;
+  left: 21px; /* centre of the dot column (dot Ø ~10px) */
+  width: 1px;
+  background: var(--line);
+}
+
+/* A timeline row (current / autosave / named) */
+.vh-row {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 6px 8px 6px 24px;
+  border-radius: 5px;
+  color: var(--ink-2);
+  cursor: pointer;
+  margin: 0 -8px;
+}
+.vh-row:hover {
+  background: var(--line-2);
+  color: var(--ink);
+}
+.vh-row.active {
+  background: var(--accent-soft);
+  color: var(--ink);
+}
+
+/* Dot glyph — sits ON the timeline hairline */
+.vh-row .dot {
+  position: absolute;
+  left: 9px;
+  top: 9px;
+  width: 10px;
+  height: 10px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.vh-row .dot .core {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--rail);
+  border: 1px solid var(--ink-3);
+  box-shadow: 0 0 0 2px var(--rail); /* mask 1px line behind dot */
+}
+.vh-row.current .dot .core {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.vh-row.named .dot .core {
+  background: var(--ink);
+  border-color: var(--ink);
+}
+.vh-row.active .dot .core {
+  border-color: var(--accent);
+}
+
+/* Row body — text stack */
+.vh-row .body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.vh-row .ttl,
+.vh-row .ttl-cur {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ink);
+  letter-spacing: -0.003em;
+  line-height: 1.3;
+}
+.vh-row .desc {
+  font-size: 11.5px;
+  color: var(--ink-3);
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.vh-row .by {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink-3);
+  font-size: 11px;
+}
+.vh-row .by .av {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--fill);
+  color: var(--ink-2);
+  display: grid;
+  place-items: center;
+  font-size: 8.5px;
+  font-weight: 600;
+  overflow: hidden;
+}
+/* Brand avatar tint is a dynamic brand colour (not a token) — set via the
+   --vh-brand-color custom property bound from brand data in the SFC. */
+.vh-row .by .av.brand {
+  background: var(--vh-brand-color, var(--fill));
+  color: var(--ink-on-primary);
+}
+
+/* Trailing ••• icon — hidden until row hover/active */
+.vh-row .more {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  color: var(--ink-3);
+  border-radius: 4px;
+  flex-shrink: 0;
+  opacity: 0;
+  margin-top: -2px;
+}
+.vh-row:hover .more,
+.vh-row.active .more {
+  opacity: 1;
+}
+.vh-row .more:hover {
+  background: var(--fill);
+  color: var(--ink);
+}
+
+/* Inline rename input (replaces the title region during rename) */
+.vh-row .rename {
+  background: var(--page);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  color: var(--ink);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  padding: 3px 6px;
+  width: 100%;
+  outline: none;
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+}
+
+/* Autosave group head (chevron + N autosave versions) */
+.vh-group-head {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px 6px 24px;
+  color: var(--ink-2);
+  cursor: pointer;
+  margin: 0 -8px;
+  border-radius: 5px;
+  font-size: 12.5px;
+}
+.vh-group-head:hover {
+  background: var(--line-2);
+  color: var(--ink);
+}
+.vh-group-head .dot {
+  position: absolute;
+  left: 9px;
+  top: 9px;
+  width: 10px;
+  height: 10px;
+  display: grid;
+  place-items: center;
+  color: var(--ink-2);
+}
+.vh-group-head .dot .chev {
+  width: 10px;
+  height: 10px;
+  background: var(--rail);
+  box-shadow: 0 0 0 2px var(--rail);
+  border-radius: 2px;
+  display: grid;
+  place-items: center;
+}
+.vh-group-head .lbl {
+  flex: 1;
+}
+.vh-group-head .count {
+  color: var(--ink-3);
+  font-size: 11px;
+}
+
+/* Loading skeleton row (W4 C-LOW09.12) — sits in place of a timeline row */
+.vh-skeleton-row {
+  height: 34px;
+  margin: 6px 14px;
+  border-radius: 5px;
+}
