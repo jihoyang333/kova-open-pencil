@@ -93,7 +93,25 @@ side-render API (the panel shows the snapshot thumbnail; live side-doc is a futu
 
 ## Remaining work (NOT done) + why
 
-### Tasks 13–18 — Vue components — BLOCKED on the Phase 1 audit gate
+### Phase 1 design audit — DONE + founder-approved (2026-06-01)
+
+`cluster-09-audit.md` + `cluster-09-tokens-used.md` written; every visual value mapped. Founder
+resolved the 3 MISSING items: **destructive red** (`--color-danger` #e5484d + hover, Figma/Linear
+style, scoped to destructive confirm buttons), **named `--color-scrim`** (rgba(26,26,29,.72)) +
+**`--color-focus-ring`** (accent @18%) — all added to `src/app.css @theme` (Phase 2). Brand avatar
+color confirmed dynamic. **Gate GREEN.** (Mirror the 3 tokens into canonical kova-hifi.css —
+design-system owner.)
+
+### Tasks 13–18 — Vue components — the remaining phase (gate now passed)
+
+The 6 surfaces are ready to build: AddVersionDialog, RestoreConfirmModal, SnapshotEmptyState +
+AutosaveGroupHead + CurrentVersionRow + FilterDropdown, SnapshotRow, SnapshotTimelinePanel,
+TrashConfirmModal. Reuse map in `cluster-09-audit.md` §1.3. Each needs the per-screen visual-diff
+loop (screenshot mockup vs Vue at 1440px → diff → fix → ≤0.5%) + the 3-screenshot PR artifact —
+**best done with live browser iteration.** The `.vh-timeline`/`.vh-row`/`.vh-group-head` CSS ships
+to `src/assets/css/version-history.css` from the exact hi-fi values in `tokens-used.md`.
+
+### (former) Tasks 13–18 note
 
 Per the plan + master guide, no Vue may be written until `KOVA_AUDIT.md` + `tokens-used.md` are
 produced and **founder-approved** (Phase 1 gate). Surfaces: AddVersionDialog, RestoreConfirmModal,
