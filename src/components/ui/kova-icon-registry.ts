@@ -17,12 +17,11 @@
 // Adding a new icon: add an import line + a Map entry below. Order is not
 // significant; alphabetical is preferred for readability.
 
-import type { Component } from 'vue'
-
 import IconAlertTriangle from '~icons/lucide/alert-triangle'
 import IconArrowLeft from '~icons/lucide/arrow-left'
 import IconArrowRight from '~icons/lucide/arrow-right'
 import IconBell from '~icons/lucide/bell'
+import IconBot from '~icons/lucide/bot'
 import IconCheck from '~icons/lucide/check'
 import IconCheckCircle from '~icons/lucide/check-circle'
 import IconChevronDown from '~icons/lucide/chevron-down'
@@ -40,6 +39,7 @@ import IconInfo from '~icons/lucide/info'
 import IconKey from '~icons/lucide/key'
 import IconLink2 from '~icons/lucide/link-2'
 import IconLoader from '~icons/lucide/loader'
+import IconLoaderCircle from '~icons/lucide/loader-circle'
 import IconLogOut from '~icons/lucide/log-out'
 import IconMail from '~icons/lucide/mail'
 import IconPalette from '~icons/lucide/palette'
@@ -49,8 +49,10 @@ import IconRefreshCw from '~icons/lucide/refresh-cw'
 import IconRotateCw from '~icons/lucide/rotate-cw'
 import IconRuler from '~icons/lucide/ruler'
 import IconSearch from '~icons/lucide/search'
+import IconSend from '~icons/lucide/send'
 import IconShield from '~icons/lucide/shield'
 import IconSparkles from '~icons/lucide/sparkles'
+import IconSquare from '~icons/lucide/square'
 import IconTag from '~icons/lucide/tag'
 import IconTrash2 from '~icons/lucide/trash-2'
 import IconUpload from '~icons/lucide/upload'
@@ -59,14 +61,14 @@ import IconWifiOff from '~icons/lucide/wifi-off'
 import IconX from '~icons/lucide/x'
 import IconXCircle from '~icons/lucide/x-circle'
 
-export const KOVA_ICON_REGISTRY: ReadonlyMap<string, Component> = new Map<
-  string,
-  Component
->([
+import type { Component } from 'vue'
+
+export const KOVA_ICON_REGISTRY: ReadonlyMap<string, Component> = new Map<string, Component>([
   ['alert-triangle', IconAlertTriangle],
   ['arrow-left', IconArrowLeft],
   ['arrow-right', IconArrowRight],
   ['bell', IconBell],
+  ['bot', IconBot],
   ['check', IconCheck],
   ['check-circle', IconCheckCircle],
   ['chevron-down', IconChevronDown],
@@ -84,6 +86,7 @@ export const KOVA_ICON_REGISTRY: ReadonlyMap<string, Component> = new Map<
   ['key', IconKey],
   ['link-2', IconLink2],
   ['loader', IconLoader],
+  ['loader-circle', IconLoaderCircle],
   ['log-out', IconLogOut],
   ['mail', IconMail],
   ['palette', IconPalette],
@@ -93,15 +96,17 @@ export const KOVA_ICON_REGISTRY: ReadonlyMap<string, Component> = new Map<
   ['rotate-cw', IconRotateCw],
   ['ruler', IconRuler],
   ['search', IconSearch],
+  ['send', IconSend],
   ['shield', IconShield],
   ['sparkles', IconSparkles],
+  ['square', IconSquare],
   ['tag', IconTag],
   ['trash-2', IconTrash2],
   ['upload', IconUpload],
   ['user', IconUser],
   ['wifi-off', IconWifiOff],
   ['x', IconX],
-  ['x-circle', IconXCircle],
+  ['x-circle', IconXCircle]
 ])
 
 export type KovaIconSize = 'xs' | 'sm' | 'md' | 'lg'
@@ -110,5 +115,5 @@ export const KOVA_ICON_SIZE_PX: Readonly<Record<KovaIconSize, number>> = {
   xs: 12,
   sm: 14,
   md: 16,
-  lg: 20,
+  lg: 20
 }
