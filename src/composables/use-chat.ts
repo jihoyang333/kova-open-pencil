@@ -17,7 +17,7 @@ import { ACP_AGENTS, IS_BROWSER, IS_TAURI } from '@open-pencil/core'
 
 import type { AvailableImage, CampaignType, ChatAttachmentForAI } from '@/ai/build-system-prompt'
 import type { BrandMemory } from '@/types/kova/brand-memory'
-import type { ChatMessage } from '@/types/kova/chat'
+import type { ChatMessage, ChatProductReference } from '@/types/kova/chat'
 import type { ACPAgentID, AIProviderID } from '@open-pencil/core'
 import type { ChatTransport, UIMessage } from 'ai'
 
@@ -61,6 +61,15 @@ const activeChatAttachmentsForAI = ref<readonly ChatAttachmentForAI[]>([])
 
 function setActiveChatAttachmentsForAI(attachments: readonly ChatAttachmentForAI[]): void {
   activeChatAttachmentsForAI.value = attachments
+}
+
+// Active Shopify product-reference chips for the current conversation. Set by
+// ChatPanel before each sendMessage so prepareCall can inject the persisted
+// product references (Layer 9) into the system prompt. Cleared by resetChat().
+const activeProductReferences = ref<readonly ChatProductReference[]>([])
+
+function setActiveProductReferences(refs: readonly ChatProductReference[]): void {
+  activeProductReferences.value = refs
 }
 
 const isACPProvider = computed(() => providerID.value.startsWith('acp:'))
@@ -178,7 +187,8 @@ function createTransport(): ChatTransport<UIMessage> {
         availableImages,
         brandMemories: activeBrandMemories.value,
         chatAttachments: activeChatAttachmentsForAI.value,
-        campaignType: activeCampaignType.value
+        campaignType: activeCampaignType.value,
+        productReferences: activeProductReferences.value
       })
       return {
         ...options,
@@ -259,6 +269,7 @@ function resetChat() {
   // Don't remove from activeChatMap — in-flight streams self-remove in onFinish.
   chat = null
   activeBrandMemories.value = []
+  activeProductReferences.value = []
 }
 
 if (IS_BROWSER) {
@@ -280,6 +291,7 @@ export function useAIChat() {
     refreshActiveBrandMemories,
     setActiveCampaignType,
     setActiveChatAttachmentsForAI,
+    setActiveProductReferences,
     setAssistantFinishHandler
   }
 }

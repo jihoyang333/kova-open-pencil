@@ -5,6 +5,7 @@ import { createAnthropic } from '@ai-sdk/anthropic'
 import {
   ANTHROPIC_PROXY_BASE_URL,
   ANTHROPIC_PROXY_PLACEHOLDER_API_KEY,
+  useAIChat,
 } from '@/composables/use-chat'
 
 interface AnthropicLanguageModelInternal {
@@ -50,5 +51,12 @@ describe('Anthropic proxy SDK contract', () => {
 
   test('proxy baseURL ends with /v1 so SDK-appended /messages resolves to the registered route', () => {
     expect(ANTHROPIC_PROXY_BASE_URL).toBe('/api/ai-proxy/v1')
+  })
+})
+
+describe('useAIChat.setActiveProductReferences', () => {
+  test('is exported and is callable', () => {
+    const { setActiveProductReferences } = useAIChat()
+    expect(typeof setActiveProductReferences).toBe('function')
   })
 })
