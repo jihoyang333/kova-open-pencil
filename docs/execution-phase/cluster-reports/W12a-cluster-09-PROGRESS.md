@@ -1,7 +1,8 @@
 # W12a — Cluster 09 (Version History + Trash) — Progress Report
 
-**Status:** Backend half COMPLETE + green. Frontend half (store/composables/Vue) blocked on an
-architectural decision (editor-snapshot adapter) + the mandated Phase 1 Vue audit gate.
+**Status:** Backend + all store/composable logic COMPLETE + green (61 tests). Editor-snapshot
+adapter approved (founder, 2026-06-01) + built. Only the Vue UI (Tasks 13–18) remains — gated on
+the mandated Phase 1 design audit gate.
 **Worktree:** `/Users/jihoyang/kova-build-c09` · branch `app/cluster-09-version-history`
 **Base:** `feat/m9-shopify`
 **Date:** 2026-06-01
@@ -49,7 +50,31 @@ default-port `config.toml` for committed/CI use is a separate infra task.
 | 20 | `snapshot-prune` cron + feature-flags + vercel.json | 2 unit + 1 integration |
 | 20b | `snapshot-storage-sweep` cron (recursive orphan diff) | 2 unit + 1 integration |
 
-**Total: 43 tests green (30 integration + 13 unit), 0 fail.** `oxlint` clean on all new source files.
+**Backend total: 43 tests green (30 integration + 13 unit).**
+
+### Editor-snapshot adapter + store/composables (Tasks 8–12a) — DONE + green
+
+Founder approved the **whole-document `.fig`** approach (engine's native serializer; no
+`packages/core` change) over per-page Yjs — the engine has no Yjs/delta system at all (it stores
+designs in plain Maps and saves whole `.fig` files). See
+`W12a-cluster-09-EDITOR-ADAPTER-PROPOSAL.md`.
+
+| Task | What | Tests |
+|---|---|---|
+| adapter | `src/stores/editor.ts` +3 methods: `serializeSnapshot` / `loadSnapshot` / `captureSnapshotThumbnail` (thin wrappers over `exportFigFile`/`openFigFile`/`renderThumbnail`) | (covered via store/composables) |
+| 8+10 | `useSnapshotsStore` (list/create/restore/rename/duplicate/copyLink/preview; thumbnail folded into adapter) | 4 unit |
+| 11 | `useAutosnapshot` (30-min tick, blur/focus/offline/tab-close, skip-if-unchanged via FNV hash, stop-on-trash) | 4 unit |
+| 12 | `useDeepLinkedVersion` (?version) + `useVersionHistoryShortcut` (Cmd/Ctrl+Alt+S) | 6 unit |
+| 12a | `useCanvasEditLock` (single-owner boolean + Sentry on double-lock) | 4 unit |
+
+**Total now: 61 tests green (30 integration + 31 unit), 0 fail.** `oxlint` clean on all new source.
+
+**Deviations (approved):** (1) snapshot = whole-doc `.fig`, not per-page Yjs; (2) Task 9
+`useRestoreUndo` dropped — "undo a restore" = restore the auto-created `pre_restore` snapshot;
+(3) thumbnail via `renderThumbnail`; (4) preview-side-doc deferred — needs a nonexistent engine
+side-render API (the panel shows the snapshot thumbnail; live side-doc is a future engine item);
+(5) snapshot blob stored as raw `.fig` (already compressed) with `format_version=1` — the codec
+(Task 7) stays as a versioning utility but isn't in the whole-doc write path.
 
 ### Corrections made vs the PRD/Plan (TDD-caught)
 
@@ -67,24 +92,6 @@ default-port `config.toml` for committed/CI use is a separate infra task.
 ---
 
 ## Remaining work (NOT done) + why
-
-### Tasks 8–12a — store + composables — BLOCKED on an architectural decision
-
-`useSnapshotsStore` + `useAutosnapshot` + `useRestoreUndo` + `useSnapshotThumbnail` assume an
-**editor-snapshot adapter** that does not exist:
-
-- `getStateVector`, per-page `snapshotPage` (Yjs update bytes), `restorePageFromSnapshot`,
-  `captureThumbnail`, `pushUndoEntry`, `userId`/`brandId`/`canvasId`.
-
-The editor is a Pinia store (`useEditorStore`) wrapping `SceneGraph` (locked `packages/core`). The
-public API exposes **no** Yjs-doc access (`encodeStateAsUpdate`), no thumbnail capture, and no undo
-push. Building the adapter requires:
-1. Discovering the engine's public serialization API (or a sanctioned Yjs-doc accessor) **without
-   modifying `packages/core`** (CLAUDE.md hard lock).
-2. A render→thumbnail capture path.
-3. Browser verification of a snapshot → restore round-trip on a live canvas.
-
-This is an architecture decision, not blind execution — flagged for the founder.
 
 ### Tasks 13–18 — Vue components — BLOCKED on the Phase 1 audit gate
 
