@@ -14,7 +14,9 @@ function isEditing(e: Event) {
   return e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement
 }
 
-const PREVENT_MOD_ALT = new Set(['KeyK', 'KeyB'])
+// KeyS: ⌘⌥S opens "Add to version history" (Cluster 09, useVersionHistoryShortcut
+// owns the handler). Registered here so the browser default never fires.
+const PREVENT_MOD_ALT = new Set(['KeyK', 'KeyB', 'KeyS'])
 const PREVENT_MOD_SHIFT = new Set(['KeyK', 'KeyH', 'KeyL', 'KeyE', 'KeyS', 'KeyG', 'KeyZ'])
 const PREVENT_MOD_ONLY = new Set([
   'Backslash',

@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 
 import CanvasCard from '@/components/dashboard/CanvasCard.vue'
 import EmptyState from '@/components/dashboard/EmptyState.vue'
-import MoveToTrashDialog from '@/components/dashboard/MoveToTrashDialog.vue'
+import TrashConfirmModal from '@/components/trash/TrashConfirmModal.vue'
 import { useCanvasesStore } from '@/stores/canvases'
 
 import type { Canvas } from '@/types/kova/database'
@@ -82,6 +82,13 @@ async function handleDuplicate(id: string): Promise<void> {
       />
     </div>
 
-    <MoveToTrashDialog />
+    <!-- Cluster 09 Task 22: hi-fi B13.1 trash-confirm, wired to the Cluster 02
+         canvasToTrash flow. Replaces the pre-design-system MoveToTrashDialog. -->
+    <TrashConfirmModal
+      v-if="canvasesStore.canvasToTrash"
+      :canvas-name="canvasesStore.canvasToTrash.name"
+      @confirmed="canvasesStore.executeMoveToTrash()"
+      @cancelled="canvasesStore.cancelMoveToTrash()"
+    />
   </div>
 </template>
