@@ -155,3 +155,31 @@ test('H1 — selecting a node renders the wired inspector sections', async () =>
   ).toBeGreaterThan(3)
   canvas.assertNoErrors()
 })
+
+test('M1 — nested frame outlines render at absolute (not parent-local) position', async () => {
+  await canvas.clearCanvas()
+  // A child frame nested inside a parent must outline at its ABSOLUTE canvas
+  // position (getAbsolutePosition + flattenTree), not its parent-local x/y — the
+  // exact mispositioning the audit flagged (M1/M2). Parent (300,200), child local
+  // (50,40) ⇒ child absolute (350,240).
+  await page.evaluate(() => {
+    const s = window.__OPEN_PENCIL_STORE__!
+    const parent = s.graph.createNode('FRAME', s.state.currentPageId, {
+      name: 'Parent',
+      x: 300,
+      y: 200,
+      width: 400,
+      height: 300
+    })
+    s.graph.createNode('FRAME', parent.id, { name: 'Child', x: 50, y: 40, width: 120, height: 90 })
+  })
+  await canvas.waitForRender()
+
+  const outlines = page.locator('[data-test="frame-outline"]')
+  await expect(outlines).toHaveCount(2)
+  // The child outline lives at absolute 350,240 — proves nested traversal + abs pos.
+  await expect(
+    page.locator('[data-test="frame-outline"][style*="left: 350px"][style*="top: 240px"]')
+  ).toHaveCount(1)
+  canvas.assertNoErrors()
+})

@@ -106,7 +106,7 @@ Ran the live app (`/demo`, dark, DPR 2). Screenshots in `screenshots/`.
 ## 7. Founder-smoke checklist (verified 2026-06-01)
 
 - [x] Right-panel Fill/Stroke/Effects sections render + edit a real node. *(E2E H1 + screenshot 01)*
-- [ ] Frame outline / layout guide / slice region / mask glyph position correctly on **nested** nodes. *(not yet exercised with deep nesting — recommend a follow-up nested-overlay E2E)*
+- [x] Frame outline positions correctly on **nested** nodes. *(E2E M1 — child frame local (50,40) inside parent (300,200) outlines at absolute (350,240); layout-guide/slice/mask use the same getAbsolutePosition + flattenTree path)*
 - [x] Cmd+F → type → non-matches dim + camera pans to a single match. *(E2E C1)*
 - [x] Eyedropper magnifier shows real canvas pixels; click applies the sampled fill. *(E2E C2 — readback proven; full click-to-apply UI flow still manual)*
 - [x] Pixel grid toggles at normal zoom via Shift+'. *(E2E H3, after the reactivity fix)*
