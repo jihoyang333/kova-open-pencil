@@ -113,6 +113,13 @@ describe('SnapshotRow', () => {
     expect(autoRow.find('.ttl').text().length).toBeGreaterThan(0)
   })
 
+  it('a manual snapshot with its label cleared shows the timestamp, not an empty title (H1)', () => {
+    const delabeled = mountRow({ ...named, label: null })
+    expect(delabeled.find('.vh-row').classes()).not.toContain('named')
+    expect(delabeled.find('.ttl').text().length).toBeGreaterThan(0)
+    expect(delabeled.find('.desc').exists()).toBe(false)
+  })
+
   it('clicking the row emits preview', async () => {
     const w = mountRow(autosave)
     await w.find('.vh-row').trigger('click')

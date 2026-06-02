@@ -50,6 +50,11 @@
   gap: 2px;
 }
 .vh-head .a {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font: inherit;
   width: 26px;
   height: 26px;
   display: grid;
@@ -212,6 +217,11 @@
 
 /* Trailing ••• icon — hidden until row hover/active */
 .vh-row .more {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font: inherit;
   width: 22px;
   height: 22px;
   display: grid;

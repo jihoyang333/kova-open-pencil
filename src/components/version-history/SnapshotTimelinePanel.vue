@@ -45,8 +45,10 @@ onUnmounted(() => {
 
 const loading = computed(() => store.loadingByCanvas[props.canvasId] === true)
 const visible = computed(() => store.visibleFor(props.canvasId))
-const named = computed(() => visible.value.filter((s) => s.kind === 'manual' || !!s.label))
-const autosaves = computed(() => visible.value.filter((s) => s.kind !== 'manual' && !s.label))
+// "named" tracks label presence (matches SnapshotRow.isNamed) so a snapshot
+// whose version info was deleted demotes back into the autosave group.
+const named = computed(() => visible.value.filter((s) => !!s.label))
+const autosaves = computed(() => visible.value.filter((s) => !s.label))
 const restoreTarget = computed(
   () => visible.value.find((s) => s.id === restoreTargetId.value) ?? null,
 )
@@ -81,21 +83,21 @@ function onPreview(id: string): void {
     <div class="vh-head">
       <div class="ttl">Version history</div>
       <div class="icns">
-        <div
+        <button
+          type="button"
           class="a"
           :class="{ open: filterOpen }"
-          role="button"
           aria-label="Filter versions"
           @click="filterOpen = !filterOpen"
         >
           <KovaIcon name="list-filter" size="sm" aria-hidden="true" />
-        </div>
-        <div class="a" role="button" aria-label="Add to version history" @click="store.openAddDialog()">
+        </button>
+        <button type="button" class="a" aria-label="Add to version history" @click="store.openAddDialog()">
           <KovaIcon name="plus" size="sm" aria-hidden="true" />
-        </div>
-        <div class="a" role="button" aria-label="Close version history" @click="emit('close')">
+        </button>
+        <button type="button" class="a" aria-label="Close version history" @click="emit('close')">
           <KovaIcon name="x" size="sm" aria-hidden="true" />
-        </div>
+        </button>
       </div>
     </div>
 

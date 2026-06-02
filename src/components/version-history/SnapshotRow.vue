@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { onClickOutside, useEventListener } from '@vueuse/core'
 
 import KovaIcon from '@/components/ui/KovaIcon.vue'
 import { useAuthStore } from '@/stores/auth'
@@ -9,8 +10,11 @@ import type { Snapshot } from '@/stores/snapshots'
 /**
  * One timeline row (hi-fi 17.1 / 17.3 / 17.4 / 17.5 / 17.6). States: idle /
  * hover (••• reveal, CSS) / active (menu open or previewing) / named (filled
- * --ink dot + label + 2-line desc). Right-click or ••• opens the 5-item Reka
- * menu; "Name this version" swaps the title region for an inline rename input.
+ * --ink dot + label + 2-line desc — "named" tracks label presence, so deleting
+ * a snapshot's version info demotes it back to a timestamped autosave row).
+ * Right-click or ••• opens the 5-item `.menu`; "Name this version" swaps the
+ * title region for an inline rename input. The menu dismisses on outside-click
+ * or Escape.
  */
 
 const props = defineProps<{ snapshot: Snapshot; isActive: boolean; isCurrent: boolean }>()
@@ -33,7 +37,7 @@ const dateFmt = new Intl.DateTimeFormat('en-US', {
   minute: '2-digit',
 })
 
-const isNamed = computed(() => props.snapshot.kind === 'manual' || !!props.snapshot.label)
+const isNamed = computed(() => !!props.snapshot.label)
 const formattedDate = computed(() => dateFmt.format(new Date(props.snapshot.taken_at)))
 const deleteInfoEnabled = computed(
   () => props.snapshot.kind === 'manual' || props.snapshot.label !== null,
@@ -56,8 +60,15 @@ const avatarTint = computed(() =>
 const menuOpen = ref(false)
 const renaming = ref(false)
 const renameValue = ref('')
+const menuRef = ref<HTMLElement | null>(null)
+const moreRef = ref<HTMLElement | null>(null)
 
 const vFocus = { mounted: (el: HTMLInputElement) => el.focus() }
+
+onClickOutside(menuRef, () => { menuOpen.value = false }, { ignore: [moreRef] })
+useEventListener(window, 'keydown', (e: KeyboardEvent) => {
+  if (menuOpen.value && e.key === 'Escape') menuOpen.value = false
+})
 
 function openMenu(): void {
   menuOpen.value = true
@@ -127,36 +138,40 @@ function onRowClick(): void {
       </template>
     </div>
 
-    <div
+    <button
       v-if="!renaming"
+      ref="moreRef"
+      type="button"
       data-testid="more"
       class="more"
-      role="button"
       aria-label="Version actions"
       @click.stop="toggleMenu"
     >
       <KovaIcon name="more-horizontal" size="sm" aria-hidden="true" />
-    </div>
+    </button>
 
-    <div v-if="menuOpen" class="menu w-260" @click.stop>
-      <div data-testid="menu-item" class="item" @click="startRename">
+    <div v-if="menuOpen" ref="menuRef" class="menu w-260" role="menu" @click.stop>
+      <div data-testid="menu-item" class="item" role="menuitem" tabindex="-1" @click="startRename">
         <span class="lbl">Name this version</span>
       </div>
-      <div data-testid="menu-item" class="item" @click="fire('restore-clicked')">
+      <div data-testid="menu-item" class="item" role="menuitem" tabindex="-1" @click="fire('restore-clicked')">
         <span class="lbl">Restore this version</span>
       </div>
-      <div data-testid="menu-item" class="item" @click="fire('duplicate-clicked')">
+      <div data-testid="menu-item" class="item" role="menuitem" tabindex="-1" @click="fire('duplicate-clicked')">
         <span class="lbl">Duplicate</span>
       </div>
       <div
         data-testid="menu-item"
         class="item"
+        role="menuitem"
+        tabindex="-1"
         :class="{ disabled: !deleteInfoEnabled }"
+        :aria-disabled="!deleteInfoEnabled"
         @click="fireDeleteInfo"
       >
         <span class="lbl">Delete version info</span>
       </div>
-      <div data-testid="menu-item" class="item" @click="fire('copy-link-clicked')">
+      <div data-testid="menu-item" class="item" role="menuitem" tabindex="-1" @click="fire('copy-link-clicked')">
         <span class="lbl">Copy link</span>
       </div>
     </div>
