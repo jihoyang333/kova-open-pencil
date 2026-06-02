@@ -122,7 +122,11 @@ export async function buildSystemPrompt(input: BuildSystemPromptInput): Promise<
 }
 
 function formatToneSnippets(brand: Brand | null): string | null {
-  const snippets = (brand?.tone_snippets ?? []) as ReadonlyArray<ToneSnippet>
+  // `tone_snippets` is a JSONB column added by Cluster 05's brands migration; it
+  // is not yet on the generated `Brand` type, so read it through a narrow cast.
+  // Empty when absent (Cluster 05 PENDING) — the layer is then omitted.
+  const brandWithSnippets = brand as (Brand & { tone_snippets?: readonly ToneSnippet[] }) | null
+  const snippets = brandWithSnippets?.tone_snippets ?? []
   if (snippets.length === 0) return null
   const limited = snippets.slice(0, MAX_TONE_SNIPPETS)
   const lines = limited.map((s, i) => `${i + 1}. ${s.label}\n   "${s.content}"`).join('\n')
