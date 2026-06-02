@@ -8,6 +8,7 @@ import { useMultiProps } from '@/composables/use-multi-props'
 import { SECTION_DEFAULT_STROKE } from '@/constants'
 import ColorInput from '@/components/ColorInput.vue'
 import StrokeAlignRow from '@/components/inspector/StrokeAlignRow.vue'
+import KovaIcon from '@/components/ui/KovaIcon.vue'
 
 type Align = Stroke['align']
 
@@ -86,8 +87,8 @@ function toggleVisibility(index: number): void {
           :title="stroke.visible ? 'Hide' : 'Show'"
           @click="toggleVisibility(i)"
         >
-          <icon-lucide-eye v-if="stroke.visible" class="size-3.5" />
-          <icon-lucide-eye-off v-else class="size-3.5" />
+          <KovaIcon v-if="stroke.visible" name="eye" size="sm" />
+          <KovaIcon v-else name="eye-off" size="sm" />
         </button>
         <button
           type="button"

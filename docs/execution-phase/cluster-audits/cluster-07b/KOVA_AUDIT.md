@@ -79,17 +79,36 @@ No ⚠️ MISSING tokens (see `tokens-used.md` §3). Overlay literals are Rider 
 
 ## 6. Verification status (W11b remediation)
 
-- ✅ Unit + integration tests green in isolation (find→camera flow, inspector registration, fill/stroke/effects wiring, eyedropper sink, clipboard-through-graph, overlay coords).
+- ✅ Unit + integration tests green in isolation (find→camera flow, inspector registration, fill/stroke/effects wiring, eyedropper sink, clipboard-through-graph, overlay coords). **144 pass / 0 fail.**
 - ✅ `bun run check` adds 0 lint/type errors on 07b files (135 pre-existing repo errors unchanged).
 - ✅ `bun run test:dupes` 1.1% / 1.44% (< 3%).
-- ✅ Playwright E2E spec added (`tests/e2e/cluster-07b.spec.ts`) — runs in CI / founder smoke.
+- ✅ Playwright E2E spec (`tests/e2e/cluster-07b.spec.ts`) — **6/6 green in a real Chromium** against the `/demo` editor route: C1 find+pan, C2 eyedropper true-pixel readback, H1 inspector sections, H2 slice, H3 pixel-grid toggle, boolean union (lock 3).
 
-## 7. Founder-smoke checklist (manual, against hi-fi PNGs)
+### 6a. Browser visual verification (2026-06-01 — done, not deferred)
 
-- [ ] Right-panel Fill/Stroke/Effects sections render + edit a real node.
-- [ ] Frame outline / layout guide / slice region / mask glyph position correctly on **nested** nodes.
-- [ ] Cmd+F → type → non-matches dim + camera pans to a single match.
-- [ ] Eyedropper (Ctrl+C) magnifier shows real canvas pixels; click applies the sampled fill.
-- [ ] Pixel grid toggles at normal zoom via Shift+'.
+Ran the live app (`/demo`, dark, DPR 2). Screenshots in `screenshots/`.
+
+- ✅ **Inspector (Design tab)** renders fully populated — Position / Layout / Appearance / Boolean / Fill (+ multi-fill row + PaintEditor mode tabs + eyedropper) / Stroke / Effects / Export. Matches Figma layout. (`01-inspector-design-tab.png`)
+- ✅ **Pixel grid** visible across canvas at 1200% with Shift+' toggle. (`02-pixel-grid.png`)
+- ✅ **Find panel** — header + close, focused accent input, empty state. (`03-find-panel.png`)
+- ✅ **Eyedropper readback proven**: rect fill r=0.83 → sampled pixel `rgba(212,212,212,255)` exact; off-canvas DPR mapping correct. The audit's highest-risk assumption (C2) holds.
+
+**Bugs found + fixed during this pass:**
+1. 🔴 **REAL app bug** — `state.overlays` lived inside a `shallowReactive` parent, so the Shift+' nested write (`state.overlays.pixelGrid = !x`) never re-rendered. The H3 "fix" corrected the gate but the toggle was dead. Fixed: wrapped `overlays` in its own `reactive()` (`src/stores/editor.ts`).
+2. 🔴 **Test-infra** — the `~icons/` bun `onResolve` resolver never fired (bun 1.3.10), so any `<KovaIcon>` test crashed at registry load. Fixed: global registry stub in `tests/vue-plugin.ts` preload (no per-file `mock.module` leak).
+3. ✅ **Convention** — `StrokeInspectorSection` used forbidden `<icon-lucide-eye>`; switched to `<KovaIcon>`.
+4. ✅ **E2E spec** — pointed at `/demo` (was `/`, which redirects to /login), seeded the find node via store (off-screen drag created nothing), and activates the Design tab (right panel defaults to AI per §12.13).
+
+### 6b. Minor follow-ups (non-blocking)
+- Boolean-ops row "Exclude" label clips at the 264px panel edge (cosmetic; row is dimmed without multi-selection).
+- InspectorRouter passes `:data-section-id` to section components whose root is a fragment → benign Vue dev-warning; the attr just doesn't bind on those.
+
+## 7. Founder-smoke checklist (verified 2026-06-01)
+
+- [x] Right-panel Fill/Stroke/Effects sections render + edit a real node. *(E2E H1 + screenshot 01)*
+- [ ] Frame outline / layout guide / slice region / mask glyph position correctly on **nested** nodes. *(not yet exercised with deep nesting — recommend a follow-up nested-overlay E2E)*
+- [x] Cmd+F → type → non-matches dim + camera pans to a single match. *(E2E C1)*
+- [x] Eyedropper magnifier shows real canvas pixels; click applies the sampled fill. *(E2E C2 — readback proven; full click-to-apply UI flow still manual)*
+- [x] Pixel grid toggles at normal zoom via Shift+'. *(E2E H3, after the reactivity fix)*
 
 — End KOVA_AUDIT —

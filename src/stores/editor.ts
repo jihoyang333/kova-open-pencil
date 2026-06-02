@@ -1,4 +1,4 @@
-import { shallowReactive, shallowRef, computed, watch } from 'vue'
+import { shallowReactive, shallowRef, reactive, computed, watch } from 'vue'
 
 import { toast } from '@/composables/use-toast'
 import {
@@ -200,8 +200,11 @@ export function createEditorStore() {
     showUI: 'full' as ShowUIMode,
     panelsVisible: { left: true, right: true } as { left: boolean; right: boolean },
     // Cluster 07b: canvas overlay visibility flags. Defaults per PRD 07b (Q24
-    // layout guides ON). Each flag is independently togglable.
-    overlays: {
+    // layout guides ON). Each flag is independently togglable. Wrapped in its own
+    // reactive() because the parent `state` is shallowReactive — nested writes like
+    // `state.overlays.pixelGrid = !x` (Shift+' toggle) would otherwise NOT trigger
+    // re-render of the overlay components (audit H3 toggle was dead until this).
+    overlays: reactive({
       frameOutlines: true,
       maskOutlines: true,
       // pixelGrid is the manual Shift+' override, not a master enable: off by
@@ -211,7 +214,7 @@ export function createEditorStore() {
       layoutGuides: true, // Q24-locked default ON
       hoverContour: true,
       measurements: true,
-    },
+    }),
     documentName: 'Untitled' as string,
     panX: 0,
     pageColor: { ...CANVAS_BG_COLOR } as Color,

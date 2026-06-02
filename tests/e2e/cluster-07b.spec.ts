@@ -14,8 +14,11 @@ let canvas: CanvasHelper
 test.describe.configure({ mode: 'serial' })
 
 test.beforeAll(async ({ browser }) => {
+  test.setTimeout(60_000) // cold Vite + CanvasKit/Skia WASM boot
   page = await browser.newPage()
-  await page.goto('/')
+  // /demo mounts EditorView unauthenticated with demo shapes — the only editor
+  // entry that needs no Supabase session/canvas doc (Kova gates /canvas/:id).
+  await page.goto('/demo')
   canvas = new CanvasHelper(page)
   await canvas.waitForInit()
 })
@@ -30,6 +33,40 @@ function nodeTypes(): Promise<string[]> {
     return store.graph.getChildren(store.state.currentPageId).map((n) => n.type)
   })
 }
+
+test('C2 — eyedropper reads TRUE canvas pixels (DPR-correct)', async () => {
+  // The whole eyedropper rests on reading the live Skia/WebGL canvas back into a
+  // 2D context (preserveDrawingBuffer must be on, DPR mapping must be exact). This
+  // exercises the identical readback the sampler uses and proves it returns the
+  // displayed pixel — the audit's single highest-risk assumption (C2).
+  await canvas.clearCanvas()
+  await canvas.drawRect(200, 150, 500, 350) // screen rect (200,150)→(700,500)
+  await canvas.waitForRender()
+
+  const result = await page.evaluate(() => {
+    const store = window.__OPEN_PENCIL_STORE__!
+    const id = [...store.state.selectedIds][0]
+    const fill = store.graph.getNode(id)?.fills?.[0]
+    const el = document.querySelector('[data-test-id="canvas-element"]') as HTMLCanvasElement
+    const rb = document.createElement('canvas')
+    rb.width = 1
+    rb.height = 1
+    const ctx = rb.getContext('2d', { willReadFrequently: true })!
+    const r = el.getBoundingClientRect()
+    const x = Math.floor((450 - r.left) * (el.width / r.width))
+    const y = Math.floor((325 - r.top) * (el.height / r.height))
+    ctx.drawImage(el, x, y, 1, 1, 0, 0, 1, 1)
+    const d = ctx.getImageData(0, 0, 1, 1).data
+    return { fill, sampled: [d[0], d[1], d[2], d[3]] }
+  })
+
+  // Sampled pixel must equal the rect's fill (0.83 × 255 ≈ 212), not blank/black.
+  const expected = Math.round((result.fill?.color.r ?? 0) * 255)
+  expect(result.sampled[3]).toBe(255) // opaque — readback is not a blank buffer
+  expect(Math.abs(result.sampled[0] - expected)).toBeLessThanOrEqual(2)
+  expect(Math.abs(result.sampled[1] - expected)).toBeLessThanOrEqual(2)
+  expect(Math.abs(result.sampled[2] - expected)).toBeLessThanOrEqual(2)
+})
 
 test('H2 — slice tool drag creates a SLICE node', async () => {
   await canvas.clearCanvas()
@@ -59,11 +96,19 @@ test('lock 3 — ⌥⇧U unions two selected shapes', async () => {
 
 test('C1 — find matches a node by name and pans the camera', async () => {
   await canvas.clearCanvas()
-  await canvas.drawRect(2000, 1500, 120, 80)
+  // Seed a single off-screen node via the store (a screen-coord drag at 2000,1500
+  // would fall outside the 1280×800 viewport and create nothing). Camera focus is
+  // what we assert, so the node must live far from the current pan.
   await page.evaluate(() => {
     const store = window.__OPEN_PENCIL_STORE__!
-    const id = store.graph.getChildren(store.state.currentPageId)[0].id
-    store.updateNodeWithUndo(id, { name: 'FindTarget' }, 'Rename')
+    const node = store.graph.createNode('RECTANGLE', store.state.currentPageId, {
+      name: 'FindTarget',
+      x: 2000,
+      y: 1500,
+      width: 120,
+      height: 80
+    })
+    store.select([node.id])
   })
   await canvas.waitForRender()
   const panBefore = await page.evaluate(() => window.__OPEN_PENCIL_STORE__!.state.panX)
@@ -97,7 +142,16 @@ test('H1 — selecting a node renders the wired inspector sections', async () =>
   await canvas.clearCanvas()
   await canvas.drawRect(100, 100, 120, 90)
   await canvas.waitForRender()
+  // The right panel defaults to the AI tab (PRD 07b §12.13 — Kova differentiator),
+  // so switch to the Design tab where InspectorRouter mounts the registered sections.
+  await page.locator('[data-tab="design"]').click()
   // Registration bridge mounts Fill/Stroke/Effects sections in the live right panel.
   await expect(page.locator('[data-testid="fill-inspector-section"]')).toBeVisible()
+  await expect(page.locator('[data-testid="stroke-inspector-section"]')).toBeVisible()
+  await expect(page.locator('[data-testid="effects-inspector-section"]')).toBeVisible()
+  // Priority-sorted registry actually rendered multiple sections, not just one.
+  expect(
+    await page.locator('[data-testid="inspector-router"] [data-section-id]').count()
+  ).toBeGreaterThan(3)
   canvas.assertNoErrors()
 })
