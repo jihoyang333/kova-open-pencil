@@ -1,4 +1,4 @@
-import { describe, expect, it, mock, beforeEach } from 'bun:test'
+import { describe, expect, it, mock, beforeEach, afterEach } from 'bun:test'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 
@@ -7,9 +7,6 @@ mock.module('@/components/ui/kova-icon-registry', () => ({
   KOVA_ICON_SIZE_PX: { xs: 12, sm: 14, md: 16, lg: 20 } as const,
 }))
 mock.module('@/sentry', () => ({ captureBrowserException: () => {} }))
-mock.module('@/composables/version-history/use-canvas-edit-lock', () => ({
-  useCanvasEditLock: () => ({ lock() {}, unlock() {}, isLocked: { value: false } }),
-}))
 
 // Stub KovaModal (Reka Dialog) so child modals mount cleanly in happy-dom.
 mock.module('@/components/ui/KovaModal.vue', () => {
@@ -52,17 +49,23 @@ type AnySnap = Record<string, unknown>
 const auto = (id: string): AnySnap => ({ id, canvas_id: 'c1', kind: 'autosave', label: null, taken_at: '2026-04-28T17:12:00Z' })
 const manual = (id: string, label: string): AnySnap => ({ id, canvas_id: 'c1', kind: 'manual', label, taken_at: '2026-04-28T17:12:00Z' })
 
+const wrappers: Array<{ unmount: () => void }> = []
 function setup(rows: AnySnap[]) {
   setActivePinia(createPinia())
   const store = useSnapshotsStore()
   store.list = mock(() => Promise.resolve())
   store.byCanvasId['c1'] = rows as never
   const w = mount(SnapshotTimelinePanel, { props: { canvasId: 'c1' } })
+  wrappers.push(w)
   return { w, store }
 }
 
 describe('SnapshotTimelinePanel', () => {
   beforeEach(() => routerPush.mockClear())
+  afterEach(() => {
+    // unmount so onUnmounted releases the single-owner edit lock (paired lock/unlock)
+    while (wrappers.length) wrappers.pop()?.unmount()
+  })
 
   it('renders Current Version row + autosave group head + N rows', () => {
     const { w } = setup([auto('s1'), auto('s2')])
