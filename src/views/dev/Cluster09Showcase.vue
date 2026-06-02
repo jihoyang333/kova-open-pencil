@@ -75,7 +75,7 @@ const showTrash = ref(false)
         <div class="mb-[8px] text-[11px] tracking-widest text-[var(--ink-3)] uppercase">
           17.1 / 17.3 · Populated (current + named + autosave group)
         </div>
-        <div class="h-[620px] w-[264px] border-x border-[var(--line)] bg-[var(--rail)]">
+        <div data-testid="rail-populated" class="h-[620px] w-[264px] border-x border-[var(--line)] bg-[var(--rail)]">
           <SnapshotTimelinePanel :canvas-id="POPULATED" />
         </div>
       </section>
@@ -84,7 +84,7 @@ const showTrash = ref(false)
         <div class="mb-[8px] text-[11px] tracking-widest text-[var(--ink-3)] uppercase">
           17.11 · Empty state
         </div>
-        <div class="h-[620px] w-[264px] border-x border-[var(--line)] bg-[var(--rail)]">
+        <div data-testid="rail-empty" class="h-[620px] w-[264px] border-x border-[var(--line)] bg-[var(--rail)]">
           <SnapshotTimelinePanel :canvas-id="EMPTY" />
         </div>
       </section>
