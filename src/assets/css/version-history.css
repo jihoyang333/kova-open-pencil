@@ -11,11 +11,20 @@
 
 /* Panel root — fills the canvas right rail (264px) */
 .vh-panel {
+  position: relative;
   display: flex;
   flex-direction: column;
   min-height: 0;
   height: 100%;
   overflow: hidden;
+}
+
+/* Filter dropdown popover — anchored under the header filter button (hi-fi 17.7) */
+.vh-filter-pop {
+  position: absolute;
+  top: 44px;
+  right: 10px;
+  z-index: 10;
 }
 
 /* Panel header */
