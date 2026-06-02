@@ -27,6 +27,7 @@ import {
   computeImageHash,
   renderNodesToImage,
   renderNodesToSVG,
+  renderThumbnail,
   SceneGraph,
   setTextMeasurer,
   TextEditor,
@@ -701,29 +702,36 @@ export function createEditorStore() {
     return new Promise((r) => requestAnimationFrame(() => r()))
   }
 
+  // Swap the live graph for a freshly-imported one and reset view/selection state.
+  // Shared by openFigFile (file open) and loadSnapshot (version-history restore).
+  function applyImportedGraph(imported: SceneGraph): string {
+    graph = imported
+    computeAllLayouts(graph)
+    subscribeToGraph()
+    undo.clear()
+    pageViewports.clear()
+    state.selectedIds = new Set()
+    const firstPage = graph.getPages()[0] as SceneNode | undefined
+    const pageId = firstPage?.id ?? graph.rootId
+    state.currentPageId = pageId
+    state.panX = 0
+    state.panY = 0
+    state.zoom = 1
+    state.pageColor = { ...CANVAS_BG_COLOR }
+    return pageId
+  }
+
   async function openFigFile(file: File, handle?: FileSystemFileHandle, path?: string) {
     try {
       state.loading = true
       await yieldToUI()
       const imported = await readFigFile(file)
       await yieldToUI()
-      graph = imported
-      computeAllLayouts(graph)
-      subscribeToGraph()
-      undo.clear()
-      pageViewports.clear()
+      const pageId = applyImportedGraph(imported)
       fileHandle = handle ?? null
       filePath = path ?? null
       state.documentName = file.name.replace(/\.fig$/i, '')
       downloadName = file.name
-      state.selectedIds = new Set()
-      const firstPage = graph.getPages()[0] as SceneNode | undefined
-      const pageId = firstPage?.id ?? graph.rootId
-      state.currentPageId = pageId
-      state.panX = 0
-      state.panY = 0
-      state.zoom = 1
-      state.pageColor = { ...CANVAS_BG_COLOR }
       await loadFontsForNodes(graph.getChildren(pageId).map((n) => n.id))
       requestRender()
       void startWatchingFile()
@@ -733,6 +741,33 @@ export function createEditorStore() {
     } finally {
       state.loading = false
     }
+  }
+
+  // ---- Version-history (Cluster 09) snapshot adapter ----
+  // serializeSnapshot: whole-document .fig bytes (the engine's native save format).
+  // loadSnapshot: restore those bytes into the live editor (same canvas — keeps file meta).
+  // captureSnapshotThumbnail: PNG of the current page via the engine's renderThumbnail.
+  function serializeSnapshot(): Promise<Uint8Array> {
+    return buildFigFile()
+  }
+
+  async function loadSnapshot(bytes: Uint8Array): Promise<void> {
+    try {
+      state.loading = true
+      await yieldToUI()
+      const imported = await readFigFile(new File([bytes as BlobPart], 'snapshot.fig'))
+      await yieldToUI()
+      const pageId = applyImportedGraph(imported)
+      await loadFontsForNodes(graph.getChildren(pageId).map((n) => n.id))
+      requestRender()
+    } finally {
+      state.loading = false
+    }
+  }
+
+  function captureSnapshotThumbnail(width = 300, height = 300): Uint8Array | null {
+    if (!_ck || !_renderer) return null
+    return renderThumbnail(_ck, _renderer, graph, state.currentPageId, width, height)
   }
 
   function setCanvasKit(ck: CanvasKit, renderer: SkiaRenderer) {
@@ -2426,6 +2461,9 @@ export function createEditorStore() {
     saveFigFile,
     setCanvasKit,
     saveFigFileAs,
+    serializeSnapshot,
+    loadSnapshot,
+    captureSnapshotThumbnail,
     renderExportImage,
     exportSelection,
     updateNode,
